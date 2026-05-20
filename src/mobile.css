@@ -1,0 +1,622 @@
+/* ===== MOBILE OPTIMIZATIONS (iPhone 11 Pro Max + Responsive) ===== */
+
+/* Desktop only elements */
+.mobile-menu-btn {
+  display: none;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: var(--space-xs);
+  margin-right: var(--space-sm);
+}
+
+.sidebar-overlay {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  /* Display Mobile Menu Button */
+  .mobile-menu-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .desktop-only {
+    display: none !important;
+  }
+
+  /* Layout */
+  .main-area {
+    margin-left: 0 !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+  }
+
+  .topbar {
+    left: 0 !important;
+    padding: 0 var(--space-md) !important;
+  }
+
+  .page-content {
+    padding: var(--space-md) 10px !important;
+    max-width: 100vw;
+  }
+
+  /* Mobile Topbar HUD & Title Optimization */
+  .page-title {
+    display: none !important; /* Hide title to make space for HUD */
+  }
+
+  .hud-banner {
+    gap: 6px !important;
+    padding: 4px 6px !important;
+    max-width: calc(100vw - 60px);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .hud-banner::-webkit-scrollbar {
+    display: none;
+  }
+  .hud-greeting {
+    font-size: 11px !important;
+    white-space: nowrap;
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .hud-val {
+    font-size: 13px !important;
+  }
+  .hud-lbl {
+    display: none !important; /* Hide full labels */
+  }
+  .hud-metric::after {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-tertiary);
+    margin-left: 2px;
+  }
+  .hud-metric:nth-child(2)::after { content: 'P'; }
+  .hud-metric:nth-child(4)::after { content: 'H'; }
+  .hud-metric:nth-child(6)::after { content: 'Py'; }
+  .hud-divider {
+    height: 10px !important;
+    margin: 0 !important;
+  }
+
+  /* Sidebar styling for Mobile */
+  .sidebar {
+    transform: translateX(-100%);
+    z-index: 1001; /* Above topbar */
+    width: 280px !important; /* Fixed comfortable width on mobile */
+  }
+
+  .sidebar.mobile-open {
+    transform: translateX(0);
+    box-shadow: var(--shadow-lg);
+  }
+
+  /* Overlay */
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+  }
+
+  /* Grids and Layouts forced to columns */
+  .grid-2, .grid-3, .grid-4, .dashboard-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: var(--space-md) !important;
+  }
+  
+  .widget-sm, .widget-md, .widget-lg, .widget-full {
+    width: 100% !important;
+    grid-column: span 12 !important;
+  }
+
+  /* Better padding for cards on small screens */
+  .card, .widget-body, .modal-body {
+    padding: var(--space-md) !important;
+  }
+
+  .form-input, .form-textarea, .form-select, .btn {
+    font-size: 14px !important; /* Prevent iOS Safari Zoom */
+  }
+
+  /* Force modals to occupy most of screen */
+  .modal {
+    width: 95% !important;
+    max-height: 90vh !important;
+  }
+
+  /* Kanban / Drag contexts handling */
+  .drag-drop-context {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    scroll-snap-type: x mandatory;
+    gap: var(--space-md);
+    padding-bottom: var(--space-md);
+  }
+
+  .drag-drop-column {
+    min-width: 85vw !important; /* One column per screen width */
+    scroll-snap-align: center;
+  }
+
+  /* Toolhub Window overrides for Mobile */
+  .app-window {
+    width: 100vw !important;
+    height: calc(100vh - var(--topbar-height) - 40px) !important; /* Leave space for bottom bar if any */
+    top: var(--topbar-height) !important;
+    left: 0 !important;
+    transform: none !important;
+    border-radius: 0 !important;
+    position: fixed !important;
+    z-index: 90 !important; /* Below topbar or just below overlays */
+  }
+
+  /* Hide window controls inside ToolHub on mobile */
+  .window-controls button:not(.close-btn) {
+    display: none !important;
+  }
+  
+  .window-header {
+    cursor: default !important; /* Cannot drag */
+  }
+  /* Command Center Component Overrides */
+  .cc-metrics-banner {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: var(--space-sm) !important;
+    margin-bottom: var(--space-xl) !important;
+  }
+
+  .cc-metric-card {
+    padding: var(--space-md) !important;
+    gap: 4px !important;
+  }
+
+  .cc-metric-label {
+    font-size: 10px !important;
+    white-space: normal !important;
+    line-height: 1.2 !important;
+  }
+
+  .cc-metric-value {
+    font-size: 24px !important;
+  }
+
+  .cc-metric-sub {
+    font-size: 10px !important;
+  }
+
+  .cc-quick-actions {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: var(--space-sm) !important;
+    padding: var(--space-sm) !important;
+  }
+
+  .cc-action-btn {
+    padding: var(--space-sm) !important;
+    font-size: 12px !important;
+    height: 44px !important; /* Force touch target size */
+  }
+
+  /* Empresas Mobile Optimizations */
+  .empresas-metrics-grid {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scroll-snap-type: x mandatory !important;
+    gap: 12px !important;
+    padding-bottom: 8px !important;
+  }
+  .empresas-metrics-grid::-webkit-scrollbar {
+    display: none !important;
+  }
+  .empresas-metrics-grid > div {
+    min-width: 220px !important;
+    flex: 0 0 auto !important;
+    scroll-snap-align: center !important;
+  }
+
+  /* Projects Mobile Optimizations */
+  .projects-metrics-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+  .projects-metrics-grid > .card {
+    padding: 16px 12px !important; 
+  }
+
+  /* RAG Brain Mobile Optimizations */
+  .rag-tabs {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scroll-snap-type: x mandatory !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+    gap: 8px !important;
+    padding-bottom: 4px !important;
+  }
+  .rag-tabs::-webkit-scrollbar {
+    display: none !important;
+  }
+  .rag-tab {
+    flex: 0 0 auto !important;
+    white-space: nowrap !important;
+    scroll-snap-align: start !important;
+    padding: 8px 12px !important;
+  }
+  .rag-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+  .rag-status-badge {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+  .rag-field-row {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+  .rag-status-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+  .rag-quick-questions > div {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Workspace 2.0 Mobile Optimizations */
+  .ws2-tabs-container {
+    padding: 8px 16px 16px 16px !important;
+    gap: 12px !important;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+    -webkit-overflow-scrolling: touch !important;
+    align-items: center !important;
+  }
+  
+  .ws2-tabs-container::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .ws2-tab-group {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    gap: 8px !important;
+  }
+  
+  /* Hide desktop keyboard shortcuts and group labels */
+  .ws2-tab-shortcut,
+  .ws2-tab-label,
+  .ws2-tab-separator {
+    display: none !important;
+  }
+
+  .ws2-tab {
+    flex-shrink: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    white-space: nowrap !important;
+    padding: 10px 18px !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    border-radius: var(--radius-full) !important;
+    background: rgba(255, 255, 255, 0.04) !important;
+    border: 1px solid rgba(255, 255, 255, 0.04) !important;
+    color: var(--text-secondary) !important;
+    transition: all 0.2s ease !important;
+  }
+  
+  .ws2-tab.active {
+    background: var(--accent-primary) !important;
+    color: #fff !important;
+    border-color: transparent !important;
+    box-shadow: 0 4px 16px rgba(124, 92, 252, 0.25) !important;
+  }
+  .ws2-tab.active-green { 
+    background: var(--accent-green) !important; 
+    color: #fff !important;
+    border-color: transparent !important;
+    box-shadow: 0 4px 16px rgba(16, 185, 129, 0.2) !important; 
+  }
+  .ws2-tab.active-purple { 
+    background: var(--accent-purple) !important; 
+    color: #fff !important;
+    border-color: transparent !important;
+    box-shadow: 0 4px 16px rgba(168, 85, 247, 0.2) !important; 
+  }
+  .ws2-tab.active-orange { 
+    background: var(--accent-orange) !important; 
+    color: #fff !important;
+    border-color: transparent !important;
+    box-shadow: 0 4px 16px rgba(245, 158, 11, 0.2) !important; 
+  }
+
+  .ws2-tab-count {
+    margin-left: 4px !important;
+    padding: 2px 6px !important;
+    border-radius: 12px !important;
+    background: rgba(0,0,0,0.2) !important;
+    font-size: 11px !important;
+    color: #fff !important;
+  }
+
+  /* Command Banner Optimization - 2x2 Grid Layout */
+  .ws2-command-banner {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    padding: 16px !important;
+    gap: 20px !important;
+    margin-bottom: var(--space-md) !important;
+    background: rgba(255, 255, 255, 0.02) !important;
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+    border-radius: var(--radius-xl) !important;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.1) !important;
+    overflow: visible !important;
+  }
+
+  .ws2-greeting {
+    width: 100% !important;
+    border-right: none !important;
+    padding-right: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+  }
+
+  .ws2-greeting-text {
+    font-size: 20px !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.5px !important;
+  }
+  
+  .ws2-greeting-sub {
+    font-size: 12px !important;
+    color: var(--text-tertiary) !important;
+  }
+
+  /* 2x2 Grid for Metrics */
+  .ws2-banner-metrics {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important;
+    width: 100% !important;
+  }
+
+  .ws2-banner-metric {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    padding: 14px 16px !important;
+    background: rgba(255, 255, 255, 0.03) !important;
+    border: 1px solid rgba(255, 255, 255, 0.04) !important;
+    border-radius: var(--radius-lg) !important;
+    min-width: 0 !important;
+    gap: 4px !important;
+  }
+
+  .ws2-banner-metric-value {
+    font-size: 22px !important;
+    font-weight: 800 !important;
+    line-height: 1 !important;
+  }
+
+  .ws2-banner-metric-label {
+    font-size: 10px !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    color: var(--text-tertiary) !important;
+    white-space: nowrap !important;
+  }
+
+  /* Center progress ring in its 4th grid cell */
+  .ws2-banner-metrics > .ws2-progress-ring {
+    margin: auto !important;
+    transform: scale(1.15) !important; 
+    filter: drop-shadow(0 4px 12px rgba(0,0,0,0.1)) !important;
+    flex-shrink: 0 !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+  }
+
+  /* Hide quick add search bar on mobile as requested */
+  .ws2-quick-add {
+    display: none !important;
+  }
+
+  /* Sidebar panels should stack vertically on mobile */
+  .ws2-sidebar {
+    width: 100% !important;
+    flex-direction: column !important;
+    flex-wrap: nowrap !important;
+    padding-bottom: 90px !important; /* Extra padding so the bottom panel is scrolled past the Floating Action Button. */
+  }
+  
+  .ws2-sidebar > .ws2-panel {
+    min-width: 100% !important;
+    margin-bottom: var(--space-xs) !important;
+  }
+
+  /* Optimize Quick Notes for Mobile */
+  .ws2-quick-note {
+    background: rgba(255, 255, 255, 0.02) !important;
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+    padding: var(--space-xs) var(--space-sm) !important;
+    border-radius: var(--radius-md) !important;
+    margin-bottom: var(--space-xs) !important;
+  }
+  .ws2-quick-note:last-child {
+    margin-bottom: 0 !important;
+  }
+  .ws2-quick-note-date {
+    font-size: 9px !important;
+    opacity: 0.6;
+  }
+
+  /* Quick add input styling */
+  .ws2-quick-add {
+    flex-wrap: wrap !important;
+  }
+  .ws2-quick-add-hints {
+    width: 100%;
+    margin-top: var(--space-xs);
+    justify-content: flex-start !important;
+  }
+
+  /* Project Notepad Mobile Optimizations */
+  .notepad-container {
+    flex-direction: column !important;
+    height: auto !important; /* Allow the container to grow on mobile if necessary */
+    min-height: 500px !important;
+  }
+
+  .notepad-sidebar {
+    width: 100% !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--border-subtle) !important;
+    flex: 1 !important; /* take available space when visible */
+  }
+
+  .notepad-editor {
+    width: 100% !important;
+  }
+
+  /* When showEditorOnMobile is true, list has mobile-hidden */
+  .notepad-sidebar.mobile-hidden {
+    display: none !important;
+  }
+  /* When showEditorOnMobile is false, editor has mobile-hidden */
+  .notepad-editor.mobile-hidden {
+    display: none !important;
+  }
+
+  .mobile-only-btn {
+    display: flex !important;
+  }
+
+  .notepad-editor-header {
+    padding: 16px 20px !important; /* Tighter padding for mobile */
+  }
+
+  .notepad-editor-body {
+    padding: 24px 20px !important; /* Tighter padding for mobile */
+  }
+
+  .notepad-title-input {
+    font-size: 28px !important; /* Smaller title on mobile */
+    margin-bottom: 16px !important;
+  }
+
+  .notepad-content-input {
+    font-size: 15px !important;
+    padding-bottom: 100px !important; /* Give extra padding for keyboard/bottom navigation */
+  }
+
+  /* ─── Touch Interaction Optimizations ─── */
+  
+  /* 1. Remove that weird blue/gray tap highlight box on mobile */
+  * {
+    -webkit-tap-highlight-color: transparent !important;
+  }
+
+  /* 2. Better tactile feedback when tapping buttons (shrinks slightly) */
+  .btn:active, 
+  button:active, 
+  .ws2-tab:active, 
+  .card:active, 
+  .ws2-quick-note:active, 
+  .action-btn:active,
+  .cc-action-btn:active {
+    transform: scale(0.96) !important;
+    transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    opacity: 0.7 !important;
+  }
+
+  /* 3. Smooth 'momentum' scrolling for horizontal swipe areas */
+  .hud-banner,
+  .ws2-tabs-container,
+  .drag-drop-context,
+  .kanban-board {
+    -webkit-overflow-scrolling: touch !important; /* Smooth momentum scrolling */
+    overscroll-behavior-x: contain !important; /* Prevent bouncing the whole page horizontally */
+  }
+
+  /* 4. Prevent sticky hover effects on touch screens after tapping */
+  @media (hover: none) {
+    .btn:hover, 
+    button:hover, 
+    .ws2-tab:hover, 
+    .card:hover, 
+    .ws2-quick-note:hover, 
+    .action-btn:hover,
+    .cc-action-btn:hover {
+      transform: none !important;
+    }
+  }
+
+  /* Infrastructure Metrics Overrides */
+  .infra-metrics-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important;
+  }
+
+  .infra-metric-card {
+    padding: 16px !important;
+    gap: 12px !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+
+  .infra-metric-icon {
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 10px !important;
+  }
+
+  .infra-metric-icon svg {
+    width: 18px !important;
+    height: 18px !important;
+  }
+
+  .infra-metric-label {
+    font-size: 11px !important;
+  }
+
+  .infra-metric-value {
+    font-size: 20px !important;
+  }
+}
+
+/* Specific overrides for iPhone 11 Pro Max / smaller targets if needed */
+@media (max-width: 480px) {
+  .page-title {
+    font-size: 15px !important;
+    max-width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
