@@ -60,6 +60,97 @@ app.use(express.json({ limit: '10mb' }));
 
 // ─── Data Layer ───────────────────────────────────────────────
 
+// ─── Data Layer ───────────────────────────────────────────────
+
+let SUPABASE_URL = process.env.SUPABASE_URL;
+let SUPABASE_KEY = process.env.SUPABASE_KEY;
+
+// Sincronización inicial de Supabase al arrancar
+async function initSupabaseSync() {
+    if (!SUPABASE_URL || !SUPABASE_KEY || SUPABASE_URL.includes('tu-proyecto') || SUPABASE_KEY.includes('tu-anon')) {
+        console.log('   ℹ️  Supabase no configurado o variables con placeholders. Operando en modo local (db.json).');
+        return;
+    }
+
+    console.log('   🔗 Conectando a Supabase para sincronizar base de datos...');
+    try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/command_center_state?id=eq.1`, {
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`
+            }
+        });
+        
+        if (res.ok) {
+            const rows = await res.json();
+            if (rows && rows.length > 0 && rows[0].data) {
+                console.log('   ✅ Estado recuperado desde Supabase. Sincronizando db.json local...');
+                fs.writeFileSync(DB_PATH, JSON.stringify(rows[0].data, null, 2), 'utf-8');
+            } else {
+                console.log('   ℹ️  Supabase inicializado pero sin datos en la tabla command_center_state. Subiendo base de datos local...');
+                const localData = readDB();
+                await syncToSupabase(localData);
+            }
+        } else {
+            console.warn(`   ⚠️  Error de conexión con Supabase (Status ${res.status}). Usando base de datos local.`);
+        }
+    } catch (err) {
+        console.error('   ❌ Error al sincronizar con Supabase en el inicio:', err.message);
+    }
+}
+
+// Sincronización asíncrona hacia Supabase (Upsert sin bloquear las peticiones del frontend)
+async function syncToSupabase(data) {
+    if (!SUPABASE_URL || !SUPABASE_KEY || SUPABASE_URL.includes('tu-proyecto') || SUPABASE_KEY.includes('tu-anon')) return;
+    
+    try {
+        // Verificar si existe la fila con id=1
+        const check = await fetch(`${SUPABASE_URL}/rest/v1/command_center_state?id=eq.1`, {
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`
+            }
+        });
+
+        let method = 'PATCH';
+        let body = JSON.stringify({ data: data });
+        let urlTarget = `${SUPABASE_URL}/rest/v1/command_center_state?id=eq.1`;
+
+        if (check.ok) {
+            const rows = await check.json();
+            if (!rows || rows.length === 0) {
+                method = 'POST';
+                body = JSON.stringify({ id: 1, data: data });
+                urlTarget = `${SUPABASE_URL}/rest/v1/command_center_state`;
+            }
+        } else {
+            // Si falla la fila pero la tabla existe (o para forzar creación)
+            method = 'POST';
+            body = JSON.stringify({ id: 1, data: data });
+            urlTarget = `${SUPABASE_URL}/rest/v1/command_center_state`;
+        }
+        
+        const res = await fetch(urlTarget, {
+            method: method,
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=minimal'
+            },
+            body: body
+        });
+        
+        if (!res.ok) {
+            console.error(`   [Supabase Sync] Error al guardar datos (${method}): ${res.status} ${res.statusText}`);
+        } else {
+            console.log(`   [Supabase Sync] Sincronizado exitosamente con la nube (${method}).`);
+        }
+    } catch (err) {
+        console.error('   [Supabase Sync] Error de red durante la sincronización:', err.message);
+    }
+}
+
 function readDB() {
     try {
         const raw = fs.readFileSync(DB_PATH, 'utf-8');
@@ -72,6 +163,11 @@ function readDB() {
 
 function writeDB(data) {
     fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2), 'utf-8');
+    
+    // Sincronizar con Supabase en background de forma asíncrona
+    if (SUPABASE_URL && SUPABASE_KEY && !SUPABASE_URL.includes('tu-proyecto') && !SUPABASE_KEY.includes('tu-anon')) {
+        syncToSupabase(data).catch(err => console.error('[Supabase Sync Catch] Error:', err.message));
+    }
     
     // Asynchronous non-blocking spawn to auto-reflect changes into BrainVault markdown files
     exec('node generate_brain_vault.cjs', { cwd: __dirname }, (error, stdout, stderr) => {
@@ -1571,6 +1667,267 @@ app.get('/api/health', async (req, res) => {
     });
 });
 
+// Helper to write database credentials to .env file
+function updateEnvFile(url, key) {
+    try {
+        const envPath = path.join(__dirname, '.env');
+        let envContent = '';
+        if (fs.existsSync(envPath)) {
+            envContent = fs.readFileSync(envPath, 'utf-8');
+        }
+        
+        // Replace or add SUPABASE_URL
+        if (envContent.match(/^SUPABASE_URL=/m)) {
+            envContent = envContent.replace(/^SUPABASE_URL=.*$/m, `SUPABASE_URL=${url}`);
+        } else {
+            envContent += `\nSUPABASE_URL=${url}`;
+        }
+        
+        // Replace or add SUPABASE_KEY
+        if (envContent.match(/^SUPABASE_KEY=/m)) {
+            envContent = envContent.replace(/^SUPABASE_KEY=.*$/m, `SUPABASE_KEY=${key}`);
+        } else {
+            envContent += `\nSUPABASE_KEY=${key}`;
+        }
+        
+        fs.writeFileSync(envPath, envContent.trim() + '\n', 'utf-8');
+        console.log('✅ Archivo .env actualizado exitosamente con las nuevas credenciales de Supabase.');
+        return true;
+    } catch (err) {
+        console.error('❌ Error al actualizar el archivo .env:', err.message);
+        return false;
+    }
+}
+
+// ─── Supabase Sync & Config Endpoints ─────────────────────────
+
+// Get connection status and configuration
+app.get('/api/supabase/status', async (req, res) => {
+    const isConfigured = SUPABASE_URL && SUPABASE_KEY && 
+                        !SUPABASE_URL.includes('tu-proyecto') && 
+                        !SUPABASE_KEY.includes('tu-anon') &&
+                        SUPABASE_URL.trim() !== '' &&
+                        SUPABASE_KEY.trim() !== '';
+                        
+    if (!isConfigured) {
+        return res.json({
+            configured: false,
+            url: SUPABASE_URL || '',
+            keyMasked: '',
+            status: 'unconfigured',
+            tableExists: false
+        });
+    }
+
+    try {
+        const testRes = await fetch(`${SUPABASE_URL}/rest/v1/command_center_state?id=eq.1`, {
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`
+            }
+        });
+
+        const keyMasked = SUPABASE_KEY.length > 16 
+            ? `${SUPABASE_KEY.substring(0, 8)}...${SUPABASE_KEY.substring(SUPABASE_KEY.length - 8)}`
+            : 'Configurado';
+
+        if (testRes.ok) {
+            return res.json({
+                configured: true,
+                url: SUPABASE_URL,
+                keyMasked,
+                status: 'connected',
+                tableExists: true
+            });
+        } else if (testRes.status === 404) {
+            return res.json({
+                configured: true,
+                url: SUPABASE_URL,
+                keyMasked,
+                status: 'connected_missing_table',
+                tableExists: false,
+                error: 'La tabla "command_center_state" no existe en tu base de datos Supabase.'
+            });
+        } else if (testRes.status === 401 || testRes.status === 403) {
+            return res.json({
+                configured: true,
+                url: SUPABASE_URL,
+                keyMasked,
+                status: 'unauthorized',
+                tableExists: false,
+                error: 'Credenciales inválidas (401/403 Unauthorized). Revisa tu Supabase Key.'
+            });
+        } else {
+            return res.json({
+                configured: true,
+                url: SUPABASE_URL,
+                keyMasked,
+                status: 'error',
+                tableExists: false,
+                error: `Error de respuesta: ${testRes.status} ${testRes.statusText}`
+            });
+        }
+    } catch (err) {
+        return res.json({
+            configured: true,
+            url: SUPABASE_URL,
+            keyMasked: 'Configurado',
+            status: 'error',
+            tableExists: false,
+            error: `Error de red: No se pudo conectar a Supabase. (${err.message})`
+        });
+    }
+});
+
+// Test and save credentials
+app.post('/api/supabase/config', async (req, res) => {
+    const { url, key } = req.body;
+    
+    if (!url || !key || url.trim() === '' || key.trim() === '') {
+        // Reset connection to local mode
+        SUPABASE_URL = '';
+        SUPABASE_KEY = '';
+        updateEnvFile('', '');
+        return res.json({ success: true, status: 'unconfigured', configured: false });
+    }
+
+    const trimmedUrl = url.trim();
+    const trimmedKey = key.trim();
+
+    try {
+        console.log(`[Supabase Config] Probando conexión a: ${trimmedUrl}...`);
+        const testRes = await fetch(`${trimmedUrl}/rest/v1/command_center_state?id=eq.1`, {
+            headers: {
+                'apikey': trimmedKey,
+                'Authorization': `Bearer ${trimmedKey}`
+            }
+        });
+
+        if (testRes.ok || testRes.status === 404) {
+            // Credentials are valid, save them
+            SUPABASE_URL = trimmedUrl;
+            SUPABASE_KEY = trimmedKey;
+            
+            updateEnvFile(trimmedUrl, trimmedKey);
+            
+            // Re-run init sync if the table exists
+            let synced = false;
+            if (testRes.ok) {
+                await initSupabaseSync();
+                synced = true;
+            }
+
+            return res.json({
+                success: true,
+                status: testRes.ok ? 'connected' : 'connected_missing_table',
+                configured: true,
+                tableExists: testRes.ok,
+                synced,
+                url: SUPABASE_URL
+            });
+        } else if (testRes.status === 401 || testRes.status === 403) {
+            return res.status(401).json({
+                success: false,
+                error: 'Unauthorized: La API Key o la URL de Supabase es incorrecta.'
+            });
+        } else {
+            return res.status(testRes.status).json({
+                success: false,
+                error: `Error al conectar (${testRes.status}): ${testRes.statusText}`
+            });
+        }
+    } catch (err) {
+        console.error('[Supabase Config] Error de conexión:', err.message);
+        return res.status(500).json({
+            success: false,
+            error: `Error de red: No se pudo establecer conexión con ${trimmedUrl}. (${err.message})`
+        });
+    }
+});
+
+// Manual Push/Pull data sync
+app.post('/api/supabase/sync', async (req, res) => {
+    const { action } = req.body;
+    
+    if (!SUPABASE_URL || !SUPABASE_KEY || SUPABASE_URL.includes('tu-proyecto')) {
+        return res.status(400).json({ error: 'Supabase no está configurado.' });
+    }
+
+    try {
+        if (action === 'push') {
+            console.log('[Supabase Sync Manual] Iniciando PUSH manual...');
+            const data = readDB();
+            
+            // Check if row exists to use POST vs PATCH
+            const testRes = await fetch(`${SUPABASE_URL}/rest/v1/command_center_state?id=eq.1`, {
+                headers: {
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': `Bearer ${SUPABASE_KEY}`
+                }
+            });
+
+            let method = 'PATCH';
+            let body = JSON.stringify({ data: data });
+            let urlTarget = `${SUPABASE_URL}/rest/v1/command_center_state?id=eq.1`;
+
+            if (testRes.ok) {
+                const rows = await testRes.json();
+                if (!rows || rows.length === 0) {
+                    method = 'POST';
+                    body = JSON.stringify({ id: 1, data: data });
+                    urlTarget = `${SUPABASE_URL}/rest/v1/command_center_state`;
+                }
+            } else {
+                method = 'POST';
+                body = JSON.stringify({ id: 1, data: data });
+                urlTarget = `${SUPABASE_URL}/rest/v1/command_center_state`;
+            }
+
+            const resSync = await fetch(urlTarget, {
+                method: method,
+                headers: {
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': `Bearer ${SUPABASE_KEY}`,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=minimal'
+                },
+                body: body
+            });
+
+            if (resSync.ok) {
+                return res.json({ success: true, message: 'Base de datos local guardada exitosamente en Supabase (Push).' });
+            } else {
+                return res.status(resSync.status).json({ error: `Error al subir a Supabase: ${resSync.statusText}` });
+            }
+        } else if (action === 'pull') {
+            console.log('[Supabase Sync Manual] Iniciando PULL manual...');
+            const resSync = await fetch(`${SUPABASE_URL}/rest/v1/command_center_state?id=eq.1`, {
+                headers: {
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': `Bearer ${SUPABASE_KEY}`
+                }
+            });
+
+            if (resSync.ok) {
+                const rows = await resSync.json();
+                if (rows && rows.length > 0 && rows[0].data) {
+                    fs.writeFileSync(DB_PATH, JSON.stringify(rows[0].data, null, 2), 'utf-8');
+                    return res.json({ success: true, message: 'Base de datos sincronizada con éxito desde la nube (Pull).' });
+                } else {
+                    return res.status(404).json({ error: 'No se encontraron datos guardados en Supabase.' });
+                }
+            } else {
+                return res.status(resSync.status).json({ error: `Error al descargar de Supabase: ${resSync.statusText}` });
+            }
+        } else {
+            return res.status(400).json({ error: 'Acción no válida. Debe ser "push" o "pull".' });
+        }
+    } catch (err) {
+        console.error('[Supabase Sync Manual] Error:', err.message);
+        return res.status(500).json({ error: `Error del servidor: ${err.message}` });
+    }
+});
+
 // ─── RAG Brain Endpoints ──────────────────────────────────────
 
 // Query the brain
@@ -2021,6 +2378,9 @@ app.listen(PORT, '0.0.0.0', async () => {
     console.log(`   Health: http://localhost:${PORT}/api/health`);
     console.log(`   OpenClaw Execute: POST http://localhost:${PORT}/api/openclaw/execute`);
     console.log(`   Dashboard Status: GET http://localhost:${PORT}/api/openclaw/status`);
+    
+    // Sincronizar datos con Supabase antes de cualquier consulta RAG o peticiones de clientes
+    await initSupabaseSync();
     
     // Initialize db.json if it doesn't exist
     if (!fs.existsSync(DB_PATH)) {

@@ -1,4 +1,4 @@
-import { Search, Menu } from 'lucide-react';
+import { Search, Menu, Database } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 
@@ -47,9 +47,9 @@ const pageTitles = {
     '/calendar': 'Master Calendar',
 };
 
-export default function Topbar({ collapsed, searchQuery, onSearchChange, onMobileMenuToggle }) {
+export default function Topbar({ collapsed, searchQuery, onSearchChange, onMobileMenuToggle, onCloudSyncToggle }) {
     const location = useLocation();
-    const { tasks, events } = useApp();
+    const { tasks, events, supabaseStatus } = useApp();
 
     const titleKey = Object.keys(pageTitles).find(key => {
         if (key === '/') return location.pathname === '/';
@@ -67,10 +67,31 @@ export default function Topbar({ collapsed, searchQuery, onSearchChange, onMobil
 
     const getGreeting = () => {
         const hour = new Date().getHours();
-        if (hour < 12) return '🌤️ Buenos días';
-        if (hour < 18) return '☀️ Buenas tardes';
-        return '🌙 Buenas noches';
+        if (hour < 12) return '🌤️ Buen día';
+        if (hour < 18) return '☀️ Buena tarde';
+        return '🌙 Buena noche';
     };
+
+    // Supabase status UI config
+    let statusColor = 'var(--text-tertiary)';
+    let statusLabel = 'Local Offline';
+    let dotColor = '#6b7280';
+    let isLive = false;
+
+    if (supabaseStatus?.status === 'connected') {
+        statusColor = 'var(--accent-green)';
+        statusLabel = 'Cloud Sync';
+        dotColor = 'var(--accent-green)';
+        isLive = true;
+    } else if (supabaseStatus?.status === 'connected_missing_table') {
+        statusColor = 'var(--accent-orange)';
+        statusLabel = 'Table Missing';
+        dotColor = 'var(--accent-orange)';
+    } else if (supabaseStatus?.status === 'unauthorized' || supabaseStatus?.status === 'error') {
+        statusColor = 'var(--accent-red)';
+        statusLabel = 'Sync Error';
+        dotColor = 'var(--accent-red)';
+    }
 
     return (
         <header className={`topbar ${collapsed ? 'collapsed' : ''}`}>
@@ -93,6 +114,36 @@ export default function Topbar({ collapsed, searchQuery, onSearchChange, onMobil
             </div>
 
             <div className="topbar-right">
+                {/* Cloud Sync Status Badge */}
+                <div 
+                    className="cloud-sync-badge" 
+                    onClick={onCloudSyncToggle}
+                    style={{ 
+                        cursor: 'pointer', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '6px', 
+                        padding: '5px 12px', 
+                        borderRadius: '20px', 
+                        background: 'rgba(255, 255, 255, 0.04)', 
+                        border: '1px solid var(--border-subtle)', 
+                        transition: 'all 0.2s ease',
+                        marginRight: '12px',
+                        userSelect: 'none'
+                    }}
+                >
+                    <Database size={13} style={{ color: statusColor }} />
+                    <span style={{ color: 'var(--text-secondary)', fontSize: '11px', fontWeight: 500 }}>{statusLabel}</span>
+                    <span className="status-dot" style={{ 
+                        width: '6px', 
+                        height: '6px', 
+                        borderRadius: '50%', 
+                        background: dotColor, 
+                        boxShadow: isLive ? '0 0 8px var(--accent-green)' : 'none',
+                        animation: isLive ? 'pulse-green 2.5s infinite' : 'none'
+                    }} />
+                </div>
+
                 <div className="search-bar desktop-only">
                     <Search size={16} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
                     <input

@@ -5268,3 +5268,89 @@ a:hover {
   .agent-state-row { flex-direction: column; }
   .agent-state-side { min-width: 0; align-items: flex-start; }
 }
+
+/* ===== CLOUD SYNC & TELEMETRY MODULE ===== */
+.cloud-sync-badge {
+  transition: all var(--transition-fast);
+}
+.cloud-sync-badge:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 0 12px rgba(124, 92, 252, 0.1);
+}
+.cloud-sync-badge:active {
+  transform: scale(0.97);
+}
+
+@keyframes pulse-green {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+.cloud-sync-panel {
+  box-shadow: var(--shadow-lg);
+}
+
+/* Status themes */
+.status-display-card.status-connected {
+  border-color: rgba(16, 185, 129, 0.15) !important;
+  background: rgba(16, 185, 129, 0.02) !important;
+}
+.status-display-card.status-warning {
+  border-color: rgba(245, 158, 11, 0.15) !important;
+  background: rgba(245, 158, 11, 0.02) !important;
+}
+.status-display-card.status-error {
+  border-color: rgba(239, 68, 68, 0.15) !important;
+  background: rgba(239, 68, 68, 0.02) !important;
+}
+
+/* Button hover transitions */
+.btn-sync-action {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+.btn-sync-action:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+}
+.btn-sync-action.btn-push:hover {
+  background: rgba(59, 130, 246, 0.15) !important;
+  border-color: rgba(59, 130, 246, 0.35) !important;
+}
+.btn-sync-action.btn-pull:hover {
+  background: rgba(16, 185, 129, 0.15) !important;
+  border-color: rgba(16, 185, 129, 0.35) !important;
+}
+.btn-sync-action:active {
+  transform: translateY(0);
+}
+.btn-sync-action:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.spin {
+  display: inline-block;
+  animation: spin 1.2s linear infinite;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}

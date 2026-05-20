@@ -22,3 +22,18 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment & Private secrets
+.env
+.env.local
+.env.*.local
+
+# Databases & Local dynamic files
+db.json
+vectors.json
+licitia-state.json
+server.log
+server.log.*
+_uploads_tmp/
+openclaw-rag/db/
+openclaw-core/db/

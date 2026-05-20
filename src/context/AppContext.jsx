@@ -42,6 +42,61 @@ export const AppProvider = ({ children }) => {
     const [apiOnline, setApiOnline] = useState(false);
     const lastPollRef = useRef(0);
 
+    const [supabaseStatus, setSupabaseStatus] = useState({
+        configured: false,
+        url: '',
+        keyMasked: '',
+        status: 'unconfigured',
+        tableExists: false,
+        error: null
+    });
+
+    const checkSupabaseStatus = useCallback(async () => {
+        try {
+            const res = await fetch(`${API_BASE}/supabase/status`);
+            if (res.ok) {
+                const data = await res.json();
+                setSupabaseStatus(data);
+                return data;
+            }
+        } catch (err) {
+            console.error('Error fetching Supabase status:', err);
+        }
+        return null;
+    }, []);
+
+    const manualSync = useCallback(async (action) => {
+        try {
+            const res = await fetch(`${API_BASE}/supabase/sync`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action })
+            });
+            const data = await res.json();
+            await checkSupabaseStatus();
+            return data;
+        } catch (err) {
+            console.error('Error manual syncing Supabase:', err);
+            return { success: false, error: err.message };
+        }
+    }, [checkSupabaseStatus]);
+
+    const saveSupabaseConfig = useCallback(async (url, key) => {
+        try {
+            const res = await fetch(`${API_BASE}/supabase/config`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url, key })
+            });
+            const data = await res.json();
+            await checkSupabaseStatus();
+            return data;
+        } catch (err) {
+            console.error('Error saving Supabase config:', err);
+            return { success: false, error: err.message };
+        }
+    }, [checkSupabaseStatus]);
+
     // State
 
     const [ideas, setIdeas] = useState(() => initializeState('os_live_ideas', seedIdeas));
@@ -133,6 +188,8 @@ export const AppProvider = ({ children }) => {
                 fetch(`${API_BASE}/sops`).then(r => r.json()).catch(() => null),
             ]);
 
+            checkSupabaseStatus().catch(() => null);
+
             if (apiEvents) setEvents(apiEvents);
             if (apiTasks) setTasks(apiTasks);
             if (apiNotes) setNotes(apiNotes);
@@ -144,7 +201,7 @@ export const AppProvider = ({ children }) => {
         } catch (err) {
             console.warn('Polling sync error:', err.message);
         }
-    }, []);
+    }, [checkSupabaseStatus]);
 
     useEffect(() => {
         const interval = setInterval(poll, POLL_INTERVAL);
@@ -391,6 +448,11 @@ export const AppProvider = ({ children }) => {
         setPromoters,
         imageGirls,
         setImageGirls,
+        
+        supabaseStatus,
+        checkSupabaseStatus,
+        manualSync,
+        saveSupabaseConfig,
         
         refreshData: poll
     };

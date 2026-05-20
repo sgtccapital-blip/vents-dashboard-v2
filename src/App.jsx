@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider, useApp } from './context/AppContext';
 import Sidebar from './components/Layout/Sidebar';
 import Topbar from './components/Layout/Topbar';
+import CloudSyncPanel from './components/CloudSyncPanel';
 import { X } from 'lucide-react';
 import Home from './pages/Home';
 import Workspace from './pages/Workspace';
@@ -45,6 +46,7 @@ function AppLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [cloudSyncOpen, setCloudSyncOpen] = useState(false);
 
   return (
     <div className="app-layout">
@@ -60,6 +62,7 @@ function AppLayout() {
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           onMobileMenuToggle={() => setMobileMenuOpen(true)}
+          onCloudSyncToggle={() => setCloudSyncOpen(true)}
         />
         <ErrorBoundary>
           <Routes>
@@ -73,6 +76,9 @@ function AppLayout() {
           </Routes>
         </ErrorBoundary>
       </div>
+
+      {/* Cloud Sync Side-over Modal */}
+      <CloudSyncPanel isOpen={cloudSyncOpen} onClose={() => setCloudSyncOpen(false)} />
     </div>
   );
 }
