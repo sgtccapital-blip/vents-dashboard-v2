@@ -134,7 +134,7 @@ export default function EventTableView({ events, filterEventId }) {
     };
 
     return (
-        <div style={{ background: 'var(--bg-canvas)', borderRadius: 'var(--radius-xl)', minHeight: '100%', overflowX: 'auto', padding: '24px', border: '1px solid var(--border-subtle)' }}>
+        <div className="ws2-table-card" style={{ background: 'var(--bg-canvas)', borderRadius: 'var(--radius-xl)', minHeight: '100%', overflowX: 'auto', padding: '24px', border: '1px solid var(--border-subtle)' }}>
             
             <div style={{ paddingBottom: '16px' }}>
                 <h2 style={{ fontSize: '20px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>

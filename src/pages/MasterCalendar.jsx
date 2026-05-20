@@ -284,10 +284,10 @@ export default function MasterCalendar() {
             <div className="card" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
                 
                 {/* Main Action Bar */}
-                <div style={{ padding: '12px 24px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', flexShrink: 0 }}>
+                <div className="calendar-action-bar" style={{ padding: '12px 24px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', flexShrink: 0 }}>
                     
                     {/* View Options (Large Buttons) */}
-                    <div style={{ display: 'flex', gap: '6px', background: 'var(--bg-canvas)', padding: '4px', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
+                    <div className="calendar-view-options" style={{ display: 'flex', gap: '6px', background: 'var(--bg-canvas)', padding: '4px', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
                         {[
                             { id: 'day', label: 'Día' },
                             { id: 'week', label: '1 Semana' },
@@ -319,11 +319,11 @@ export default function MasterCalendar() {
                     </div>
 
                     {/* Navigation Controls */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+                    <div className="calendar-nav-controls" style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
                         
                         {/* Detail Navigation (Days/Weeks) - Only shown if not in month view */}
                         {viewMode !== 'month' && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg-canvas)', padding: '4px', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
+                            <div className="calendar-detail-nav" style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg-canvas)', padding: '4px', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
                                 <button className="btn-icon" onClick={jumpBack} title="Anterior periodo"><ArrowLeft size={18} color="var(--accent-primary)" /></button>
                                 <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)', padding: '0 8px' }}>
                                     Mover {viewMode === 'day' ? 'Día' : 'Semana'}
@@ -333,7 +333,7 @@ export default function MasterCalendar() {
                         )}
 
                         {/* Master Navigation (Months) */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div className="calendar-master-nav" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <button className="btn-icon" onClick={prevMonth} title="Mes anterior"><ChevronLeft size={24} /></button>
                             <div style={{ textAlign: 'center', minWidth: '180px' }}>
                                 <h2 style={{ fontSize: '20px', fontWeight: 800, margin: 0 }}>{getHeaderText()}</h2>
@@ -350,17 +350,17 @@ export default function MasterCalendar() {
                 </div>
 
                 {/* Filters / Legend */}
-                <div style={{ padding: '8px 24px', background: 'var(--bg-canvas)', borderBottom: '1px solid var(--border-subtle)', display: 'flex', gap: '16px', fontSize: '11px', fontWeight: 600, flexShrink: 0 }}>
+                <div className="calendar-legend-bar" style={{ padding: '8px 24px', background: 'var(--bg-canvas)', borderBottom: '1px solid var(--border-subtle)', display: 'flex', gap: '16px', fontSize: '11px', fontWeight: 600, flexShrink: 0 }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><CheckSquare size={14} color="var(--accent-primary)" /> Tareas</span>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><CalendarDays size={14} color="#10b981" /> Eventos</span>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Share2 size={14} color="#f59e0b" /> Redes Sociales</span>
                 </div>
 
                 {/* Grid Container */}
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-canvas)', minHeight: 0, overflow: 'hidden' }}>
+                <div className="calendar-grid-wrapper" style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-canvas)', minHeight: 0, overflow: 'hidden' }}>
                     
                     {/* Days of week Header */}
-                    <div style={{ display: 'grid', gridTemplateColumns: viewMode === 'day' ? '1fr' : 'repeat(7, 1fr)', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-base)', flexShrink: 0 }}>
+                    <div className="calendar-days-header" style={{ display: 'grid', gridTemplateColumns: viewMode === 'day' ? '1fr' : 'repeat(7, 1fr)', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-base)', flexShrink: 0 }}>
                         {viewMode === 'day' ? (
                             <div style={{ padding: '12px', textAlign: 'center', fontSize: '11px', fontWeight: 700, color: 'var(--text-tertiary)', letterSpacing: '1px' }}>
                                 {dayNames[currentDate.getDay()]}
@@ -375,7 +375,7 @@ export default function MasterCalendar() {
                     </div>
 
                     {/* Calendar Grid */}
-                    <div style={{ 
+                    <div className="calendar-grid" style={{ 
                         flex: 1, 
                         display: 'grid', 
                         gridTemplateColumns: viewMode === 'day' ? '1fr' : 'repeat(7, 1fr)', 
@@ -393,7 +393,7 @@ export default function MasterCalendar() {
                             const isToday = isSameDay(dayDate, today);
 
                             return (
-                                <div key={`day-${i}`} style={{ background: isToday ? 'rgba(99,102,241,0.05)' : 'var(--bg-surface)', padding: '8px', display: 'flex', flexDirection: 'column', transition: 'background 0.2s', height: '100%', minHeight: 0, overflow: 'hidden' }}
+                                <div key={`day-${i}`} className="calendar-day-cell" style={{ background: isToday ? 'rgba(99,102,241,0.05)' : 'var(--bg-surface)', padding: '8px', display: 'flex', flexDirection: 'column', transition: 'background 0.2s', height: '100%', minHeight: 0, overflow: 'hidden' }}
                                     onMouseEnter={(e) => { 
                                         if(!isToday) e.currentTarget.style.background = 'var(--bg-card)'; 
                                         const btn = e.currentTarget.querySelector('.ws2-add-btn');

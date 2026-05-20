@@ -110,55 +110,46 @@ export default function Home() {
 
             {/* ══════ NEXT EVENT COUNTDOWN HERO ══════ */}
             {nextEvent && countdown && (
-                <div onClick={() => navigate('/eventos')} style={{
+                <div onClick={() => navigate('/eventos')} className="cc-countdown-hero" style={{
                     background: `linear-gradient(135deg, ${nextEvent.color}18, ${nextEvent.color}08, transparent)`,
-                    border: `1px solid ${nextEvent.color}30`,
-                    borderRadius: '16px', padding: '28px 32px', marginBottom: '24px', cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', gap: '28px', transition: 'all 0.3s ease',
-                    position: 'relative', overflow: 'hidden'
+                    borderColor: `${nextEvent.color}30`
                 }}>
-                    <div style={{
-                        position: 'absolute', top: 0, right: 0, width: '300px', height: '100%',
-                        background: `radial-gradient(circle at 100% 50%, ${nextEvent.color}10, transparent 70%)`, pointerEvents: 'none'
+                    <div className="cc-countdown-bg" style={{
+                        background: `radial-gradient(circle at 100% 50%, ${nextEvent.color}10, transparent 70%)`
                     }} />
-                    <div style={{
-                        width: '64px', height: '64px', borderRadius: '16px',
-                        background: `${nextEvent.color}25`, border: `2px solid ${nextEvent.color}40`,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '30px', flexShrink: 0
+                    <div className="cc-countdown-icon" style={{
+                        background: `${nextEvent.color}25`, borderColor: `${nextEvent.color}40`
                     }}>{nextEvent.icon || '📅'}</div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1.5px', color: nextEvent.color, fontWeight: 600, marginBottom: '4px' }}>
+                    <div className="cc-countdown-info">
+                        <div className="cc-countdown-label" style={{ color: nextEvent.color }}>
                             <Timer size={12} style={{ marginRight: '4px', verticalAlign: 'middle' }} /> Próximo Evento
                         </div>
-                        <div style={{ fontSize: '22px', fontWeight: 700, marginBottom: '6px' }}>{nextEvent.name}</div>
-                        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                            <span style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <div className="cc-countdown-title">{nextEvent.name}</div>
+                        <div className="cc-countdown-meta">
+                            <span className="cc-countdown-meta-item">
                                 <CalendarDays size={12} /> {new Date(nextEvent.date + 'T12:00').toLocaleDateString('es-PA', { weekday: 'long', day: 'numeric', month: 'long' })}
                             </span>
                             {nextEvent.location && (
-                                <span style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <span className="cc-countdown-meta-item">
                                     <MapPin size={12} /> {nextEvent.location}
                                 </span>
                             )}
                         </div>
                     </div>
-                    <div style={{ display: 'flex', gap: '12px', flexShrink: 0 }}>
+                    <div className="cc-countdown-timer">
                         {[
                             { val: countdown.days, label: 'Días' },
                             { val: countdown.hours, label: 'Hrs' },
                             { val: countdown.mins, label: 'Min' },
                             { val: countdown.secs, label: 'Seg' }
                         ].map(({ val, label }) => (
-                            <div key={label} style={{
-                                textAlign: 'center', background: 'rgba(0,0,0,0.3)', borderRadius: '12px',
-                                padding: '10px 14px', minWidth: '56px', border: '1px solid rgba(255,255,255,0.06)'
-                            }}>
-                                <div style={{ fontSize: '24px', fontWeight: 800, fontVariantNumeric: 'tabular-nums', color: nextEvent.color }}>{String(val).padStart(2, '0')}</div>
-                                <div style={{ fontSize: '10px', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '1px' }}>{label}</div>
+                            <div key={label} className="cc-countdown-time-box">
+                                <div className="cc-countdown-time-val" style={{ color: nextEvent.color }}>{String(val).padStart(2, '0')}</div>
+                                <div className="cc-countdown-time-lbl">{label}</div>
                             </div>
                         ))}
                     </div>
-                    <ChevronRight size={20} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
+                    <ChevronRight size={20} className="cc-countdown-chevron" />
                 </div>
             )}
 
@@ -203,27 +194,18 @@ export default function Home() {
             </div>
 
             {/* ══════ MINI CALENDAR (7 days) ══════ */}
-            <div style={{
-                display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px',
-                marginBottom: '28px', padding: '20px', borderRadius: '14px',
-                background: 'var(--bg-card)', border: '1px solid var(--border-subtle)'
-            }}>
+            <div className="cc-mini-calendar">
                 {next7Days.map(({ date, dateStr, events: dayEvts, isToday }) => (
-                    <div key={dateStr} style={{
-                        textAlign: 'center', padding: '12px 6px', borderRadius: '12px',
-                        background: isToday ? 'var(--accent-primary)15' : 'transparent',
-                        border: isToday ? '1px solid var(--accent-primary)40' : '1px solid transparent',
-                        transition: 'all 0.2s ease'
-                    }}>
-                        <div style={{ fontSize: '10px', textTransform: 'uppercase', color: isToday ? 'var(--accent-primary)' : 'var(--text-tertiary)', letterSpacing: '1px', marginBottom: '4px' }}>
+                    <div key={dateStr} className={`cc-mini-calendar-day ${isToday ? 'is-today' : ''}`}>
+                        <div className="cc-mini-day-name" style={{ color: isToday ? 'var(--accent-primary)' : 'var(--text-tertiary)' }}>
                             {date.toLocaleDateString('es-PA', { weekday: 'short' })}
                         </div>
-                        <div style={{ fontSize: '20px', fontWeight: isToday ? 800 : 600, color: isToday ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+                        <div className="cc-mini-day-number" style={{ fontWeight: isToday ? 800 : 600, color: isToday ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
                             {date.getDate()}
                         </div>
-                        <div style={{ marginTop: '6px', display: 'flex', justifyContent: 'center', gap: '3px', flexWrap: 'wrap', minHeight: '8px' }}>
+                        <div className="cc-mini-day-dots">
                             {dayEvts.slice(0, 3).map((ev, i) => (
-                                <div key={i} style={{ width: '6px', height: '6px', borderRadius: '50%', background: ev.color || 'var(--accent-primary)' }} title={ev.name} />
+                                <div key={i} className="cc-mini-day-dot" style={{ background: ev.color || 'var(--accent-primary)' }} title={ev.name} />
                             ))}
                         </div>
                     </div>
