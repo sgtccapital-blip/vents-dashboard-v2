@@ -16,7 +16,13 @@ const statusConfig = {
 };
 
 // ── Individual Card Component (to allow useState per-card) ──
-function KanbanCard({ t, colStatus, events, deleteTask, updateTaskStatus, updateTaskContext, updateTaskDate }) {
+const ASSIGNEE_CONFIG = {
+    'GG': { bg: 'rgba(129, 140, 248, 0.15)', border: '1px solid rgba(129, 140, 248, 0.3)', color: '#818cf8' },
+    'GEN': { bg: 'rgba(244, 114, 182, 0.15)', border: '1px solid rgba(244, 114, 182, 0.3)', color: '#f472b6' },
+    'ITA': { bg: 'rgba(52, 211, 153, 0.15)', border: '1px solid rgba(52, 211, 153, 0.3)', color: '#34d399' }
+};
+
+function KanbanCard({ t, colStatus, events, deleteTask, updateTaskStatus, updateTaskContext, updateTaskDate, updateTaskAssignee }) {
     const taskEvent = events?.find(e => e.id === t.eventId);
     const eventColor = taskEvent?.color || null;
 
@@ -24,78 +30,110 @@ function KanbanCard({ t, colStatus, events, deleteTask, updateTaskStatus, update
         <div key={t.id} draggable onDragStart={(e) => e.dataTransfer.setData('taskId', t.id)} style={{
             background: 'var(--bg-card)',
             border: '1px solid var(--border-subtle)',
-            borderRadius: 'var(--radius-lg)',
+            borderRadius: 'var(--radius-md)',
             borderLeft: eventColor ? `3px solid ${eventColor}` : '1px solid var(--border-subtle)',
-            padding: '16px',
-            display: 'flex', flexDirection: 'column', gap: '12px',
-            transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s',
-            opacity: t.done ? 0.5 : 1,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+            padding: '10px 12px',
+            display: 'flex', flexDirection: 'column', gap: '8px',
+            transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+            opacity: t.done ? 0.6 : 1,
+            boxShadow: '0 1px 4px rgba(0,0,0,0.15)',
             cursor: 'grab'
         }}
         onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'translateY(-2px)';
-            e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.3)';
+            e.currentTarget.style.transform = 'translateY(-1px)';
+            e.currentTarget.style.boxShadow = '0 4px 10px rgba(0,0,0,0.25)';
         }}
         onMouseLeave={(e) => {
             e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)';
+            e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.15)';
         }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
-                <div style={{ fontSize: '13px', lineHeight: '1.5', fontWeight: 500, textDecoration: t.done ? 'line-through' : 'none', color: t.done ? 'var(--text-tertiary)' : '#fff', flex: 1 }}>
-                    {t.text}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
+                    <div style={{ fontSize: '12.5px', lineHeight: '1.4', fontWeight: 500, textDecoration: t.done ? 'line-through' : 'none', color: t.done ? 'var(--text-tertiary)' : '#fff' }}>
+                        {t.text}
+                    </div>
                 </div>
                 <button 
                     className="btn-icon" 
                     onClick={() => deleteTask(t.id)} 
-                    style={{ color: 'var(--text-tertiary)', padding: '2px', width: '20px', height: '20px' }}
-                    onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
-                    onMouseLeave={e => e.currentTarget.style.color = 'var(--text-tertiary)'}
+                    style={{ color: 'var(--text-tertiary)', padding: '2px', width: '18px', height: '18px', flexShrink: 0, opacity: 0.7 }}
+                    onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.opacity = 1; }}
+                    onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-tertiary)'; e.currentTarget.style.opacity = 0.7; }}
                     title="Delete Task"
                 >
-                    <Trash2 size={14} />
+                    <Trash2 size={13} />
                 </button>
             </div>
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', alignItems: 'center', marginTop: '2px' }}>
+                {/* Event Selector */}
                 <select
-                    className="form-select"
                     value={t.eventId ? `event_${t.eventId}` : ''}
                     onChange={(e) => updateTaskContext(t.id, e.target.value)}
                     style={{
-                        padding: '2px 6px', fontSize: '10px', height: 'auto',
-                        width: 'auto', maxWidth: '200px',
-                        background: eventColor ? `${eventColor}15` : 'var(--bg-primary)',
+                        padding: '1px 4px', fontSize: '9.5px', height: '20px',
+                        width: 'auto', maxWidth: '120px',
+                        background: eventColor ? `${eventColor}15` : 'rgba(255,255,255,0.02)',
                         color: eventColor || 'var(--text-tertiary)',
-                        border: eventColor ? `1px solid ${eventColor}30` : '1px solid var(--border-subtle)',
-                        borderRadius: '12px', fontWeight: 600,
+                        border: eventColor ? `1px solid ${eventColor}25` : '1px solid rgba(255,255,255,0.04)',
+                        borderRadius: '6px', fontWeight: 600,
+                        outline: 'none', cursor: 'pointer'
                     }}
                 >
-                    <option value="">📅 Asignar a Evento...</option>
+                    <option value="">📅 Evento...</option>
                     <optgroup label="Eventos">
                         {(events || []).map(ev => (
                             <option key={`e-${ev.id}`} value={`event_${ev.id}`}>{ev.icon || '📅'} {ev.name}</option>
                         ))}
-                        <option value="create_event" style={{ fontWeight: 'bold', color: 'var(--accent-primary)' }}>➕ Crear Evento...</option>
+                        <option value="create_event" style={{ fontWeight: 'bold', color: 'var(--accent-primary)' }}>➕ Crear...</option>
                     </optgroup>
                 </select>
+
+                {/* Assignee Selector */}
+                <select
+                    value={t.assignee || ''}
+                    onChange={(e) => updateTaskAssignee(t.id, e.target.value)}
+                    style={{
+                        padding: '1px 4px', fontSize: '9.5px', height: '20px',
+                        width: 'auto',
+                        background: t.assignee && ASSIGNEE_CONFIG[t.assignee] ? ASSIGNEE_CONFIG[t.assignee].bg : 'rgba(255,255,255,0.02)',
+                        color: t.assignee && ASSIGNEE_CONFIG[t.assignee] ? ASSIGNEE_CONFIG[t.assignee].color : 'var(--text-tertiary)',
+                        border: t.assignee && ASSIGNEE_CONFIG[t.assignee] ? `1px solid ${ASSIGNEE_CONFIG[t.assignee].border.replace('0.3', '0.15')}` : '1px solid rgba(255,255,255,0.04)',
+                        borderRadius: '6px', fontWeight: t.assignee ? 600 : 400,
+                        outline: 'none', cursor: 'pointer'
+                    }}
+                >
+                    <option value="">👤 Asignado...</option>
+                    <option value="GG">👤 GG</option>
+                    <option value="GEN">👤 GEN</option>
+                    <option value="ITA">👤 ITA</option>
+                </select>
+
+                {/* Date Picker */}
                 <input 
                     type="date"
-                    className="form-input"
                     value={t.due || ''}
                     onChange={(e) => updateTaskDate(t.id, e.target.value)}
                     style={{
-                        padding: '2px 6px', fontSize: '10px', height: 'auto',
+                        padding: '1px 4px', fontSize: '9.5px', height: '20px',
                         width: 'auto',
-                        background: 'var(--bg-primary)',
-                        color: 'var(--text-primary)',
-                        border: '1px solid var(--border-subtle)',
-                        borderRadius: '12px',
+                        background: 'rgba(255,255,255,0.02)',
+                        color: t.due ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                        border: '1px solid rgba(255,255,255,0.04)',
+                        borderRadius: '6px',
+                        outline: 'none', cursor: 'pointer'
                     }}
                 />
+
+                {/* Status Selector */}
                 <select
-                    className="form-select"
-                    style={{ padding: '2px 6px', fontSize: '10px', width: 'auto', height: 'auto', background: 'var(--bg-primary)', borderRadius: '12px', border: '1px solid var(--border-subtle)' }}
+                    style={{ 
+                        padding: '1px 4px', fontSize: '9.5px', height: '20px', width: 'auto', 
+                        background: 'rgba(255,255,255,0.02)', 
+                        color: 'var(--text-secondary)',
+                        borderRadius: '6px', border: '1px solid rgba(255,255,255,0.04)',
+                        outline: 'none', cursor: 'pointer'
+                    }}
                     value={colStatus}
                     onChange={(e) => updateTaskStatus(t.id, e.target.value)}
                 >
@@ -114,6 +152,7 @@ export default function EventKanbanBoard({ events, filterEventId }) {
     const [newTaskContext, setNewTaskContext] = useState(filterEventId ? `event_${filterEventId}` : '');
     const [newTaskDate, setNewTaskDate] = useState('');
     const [newTaskStatus, setNewTaskStatus] = useState('pending');
+    const [newTaskAssignee, setNewTaskAssignee] = useState('');
 
     const updateTaskStatus = (id, newStatus) => {
         const isDone = newStatus === 'done';
@@ -126,6 +165,14 @@ export default function EventKanbanBoard({ events, filterEventId }) {
 
     const updateTaskDate = (id, date) => {
         updateTask(id, { due: date });
+    };
+
+    const updateTaskAssignee = (id, assignee) => {
+        updateTask(id, { assignee: assignee || null });
+        const taskObj = tasks.find(t => t.id === id);
+        if (taskObj) {
+            addActivity(`Assigned task "${taskObj.text}" to ${assignee || 'unassigned'}`, 'var(--accent-primary)', taskObj.projectId);
+        }
     };
 
     const updateTaskContext = (id, contextValue) => {
@@ -153,8 +200,6 @@ export default function EventKanbanBoard({ events, filterEventId }) {
         }
     };
 
-
-
     const handleAddTask = () => {
         if (!newTaskText.trim()) return;
         let eventId = '', eventName = '';
@@ -181,11 +226,13 @@ export default function EventKanbanBoard({ events, filterEventId }) {
             eventName,
             priority: 'medium',
             due: newTaskDate,
+            assignee: newTaskAssignee || null,
             createdAt: new Date().toISOString()
         });
         setNewTaskText('');
         setNewTaskDate('');
         setNewTaskStatus('pending');
+        setNewTaskAssignee('');
         if (!filterEventId) {
             setNewTaskContext('');
         }
@@ -260,50 +307,76 @@ export default function EventKanbanBoard({ events, filterEventId }) {
                         </div>
 
                         {colStatus === 'pending' && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '8px' }}>
-                                <div style={{ display: 'flex', gap: '8px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '8px' }}>
+                                <div style={{ display: 'flex', gap: '6px' }}>
                                     <input 
                                         className="form-input" 
                                         placeholder="Quick add task..." 
                                         value={newTaskText}
                                         onChange={(e) => setNewTaskText(e.target.value)}
                                         onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
-                                        style={{ flex: 1, background: 'var(--bg-base)', padding: '8px 12px' }}
+                                        style={{ flex: 1, background: 'var(--bg-base)', padding: '6px 10px', fontSize: '12px', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}
                                     />
-                                    <button className="btn btn-primary" style={{ padding: '0 12px' }} onClick={handleAddTask}>
-                                        <Plus size={16} />
+                                    <button className="btn btn-primary" style={{ padding: '0 10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={handleAddTask}>
+                                        <Plus size={14} />
                                     </button>
                                 </div>
                                 {/* Unified context selector for new task */}
-                                <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '2px' }}>
                                     <select
-                                        className="form-select"
                                         value={newTaskStatus}
                                         onChange={e => setNewTaskStatus(e.target.value)}
                                         style={{
-                                            padding: '6px 10px', fontSize: '11px', height: 'auto',
-                                            background: 'var(--bg-base)',
-                                            color: 'var(--text-primary)',
-                                            flex: 1
+                                            padding: '2px 6px', fontSize: '9.5px', height: '22px',
+                                            background: 'rgba(255,255,255,0.02)',
+                                            color: 'var(--text-secondary)',
+                                            border: '1px solid rgba(255,255,255,0.04)',
+                                            borderRadius: '6px',
+                                            flex: 1,
+                                            minWidth: '60px',
+                                            outline: 'none', cursor: 'pointer'
                                         }}
                                     >
                                         <option value="pending">Pending</option>
                                         <option value="in-progress">In Progress</option>
                                         <option value="done">Done</option>
                                     </select>
+                                    <select
+                                        value={newTaskAssignee}
+                                        onChange={e => setNewTaskAssignee(e.target.value)}
+                                        style={{
+                                            padding: '2px 6px', fontSize: '9.5px', height: '22px',
+                                            background: 'rgba(255,255,255,0.02)',
+                                            color: newTaskAssignee ? 'var(--accent-primary)' : 'var(--text-tertiary)',
+                                            border: '1px solid rgba(255,255,255,0.04)',
+                                            borderRadius: '6px',
+                                            flex: 1,
+                                            minWidth: '65px',
+                                            fontWeight: newTaskAssignee ? 600 : 400,
+                                            outline: 'none', cursor: 'pointer'
+                                        }}
+                                    >
+                                        <option value="">👤 Asignado...</option>
+                                        <option value="GG">👤 GG</option>
+                                        <option value="GEN">👤 GEN</option>
+                                        <option value="ITA">👤 ITA</option>
+                                    </select>
                                     {!filterEventId && (
                                         <select
-                                            className="form-select"
                                             value={newTaskContext}
                                             onChange={(e) => setNewTaskContext(e.target.value)}
                                             style={{
-                                                padding: '6px 10px', fontSize: '11px', height: 'auto',
-                                                background: 'var(--bg-base)',
+                                                padding: '2px 6px', fontSize: '9.5px', height: '22px',
+                                                background: 'rgba(255,255,255,0.02)',
                                                 color: newTaskContext ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                                                flex: 1
+                                                border: '1px solid rgba(255,255,255,0.04)',
+                                                borderRadius: '6px',
+                                                flex: 1.5,
+                                                minWidth: '85px',
+                                                outline: 'none', cursor: 'pointer'
                                             }}
                                         >
-                                            <option value="">📅 Asignar a Evento</option>
+                                            <option value="">📅 Evento...</option>
                                             <optgroup label="Eventos">
                                                 {(events || []).map(ev => (
                                                     <option key={`e-${ev.id}`} value={`event_${ev.id}`}>{ev.icon || '📅'} {ev.name}</option>
@@ -314,15 +387,18 @@ export default function EventKanbanBoard({ events, filterEventId }) {
                                     )}
                                     <input
                                         type="date"
-                                        className="form-input"
                                         value={newTaskDate}
                                         onChange={(e) => setNewTaskDate(e.target.value)}
                                         style={{
-                                            padding: '6px 10px', fontSize: '11px', height: 'auto',
-                                            background: 'var(--bg-base)',
+                                            padding: '2px 4px', fontSize: '9.5px', height: '22px',
+                                            background: 'rgba(255,255,255,0.02)',
                                             color: newTaskDate ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                                            border: '1px solid rgba(255,255,255,0.04)',
+                                            borderRadius: '6px',
                                             width: 'auto',
-                                            flex: filterEventId ? 1 : 'unset'
+                                            flex: filterEventId ? 1 : 'unset',
+                                            minWidth: '90px',
+                                            outline: 'none', cursor: 'pointer'
                                         }}
                                     />
                                 </div>
@@ -344,6 +420,7 @@ export default function EventKanbanBoard({ events, filterEventId }) {
                                     updateTaskStatus={updateTaskStatus}
                                     updateTaskContext={updateTaskContext}
                                     updateTaskDate={updateTaskDate}
+                                    updateTaskAssignee={updateTaskAssignee}
                                 />
                         ))}
                     </div>

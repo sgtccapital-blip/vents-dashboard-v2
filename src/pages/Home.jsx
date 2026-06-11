@@ -156,11 +156,6 @@ export default function Home() {
             {/* ══════ METRICS BANNER ══════ */}
             <div className="cc-metrics-banner">
                 <div className="cc-metric-card">
-                    <div className="cc-metric-label"><DollarSign size={14} style={{ color: 'var(--accent-green)' }} /> Monthly Opex</div>
-                    <div className="cc-metric-value">${formatNumber(totalMonthlyCost)}</div>
-                    <div className="cc-metric-sub">{subscriptions?.length || 0} suscripciones activas</div>
-                </div>
-                <div className="cc-metric-card">
                     <div className="cc-metric-label"><FolderKanban size={14} style={{ color: 'var(--accent-primary)' }} /> Eventos Activos</div>
                     <div className="cc-metric-value">{activeEvents.length}</div>
                     <div className="cc-metric-sub">En ejecución o planificación</div>

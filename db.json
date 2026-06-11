@@ -1090,49 +1090,175 @@
   ],
   "socialMedia": [
     {
-      "id": "social-1",
-      "platform": "LinkedIn",
-      "handler": "gg-founder",
-      "type": "Personal Profile",
-      "url": "https://linkedin.com/in/gg-founder",
-      "followers": "5.2K",
-      "description": "Publicación de aprendizajes B2B, SaaS y tech.",
+      "id": "social-elemento-techno",
+      "platform": "Instagram",
+      "handler": "@Elemento.techno",
+      "type": "Electronica Internacional",
+      "url": "https://instagram.com/Elemento.techno",
+      "followers": "12.8K",
+      "description": "Electrónica Internacional",
       "metrics": {
-        "growth": "+250",
-        "engagement": "4.8%",
-        "clicks": "1,200",
-        "views": "45K"
+        "growth": "+450",
+        "engagement": "5.2%",
+        "clicks": "850",
+        "views": "28K"
       }
     },
     {
-      "id": "social-2",
-      "platform": "Twitter / X",
-      "handler": "@gg_builds",
-      "type": "Personal Profile",
-      "url": "https://x.com/gg_builds",
-      "followers": "1.8K",
-      "description": "Build in public, AI tips y reflexiones rápidas.",
+      "id": "social-arrive-models",
+      "platform": "Instagram",
+      "handler": "@Arrive.models",
+      "type": "Models & Viral",
+      "url": "https://instagram.com/Arrive.models",
+      "followers": "5.9K",
+      "description": "Models & Viral",
       "metrics": {
-        "growth": "+85",
-        "engagement": "2.4%",
-        "clicks": "450",
-        "views": "18K"
+        "growth": "+120",
+        "engagement": "6.8%",
+        "clicks": "540",
+        "views": "14K"
+      },
+      "linkedEventIds": [
+        "evt-1779135935446"
+      ]
+    },
+    {
+      "id": "social-5amclub-new",
+      "platform": "Instagram",
+      "handler": "@_5amclub",
+      "type": "Finanzas",
+      "url": "https://instagram.com/_5amclub",
+      "followers": "3.9K",
+      "description": "Finanzas y Productividad",
+      "metrics": {
+        "growth": "+80",
+        "engagement": "4.1%",
+        "clicks": "310",
+        "views": "9K"
       }
     },
     {
-      "id": "social-4",
-      "platform": "YouTube",
-      "handler": "Konekta Labs",
-      "type": "Channel",
-      "url": "https://youtube.com/@konektalabs",
-      "followers": "450",
-      "description": "Tutoriales largos sobre automatización e IA.",
+      "id": "social-moojoo-events",
+      "platform": "Instagram",
+      "handler": "@Moojoo.events",
+      "type": "Party promoter",
+      "url": "https://instagram.com/Moojoo.events",
+      "followers": "2.6K",
+      "description": "Party promoter",
       "metrics": {
-        "growth": "+40",
-        "engagement": "8.1%",
-        "clicks": "320",
-        "views": "5.2K"
+        "growth": "+210",
+        "engagement": "7.3%",
+        "clicks": "490",
+        "views": "11K"
+      },
+      "linkedEventIds": [
+        "ev-candela-trump",
+        "ev-urban-nights",
+        "ev-guaya-fest"
+      ]
+    },
+    {
+      "id": "social-ciutatelectronicapty",
+      "platform": "Instagram",
+      "handler": "@Ciutatelectronicapty",
+      "type": "Electronica Panama",
+      "url": "https://instagram.com/Ciutatelectronicapty",
+      "followers": "409",
+      "description": "Electrónica Panamá",
+      "metrics": {
+        "growth": "+15",
+        "engagement": "3.2%",
+        "clicks": "80",
+        "views": "1.2K"
       }
+    },
+    {
+      "id": "social-urbannights-pa",
+      "platform": "Instagram",
+      "handler": "@Urbannights.pa",
+      "type": "Party",
+      "url": "https://instagram.com/Urbannights.pa",
+      "followers": "200",
+      "description": "Party & Events",
+      "metrics": {
+        "growth": "+8",
+        "engagement": "2.9%",
+        "clicks": "45",
+        "views": "600"
+      },
+      "linkedEventIds": [
+        "ev-urban-nights"
+      ]
+    },
+    {
+      "id": "social-udp-pa",
+      "platform": "Instagram",
+      "handler": "@UDP.PA",
+      "type": "Gestionar de casco peatonal",
+      "url": "https://instagram.com/UDP.PA",
+      "followers": "223",
+      "description": "Gestión de casco peatonal",
+      "metrics": {
+        "growth": "+12",
+        "engagement": "4.5%",
+        "clicks": "60",
+        "views": "850"
+      },
+      "linkedEventIds": [
+        "ev-casco-peatonal",
+        "ev-grafiti-tour"
+      ]
+    },
+    {
+      "id": "social-theroom-social",
+      "platform": "Instagram",
+      "handler": "@theroom.social",
+      "type": "Party",
+      "url": "https://instagram.com/theroom.social",
+      "followers": "444",
+      "description": "Party & Social Club",
+      "metrics": {
+        "growth": "+30",
+        "engagement": "5.6%",
+        "clicks": "110",
+        "views": "1.8K"
+      },
+      "linkedEventIds": [
+        "ev-candela-trump"
+      ]
+    },
+    {
+      "id": "social-igniteclub",
+      "platform": "Instagram",
+      "handler": "@IGNITECLUB",
+      "type": "Party",
+      "url": "https://instagram.com/IGNITECLUB",
+      "followers": "686",
+      "description": "Party & Nightlife",
+      "metrics": {
+        "growth": "+45",
+        "engagement": "6.1%",
+        "clicks": "190",
+        "views": "2.5K"
+      }
+    },
+    {
+      "id": "social-music-pty",
+      "platform": "Instagram",
+      "handler": "@Music.pty",
+      "type": "Music Viral & booking artistas",
+      "url": "https://instagram.com/Music.pty",
+      "followers": "99K",
+      "description": "Music Viral & booking de artistas",
+      "metrics": {
+        "growth": "+1.2K",
+        "engagement": "8.4%",
+        "clicks": "3.5K",
+        "views": "150K"
+      },
+      "linkedEventIds": [
+        "ev-music-pty"
+      ]
     }
   ],
   "contentTasks": {
@@ -1721,7 +1847,7 @@
     {
       "id": "ev-casco-peatonal",
       "name": "Casco Peatonal",
-      "date": "2026-05-31",
+      "date": "2026-06-28",
       "time": "08:00",
       "location": "Casco Antiguo, Múltiples Zonas",
       "capacity": "Masivo",
@@ -1864,7 +1990,14 @@
       "masterChecklist": {
         "concepto_0_0": true,
         "concepto_0_1": true
-      }
+      },
+      "estimatedBudget": "0",
+      "organizer": "",
+      "contactPerson": "",
+      "phone": "",
+      "email": "",
+      "notes": "",
+      "driveFolderId": ""
     },
     {
       "id": "ev-candela-trump",
@@ -2083,14 +2216,14 @@
     {
       "id": "ev-urban-nights",
       "name": "Urban Nights",
-      "date": "2026-05-23",
-      "time": "21:00",
-      "location": "Locación Nocturna",
+      "date": "2026-06-20",
+      "time": "22:00",
+      "location": "Rosalia Downtown",
       "capacity": "General",
       "budget": "0",
       "type": "Nightclub",
       "status": "activo",
-      "description": "Fiesta temática de música urbana y activaciones de marca.",
+      "description": "Presentaciond e Danny Yash",
       "color": "#3b82f6",
       "icon": "🌃",
       "agenda": [],
@@ -2120,29 +2253,6 @@
       "agenda": [],
       "requirements": [],
       "todos": []
-    },
-    {
-      "id": "evt-1779135893815",
-      "name": "Vale Bash",
-      "type": "",
-      "description": "",
-      "status": "upcoming",
-      "date": "",
-      "time": "",
-      "location": "",
-      "capacity": "",
-      "estimatedBudget": "",
-      "organizer": "",
-      "contactPerson": "",
-      "phone": "",
-      "email": "",
-      "notes": "",
-      "color": "#f43f5e",
-      "icon": "🎉",
-      "driveFolderId": "",
-      "agenda": [],
-      "requirements": [],
-      "budget": ""
     },
     {
       "id": "evt-1779135935446",
@@ -2189,6 +2299,395 @@
       "agenda": [],
       "requirements": [],
       "budget": ""
+    },
+    {
+      "id": "ev-guaya-fest",
+      "name": "Guaya Fest 2026",
+      "type": "festival",
+      "status": "planificacion",
+      "date": "2026-10-16",
+      "time": "15:00",
+      "location": "Explanada Amador, Panamá",
+      "capacity": "12000",
+      "budget": "150000",
+      "estimatedBudget": "150000",
+      "description": "El festival de música urbana y cultura del año. Múltiples escenarios, áreas de comida, activaciones de marca y zonas VIP con boxes exclusivos.",
+      "color": "#fbbf24",
+      "icon": "🎪",
+      "agenda": [
+        {
+          "id": "ag-gf1",
+          "time": "15:00",
+          "title": "Apertura de Puertas",
+          "speaker": "Escenario Principal",
+          "description": "Acceso del público general y DJ de bienvenida"
+        },
+        {
+          "id": "ag-gf2",
+          "time": "17:00",
+          "title": "Show de Talentos Locales",
+          "speaker": "Escenario Local",
+          "description": "Presentación de artistas emergentes nacionales"
+        },
+        {
+          "id": "ag-gf3",
+          "time": "19:00",
+          "title": "Competencia Freestyle Final",
+          "speaker": "Escenario Urbano",
+          "description": "Batalla de los mejores 8 MCs de la región"
+        },
+        {
+          "id": "ag-gf4",
+          "time": "21:00",
+          "title": "Set de DJ Invitado Internacional",
+          "speaker": "Escenario Principal",
+          "description": "Presentación de DJ residente de Miami"
+        },
+        {
+          "id": "ag-gf5",
+          "time": "22:30",
+          "title": "Artista Estelar Principal",
+          "speaker": "Escenario Principal",
+          "description": "Show en vivo de la estrella internacional de reggaetón"
+        }
+      ],
+      "requirements": [
+        {
+          "id": "req-gf-1",
+          "name": "Montaje de Tarima Principal",
+          "category": "Producción",
+          "quantity": 1,
+          "cost": 25000,
+          "status": "Confirmado"
+        },
+        {
+          "id": "req-gf-2",
+          "name": "Sistema de Sonido Line Array",
+          "category": "Audio",
+          "quantity": 2,
+          "cost": 18000,
+          "status": "Confirmado"
+        },
+        {
+          "id": "req-gf-3",
+          "name": "Pantallas LED Gigantes",
+          "category": "Video",
+          "quantity": 4,
+          "cost": 15000,
+          "status": "Pendiente"
+        },
+        {
+          "id": "req-gf-4",
+          "name": "Seguridad Privada (150 unidades)",
+          "category": "Logística",
+          "quantity": 1,
+          "cost": 9500,
+          "status": "Confirmado"
+        },
+        {
+          "id": "req-gf-5",
+          "name": "Permisos Municipales y de Salud",
+          "category": "Legal",
+          "quantity": 1,
+          "cost": 3000,
+          "status": "En Proceso"
+        }
+      ],
+      "todos": []
+    },
+    {
+      "id": "ev-casco-lounge",
+      "name": "212 club",
+      "type": "local",
+      "status": "activo",
+      "date": "2026-06-11",
+      "time": "18:00",
+      "location": "Calle 8va, Casco Antiguo, Panamá",
+      "capacity": "250",
+      "budget": "12000",
+      "estimatedBudget": "12000",
+      "description": "Lounge bar premium en el Casco Antiguo. Gestión diaria de reservas de boxes VIP, inventario de barra y asistencia de personal.",
+      "color": "#10b981",
+      "icon": "🏪",
+      "agenda": [
+        {
+          "id": "ag-cl1",
+          "date": "2026-06-11",
+          "time": "18:00",
+          "title": "Apertura y Happy Hour",
+          "speaker": "Barra Principal",
+          "description": "2x1 en cócteles seleccionados"
+        },
+        {
+          "id": "ag-cl2",
+          "date": "2026-06-11",
+          "time": "21:00",
+          "title": "DJ Live Set - Chill & Deep House",
+          "speaker": "Cabina DJ",
+          "description": "Set en vivo para ambientar el Lounge"
+        },
+        {
+          "id": "ag-cl3",
+          "date": "2026-06-12",
+          "time": "23:30",
+          "title": "Urban & Crossover Night",
+          "speaker": "Todo el local",
+          "description": "Música bailable hasta el cierre"
+        },
+        {
+          "id": "ag-cl4",
+          "date": "2026-06-13",
+          "time": "22:00",
+          "title": "Sábado Gigante - Open Bar Premium",
+          "speaker": "Main Stage",
+          "description": "Barra libre para VIPs y DJs nacionales"
+        }
+      ],
+      "requirements": [],
+      "todos": [],
+      "tables": [
+        {
+          "id": "t-b1",
+          "name": "Box VIP 1",
+          "capacity": 10,
+          "minConsumption": 500,
+          "status": "Disponible",
+          "client": "",
+          "promoter": "",
+          "phone": "",
+          "deposit": 0
+        },
+        {
+          "id": "t-b2",
+          "name": "Box VIP 2",
+          "capacity": 10,
+          "minConsumption": 500,
+          "status": "Disponible",
+          "client": "",
+          "promoter": "",
+          "phone": "",
+          "deposit": 0
+        },
+        {
+          "id": "t-b3",
+          "name": "Box VIP 3",
+          "capacity": 12,
+          "minConsumption": 600,
+          "status": "Ocupado",
+          "client": "Grupo Arrive",
+          "promoter": "prom-2",
+          "phone": "@arrive.models",
+          "deposit": 200
+        },
+        {
+          "id": "t-b4",
+          "name": "Box VIP 4",
+          "capacity": 8,
+          "minConsumption": 400,
+          "status": "Disponible",
+          "client": "",
+          "promoter": "",
+          "phone": "",
+          "deposit": 0
+        },
+        {
+          "id": "t-m1",
+          "name": "Mesa Gold 1",
+          "capacity": 6,
+          "minConsumption": 250,
+          "status": "Disponible",
+          "client": "",
+          "promoter": "",
+          "phone": "",
+          "deposit": 0
+        },
+        {
+          "id": "t-m2",
+          "name": "Mesa Gold 2",
+          "capacity": 6,
+          "minConsumption": 250,
+          "status": "Disponible",
+          "client": "",
+          "promoter": "",
+          "phone": "",
+          "deposit": 0
+        },
+        {
+          "id": "t-m3",
+          "name": "Mesa Silver 1",
+          "capacity": 4,
+          "minConsumption": 150,
+          "status": "Disponible",
+          "client": "",
+          "promoter": "",
+          "phone": "",
+          "deposit": 0
+        },
+        {
+          "id": "t-m4",
+          "name": "Mesa Silver 2",
+          "capacity": 4,
+          "minConsumption": 150,
+          "status": "Disponible",
+          "client": "",
+          "promoter": "",
+          "phone": "",
+          "deposit": 0
+        }
+      ],
+      "inventory": [
+        {
+          "id": "inv-1",
+          "name": "Ron Abuelo 12 Años",
+          "category": "Licores",
+          "quantity": 24,
+          "cost": 25,
+          "price": 90,
+          "minStock": 5,
+          "status": "Normal"
+        },
+        {
+          "id": "inv-2",
+          "name": "Whisky Old Parr 12 Años",
+          "category": "Licores",
+          "quantity": 18,
+          "cost": 30,
+          "price": 110,
+          "minStock": 6,
+          "status": "Normal"
+        },
+        {
+          "id": "inv-3",
+          "name": "Vodka Grey Goose",
+          "category": "Licores",
+          "quantity": 4,
+          "cost": 35,
+          "price": 120,
+          "minStock": 5,
+          "status": "Bajo Stock"
+        },
+        {
+          "id": "inv-4",
+          "name": "Ginebra Tanqueray",
+          "category": "Licores",
+          "quantity": 15,
+          "cost": 20,
+          "price": 85,
+          "minStock": 4,
+          "status": "Normal"
+        },
+        {
+          "id": "inv-5",
+          "name": "Tequila Don Julio Reposado",
+          "category": "Licores",
+          "quantity": 0,
+          "cost": 45,
+          "price": 150,
+          "minStock": 3,
+          "status": "Sin Stock"
+        },
+        {
+          "id": "inv-6",
+          "name": "Cerveza Corona (Caja x24)",
+          "category": "Cervezas",
+          "quantity": 12,
+          "cost": 18,
+          "price": 48,
+          "minStock": 10,
+          "status": "Normal"
+        },
+        {
+          "id": "inv-7",
+          "name": "Red Bull (Caja x24)",
+          "category": "Bebidas/Mixers",
+          "quantity": 8,
+          "cost": 22,
+          "price": 72,
+          "minStock": 15,
+          "status": "Bajo Stock"
+        },
+        {
+          "id": "inv-8",
+          "name": "Agua Tónica Fever-Tree (Caja)",
+          "category": "Bebidas/Mixers",
+          "quantity": 20,
+          "cost": 15,
+          "price": 50,
+          "minStock": 5,
+          "status": "Normal"
+        }
+      ],
+      "staff": [
+        {
+          "id": "st-1",
+          "name": "Alejandro G.",
+          "role": "Gerente de Turno",
+          "phone": "6789-0123",
+          "shift": "19:00 - 04:00",
+          "pay": 80,
+          "status": "Presente"
+        },
+        {
+          "id": "st-2",
+          "name": "David M.",
+          "role": "Bartender Principal",
+          "phone": "6543-0987",
+          "shift": "20:00 - 04:00",
+          "pay": 50,
+          "status": "Presente"
+        },
+        {
+          "id": "st-3",
+          "name": "Laura S.",
+          "role": "Bartender",
+          "phone": "6211-5432",
+          "shift": "20:00 - 04:00",
+          "pay": 45,
+          "status": "Retrasado"
+        },
+        {
+          "id": "st-4",
+          "name": "Moisés R.",
+          "role": "Seguridad Jefe",
+          "phone": "6333-8888",
+          "shift": "19:00 - 04:00",
+          "pay": 60,
+          "status": "Presente"
+        },
+        {
+          "id": "st-5",
+          "name": "Grupo Seguridad (x4)",
+          "role": "Seguridad Externo",
+          "phone": "-",
+          "shift": "21:00 - 04:00",
+          "pay": 160,
+          "status": "Presente"
+        },
+        {
+          "id": "st-6",
+          "name": "Estefanía L.",
+          "role": "Cajera",
+          "phone": "6999-7777",
+          "shift": "20:00 - 04:00",
+          "pay": 40,
+          "status": "Presente"
+        },
+        {
+          "id": "st-7",
+          "name": "DJ Gianluca",
+          "role": "DJ Residente",
+          "phone": "6111-9999",
+          "shift": "22:00 - 03:30",
+          "pay": 150,
+          "status": "Ausente"
+        }
+      ],
+      "organizer": "",
+      "contactPerson": "",
+      "phone": "",
+      "email": "",
+      "notes": "",
+      "driveFolderId": ""
     }
   ]
 }

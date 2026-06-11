@@ -53,7 +53,7 @@ function parseDueDate(due) {
 const isSameDay = (d1, d2) => d1 && d2 && d1.getDate() === d2.getDate() && d1.getMonth() === d2.getMonth() && d1.getFullYear() === d2.getFullYear();
 
 export default function MasterCalendar() {
-    const { tasks, events, addTask } = useApp();
+    const { tasks, events, addTask, gcalToken, googleCalendarEvents, connectGoogleCalendar, disconnectGoogleCalendar, fetchGoogleCalendarEvents } = useApp();
     const navigate = useNavigate();
     const today = new Date();
     
@@ -133,6 +133,19 @@ export default function MasterCalendar() {
         return arr;
     }, [currentDate, viewMode]);
 
+    useEffect(() => {
+        if (gcalToken) {
+            const validDays = daysToDisplay.filter(d => d !== null);
+            if (validDays.length > 0) {
+                const start = new Date(validDays[0]);
+                start.setHours(0,0,0,0);
+                const end = new Date(validDays[validDays.length - 1]);
+                end.setHours(23,59,59,999);
+                fetchGoogleCalendarEvents(start.toISOString(), end.toISOString());
+            }
+        }
+    }, [gcalToken, daysToDisplay, fetchGoogleCalendarEvents]);
+
     // Merge and map all items to their dates
     const unifiedItems = useMemo(() => {
         const items = [];
@@ -193,9 +206,20 @@ export default function MasterCalendar() {
                 fullItem: c
             });
         });
+        googleCalendarEvents.forEach(g => {
+            const evtDate = new Date(g.date + 'T12:00:00');
+            items.push({
+                id: g.id,
+                type: 'google-event',
+                title: g.title,
+                dateObj: evtDate,
+                color: '#4285f4',
+                fullItem: g
+            });
+        });
 
         return items;
-    }, [tasks, events, contentEntries]);
+    }, [tasks, events, contentEntries, googleCalendarEvents]);
 
     // MAIN ARROWS ALWAYS JUMP BY MONTH
     const prevMonth = () => {
@@ -345,6 +369,25 @@ export default function MasterCalendar() {
                             <button className="btn" style={{ marginLeft: '8px', background: 'var(--bg-canvas)', border: '1px solid var(--border-subtle)' }} onClick={goToday}>
                                 Hoy
                             </button>
+                            {gcalToken ? (
+                                <button 
+                                    className="btn btn-ghost" 
+                                    style={{ marginLeft: '8px', fontSize: '12px', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.2)', background: 'rgba(16, 185, 129, 0.05)', display: 'flex', alignItems: 'center', gap: '6px' }}
+                                    onClick={disconnectGoogleCalendar}
+                                    title="Desconectar Google Calendar"
+                                >
+                                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }} />
+                                    GCal Conectado
+                                </button>
+                            ) : (
+                                <button 
+                                    className="btn btn-secondary" 
+                                    style={{ marginLeft: '8px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                                    onClick={connectGoogleCalendar}
+                                >
+                                    🔌 Google Calendar
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -354,6 +397,7 @@ export default function MasterCalendar() {
                     <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><CheckSquare size={14} color="var(--accent-primary)" /> Tareas</span>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><CalendarDays size={14} color="#10b981" /> Eventos</span>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Share2 size={14} color="#f59e0b" /> Redes Sociales</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><CalendarDays size={14} color="#4285f4" /> Google Calendar</span>
                 </div>
 
                 {/* Grid Container */}
@@ -492,6 +536,25 @@ export default function MasterCalendar() {
                                                         cursor: 'pointer'
                                                     }}>
                                                         <Share2 size={10} /> {item.title}
+                                                    </div>
+                                                );
+                                            }
+                                            if (item.type === 'google-event') {
+                                                return (
+                                                    <div key={item.id} 
+                                                        onClick={(e) => { e.stopPropagation(); setSelectedItem(item); }}
+                                                        style={{ 
+                                                        fontSize: '10px', 
+                                                        padding: '4px 6px', 
+                                                        borderRadius: '4px', 
+                                                        background: 'rgba(66, 133, 244, 0.15)',
+                                                        color: '#4285f4',
+                                                        border: '1px solid rgba(66, 133, 244, 0.3)',
+                                                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                                                        display: 'flex', alignItems: 'center', gap: '4px',
+                                                        cursor: 'pointer'
+                                                    }}>
+                                                        <CalendarDays size={10} /> {item.title}
                                                     </div>
                                                 );
                                             }

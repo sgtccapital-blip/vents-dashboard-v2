@@ -11,6 +11,17 @@ export default function Eventos() {
     const { events, addEvent, updateEvent, deleteEvent, tasks } = useApp();
     const navigate = useNavigate();
 
+    const formatEventDate = (dateStr) => {
+        if (!dateStr) return 'Fecha por definir';
+        try {
+            const date = new Date(dateStr + 'T12:00');
+            const formatted = date.toLocaleDateString('es-PA', { weekday: 'long', day: 'numeric', month: 'long' });
+            return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+        } catch (e) {
+            return dateStr;
+        }
+    };
+
     const [searchQuery, setSearchQuery] = useState('');
     const [showModal, setShowModal] = useState(false);
     const [editingEvent, setEditingEvent] = useState(null);
@@ -71,41 +82,24 @@ export default function Eventos() {
     };
 
     // Agenda form helpers
-    const addAgendaDay = () => {
-        setForm(prev => ({ ...prev, agenda: [...prev.agenda, { title: '', items: [] }] }));
+    const addAgendaItem = () => {
+        setForm(prev => ({ 
+            ...prev, 
+            agenda: [...(prev.agenda || []), { id: `ag-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`, time: '20:00', title: '', speaker: '', description: '' }] 
+        }));
     };
-    const updateAgendaTitle = (idx, title) => {
+    const updateAgendaItemField = (idx, field, value) => {
         setForm(prev => {
-            const a = [...prev.agenda];
-            a[idx] = { ...a[idx], title };
+            const a = [...(prev.agenda || [])];
+            a[idx] = { ...a[idx], [field]: value };
             return { ...prev, agenda: a };
         });
     };
-    const removeAgendaDay = (idx) => {
-        setForm(prev => ({ ...prev, agenda: prev.agenda.filter((_, i) => i !== idx) }));
-    };
-    const addAgendaItem = (catIdx) => {
-        setForm(prev => {
-            const a = [...prev.agenda];
-            a[catIdx] = { ...a[catIdx], items: [...a[catIdx].items, ''] };
-            return { ...prev, agenda: a };
-        });
-    };
-    const updateAgendaItem = (catIdx, itemIdx, value) => {
-        setForm(prev => {
-            const a = [...prev.agenda];
-            const items = [...a[catIdx].items];
-            items[itemIdx] = value;
-            a[catIdx] = { ...a[catIdx], items };
-            return { ...prev, agenda: a };
-        });
-    };
-    const removeAgendaItem = (catIdx, itemIdx) => {
-        setForm(prev => {
-            const a = [...prev.agenda];
-            a[catIdx] = { ...a[catIdx], items: a[catIdx].items.filter((_, i) => i !== itemIdx) };
-            return { ...prev, agenda: a };
-        });
+    const removeAgendaItem = (idx) => {
+        setForm(prev => ({ 
+            ...prev, 
+            agenda: (prev.agenda || []).filter((_, i) => i !== idx) 
+        }));
     };
 
     const getStatusStyle = (status) => {
@@ -228,7 +222,7 @@ export default function Eventos() {
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px', position: 'relative', zIndex: 1 }}>
                                 {(eventItem.date || eventItem.time) && (
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-tertiary)' }}>
-                                        <CalendarDays size={12} /> {eventItem.date || 'Fecha por definir'}{eventItem.time ? ` · ${eventItem.time}` : ''}
+                                        <CalendarDays size={12} /> {formatEventDate(eventItem.date)}{eventItem.time ? ` · ${eventItem.time}` : ''}
                                     </div>
                                 )}
                                 {eventItem.location && (
@@ -315,7 +309,16 @@ export default function Eventos() {
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                                 <div className="form-group">
                                     <label className="form-label">Tipo / Categoría</label>
-                                    <input className="form-input" placeholder="Ej: Conferencia" value={form.type} onChange={e => setForm({ ...form, type: e.target.value })} />
+                                    <select className="form-select" value={form.type} onChange={e => setForm({ ...form, type: e.target.value })}>
+                                        <option value="">-- Seleccionar Tipo --</option>
+                                        <option value="social">Social</option>
+                                        <option value="corporativo">Corporativo</option>
+                                        <option value="nightclub">Nightclub / Discoteca</option>
+                                        <option value="tvshow">TV Show / Programa</option>
+                                        <option value="local">Local / Establecimiento</option>
+                                        <option value="festival">Festival</option>
+                                        <option value="virtual">Virtual</option>
+                                    </select>
                                 </div>
                                 <div className="form-group">
                                     <label className="form-label">Estado</label>
@@ -420,42 +423,37 @@ export default function Eventos() {
                             {/* ── AGENDA ── */}
                             <ModalSectionLabel>Agenda / Programa</ModalSectionLabel>
                             <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginBottom: '12px', marginTop: '-6px' }}>
-                                Organiza las actividades del evento por día o sesión.
+                                Agrega las actividades del evento (hora, título, descripción).
                             </p>
 
-                            {form.agenda.map((cat, catIdx) => (
-                                <div key={catIdx} style={{
-                                    padding: '14px', borderRadius: '10px', marginBottom: '12px',
+                            {(form.agenda || []).map((ag, idx) => (
+                                <div key={ag.id || idx} style={{
+                                    padding: '14px', borderRadius: '12px', marginBottom: '12px',
                                     background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)',
                                 }}>
-                                    <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
-                                        <input className="form-input" placeholder="Día 1 o Título de Sesión"
-                                            value={cat.title} onChange={e => updateAgendaTitle(catIdx, e.target.value)}
-                                            style={{ flex: 1, fontWeight: '600', fontSize: '13px' }} />
-                                        <button className="btn-icon" onClick={() => removeAgendaDay(catIdx)} title="Eliminar sección">
+                                    <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                                        <input type="time" className="form-input" style={{ width: '90px', fontSize: '12px' }}
+                                            value={ag.time || ''} onChange={e => updateAgendaItemField(idx, 'time', e.target.value)} />
+                                        <input className="form-input" placeholder="Título de la Actividad"
+                                            value={ag.title || ''} onChange={e => updateAgendaItemField(idx, 'title', e.target.value)}
+                                            style={{ flex: 1, fontSize: '12px', fontWeight: '600' }} />
+                                        <button className="btn-icon" onClick={() => removeAgendaItem(idx)} title="Eliminar actividad">
                                             <Trash2 size={14} style={{ color: 'var(--accent-red, #ef4444)' }} />
                                         </button>
                                     </div>
-                                    {cat.items.map((item, itemIdx) => (
-                                        <div key={itemIdx} style={{ display: 'flex', gap: '6px', marginBottom: '6px', paddingLeft: '8px' }}>
-                                            <span style={{ color: form.color, fontSize: '8px', marginTop: '10px' }}>●</span>
-                                            <input className="form-input" placeholder="Ej: 09:00 AM - Registro"
-                                                value={item} onChange={e => updateAgendaItem(catIdx, itemIdx, e.target.value)}
-                                                style={{ flex: 1, fontSize: '12px' }} />
-                                            <button className="btn-icon" onClick={() => removeAgendaItem(catIdx, itemIdx)} style={{ padding: '4px' }}>
-                                                <X size={12} />
-                                            </button>
-                                        </div>
-                                    ))}
-                                    <button className="btn btn-ghost" onClick={() => addAgendaItem(catIdx)}
-                                        style={{ fontSize: '11px', padding: '4px 10px', marginTop: '4px', color: form.color }}>
-                                        <Plus size={12} /> Agregar actividad
-                                    </button>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                                        <input className="form-input" placeholder="Ubicación / Speaker (opcional)"
+                                            value={ag.speaker || ''} onChange={e => updateAgendaItemField(idx, 'speaker', e.target.value)}
+                                            style={{ fontSize: '11px' }} />
+                                        <input className="form-input" placeholder="Breve descripción (opcional)"
+                                            value={ag.description || ''} onChange={e => updateAgendaItemField(idx, 'description', e.target.value)}
+                                            style={{ fontSize: '11px' }} />
+                                    </div>
                                 </div>
                             ))}
 
-                            <button className="btn btn-secondary" onClick={addAgendaDay} style={{ fontSize: '12px', width: '100%' }}>
-                                <Plus size={14} /> Nueva Sección de Agenda
+                            <button className="btn btn-secondary" onClick={addAgendaItem} style={{ fontSize: '12px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                                <Plus size={14} /> Nueva Actividad de Agenda
                             </button>
 
                             <ModalDivider />

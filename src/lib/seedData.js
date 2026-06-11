@@ -16,16 +16,16 @@ export const seedIdeas = [];
 export const seedTasks = [];
 export const seedLinks = [];
 export const seedSocialMedia = [
-    { id: 'social-panamericanbc', platform: 'Instagram', handler: '@Panamericanbc', type: 'Company Page', url: 'https://instagram.com/panamericanbc', followers: '2.1K', description: 'Panamerican Business & Construction', companyId: '' },
-    { id: 'social-novatech', platform: 'Instagram', handler: '@Novatech_pa', type: 'Company Page', url: 'https://instagram.com/novatech_pa', followers: '1.5K', description: 'NovaTech AI Solutions Panama', companyId: '' },
-    { id: 'social-5amclub', platform: 'Instagram', handler: '@_5amclub', type: 'Personal Profile', url: 'https://instagram.com/_5amclub', followers: '3.8K', description: '5AM Club — Productivity & Mindset', companyId: '' },
-    { id: 'social-saem', platform: 'Instagram', handler: '@SAEM', type: 'Company Page', url: 'https://instagram.com/saem', followers: '1.2K', description: 'SAEM', companyId: '' },
-    { id: 'social-elemento', platform: 'Instagram', handler: '@Elemento.techno', type: 'Company Page', url: 'https://instagram.com/elemento.techno', followers: '950', description: 'Elemento Techno', companyId: '' },
-    { id: 'social-arrive', platform: 'Instagram', handler: '@Arrive.models', type: 'Company Page', url: 'https://instagram.com/arrive.models', followers: '4.2K', description: 'Arrive Models Agency', companyId: '' },
-    { id: 'social-metrosupply', platform: 'Instagram', handler: '@MetroSupply', type: 'Company Page', url: 'https://instagram.com/metrosupply', followers: '800', description: 'Metro Supply', companyId: '' },
-    { id: 'social-inversioneslbl', platform: 'Instagram', handler: '@InversionesLBL', type: 'Company Page', url: 'https://instagram.com/inversioneslbl', followers: '500', description: 'Inversiones LBL', companyId: '' },
-    { id: 'social-saborespanama', platform: 'Instagram', handler: '@SaboresPanama', type: 'Company Page', url: 'https://instagram.com/saborespanama', followers: '1.8K', description: 'Sabores de Panamá', companyId: '' },
-    { id: 'social-gabmar', platform: 'Instagram', handler: '@GABMAR', type: 'Company Page', url: 'https://instagram.com/gabmar', followers: '600', description: 'GABMAR', companyId: '' },
+    { id: 'social-elemento-techno', platform: 'Instagram', handler: '@Elemento.techno', type: 'Electronica Internacional', url: 'https://instagram.com/Elemento.techno', followers: '12.8K', description: 'Electrónica Internacional', metrics: { growth: '+450', engagement: '5.2%', clicks: '850', views: '28K' } },
+    { id: 'social-arrive-models', platform: 'Instagram', handler: '@Arrive.models', type: 'Models & Viral', url: 'https://instagram.com/Arrive.models', followers: '5.9K', description: 'Models & Viral', metrics: { growth: '+120', engagement: '6.8%', clicks: '540', views: '14K' } },
+    { id: 'social-5amclub-new', platform: 'Instagram', handler: '@_5amclub', type: 'Finanzas', url: 'https://instagram.com/_5amclub', followers: '3.9K', description: 'Finanzas y Productividad', metrics: { growth: '+80', engagement: '4.1%', clicks: '310', views: '9K' } },
+    { id: 'social-moojoo-events', platform: 'Instagram', handler: '@Moojoo.events', type: 'Party promoter', url: 'https://instagram.com/Moojoo.events', followers: '2.6K', description: 'Party promoter', metrics: { growth: '+210', engagement: '7.3%', clicks: '490', views: '11K' } },
+    { id: 'social-ciutatelectronicapty', platform: 'Instagram', handler: '@Ciutatelectronicapty', type: 'Electronica Panama', url: 'https://instagram.com/Ciutatelectronicapty', followers: '409', description: 'Electrónica Panamá', metrics: { growth: '+15', engagement: '3.2%', clicks: '80', views: '1.2K' } },
+    { id: 'social-urbannights-pa', platform: 'Instagram', handler: '@Urbannights.pa', type: 'Party', url: 'https://instagram.com/Urbannights.pa', followers: '200', description: 'Party & Events', metrics: { growth: '+8', engagement: '2.9%', clicks: '45', views: '600' } },
+    { id: 'social-udp-pa', platform: 'Instagram', handler: '@UDP.PA', type: 'Gestionar de casco peatonal', url: 'https://instagram.com/UDP.PA', followers: '223', description: 'Gestión de casco peatonal', metrics: { growth: '+12', engagement: '4.5%', clicks: '60', views: '850' } },
+    { id: 'social-theroom-social', platform: 'Instagram', handler: '@theroom.social', type: 'Party', url: 'https://instagram.com/theroom.social', followers: '444', description: 'Party & Social Club', metrics: { growth: '+30', engagement: '5.6%', clicks: '110', views: '1.8K' } },
+    { id: 'social-igniteclub', platform: 'Instagram', handler: '@IGNITECLUB', type: 'Party', url: 'https://instagram.com/IGNITECLUB', followers: '686', description: 'Party & Nightlife', metrics: { growth: '+45', engagement: '6.1%', clicks: '190', views: '2.5K' } },
+    { id: 'social-music-pty', platform: 'Instagram', handler: '@Music.pty', type: 'Music Viral & booking artistas', url: 'https://instagram.com/Music.pty', followers: '99K', description: 'Music Viral & booking de artistas', metrics: { growth: '+1.2K', engagement: '8.4%', clicks: '3.5K', views: '150K' } }
 ];
 export const seedContentTasks = {
     ideas: [],
@@ -173,19 +173,57 @@ export const seedEvents = [
   },
   {
     id: 'ev-music-pty',
-    name: 'MusicPTY',
+    name: 'Music PTY',
     date: '2026-08-05',
     time: '18:00',
-    location: 'Estudios',
-    capacity: 'Exclusivo',
+    location: 'Estudio Principal, Panama City',
+    capacity: 'Producción TV',
     budget: '0',
-    type: 'virtual',
-    status: 'borrador',
-    description: 'Producción y grabación de sets para MusicPTY.',
+    type: 'tvshow',
+    status: 'planificacion',
+    description: 'Programa de televisión musical con segmentos en vivo, entrevistas a artistas, sesiones acústicas y cobertura de la escena musical panameña. Transmisión semanal con gestión integral de redes sociales y contenido multiplataforma.',
     color: '#ec4899',
-    icon: '🎧',
+    icon: '🎬',
+    showFrequency: 'Semanal',
+    showDay: 'Viernes',
+    showDuration: '60 min',
+    showChannel: 'Canal / Streaming',
+    segments: [
+      { id: 'seg-1', name: 'Intro / Apertura', duration: '5 min', type: 'Apertura', description: 'Bienvenida del host, resumen de lo que viene en el episodio y branding.', order: 1 },
+      { id: 'seg-2', name: 'Entrevista Artista Invitado', duration: '15 min', type: 'Entrevista', description: 'Conversación en profundidad con artista invitado sobre su carrera, proyectos y música nueva.', order: 2 },
+      { id: 'seg-3', name: 'Live Session / Acústico', duration: '10 min', type: 'Performance', description: 'Presentación en vivo o acústica del artista invitado en el estudio.', order: 3 },
+      { id: 'seg-4', name: 'Top 5 PTY', duration: '8 min', type: 'Ranking', description: 'Ranking semanal de las 5 canciones más escuchadas en Panamá con datos de streaming.', order: 4 },
+      { id: 'seg-5', name: 'Behind The Beat', duration: '10 min', type: 'Documental', description: 'Mini-documental sobre un productor, estudio o historia detrás de un hit panameño.', order: 5 },
+      { id: 'seg-6', name: 'Redes en Vivo / Q&A', duration: '7 min', type: 'Interactivo', description: 'Interacción en vivo con la audiencia: preguntas de Instagram/TikTok al artista.', order: 6 },
+      { id: 'seg-7', name: 'Cierre / Avance Próximo Episodio', duration: '5 min', type: 'Cierre', description: 'Resumen del episodio, despedida y preview del próximo programa.', order: 7 }
+    ],
+    episodes: [
+      { id: 'ep-1', number: 1, title: 'Episodio Piloto', date: '2026-08-05', guest: 'Por confirmar', status: 'Pre-producción', notes: 'Primer episodio - definir formato final.' },
+      { id: 'ep-2', number: 2, title: 'Episodio 2', date: '2026-08-12', guest: '', status: 'Planeación', notes: '' },
+      { id: 'ep-3', number: 3, title: 'Episodio 3', date: '2026-08-19', guest: '', status: 'Planeación', notes: '' }
+    ],
+    crew: [
+      { id: 'crew-1', name: '', role: 'Host / Presentador', department: 'Talento', status: 'Por asignar' },
+      { id: 'crew-2', name: '', role: 'Director', department: 'Dirección', status: 'Por asignar' },
+      { id: 'crew-3', name: '', role: 'Productor General', department: 'Producción', status: 'Por asignar' },
+      { id: 'crew-4', name: '', role: 'Camarógrafo 1', department: 'Cámaras', status: 'Por asignar' },
+      { id: 'crew-5', name: '', role: 'Camarógrafo 2', department: 'Cámaras', status: 'Por asignar' },
+      { id: 'crew-6', name: '', role: 'Ingeniero de Sonido', department: 'Audio', status: 'Por asignar' },
+      { id: 'crew-7', name: '', role: 'Editor de Video', department: 'Post-producción', status: 'Por asignar' },
+      { id: 'crew-8', name: '', role: 'Community Manager', department: 'Redes Sociales', status: 'Por asignar' },
+      { id: 'crew-9', name: '', role: 'Diseñador Gráfico', department: 'Arte', status: 'Por asignar' },
+      { id: 'crew-10', name: '', role: 'Iluminación', department: 'Técnico', status: 'Por asignar' }
+    ],
     agenda: [],
-    requirements: [],
+    requirements: [
+      { id: 'req-tv-1', name: 'Kit de cámaras (2+ cámaras)', category: 'Equipo', quantity: 1, cost: 0, status: 'Pendiente' },
+      { id: 'req-tv-2', name: 'Iluminación de estudio (LED panels)', category: 'Equipo', quantity: 1, cost: 0, status: 'Pendiente' },
+      { id: 'req-tv-3', name: 'Consola de audio / mixer', category: 'Audio', quantity: 1, cost: 0, status: 'Pendiente' },
+      { id: 'req-tv-4', name: 'Micrófonos (lavalier + boom)', category: 'Audio', quantity: 3, cost: 0, status: 'Pendiente' },
+      { id: 'req-tv-5', name: 'Pantalla verde / Set decoration', category: 'Escenografía', quantity: 1, cost: 0, status: 'Pendiente' },
+      { id: 'req-tv-6', name: 'Software de edición (Premiere / DaVinci)', category: 'Post-producción', quantity: 1, cost: 0, status: 'Pendiente' },
+      { id: 'req-tv-7', name: 'Streaming setup (OBS / encoder)', category: 'Transmisión', quantity: 1, cost: 0, status: 'Pendiente' }
+    ],
     todos: []
   },
   {
@@ -349,5 +387,87 @@ export const seedEvents = [
     agenda: [],
     requirements: [],
     todos: []
+  },
+  {
+    id: 'ev-guaya-fest',
+    name: 'Guaya Fest 2026',
+    type: 'festival',
+    status: 'planificacion',
+    date: '2026-10-16',
+    time: '15:00',
+    location: 'Explanada Amador, Panamá',
+    capacity: '12000',
+    budget: '150000',
+    estimatedBudget: '150000',
+    description: 'El festival de música urbana y cultura del año. Múltiples escenarios, áreas de comida, activaciones de marca y zonas VIP con boxes exclusivos.',
+    color: '#fbbf24',
+    icon: '🎪',
+    agenda: [
+      { id: 'ag-gf1', time: '15:00', title: 'Apertura de Puertas', speaker: 'Escenario Principal', description: 'Acceso del público general y DJ de bienvenida' },
+      { id: 'ag-gf2', time: '17:00', title: 'Show de Talentos Locales', speaker: 'Escenario Local', description: 'Presentación de artistas emergentes nacionales' },
+      { id: 'ag-gf3', time: '19:00', title: 'Competencia Freestyle Final', speaker: 'Escenario Urbano', description: 'Batalla de los mejores 8 MCs de la región' },
+      { id: 'ag-gf4', time: '21:00', title: 'Set de DJ Invitado Internacional', speaker: 'Escenario Principal', description: 'Presentación de DJ residente de Miami' },
+      { id: 'ag-gf5', time: '22:30', title: 'Artista Estelar Principal', speaker: 'Escenario Principal', description: 'Show en vivo de la estrella internacional de reggaetón' }
+    ],
+    requirements: [
+      { id: 'req-gf-1', name: 'Montaje de Tarima Principal', category: 'Producción', quantity: 1, cost: 25000, status: 'Confirmado' },
+      { id: 'req-gf-2', name: 'Sistema de Sonido Line Array', category: 'Audio', quantity: 2, cost: 18000, status: 'Confirmado' },
+      { id: 'req-gf-3', name: 'Pantallas LED Gigantes', category: 'Video', quantity: 4, cost: 15000, status: 'Pendiente' },
+      { id: 'req-gf-4', name: 'Seguridad Privada (150 unidades)', category: 'Logística', quantity: 1, cost: 9500, status: 'Confirmado' },
+      { id: 'req-gf-5', name: 'Permisos Municipales y de Salud', category: 'Legal', quantity: 1, cost: 3000, status: 'En Proceso' }
+    ],
+    todos: []
+  },
+  {
+    id: 'ev-casco-lounge',
+    name: '212 club',
+    type: 'local',
+    status: 'activo',
+    date: '2026-06-11',
+    time: '18:00',
+    location: 'Calle 8va, Casco Antiguo, Panamá',
+    capacity: '250',
+    budget: '12000',
+    estimatedBudget: '12000',
+    description: 'Lounge bar premium en el Casco Antiguo. Gestión diaria de reservas de boxes VIP, inventario de barra y asistencia de personal.',
+    color: '#10b981',
+    icon: '🏪',
+    agenda: [
+      { id: 'ag-cl1', date: '2026-06-11', time: '18:00', title: 'Apertura y Happy Hour', speaker: 'Barra Principal', description: '2x1 en cócteles seleccionados' },
+      { id: 'ag-cl2', date: '2026-06-11', time: '21:00', title: 'DJ Live Set - Chill & Deep House', speaker: 'Cabina DJ', description: 'Set en vivo para ambientar el Lounge' },
+      { id: 'ag-cl3', date: '2026-06-12', time: '23:30', title: 'Urban & Crossover Night', speaker: 'Todo el local', description: 'Música bailable hasta el cierre' },
+      { id: 'ag-cl4', date: '2026-06-13', time: '22:00', title: 'Sábado Gigante - Open Bar Premium', speaker: 'Main Stage', description: 'Barra libre para VIPs y DJs nacionales' }
+    ],
+    requirements: [],
+    todos: [],
+    tables: [
+      { id: 't-b1', name: 'Box VIP 1', capacity: 10, minConsumption: 500, status: 'Disponible', client: '', promoter: '', phone: '', deposit: 0 },
+      { id: 't-b2', name: 'Box VIP 2', capacity: 10, minConsumption: 500, status: 'Reservado', client: 'Esteban Ruiz', promoter: 'prom-1', phone: '@estebanr', deposit: 100 },
+      { id: 't-b3', name: 'Box VIP 3', capacity: 12, minConsumption: 600, status: 'Ocupado', client: 'Grupo Arrive', promoter: 'prom-2', phone: '@arrive.models', deposit: 200 },
+      { id: 't-b4', name: 'Box VIP 4', capacity: 8, minConsumption: 400, status: 'Disponible', client: '', promoter: '', phone: '', deposit: 0 },
+      { id: 't-m1', name: 'Mesa Gold 1', capacity: 6, minConsumption: 250, status: 'Reservado', client: 'Valeria M', promoter: 'prom-3', phone: '6123-4567', deposit: 50 },
+      { id: 't-m2', name: 'Mesa Gold 2', capacity: 6, minConsumption: 250, status: 'Disponible', client: '', promoter: '', phone: '', deposit: 0 },
+      { id: 't-m3', name: 'Mesa Silver 1', capacity: 4, minConsumption: 150, status: 'Disponible', client: '', promoter: '', phone: '', deposit: 0 },
+      { id: 't-m4', name: 'Mesa Silver 2', capacity: 4, minConsumption: 150, status: 'Disponible', client: '', promoter: '', phone: '', deposit: 0 }
+    ],
+    inventory: [
+      { id: 'inv-1', name: 'Ron Abuelo 12 Años', category: 'Licores', quantity: 24, cost: 25.0, price: 90.0, minStock: 5, status: 'Normal' },
+      { id: 'inv-2', name: 'Whisky Old Parr 12 Años', category: 'Licores', quantity: 18, cost: 30.0, price: 110.0, minStock: 6, status: 'Normal' },
+      { id: 'inv-3', name: 'Vodka Grey Goose', category: 'Licores', quantity: 4, cost: 35.0, price: 120.0, minStock: 5, status: 'Bajo Stock' },
+      { id: 'inv-4', name: 'Ginebra Tanqueray', category: 'Licores', quantity: 15, cost: 20.0, price: 85.0, minStock: 4, status: 'Normal' },
+      { id: 'inv-5', name: 'Tequila Don Julio Reposado', category: 'Licores', quantity: 0, cost: 45.0, price: 150.0, minStock: 3, status: 'Sin Stock' },
+      { id: 'inv-6', name: 'Cerveza Corona (Caja x24)', category: 'Cervezas', quantity: 12, cost: 18.0, price: 48.0, minStock: 10, status: 'Normal' },
+      { id: 'inv-7', name: 'Red Bull (Caja x24)', category: 'Bebidas/Mixers', quantity: 8, cost: 22.0, price: 72.0, minStock: 15, status: 'Bajo Stock' },
+      { id: 'inv-8', name: 'Agua Tónica Fever-Tree (Caja)', category: 'Bebidas/Mixers', quantity: 20, cost: 15.0, price: 50.0, minStock: 5, status: 'Normal' }
+    ],
+    staff: [
+      { id: 'st-1', name: 'Alejandro G.', role: 'Gerente de Turno', phone: '6789-0123', shift: '19:00 - 04:00', pay: 80, status: 'Presente' },
+      { id: 'st-2', name: 'David M.', role: 'Bartender Principal', phone: '6543-0987', shift: '20:00 - 04:00', pay: 50, status: 'Presente' },
+      { id: 'st-3', name: 'Laura S.', role: 'Bartender', phone: '6211-5432', shift: '20:00 - 04:00', pay: 45, status: 'Retrasado' },
+      { id: 'st-4', name: 'Moisés R.', role: 'Seguridad Jefe', phone: '6333-8888', shift: '19:00 - 04:00', pay: 60, status: 'Presente' },
+      { id: 'st-5', name: 'Grupo Seguridad (x4)', role: 'Seguridad Externo', phone: '-', shift: '21:00 - 04:00', pay: 160, status: 'Presente' },
+      { id: 'st-6', name: 'Estefanía L.', role: 'Cajera', phone: '6999-7777', shift: '20:00 - 04:00', pay: 40, status: 'Presente' },
+      { id: 'st-7', name: 'DJ Gianluca', role: 'DJ Residente', phone: '6111-9999', shift: '22:00 - 03:30', pay: 150, status: 'Ausente' }
+    ]
   }
 ];

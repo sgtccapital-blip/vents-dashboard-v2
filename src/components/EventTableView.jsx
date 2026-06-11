@@ -18,6 +18,12 @@ const MONDAY_PRIORITY_COLORS = {
     'default': { label: '', bg: '#c4c4c4', text: '#fff' }
 };
 
+const MONDAY_ASSIGNEE_COLORS = {
+    'GG': { bg: 'rgba(129, 140, 248, 0.15)', border: '1px solid rgba(129, 140, 248, 0.3)', text: '#818cf8' },
+    'GEN': { bg: 'rgba(244, 114, 182, 0.15)', border: '1px solid rgba(244, 114, 182, 0.3)', text: '#f472b6' },
+    'ITA': { bg: 'rgba(52, 211, 153, 0.15)', border: '1px solid rgba(52, 211, 153, 0.3)', text: '#34d399' }
+};
+
 export default function EventTableView({ events, filterEventId }) {
     const { tasks, updateTask: globalUpdateTask, addTask, addActivity, addEvent } = useApp();
 
@@ -205,7 +211,7 @@ export default function EventTableView({ events, filterEventId }) {
                                     {/* Table Header */}
                                     <div style={{
                                         display: 'grid',
-                                        gridTemplateColumns: 'minmax(250px, 2fr) 180px 140px 140px 140px',
+                                        gridTemplateColumns: 'minmax(250px, 2fr) 180px 140px 140px 140px 140px',
                                         gap: '4px', paddingBottom: '8px',
                                         borderBottom: '1px solid var(--border-subtle)',
                                         color: 'var(--text-tertiary)', fontSize: '13px', fontWeight: 600,
@@ -213,6 +219,7 @@ export default function EventTableView({ events, filterEventId }) {
                                     }}>
                                         <div style={{ paddingLeft: '24px' }}>Item Name</div>
                                         <div style={{ textAlign: 'center' }}>Evento</div>
+                                        <div style={{ textAlign: 'center' }}>Asignado</div>
                                         <div style={{ textAlign: 'center' }}>Status</div>
                                         <div style={{ textAlign: 'center' }}>Priority</div>
                                         <div style={{ textAlign: 'center' }}>Timeline</div>
@@ -228,7 +235,7 @@ export default function EventTableView({ events, filterEventId }) {
                                         return (
                                             <div key={task.id} style={{ 
                                                 display: 'grid', 
-                                                gridTemplateColumns: 'minmax(250px, 2fr) 180px 140px 140px 140px', 
+                                                gridTemplateColumns: 'minmax(250px, 2fr) 180px 140px 140px 140px 140px', 
                                                 gap: '4px',
                                                 borderBottom: '1px solid var(--border-subtle)',
                                                 background: 'var(--bg-card)',
@@ -275,10 +282,40 @@ export default function EventTableView({ events, filterEventId }) {
                                                     </select>
                                                 </div>
 
+                                                {/* ASIGNADO (Interactive Cell) */}
+                                                <div style={{ 
+                                                    borderLeft: '1px solid var(--border-subtle)', 
+                                                    background: task.assignee && MONDAY_ASSIGNEE_COLORS[task.assignee] ? MONDAY_ASSIGNEE_COLORS[task.assignee].bg : 'rgba(255,255,255,0.02)', 
+                                                    color: task.assignee && MONDAY_ASSIGNEE_COLORS[task.assignee] ? MONDAY_ASSIGNEE_COLORS[task.assignee].text : 'var(--text-tertiary)',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    position: 'relative', cursor: 'pointer',
+                                                    fontSize: '13px', fontWeight: 600,
+                                                    borderRight: '1px solid var(--border-subtle)',
+                                                    borderBottom: task.assignee && MONDAY_ASSIGNEE_COLORS[task.assignee] ? MONDAY_ASSIGNEE_COLORS[task.assignee].border : 'none',
+                                                }}
+                                                className="pulse-cell-interactive"
+                                                >
+                                                    <select 
+                                                        value={task.assignee || ''} 
+                                                        onChange={(e) => updateTaskLocal(task.id, 'assignee', e.target.value || null)}
+                                                        style={{ 
+                                                            position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+                                                            opacity: 0, cursor: 'pointer'
+                                                        }}
+                                                    >
+                                                        <option value="">— Sin Asignar —</option>
+                                                        <option value="GG">👤 GG</option>
+                                                        <option value="GEN">👤 GEN</option>
+                                                        <option value="ITA">👤 ITA</option>
+                                                    </select>
+                                                    <span style={{ textShadow: '0 1px 2px rgba(0,0,0,0.1)' }}>
+                                                        {task.assignee ? `👤 ${task.assignee}` : '—'}
+                                                    </span>
+                                                </div>
 
                                                 {/* STATUS (Interactive Solid Block) */}
                                                 <div style={{ 
-                                                    borderLeft: '1px solid var(--border-subtle)', borderRight: '1px solid var(--border-subtle)', 
+                                                    borderRight: '1px solid var(--border-subtle)', 
                                                     background: sColorInfo.bg, color: sColorInfo.text,
                                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                     position: 'relative',
@@ -349,7 +386,7 @@ export default function EventTableView({ events, filterEventId }) {
 
                                     {/* Add task simple row */}
                                     <div style={{ 
-                                        display: 'grid', gridTemplateColumns: 'minmax(250px, 2fr) 180px 140px 140px 140px', gap: '4px',
+                                        display: 'grid', gridTemplateColumns: 'minmax(250px, 2fr) 180px 140px 140px 140px 140px', gap: '4px',
                                     }}>
                                         <div style={{ position: 'relative', borderLeft: `6px solid ${gColor}33`, paddingLeft: '18px' }}>
                                             <button 

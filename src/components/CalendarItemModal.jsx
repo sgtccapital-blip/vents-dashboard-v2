@@ -260,10 +260,41 @@ export default function CalendarItemModal({ item, onClose }) {
         </div>
     );
 
+    const renderGoogleEvent = () => (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <label style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Título del Evento (Google)</label>
+                <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)' }}>{item.title}</div>
+            </div>
+            
+            {item.fullItem?.time && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <label style={{ fontSize: '12px', color: 'var(--text-secondary)', width: '60px' }}>Hora</label>
+                    <div style={{ fontSize: '13px', color: 'var(--text-primary)' }}>{item.fullItem.time}</div>
+                </div>
+            )}
+
+            {item.fullItem?.speaker && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <label style={{ fontSize: '12px', color: 'var(--text-secondary)', width: '60px' }}>Ubicación</label>
+                    <div style={{ fontSize: '13px', color: 'var(--text-primary)' }}>📍 {item.fullItem.speaker}</div>
+                </div>
+            )}
+
+            {item.fullItem?.description && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <label style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Descripción</label>
+                    <div style={{ fontSize: '13px', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>{item.fullItem.description}</div>
+                </div>
+            )}
+        </div>
+    );
+
     const getIcon = () => {
         if (item.type === 'task') return <CheckSquare size={16} color="var(--accent-primary)" />;
         if (item.type === 'event') return <CalendarDays size={16} color={item.color || '#10b981'} />;
         if (item.type === 'content') return <Share2 size={16} color="#f59e0b" />;
+        if (item.type === 'google-event') return <CalendarDays size={16} color="#4285f4" />;
         return null;
     };
 
@@ -271,6 +302,7 @@ export default function CalendarItemModal({ item, onClose }) {
         if (item.type === 'task') return 'Tarea';
         if (item.type === 'event') return 'Evento';
         if (item.type === 'content') return 'Redes Sociales';
+        if (item.type === 'google-event') return 'Google Calendar';
         return 'Item';
     };
 
@@ -311,18 +343,20 @@ export default function CalendarItemModal({ item, onClose }) {
                     </div>
                     
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        {isEditing ? (
-                            <button 
-                                onClick={handleSave}
-                                style={{ background: 'var(--accent-primary)', color: '#fff', border: 'none', borderRadius: '6px', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
-                                <Save size={14} /> Guardar
-                            </button>
-                        ) : (
-                            <button 
-                                onClick={() => setIsEditing(true)}
-                                style={{ background: 'var(--bg-canvas)', color: 'var(--text-primary)', border: '1px solid var(--border-subtle)', borderRadius: '6px', padding: '6px', display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-                                <Edit3 size={14} />
-                            </button>
+                        {item.type !== 'google-event' && (
+                            isEditing ? (
+                                <button 
+                                    onClick={handleSave}
+                                    style={{ background: 'var(--accent-primary)', color: '#fff', border: 'none', borderRadius: '6px', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
+                                    <Save size={14} /> Guardar
+                                </button>
+                            ) : (
+                                <button 
+                                    onClick={() => setIsEditing(true)}
+                                    style={{ background: 'var(--bg-canvas)', color: 'var(--text-primary)', border: '1px solid var(--border-subtle)', borderRadius: '6px', padding: '6px', display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                                    <Edit3 size={14} />
+                                </button>
+                            )
                         )}
                         <button onClick={onClose} style={{ background: 'transparent', color: 'var(--text-tertiary)', border: 'none', cursor: 'pointer', padding: '4px' }}>
                             <X size={18} />
@@ -335,6 +369,7 @@ export default function CalendarItemModal({ item, onClose }) {
                     {item.type === 'task' && renderTask()}
                     {item.type === 'event' && renderEvent()}
                     {item.type === 'content' && renderContent()}
+                    {item.type === 'google-event' && renderGoogleEvent()}
                 </div>
             </div>
         </div>

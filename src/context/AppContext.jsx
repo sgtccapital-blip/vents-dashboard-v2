@@ -143,6 +143,10 @@ export const AppProvider = ({ children }) => {
     });
     const [orders, setOrders] = useState(() => initializeState('os_live_orders', []));
     const [sops, setSops] = useState(() => initializeState('os_live_sops', []));
+    
+    // Google Calendar integration states
+    const [gcalToken, setGcalToken] = useState(() => localStorage.getItem('gcal_token') || '');
+    const [googleCalendarEvents, setGoogleCalendarEvents] = useState([]);
 
 
     // ─── API Helper ───────────────────────────────────────────────
@@ -177,7 +181,7 @@ export const AppProvider = ({ children }) => {
         }
 
         try {
-            const [apiEvents, apiTasks, apiNotes, apiIdeas, apiSubs, apiActivity, apiOrders, apiSops] = await Promise.all([
+            const [apiEvents, apiTasks, apiNotes, apiIdeas, apiSubs, apiActivity, apiOrders, apiSops, apiSocial] = await Promise.all([
                 fetch(`${API_BASE}/events`).then(r => r.json()).catch(() => null),
                 fetch(`${API_BASE}/tasks`).then(r => r.json()).catch(() => null),
                 fetch(`${API_BASE}/notes`).then(r => r.json()).catch(() => null),
@@ -186,6 +190,7 @@ export const AppProvider = ({ children }) => {
                 fetch(`${API_BASE}/activity`).then(r => r.json()).catch(() => null),
                 fetch(`${API_BASE}/orders`).then(r => r.json()).catch(() => null),
                 fetch(`${API_BASE}/sops`).then(r => r.json()).catch(() => null),
+                fetch(`${API_BASE}/socialMedia`).then(r => r.json()).catch(() => null),
             ]);
 
             checkSupabaseStatus().catch(() => null);
@@ -198,6 +203,7 @@ export const AppProvider = ({ children }) => {
             if (apiActivity) setActivityFeed(apiActivity);
             if (apiOrders) setOrders(apiOrders);
             if (apiSops) setSops(apiSops);
+            if (apiSocial) setSocialMedia(apiSocial);
         } catch (err) {
             console.warn('Polling sync error:', err.message);
         }
@@ -393,6 +399,111 @@ export const AppProvider = ({ children }) => {
         await apiFetch(`/orders/${orderId}`, { method: 'PUT', body: updatedData });
     };
 
+    // Google Calendar integration callbacks
+    const connectGoogleCalendar = useCallback(() => {
+        if (!window.google) {
+            alert("El SDK de Google está cargando, por favor reintenta en un momento.");
+            return;
+        }
+        const tokenClient = window.google.accounts.oauth2.initTokenClient({
+            client_id: '603885111491-oslj1ohd5g2hpg94mlcu9ipstlab75rg.apps.googleusercontent.com',
+            scope: 'https://www.googleapis.com/auth/calendar.events',
+            callback: (response) => {
+                if (response.access_token) {
+                    setGcalToken(response.access_token);
+                    localStorage.setItem('gcal_token', response.access_token);
+                }
+            },
+        });
+        tokenClient.requestAccessToken({ prompt: 'consent' });
+    }, []);
+
+    const disconnectGoogleCalendar = useCallback(() => {
+        setGcalToken('');
+        localStorage.removeItem('gcal_token');
+        setGoogleCalendarEvents([]);
+    }, []);
+
+    const fetchGoogleCalendarEvents = useCallback(async (timeMin, timeMax) => {
+        if (!gcalToken) return [];
+        try {
+            const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${timeMin}&timeMax=${timeMax}&singleEvents=true`, {
+                headers: { 'Authorization': `Bearer ${gcalToken}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                const items = (data.items || []).map(item => ({
+                    id: `gcal-${item.id}`,
+                    date: item.start?.dateTime?.split('T')[0] || item.start?.date,
+                    time: item.start?.dateTime ? item.start.dateTime.split('T')[1].substring(0, 5) : '00:00',
+                    title: item.summary || 'Sin Título (Google)',
+                    speaker: item.location || 'Google Calendar',
+                    description: item.description || '',
+                    isGoogleEvent: true
+                }));
+                setGoogleCalendarEvents(items);
+                return items;
+            } else if (res.status === 401) {
+                // Token expired
+                disconnectGoogleCalendar();
+            }
+        } catch (err) {
+            console.error('Error fetching Google Calendar events:', err);
+        }
+        return [];
+    }, [gcalToken, disconnectGoogleCalendar]);
+
+    const syncEventToGoogleCalendar = useCallback(async (ev) => {
+        if (!gcalToken) return { success: false, error: 'No conectado a Google Calendar' };
+        try {
+            const eventDate = ev.date || new Date().toISOString().split('T')[0];
+            const eventTime = ev.time || '20:00';
+            const startDateTime = `${eventDate}T${eventTime}:00`;
+            
+            // Assume 2 hour duration
+            const [hourStr, minStr] = eventTime.split(':');
+            const endHour = parseInt(hourStr) + 2;
+            const endDateTime = `${eventDate}T${String(endHour).padStart(2, '0')}:${minStr || '00'}:00`;
+
+            const gcalEvent = {
+                summary: ev.title || ev.name,
+                description: ev.description || '',
+                location: ev.speaker || ev.location || '',
+                start: {
+                    dateTime: startDateTime,
+                    timeZone: 'America/Panama'
+                },
+                end: {
+                    dateTime: endDateTime,
+                    timeZone: 'America/Panama'
+                }
+            };
+
+            const response = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${gcalToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(gcalEvent)
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                return { success: true, googleEventId: data.id };
+            } else {
+                if (response.status === 401) {
+                    disconnectGoogleCalendar();
+                    return { success: false, error: 'La sesión de Google ha expirado. Por favor, vuelve a conectar.' };
+                }
+                const errData = await response.json();
+                return { success: false, error: errData.error?.message || 'Error en la petición a Google' };
+            }
+        } catch (err) {
+            return { success: false, error: err.message };
+        }
+    }, [gcalToken, disconnectGoogleCalendar]);
+
     const value = {
         apiOnline,
 
@@ -453,6 +564,14 @@ export const AppProvider = ({ children }) => {
         checkSupabaseStatus,
         manualSync,
         saveSupabaseConfig,
+        
+        // Google Calendar Exports
+        gcalToken,
+        googleCalendarEvents,
+        connectGoogleCalendar,
+        disconnectGoogleCalendar,
+        fetchGoogleCalendarEvents,
+        syncEventToGoogleCalendar,
         
         refreshData: poll
     };
