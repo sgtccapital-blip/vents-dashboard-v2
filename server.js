@@ -67,6 +67,7 @@ let SUPABASE_KEY = process.env.SUPABASE_KEY;
 
 // Sincronización inicial de Supabase al arrancar
 async function initSupabaseSync() {
+    return; // Temporarily disabled to prevent overwriting new seed data on startup
     if (!SUPABASE_URL || !SUPABASE_KEY || SUPABASE_URL.includes('tu-proyecto') || SUPABASE_KEY.includes('tu-anon')) {
         console.log('   ℹ️  Supabase no configurado o variables con placeholders. Operando en modo local (db.json).');
         return;
