@@ -724,7 +724,6 @@ export default function AgentBrain() {
                             </button>
                         </div>
                     </div>
-                    </div>
                 )}
 
                 {/* 4. SKILLS & CORE MEMORY TAB */}
