@@ -3616,51 +3616,6 @@ export default function EventoDetail() {
                             </div>
                         </div>
 
-                        {/* 212 CLUB EXTRAS TAB */}
-                        {event.type === 'local' && activeTab === 'extras' && event.id === 'ev-casco-lounge' && (() => {
-                            const activeInstance = event.instances?.[0]; // Fallback to first instance
-                            return (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
-                                    <div style={{ padding: '24px', background: 'rgba(225,48,108,0.05)', borderRadius: '16px', border: '1px solid rgba(225,48,108,0.2)' }}>
-                                        <h3 style={{ margin: '0 0 16px 0', fontSize: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <Users size={22} color="#E1306C" /> Invitados & RRPP
-                                        </h3>
-                                        <LeadsFunnel 
-                                            leads={activeInstance?.leads || []} 
-                                            updateLeadStatus={(leadId, status) => updateLeadStatus(activeInstance?.id, leadId, status)}
-                                            onManageLeads={() => {}}
-                                            onManageGirls={() => {}}
-                                        />
-                                    </div>
-                                    
-                                    <div style={{ padding: '24px', background: 'rgba(59,130,246,0.05)', borderRadius: '16px', border: '1px solid rgba(59,130,246,0.2)' }}>
-                                        <h3 style={{ margin: '0 0 16px 0', fontSize: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <Star size={22} color="#3b82f6" /> Modelos & Promotores
-                                        </h3>
-                                        <PromoterTracking 
-                                            promoters={promoters}
-                                            leads={activeInstance?.leads || []}
-                                            assignedPromoterIds={activeInstance?.assignedPromoters || []}
-                                        />
-                                    </div>
-                                    
-                                    <div style={{ padding: '24px', background: 'rgba(34,197,94,0.05)', borderRadius: '16px', border: '1px solid rgba(34,197,94,0.2)' }}>
-                                        <h3 style={{ margin: '0 0 16px 0', fontSize: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <ListTodo size={22} color="#22c55e" /> Tareas Activas
-                                        </h3>
-                                        <EventKanbanBoard events={events} filterEventId={event.id} />
-                                    </div>
-                                    
-                                    <div style={{ padding: '24px', background: 'rgba(245,158,11,0.05)', borderRadius: '16px', border: '1px solid rgba(245,158,11,0.2)' }}>
-                                        <h3 style={{ margin: '0 0 16px 0', fontSize: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <MessageSquare size={22} color="#f59e0b" /> Mensajes SPAM & Difusión
-                                        </h3>
-                                        <EventDmSpam />
-                                    </div>
-                                </div>
-                            );
-                        })()}
-
                         {/* HIGH VISIBILITY CONTENT CALENDAR GRID */}
                         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
                             <div style={{
@@ -3790,6 +3745,51 @@ export default function EventoDetail() {
                                     <span style={{ fontSize: '12px', fontWeight: 600 }}>Añadir Arte / Flyer</span>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                );
+            })()}
+
+            {/* 212 CLUB EXTRAS TAB */}
+            {event.type === 'local' && activeTab === 'extras' && event.id === 'ev-casco-lounge' && (() => {
+                const activeInstance = event.instances?.[0]; // Fallback to first instance
+                return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
+                        <div style={{ padding: '24px', background: 'rgba(225,48,108,0.05)', borderRadius: '16px', border: '1px solid rgba(225,48,108,0.2)' }}>
+                            <h3 style={{ margin: '0 0 16px 0', fontSize: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Users size={22} color="#E1306C" /> Invitados & RRPP
+                            </h3>
+                            <LeadsFunnel 
+                                leads={activeInstance?.leads || []} 
+                                updateLeadStatus={(leadId, status) => updateLeadStatus(activeInstance?.id, leadId, status)}
+                                onManageLeads={() => {}}
+                                onManageGirls={() => {}}
+                            />
+                        </div>
+                        
+                        <div style={{ padding: '24px', background: 'rgba(59,130,246,0.05)', borderRadius: '16px', border: '1px solid rgba(59,130,246,0.2)' }}>
+                            <h3 style={{ margin: '0 0 16px 0', fontSize: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Star size={22} color="#3b82f6" /> Modelos & Promotores
+                            </h3>
+                            <PromoterTracking 
+                                promoters={promoters}
+                                leads={activeInstance?.leads || []}
+                                assignedPromoterIds={activeInstance?.assignedPromoters || []}
+                            />
+                        </div>
+                        
+                        <div style={{ padding: '24px', background: 'rgba(34,197,94,0.05)', borderRadius: '16px', border: '1px solid rgba(34,197,94,0.2)' }}>
+                            <h3 style={{ margin: '0 0 16px 0', fontSize: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <ListTodo size={22} color="#22c55e" /> Tareas Activas
+                            </h3>
+                            <EventKanbanBoard events={events} filterEventId={event.id} />
+                        </div>
+                        
+                        <div style={{ padding: '24px', background: 'rgba(245,158,11,0.05)', borderRadius: '16px', border: '1px solid rgba(245,158,11,0.2)' }}>
+                            <h3 style={{ margin: '0 0 16px 0', fontSize: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <MessageSquare size={22} color="#f59e0b" /> Mensajes SPAM & Difusión
+                            </h3>
+                            <EventDmSpam />
                         </div>
                     </div>
                 );
