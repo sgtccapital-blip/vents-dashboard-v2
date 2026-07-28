@@ -1940,11 +1940,7 @@ app.listen(PORT, '0.0.0.0', async () => {
             }
         };
         app.set('ragEngine', RAGEngineProxy);
-        try {
-            await RAGEngineProxy.indexObsidianVault(path.join(__dirname, 'BrainVault'));
-        } catch (e) {
-            console.warn(`[RAG] BrainVault index warning: ${e.message}`);
-        }
+        // BrainVault auto-indexing has been migrated to the native Frontend Agent.
         const status = await RAGEngineProxy.getStatus();
         console.log(`   🧠 RAG Brain: ${status.ready ? `ONLINE (${status.indexed} docs indexed)` : 'No index — POST /api/brain/index to build'}`);
         console.log(`   Brain Query: POST http://localhost:${PORT}/api/brain/query`);
