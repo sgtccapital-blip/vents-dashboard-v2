@@ -523,6 +523,16 @@ export const seedEvents = [
       { id: 'ag-cl4', date: '2026-06-13', time: '22:00', title: 'Sábado Gigante - Open Bar Premium', speaker: 'Main Stage', description: 'Barra libre para VIPs y DJs nacionales' }
     ],
     requirements: [],
+    instances: [
+      {
+        id: 'inst-212-1',
+        date: '2026-06-11',
+        day: 'Viernes',
+        status: 'Activo',
+        leads: [],
+        assignedPromoters: []
+      }
+    ],
     todos: [],
     tables: [
       { id: 't-b1', name: 'Box VIP 1', capacity: 10, minConsumption: 500, status: 'Disponible', client: '', promoter: '', phone: '', deposit: 0 },
