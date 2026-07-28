@@ -393,10 +393,43 @@ export const AppProvider = ({ children }) => {
         await apiFetch(`/events/${eventId}`, { method: 'DELETE' });
     };
 
+    const reorderEvents = async (newEventsList) => {
+        setEvents(newEventsList);
+        try {
+            localStorage.setItem('events', JSON.stringify(newEventsList));
+            await apiFetch('/events', { method: 'PUT', body: newEventsList });
+        } catch (e) {
+            console.error('Error reordering events:', e);
+        }
+    };
+
     // Orders
     const updateOrder = async (orderId, updatedData) => {
         setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...updatedData } : o));
         await apiFetch(`/orders/${orderId}`, { method: 'PUT', body: updatedData });
+    };
+
+    // Promoters CRUD
+    const addPromoter = async (pData) => {
+        const newP = { id: `prom-${Date.now()}`, contacts: 0, rating: 5.0, ...pData };
+        setPromoters(prev => [...prev, newP]);
+        try {
+            await apiFetch('/promoters', { method: 'POST', body: newP });
+        } catch (e) {}
+    };
+
+    const updatePromoter = async (pId, updatedData) => {
+        setPromoters(prev => prev.map(p => p.id === pId ? { ...p, ...updatedData } : p));
+        try {
+            await apiFetch(`/promoters/${pId}`, { method: 'PUT', body: updatedData });
+        } catch (e) {}
+    };
+
+    const deletePromoter = async (pId) => {
+        setPromoters(prev => prev.filter(p => p.id !== pId));
+        try {
+            await apiFetch(`/promoters/${pId}`, { method: 'DELETE' });
+        } catch (e) {}
     };
 
     // Google Calendar integration callbacks
@@ -547,6 +580,7 @@ export const AppProvider = ({ children }) => {
         addEvent,
         updateEvent,
         deleteEvent,
+        reorderEvents,
 
         orders,
         updateOrder,
@@ -557,6 +591,9 @@ export const AppProvider = ({ children }) => {
 
         promoters,
         setPromoters,
+        addPromoter,
+        updatePromoter,
+        deletePromoter,
         imageGirls,
         setImageGirls,
         

@@ -51,38 +51,122 @@ export const seedEvents = [
   {
     id: 'ev-casco-peatonal',
     name: 'Casco Peatonal',
-    date: '2026-05-31',
-    time: '08:00',
-    location: 'Casco Antiguo, Múltiples Zonas',
-    capacity: 'Masivo',
-    budget: '0',
-    type: 'social',
+    templateKey: 'casco_peatonal',
+    date: '2026-08-30',
+    time: '14:00',
+    location: 'Casco Antiguo — Plaza Catedral',
+    capacity: 'Masivo (Plaza Catedral)',
+    budget: '12000',
+    estimatedBudget: '12000',
+    type: 'casco_peatonal',
     status: 'planificacion',
-    description: 'Se realiza el último domingo de cada mes desde mayo a enero.\nEs la organización de varios puntos de activación cultural, deportiva, gastronómica y musical a lo largo del Casco Antiguo.',
-    color: '#10b981',
+    description: 'Evento público mensual (último domingo de cada mes de agosto a enero). Nuestra responsabilidad principal es la contratación de artistas y el montaje de la tarima en Plaza Catedral. Otras plazas (Plaza Bolívar, Plaza Herrera y La Playita) quedan reservadas a futuro.',
+    color: '#f59e0b',
     icon: '🚶‍♂️',
-    agenda: [
-      { id: 'ag-1', time: '15:00', title: 'Carnaval en la arena', speaker: 'Playita Las Garzas', description: '3:00 PM - 6:00 PM | DJ en vivo y presentación de Panaashe' },
-      { id: 'ag-2', time: '12:00', title: 'Cuadrangular de softball', speaker: 'Playa Santo Domingo', description: 'A partir de las 12:00 PM' },
-      { id: 'ag-3', time: '13:00', title: 'Moda que brilla / Bazar Déjala Ir', speaker: 'Plaza Bolívar', description: '1:00 PM - 5:00 PM | Pasarela de diseñadores' },
-      { id: 'ag-4', time: '10:00', title: 'Juego maestro en el casco', speaker: 'Plaza Herrera', description: '10:00 AM - 3:00 PM | Chess exhibitions / dominó por AVACA' },
-      { id: 'ag-5', time: '14:00', title: 'Tamborito de Callejón', speaker: 'Calle de la Mola', description: 'A partir de las 2:00 PM | Recorrido cultural con salida y cierre' },
-      { id: 'ag-6', time: '10:00', title: 'Lanzamiento Gran Premio Panamá', speaker: 'Compañía de Jesús', description: '10:00 AM - 6:00 PM | Autódromo de Panamá / Autoridad de Turismo' },
-      { id: 'ag-7', time: '18:00', title: 'Nuestras historias en tu comunidad', speaker: 'Arco Chato', description: 'A partir de las 6:00 PM | Película Donaire y Esplendor / Comparsa y reina' },
-      { id: 'ag-8', time: '08:00', title: 'Programación general', speaker: 'Plaza Catedral', description: '8:00 AM - 6:00 PM' },
-      { id: 'ag-9', time: '08:00', title: 'Feria de salud', speaker: 'Plaza Catedral', description: '8:00 AM - 12:00 PM' },
-      { id: 'ag-10', time: '08:30', title: 'Andrea Yoga Fit', speaker: 'Plaza Catedral', description: '8:30 AM - 9:30 AM' },
-      { id: 'ag-11', time: '13:00', title: 'Grupo Siggwi Cúngalu', speaker: 'Plaza Catedral', description: 'A partir de las 1:00 PM' },
-      { id: 'ag-12', time: '13:20', title: 'Congo Policía Municipal', speaker: 'Plaza Catedral', description: '1:20 PM - 1:45 PM' },
-      { id: 'ag-13', time: '13:45', title: 'Bailemos con PassosPTY', speaker: 'Plaza Catedral', description: '1:45 PM - 2:45 PM | Por Alexis Solís' },
-      { id: 'ag-14', time: '14:45', title: 'Orquesta Latin Swing', speaker: 'Plaza Catedral', description: '2:45 PM - 3:45 PM' },
-      { id: 'ag-15', time: '15:45', title: 'Salsa rueda casino', speaker: 'Plaza Catedral', description: '3:45 PM - 4:45 PM | Elier Lima' },
-      { id: 'ag-16', time: '16:45', title: 'Orquesta del Servicio Nacional de Migración', speaker: 'Plaza Catedral', description: '4:45 PM - 6:00 PM' },
-      { id: 'ag-17', time: '11:00', title: "Colón Pa' Ti y Pa' Mi", speaker: 'Mercado San Felipe Neri', description: '11:00 AM - 4:00 PM | Vereda gastronómica - cultural' },
-      { id: 'ag-18', time: '11:00', title: 'Fucsia Bazar', speaker: 'Mercado San Felipe Neri', description: '11:00 AM - 4:00 PM | Moda circular' }
+    zones: [
+      'Plaza Catedral (Principal — Tarima & Artistas)',
+      'Plaza Bolívar (Futuras actividades / Reserva)',
+      'Plaza Herrera (Futuras actividades / Reserva)',
+      'La Playita (Futuras actividades / Reserva)'
     ],
-    requirements: [],
-    todos: []
+    instances: [
+      {
+        id: 'inst-casco-2026-08',
+        date: '2026-08-30',
+        name: 'Edición Agosto 2026',
+        status: 'upcoming',
+        location: 'Plaza Catedral',
+        artists: [
+          { id: 'art-1', name: 'Orquesta Latin Swing', genre: 'Salsa / En vivo', time: '16:00 - 17:15', soundcheck: '13:30', status: 'confirmado', rider: '12 micrófonos, 4 monitores' },
+          { id: 'art-2', name: 'Panaashe', genre: 'Urbano / Fusion', time: '17:30 - 18:30', soundcheck: '14:15', status: 'confirmado', rider: '2 In-Ears, Dj Set' },
+          { id: 'art-3', name: 'Orquesta Servicio de Migración', genre: 'Tropical / Cierre', time: '18:45 - 20:00', soundcheck: '15:00', status: 'confirmado', rider: 'Rider completo orquesta' }
+        ],
+        stageSetup: {
+          provider: 'AudioTech Panama',
+          stageSize: '10m x 8m con techado truss',
+          soundSystem: 'Line Array JBL VTX 12kW',
+          lighting: '16 Moving Heads + Pantalla LED 6x3m',
+          setupTime: '08:00 AM',
+          soundcheckTime: '13:30 PM',
+          teardownTime: '21:00 PM'
+        }
+      },
+      {
+        id: 'inst-casco-2026-09',
+        date: '2026-09-27',
+        name: 'Edición Septiembre 2026',
+        status: 'planificacion',
+        location: 'Plaza Catedral',
+        artists: [],
+        stageSetup: {
+          provider: 'AudioTech Panama',
+          stageSize: '10m x 8m',
+          setupTime: '08:00 AM'
+        }
+      },
+      {
+        id: 'inst-casco-2026-10',
+        date: '2026-10-25',
+        name: 'Edición Octubre 2026',
+        status: 'planificacion',
+        location: 'Plaza Catedral',
+        artists: [],
+        stageSetup: {}
+      },
+      {
+        id: 'inst-casco-2026-11',
+        date: '2026-11-29',
+        name: 'Edición Noviembre 2026',
+        status: 'planificacion',
+        location: 'Plaza Catedral',
+        artists: [],
+        stageSetup: {}
+      },
+      {
+        id: 'inst-casco-2026-12',
+        date: '2026-12-27',
+        name: 'Edición Diciembre 2026 (Fin de Año)',
+        status: 'planificacion',
+        location: 'Plaza Catedral',
+        artists: [],
+        stageSetup: {}
+      },
+      {
+        id: 'inst-casco-2027-01',
+        date: '2027-01-31',
+        name: 'Edición Enero 2027 (Cierre de Temporada)',
+        status: 'planificacion',
+        location: 'Plaza Catedral',
+        artists: [],
+        stageSetup: {}
+      }
+    ],
+    futurePlazas: [
+      { id: 'plz-bolivar', name: 'Plaza Bolívar', status: 'En lista / Reserva futura', notes: 'Reservado para futura expansión de bazar cultural o pasarela' },
+      { id: 'plz-herrera', name: 'Plaza Herrera', status: 'En lista / Reserva futura', notes: 'Reservado para futuros torneos deportivos o ajedrez' },
+      { id: 'plz-playita', name: 'La Playita', status: 'En lista / Reserva futura', notes: 'Reservado para futuras activaciones de playa o Sunset DJ' }
+    ],
+    agenda: [
+      { id: 'ag-c1', time: '08:00', title: 'Llegada de camiones y montaje de estructura de tarima', speaker: 'Plaza Catedral (AudioTech)', description: 'Armado de tarima 10x8m, trusses y soporte de iluminación' },
+      { id: 'ag-c2', time: '11:00', title: 'Montaje de sistema de sonido e iluminación', speaker: 'Plaza Catedral (AudioTech)', description: 'Pruebas de parches, amplificadores y consolas' },
+      { id: 'ag-c3', time: '13:30', title: 'Soundcheck de artistas', speaker: 'Plaza Catedral (Artistas)', description: 'Pruebas de sonido en orden de presentación' },
+      { id: 'ag-c4', time: '16:00', title: 'Inicio de Shows en Tarima Principal', speaker: 'Plaza Catedral', description: 'Presentaciones de agrupaciones y DJs' },
+      { id: 'ag-c5', time: '20:30', title: 'Cierre de tarima y desmontaje', speaker: 'Plaza Catedral', description: 'Desmontaje completo y entrega de plaza limpia' }
+    ],
+    requirements: [
+      { id: 'req-c1', name: 'Contratos y riders técnicos de artistas confirmados', done: false },
+      { id: 'req-c2', name: 'Reserva y contratación de tarima (AudioTech)', done: true },
+      { id: 'req-c3', name: 'Permiso de alcaldía y sonido en Plaza Catedral', done: true },
+      { id: 'req-c4', name: 'Generador eléctrico de respaldo (60 kVA)', done: false },
+      { id: 'req-c5', name: 'Seguridad y backstage para artistas en Catedral', done: false }
+    ],
+    todos: [],
+    organizer: 'Oficina del Casco Antiguo',
+    contactPerson: 'Comité Casco Peatonal',
+    phone: '+507 6000-0000',
+    email: 'casco@peatonal.com',
+    notes: 'Foco exclusivo en Plaza Catedral. Plazas Bolívar, Herrera y La Playita en lista de reserva a futuro.',
+    driveFolderId: ''
   },
   {
     id: 'ev-candela-trump',

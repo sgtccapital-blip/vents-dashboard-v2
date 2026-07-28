@@ -12,6 +12,7 @@ import Eventos from './pages/Eventos';
 import EventoDetail from './pages/EventoDetail';
 import SocialMedia from './pages/SocialMedia';
 import MasterCalendar from './pages/MasterCalendar';
+import AgentBrain from './pages/AgentBrain';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -72,6 +73,7 @@ function AppLayout() {
             <Route path="/eventos" element={<Eventos />} />
             <Route path="/eventos/:id" element={<EventoDetail />} />
             <Route path="/social" element={<SocialMedia />} />
+            <Route path="/agent-brain" element={<AgentBrain />} />
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </ErrorBoundary>

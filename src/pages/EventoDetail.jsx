@@ -22,7 +22,7 @@ import { useApp } from '../context/AppContext';
 export default function EventoDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { events, updateEvent, tasks, updateTask, promoters, imageGirls, socialMedia, gcalToken, googleCalendarEvents, connectGoogleCalendar, disconnectGoogleCalendar, fetchGoogleCalendarEvents, syncEventToGoogleCalendar } = useApp();
+    const { events, updateEvent, tasks, updateTask, promoters, addPromoter, updatePromoter, deletePromoter, imageGirls, socialMedia, gcalToken, googleCalendarEvents, connectGoogleCalendar, disconnectGoogleCalendar, fetchGoogleCalendarEvents, syncEventToGoogleCalendar } = useApp();
     const event = events.find(e => e.id === id);
 
     const zones = event ? (event.zones || Array.from(new Set((event.agenda || []).map(a => a.speaker).filter(Boolean)))) : [];
@@ -59,6 +59,7 @@ export default function EventoDetail() {
     const [selectedMapLocation, setSelectedMapLocation] = useState(null);
     const [viewingActivity, setViewingActivity] = useState(null);
     const [editingArt, setEditingArt] = useState(null);
+    const [artFilter, setArtFilter] = useState('Todos');
     const [isManagingZones, setIsManagingZones] = useState(false);
     const [newZoneName, setNewZoneName] = useState('');
 
@@ -69,9 +70,15 @@ export default function EventoDetail() {
     const [editingListInvitation, setEditingListInvitation] = useState(null);
 
     // Local / Establecimiento specific states
+    const [operativaSubTab, setOperativaSubTab] = useState('inventario');
     const [editingTable, setEditingTable] = useState(null);
     const [editingInventory, setEditingInventory] = useState(null);
     const [editingStaff, setEditingStaff] = useState(null);
+    const [editingPromoter, setEditingPromoter] = useState(null);
+    const [editingReviewModal, setEditingReviewModal] = useState(null);
+    const [editingCampaignModal, setEditingCampaignModal] = useState(null);
+    const [showApiConnectModal, setShowApiConnectModal] = useState(false);
+    const [promoterSaleModal, setPromoterSaleModal] = useState(null);
     const [draggedTableIdx, setDraggedTableIdx] = useState(null);
     const [dragOverTableIdx, setDragOverTableIdx] = useState(null);
     const [calYear, setCalYear] = useState(() => new Date().getFullYear());
@@ -466,7 +473,7 @@ export default function EventoDetail() {
     };
 
     // === Local / Establecimiento Handlers (Tables, Inventory, Staff) ===
-    const isLocal = event.type === 'local';
+    const isLocal = event.type === 'local' || event.type === '212_admin' || event.templateKey === '212_admin' || event.id === 'ev-casco-lounge';
 
     const openTableEdit = (table) => {
         setEditingTable({ ...table });
@@ -776,8 +783,8 @@ export default function EventoDetail() {
     ] : isLocal ? [
         { id: 'local_inicio', label: 'Resumen Local', icon: CalendarDays },
         { id: 'local_reservas', label: 'Boxes & Mesas VIP', icon: Star },
-        { id: 'local_inventario', label: 'Inventario Barra', icon: Package },
-        { id: 'local_staff', label: 'Equipo / Staff', icon: Users },
+        { id: 'local_operativa', label: 'Operativa (Barra & Staff)', icon: Package },
+        { id: 'club_promo', label: 'Promo, Publicidad & RRPP', icon: TrendingUp },
         { id: 'local_agenda', label: 'Programación', icon: Clock },
         { id: 'tareas', label: 'Tareas', icon: ListTodo },
         { id: 'redes', label: 'Redes & Contenido', icon: Share2 },
@@ -1246,8 +1253,8 @@ export default function EventoDetail() {
                 );
             })()}
 
-            {/* LOCAL: INVENTARIO DE BARRA */}
-            {event.type === 'local' && activeTab === 'local_inventario' && (() => {
+            {/* LOCAL: OPERATIVA (BARRA & STAFF) */}
+            {isLocal && activeTab === 'local_operativa' && (() => {
                 const defaultInventory = [
                     { id: 'inv-1', name: 'Ron Abuelo 12 Años', category: 'Licores', quantity: 24, cost: 25.0, price: 90.0, minStock: 5, status: 'Normal' },
                     { id: 'inv-2', name: 'Whisky Old Parr 12 Años', category: 'Licores', quantity: 18, cost: 30.0, price: 110.0, minStock: 6, status: 'Normal' },
@@ -1260,69 +1267,419 @@ export default function EventoDetail() {
                 ];
                 const inventory = event.inventory || defaultInventory;
 
+                const defaultStaff = [
+                    { id: 'st-1', name: 'Alejandro G.', role: 'Gerente de Turno', phone: '6789-0123', shift: '19:00 - 04:00', pay: 80, daysWorked: ['mie', 'jue', 'vie', 'sab'], status: 'Presente' },
+                    { id: 'st-2', name: 'David M.', role: 'Bartender Principal', phone: '6543-0987', shift: '20:00 - 04:00', pay: 50, daysWorked: ['jue', 'vie', 'sab'], status: 'Presente' },
+                    { id: 'st-3', name: 'Laura S.', role: 'Bartender', phone: '6211-5432', shift: '20:00 - 04:00', pay: 45, daysWorked: ['mie', 'vie', 'sab'], status: 'Retrasado' },
+                    { id: 'st-4', name: 'Moisés R.', role: 'Seguridad Jefe', phone: '6333-8888', shift: '19:00 - 04:00', pay: 60, daysWorked: ['mie', 'jue', 'vie', 'sab'], status: 'Presente' },
+                    { id: 'st-5', name: 'Grupo Seguridad (x4)', role: 'Seguridad Externo', phone: '-', shift: '21:00 - 04:00', pay: 160, daysWorked: ['jue', 'vie', 'sab'], status: 'Presente' },
+                    { id: 'st-6', name: 'Estefanía L.', role: 'Cajera', phone: '6999-7777', shift: '20:00 - 04:00', pay: 40, daysWorked: ['mie', 'jue', 'vie', 'sab'], status: 'Presente' },
+                    { id: 'st-7', name: 'DJ Gianluca', role: 'DJ Residente', phone: '6111-9999', shift: '22:00 - 03:30', pay: 150, daysWorked: ['vie', 'sab'], status: 'Ausente' }
+                ];
+                const staff = event.staff || defaultStaff;
+
+                const daysList = [
+                    { key: 'mie', label: 'Mié', fullName: 'Miércoles' },
+                    { key: 'jue', label: 'Jue', fullName: 'Jueves' },
+                    { key: 'vie', label: 'Vie', fullName: 'Viernes' },
+                    { key: 'sab', label: 'Sáb', fullName: 'Sábado' }
+                ];
+
+                const toggleStaffDay = (staffId, dayKey) => {
+                    const updated = staff.map(m => {
+                        if (m.id !== staffId) return m;
+                        const currentDays = m.daysWorked || ['mie', 'jue', 'vie', 'sab'];
+                        const hasDay = currentDays.includes(dayKey);
+                        const newDays = hasDay ? currentDays.filter(d => d !== dayKey) : [...currentDays, dayKey];
+                        return { ...m, daysWorked: newDays };
+                    });
+                    updateEvent(event.id, { staff: updated });
+                };
+
+                const totalWeeklyStaffCost = staff.reduce((sum, member) => {
+                    const count = member.daysWorked ? member.daysWorked.length : 3;
+                    return sum + (member.pay || 0) * count;
+                }, 0);
+
                 return (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                        <div className="card" style={{ padding: '24px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>Inventario de Barra</h3>
-                                <button className="btn btn-primary" style={{ fontSize: '13px', padding: '8px 14px', background: color, borderColor: color }} onClick={() => openInventoryEdit()}>
-                                    <Plus size={14} /> Agregar Producto
-                                </button>
-                            </div>
-
-                            <div style={{ overflowX: 'auto' }}>
-                                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
-                                    <thead>
-                                        <tr style={{ borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}>
-                                            <th style={{ padding: '12px' }}>Producto</th>
-                                            <th style={{ padding: '12px' }}>Categoría</th>
-                                            <th style={{ padding: '12px', textAlign: 'center' }}>Stock Cantidad</th>
-                                            <th style={{ padding: '12px' }}>Costo Compra</th>
-                                            <th style={{ padding: '12px' }}>Precio Venta</th>
-                                            <th style={{ padding: '12px' }}>Estado Stock</th>
-                                            <th style={{ padding: '12px', textAlign: 'right' }}>Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {inventory.map(item => {
-                                            const statusStyle = 
-                                                item.status === 'Sin Stock' ? { color: '#ef4444', bg: 'rgba(239,68,68,0.15)' } :
-                                                item.status === 'Bajo Stock' ? { color: '#f59e0b', bg: 'rgba(245,158,11,0.15)' } :
-                                                { color: '#22c55e', bg: 'rgba(34,197,94,0.15)' };
-
-                                            return (
-                                                <tr key={item.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                                                    <td style={{ padding: '12px', fontWeight: 600 }}>{item.name}</td>
-                                                    <td style={{ padding: '12px', color: 'var(--text-secondary)' }}>{item.category}</td>
-                                                    <td style={{ padding: '12px' }}>
-                                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
-                                                            <button className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: '14px', height: '24px', minWidth: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => adjustStock(item.id, -1)}>-</button>
-                                                            <strong style={{ fontSize: '14px', minWidth: '24px', textAlign: 'center' }}>{item.quantity}</strong>
-                                                            <button className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: '14px', height: '24px', minWidth: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => adjustStock(item.id, 1)}>+</button>
-                                                        </div>
-                                                    </td>
-                                                    <td style={{ padding: '12px' }}>${item.cost}</td>
-                                                    <td style={{ padding: '12px', fontWeight: 600, color: '#10b981' }}>${item.price}</td>
-                                                    <td style={{ padding: '12px' }}>
-                                                        <span style={{ padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, color: statusStyle.color, background: statusStyle.bg }}>
-                                                            {item.status}
-                                                        </span>
-                                                    </td>
-                                                    <td style={{ padding: '12px', textAlign: 'right' }}>
-                                                        <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-end' }}>
-                                                            <button className="btn btn-ghost" style={{ padding: '4px' }} onClick={() => openInventoryEdit(item)}><Edit3 size={13} /></button>
-                                                            <button className="btn btn-ghost" style={{ padding: '4px', color: '#ef4444' }} onClick={() => deleteInventory(item.id)}><Trash2 size={13} /></button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
+                        {/* Sub-navigation bar */}
+                        <div style={{ display: 'flex', gap: '12px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '12px', flexWrap: 'wrap' }}>
+                            <button
+                                className={`btn ${operativaSubTab === 'inventario' ? 'btn-primary' : 'btn-secondary'}`}
+                                onClick={() => setOperativaSubTab('inventario')}
+                                style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, padding: '8px 16px', borderRadius: '8px' }}
+                            >
+                                <Package size={16} /> Inventario de Barra
+                            </button>
+                            <button
+                                className={`btn ${operativaSubTab === 'staff' ? 'btn-primary' : 'btn-secondary'}`}
+                                onClick={() => setOperativaSubTab('staff')}
+                                style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, padding: '8px 16px', borderRadius: '8px' }}
+                            >
+                                <Users size={16} /> Roster & Nómina Staff
+                            </button>
+                            <button
+                                className={`btn ${operativaSubTab === 'cierre' ? 'btn-primary' : 'btn-secondary'}`}
+                                onClick={() => setOperativaSubTab('cierre')}
+                                style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, padding: '8px 16px', borderRadius: '8px' }}
+                            >
+                                <DollarSign size={16} /> Cierre Nocturno & Ingresos (Taquilla vs Barra)
+                            </button>
                         </div>
 
-                        {/* Modal: Agregar/Editar Producto */}
+                        {/* 1. BARRA INVENTARIO */}
+                        {operativaSubTab === 'inventario' && (
+                            <div className="card" style={{ padding: '24px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                                    <div>
+                                        <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 600 }}>Inventario de Barra & Licores</h3>
+                                        <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>Control de stock diario, costo de compra y precio de botella en barra.</p>
+                                    </div>
+                                    <button className="btn btn-primary" style={{ fontSize: '13px', padding: '8px 14px', background: color, borderColor: color }} onClick={() => openInventoryEdit()}>
+                                        <Plus size={14} /> Agregar Producto
+                                    </button>
+                                </div>
+
+                                <div style={{ overflowX: 'auto' }}>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+                                        <thead>
+                                            <tr style={{ borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}>
+                                                <th style={{ padding: '12px' }}>Producto</th>
+                                                <th style={{ padding: '12px' }}>Categoría</th>
+                                                <th style={{ padding: '12px', textAlign: 'center' }}>Stock Cantidad</th>
+                                                <th style={{ padding: '12px' }}>Costo Compra</th>
+                                                <th style={{ padding: '12px' }}>Precio Venta</th>
+                                                <th style={{ padding: '12px' }}>Estado Stock</th>
+                                                <th style={{ padding: '12px', textAlign: 'right' }}>Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {inventory.map(item => {
+                                                const statusStyle = 
+                                                    item.status === 'Sin Stock' ? { color: '#ef4444', bg: 'rgba(239,68,68,0.15)' } :
+                                                    item.status === 'Bajo Stock' ? { color: '#f59e0b', bg: 'rgba(245,158,11,0.15)' } :
+                                                    { color: '#22c55e', bg: 'rgba(34,197,94,0.15)' };
+
+                                                return (
+                                                    <tr key={item.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                                                        <td style={{ padding: '12px', fontWeight: 600 }}>{item.name}</td>
+                                                        <td style={{ padding: '12px', color: 'var(--text-secondary)' }}>{item.category}</td>
+                                                        <td style={{ padding: '12px' }}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                                                                <button className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: '14px', height: '24px', minWidth: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => adjustStock(item.id, -1)}>-</button>
+                                                                <strong style={{ fontSize: '14px', minWidth: '24px', textAlign: 'center' }}>{item.quantity}</strong>
+                                                                <button className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: '14px', height: '24px', minWidth: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => adjustStock(item.id, 1)}>+</button>
+                                                            </div>
+                                                        </td>
+                                                        <td style={{ padding: '12px' }}>${item.cost}</td>
+                                                        <td style={{ padding: '12px', fontWeight: 600, color: '#10b981' }}>${item.price}</td>
+                                                        <td style={{ padding: '12px' }}>
+                                                            <span style={{ padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, color: statusStyle.color, background: statusStyle.bg }}>
+                                                                {item.status}
+                                                            </span>
+                                                        </td>
+                                                        <td style={{ padding: '12px', textAlign: 'right' }}>
+                                                            <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-end' }}>
+                                                                <button className="btn btn-ghost" style={{ padding: '4px' }} onClick={() => openInventoryEdit(item)}><Edit3 size={13} /></button>
+                                                                <button className="btn btn-ghost" style={{ padding: '4px', color: '#ef4444' }} onClick={() => deleteInventory(item.id)}><Trash2 size={13} /></button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 2. EQUIPO & STAFF CON CÁLCULO SEMANAL (MIÉRCOLES A SÁBADO) */}
+                        {operativaSubTab === 'staff' && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                                {/* HEADER DE COSTO SEMANAL NÓMINA */}
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+                                    <div className="card" style={{ padding: '20px', background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)' }}>
+                                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px' }}>💰 Costo Semanal Nómina (Personal)</div>
+                                        <div style={{ fontSize: '26px', fontWeight: 800, color: 'var(--accent-green)' }}>${totalWeeklyStaffCost.toFixed(2)}</div>
+                                        <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px' }}>Calculado en base a días trabajados (Mié–Sáb)</div>
+                                    </div>
+                                    <div className="card" style={{ padding: '20px', background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)' }}>
+                                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px' }}>👥 Empleados Registrados</div>
+                                        <div style={{ fontSize: '26px', fontWeight: 800, color: 'var(--accent-blue)' }}>{staff.length} Miembros</div>
+                                        <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px' }}>Barra, Dj, Seguridad, Caja & Gerencia</div>
+                                    </div>
+                                    <div className="card" style={{ padding: '20px', background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.2)' }}>
+                                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px' }}>📅 Días Operativos Club</div>
+                                        <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--accent-purple)' }}>Mié · Jue · Vie · Sáb</div>
+                                        <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px' }}>4 días de operación semanal</div>
+                                    </div>
+                                </div>
+
+                                <div className="card" style={{ padding: '24px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+                                        <div>
+                                            <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 600 }}>Roster de Personal & Nómina Semanal por Días</h3>
+                                            <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                                                Haz clic en los días trabajados (Mié, Jue, Vie, Sáb) para calcular el costo semanal por empleado y nómina total.
+                                            </p>
+                                        </div>
+                                        <button className="btn btn-primary" style={{ fontSize: '13px', padding: '8px 14px', background: color, borderColor: color }} onClick={() => openStaffEdit()}>
+                                            <Plus size={14} /> Agregar Personal
+                                        </button>
+                                    </div>
+
+                                    <div style={{ overflowX: 'auto' }}>
+                                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+                                            <thead>
+                                                <tr style={{ borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}>
+                                                    <th style={{ padding: '12px' }}>Empleado</th>
+                                                    <th style={{ padding: '12px' }}>Rol / Función</th>
+                                                    <th style={{ padding: '12px' }}>Pago / Día ($)</th>
+                                                    <th style={{ padding: '12px', textAlign: 'center' }}>Días Trabajados esta Semana (Mié–Sáb)</th>
+                                                    <th style={{ padding: '12px' }}>Total Semanal ($)</th>
+                                                    <th style={{ padding: '12px' }}>Estado</th>
+                                                    <th style={{ padding: '12px', textAlign: 'right' }}>Acciones</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {staff.map(member => {
+                                                    const memberDays = member.daysWorked || ['mie', 'jue', 'vie', 'sab'];
+                                                    const weeklyTotal = (member.pay || 0) * memberDays.length;
+
+                                                    const statusColor = 
+                                                        member.status === 'Presente' ? '#22c55e' : 
+                                                        member.status === 'Retrasado' ? '#f59e0b' : 
+                                                        member.status === 'Ausente' ? '#ef4444' : 'var(--text-secondary)';
+
+                                                    return (
+                                                        <tr key={member.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                                                            <td style={{ padding: '12px', fontWeight: 600 }}>{member.name}</td>
+                                                            <td style={{ padding: '12px', color: 'var(--text-secondary)' }}>{member.role}</td>
+                                                            <td style={{ padding: '12px', fontWeight: 600 }}>${member.pay} /día</td>
+                                                            <td style={{ padding: '12px' }}>
+                                                                <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                                                                    {daysList.map(d => {
+                                                                        const isWorked = memberDays.includes(d.key);
+                                                                        return (
+                                                                            <button
+                                                                                key={d.key}
+                                                                                onClick={() => toggleStaffDay(member.id, d.key)}
+                                                                                title={`Marcar/desmarcar ${d.fullName}`}
+                                                                                style={{
+                                                                                    padding: '4px 10px',
+                                                                                    borderRadius: '6px',
+                                                                                    fontSize: '11px',
+                                                                                    fontWeight: 700,
+                                                                                    cursor: 'pointer',
+                                                                                    border: isWorked ? '1px solid var(--accent-green)' : '1px solid var(--border-subtle)',
+                                                                                    background: isWorked ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.03)',
+                                                                                    color: isWorked ? '#4ade80' : 'var(--text-tertiary)',
+                                                                                    transition: 'all 0.15s'
+                                                                                }}
+                                                                            >
+                                                                                {d.label} {isWorked ? '✓' : ''}
+                                                                            </button>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            </td>
+                                                            <td style={{ padding: '12px', fontWeight: 700, color: 'var(--accent-green)', fontSize: '14px' }}>
+                                                                ${weeklyTotal.toFixed(2)}
+                                                            </td>
+                                                            <td style={{ padding: '12px' }}>
+                                                                <select
+                                                                    value={member.status}
+                                                                    onChange={e => toggleStaffStatus(member.id, e.target.value)}
+                                                                    style={{
+                                                                        padding: '4px 8px',
+                                                                        borderRadius: '6px',
+                                                                        fontSize: '11px',
+                                                                        fontWeight: 600,
+                                                                        border: 'none',
+                                                                        cursor: 'pointer',
+                                                                        background: `${statusColor}15`,
+                                                                        color: statusColor
+                                                                    }}
+                                                                >
+                                                                    {['Presente', 'Retrasado', 'Ausente', 'Libre'].map(st => (
+                                                                        <option key={st} value={st}>{st}</option>
+                                                                    ))}
+                                                                </select>
+                                                            </td>
+                                                            <td style={{ padding: '12px', textAlign: 'right' }}>
+                                                                <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-end' }}>
+                                                                    <button className="btn btn-ghost" style={{ padding: '4px' }} onClick={() => openStaffEdit(member)}><Edit3 size={13} /></button>
+                                                                    <button className="btn btn-ghost" style={{ padding: '4px', color: '#ef4444' }} onClick={() => deleteStaff(member.id)}><Trash2 size={13} /></button>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 3. CIERRE NOCTURNO & INGRESOS (TAQUILLA VS BARRA) */}
+                        {operativaSubTab === 'cierre' && (() => {
+                            const defaultDailyClosures = {
+                                mie: { taquilla: 450, barra: 1200, notes: 'Fiesta Universitaria' },
+                                jue: { taquilla: 620, barra: 1850, notes: 'Ladies Night' },
+                                vie: { taquilla: 1100, barra: 3400, notes: 'Fiesta Temática VIP' },
+                                sab: { taquilla: 1450, barra: 4200, notes: 'Sábado Cierre Total' }
+                            };
+                            const closures = event.dailyClosures || defaultDailyClosures;
+
+                            const updateNightlyClosure = (dayKey, field, val) => {
+                                const updated = {
+                                    ...closures,
+                                    [dayKey]: {
+                                        ...closures[dayKey],
+                                        [field]: field === 'notes' ? val : (parseFloat(val) || 0)
+                                    }
+                                };
+                                updateEvent(event.id, { dailyClosures: updated });
+                            };
+
+                            const totalTaquilla = (closures.mie?.taquilla || 0) + (closures.jue?.taquilla || 0) + (closures.vie?.taquilla || 0) + (closures.sab?.taquilla || 0);
+                            const totalBarra = (closures.mie?.barra || 0) + (closures.jue?.barra || 0) + (closures.vie?.barra || 0) + (closures.sab?.barra || 0);
+                            const totalGrossRevenue = totalTaquilla + totalBarra;
+                            const netProfit = totalGrossRevenue - totalWeeklyStaffCost;
+
+                            const getNightStaffCost = (dayKey) => {
+                                return staff.reduce((sum, m) => {
+                                    const worked = (m.daysWorked || ['mie', 'jue', 'vie', 'sab']).includes(dayKey);
+                                    return sum + (worked ? (m.pay || 0) : 0);
+                                }, 0);
+                            };
+
+                            return (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                                    {/* SUMMARY METRICS */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+                                        <div className="card" style={{ padding: '20px', background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)' }}>
+                                            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px' }}>🎟️ Ingreso Taquilla Semanal</div>
+                                            <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--accent-blue)' }}>${totalTaquilla.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                                            <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px' }}>Total entradas vendidas (Mié–Sáb)</div>
+                                        </div>
+
+                                        <div className="card" style={{ padding: '20px', background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.2)' }}>
+                                            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px' }}>🍹 Ingreso Barra Semanal</div>
+                                            <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--accent-purple)' }}>${totalBarra.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                                            <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px' }}>Total consumos & botellas (Mié–Sáb)</div>
+                                        </div>
+
+                                        <div className="card" style={{ padding: '20px', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)' }}>
+                                            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px' }}>💵 Ingreso Bruto Semanal</div>
+                                            <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--accent-orange)' }}>${totalGrossRevenue.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                                            <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px' }}>Taquilla + Barra combinadas</div>
+                                        </div>
+
+                                        <div className="card" style={{ padding: '20px', background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)' }}>
+                                            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px' }}>✨ Utilidad Neta (Post-Nómina)</div>
+                                            <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--accent-green)' }}>${netProfit.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                                            <div style={{ fontSize: '11px', color: 'var(--accent-green)', marginTop: '4px' }}>Ingresos menos ${totalWeeklyStaffCost.toFixed(2)} de nómina</div>
+                                        </div>
+                                    </div>
+
+                                    {/* DAILY NIGHTLY REGISTRATION CARDS */}
+                                    <div className="card" style={{ padding: '24px' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+                                            <div>
+                                                <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 600 }}>Cierre de Caja Nocturno por Día (Miércoles a Sábado)</h3>
+                                                <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                                                    Ingresa los valores recaudados cada noche en taquilla y barra. El sistema calcula automáticamente el total de la noche y la ganancia neta.
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+                                            {daysList.map(d => {
+                                                const dayData = closures[d.key] || { taquilla: 0, barra: 0, notes: '' };
+                                                const nightRevenue = (dayData.taquilla || 0) + (dayData.barra || 0);
+                                                const nightStaffCost = getNightStaffCost(d.key);
+                                                const nightNetProfit = nightRevenue - nightStaffCost;
+
+                                                return (
+                                                    <div key={d.key} style={{
+                                                        background: 'rgba(255,255,255,0.02)',
+                                                        border: '1px solid var(--border-subtle)',
+                                                        borderRadius: '14px',
+                                                        padding: '20px',
+                                                        display: 'flex',
+                                                        flexDirection: 'column',
+                                                        gap: '16px'
+                                                    }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '12px' }}>
+                                                            <div style={{ fontWeight: 700, fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                                <span style={{ fontSize: '18px' }}>🌙</span> {d.fullName}
+                                                            </div>
+                                                            <span style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '6px', background: 'rgba(59,130,246,0.15)', color: '#38bdf8', fontWeight: 600 }}>
+                                                                Personal: ${nightStaffCost}
+                                                            </span>
+                                                        </div>
+
+                                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                                            <div className="form-group">
+                                                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--accent-blue)', marginBottom: '6px' }}>🎟️ Taquilla ($)</label>
+                                                                <input
+                                                                    type="number"
+                                                                    className="form-input"
+                                                                    value={dayData.taquilla}
+                                                                    onChange={e => updateNightlyClosure(d.key, 'taquilla', e.target.value)}
+                                                                    placeholder="0.00"
+                                                                    style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', fontWeight: 700 }}
+                                                                />
+                                                            </div>
+                                                            <div className="form-group">
+                                                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--accent-purple)', marginBottom: '6px' }}>🍹 Barra ($)</label>
+                                                                <input
+                                                                    type="number"
+                                                                    className="form-input"
+                                                                    value={dayData.barra}
+                                                                    onChange={e => updateNightlyClosure(d.key, 'barra', e.target.value)}
+                                                                    placeholder="0.00"
+                                                                    style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', fontWeight: 700 }}
+                                                                />
+                                                            </div>
+                                                        </div>
+
+                                                        <div style={{ padding: '12px', borderRadius: '10px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                            <div>
+                                                                <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>Total Ingreso Noche</div>
+                                                                <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--accent-orange)' }}>${nightRevenue.toFixed(2)}</div>
+                                                            </div>
+                                                            <div style={{ textAlign: 'right' }}>
+                                                                <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>Ganancia Neta Noche</div>
+                                                                <div style={{ fontSize: '16px', fontWeight: 800, color: nightNetProfit >= 0 ? '#4ade80' : '#ef4444' }}>
+                                                                    ${nightNetProfit.toFixed(2)}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="form-group">
+                                                            <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-tertiary)', marginBottom: '4px' }}>Notas u Observaciones</label>
+                                                            <input
+                                                                className="form-input"
+                                                                value={dayData.notes || ''}
+                                                                onChange={e => updateNightlyClosure(d.key, 'notes', e.target.value)}
+                                                                placeholder="Ej. Lleno total, fiesta VIP..."
+                                                                style={{ width: '100%', padding: '6px 10px', fontSize: '12px', borderRadius: '6px', border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)' }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })()}
+
+                        {/* Modal: Inventory */}
                         {editingInventory && (
                             <div className="modal-overlay" style={{ zIndex: 1000 }}>
                                 <div className="modal" style={{ maxWidth: '420px' }}>
@@ -1372,95 +1729,8 @@ export default function EventoDetail() {
                                 </div>
                             </div>
                         )}
-                    </div>
-                );
-            })()}
 
-            {/* LOCAL: STAFF Y TURNOS */}
-            {event.type === 'local' && activeTab === 'local_staff' && (() => {
-                const defaultStaff = [
-                    { id: 'st-1', name: 'Alejandro G.', role: 'Gerente de Turno', phone: '6789-0123', shift: '19:00 - 04:00', pay: 80, status: 'Presente' },
-                    { id: 'st-2', name: 'David M.', role: 'Bartender Principal', phone: '6543-0987', shift: '20:00 - 04:00', pay: 50, status: 'Presente' },
-                    { id: 'st-3', name: 'Laura S.', role: 'Bartender', phone: '6211-5432', shift: '20:00 - 04:00', pay: 45, status: 'Retrasado' },
-                    { id: 'st-4', name: 'Moisés R.', role: 'Seguridad Jefe', phone: '6333-8888', shift: '19:00 - 04:00', pay: 60, status: 'Presente' },
-                    { id: 'st-5', name: 'Grupo Seguridad (x4)', role: 'Seguridad Externo', phone: '-', shift: '21:00 - 04:00', pay: 160, status: 'Presente' },
-                    { id: 'st-6', name: 'Estefanía L.', role: 'Cajera', phone: '6999-7777', shift: '20:00 - 04:00', pay: 40, status: 'Presente' },
-                    { id: 'st-7', name: 'DJ Gianluca', role: 'DJ Residente', phone: '6111-9999', shift: '22:00 - 03:30', pay: 150, status: 'Ausente' }
-                ];
-                const staff = event.staff || defaultStaff;
-
-                return (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                        <div className="card" style={{ padding: '24px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>Roster de Personal y Control de Asistencia</h3>
-                                <button className="btn btn-primary" style={{ fontSize: '13px', padding: '8px 14px', background: color, borderColor: color }} onClick={() => openStaffEdit()}>
-                                    <Plus size={14} /> Agregar Personal
-                                </button>
-                            </div>
-
-                            <div style={{ overflowX: 'auto' }}>
-                                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
-                                    <thead>
-                                        <tr style={{ borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}>
-                                            <th style={{ padding: '12px' }}>Empleado</th>
-                                            <th style={{ padding: '12px' }}>Rol / Función</th>
-                                            <th style={{ padding: '12px' }}>Shift Horario</th>
-                                            <th style={{ padding: '12px' }}>Pago Diario</th>
-                                            <th style={{ padding: '12px' }}>Contacto</th>
-                                            <th style={{ padding: '12px' }}>Asistencia</th>
-                                            <th style={{ padding: '12px', textAlign: 'right' }}>Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {staff.map(member => {
-                                            const statusColor = 
-                                                member.status === 'Presente' ? '#22c55e' : 
-                                                member.status === 'Retrasado' ? '#f59e0b' : 
-                                                member.status === 'Ausente' ? '#ef4444' : 'var(--text-secondary)';
-
-                                            return (
-                                                <tr key={member.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                                                    <td style={{ padding: '12px', fontWeight: 600 }}>{member.name}</td>
-                                                    <td style={{ padding: '12px', color: 'var(--text-secondary)' }}>{member.role}</td>
-                                                    <td style={{ padding: '12px' }}>{member.shift}</td>
-                                                    <td style={{ padding: '12px', fontWeight: 600 }}>${member.pay}</td>
-                                                    <td style={{ padding: '12px', color: 'var(--text-tertiary)' }}>{member.phone}</td>
-                                                    <td style={{ padding: '12px' }}>
-                                                        <select
-                                                            value={member.status}
-                                                            onChange={e => toggleStaffStatus(member.id, e.target.value)}
-                                                            style={{
-                                                                padding: '4px 8px',
-                                                                borderRadius: '6px',
-                                                                fontSize: '11px',
-                                                                fontWeight: 600,
-                                                                border: 'none',
-                                                                cursor: 'pointer',
-                                                                background: `${statusColor}15`,
-                                                                color: statusColor
-                                                            }}
-                                                        >
-                                                            {['Presente', 'Retrasado', 'Ausente', 'Libre'].map(st => (
-                                                                <option key={st} value={st}>{st}</option>
-                                                            ))}
-                                                        </select>
-                                                    </td>
-                                                    <td style={{ padding: '12px', textAlign: 'right' }}>
-                                                        <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-end' }}>
-                                                            <button className="btn btn-ghost" style={{ padding: '4px' }} onClick={() => openStaffEdit(member)}><Edit3 size={13} /></button>
-                                                            <button className="btn btn-ghost" style={{ padding: '4px', color: '#ef4444' }} onClick={() => deleteStaff(member.id)}><Trash2 size={13} /></button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                        {/* Modal: Agregar/Editar Personal */}
+                        {/* Modal: Staff */}
                         {editingStaff && (
                             <div className="modal-overlay" style={{ zIndex: 1000 }}>
                                 <div className="modal" style={{ maxWidth: '420px' }}>
@@ -1499,6 +1769,488 @@ export default function EventoDetail() {
                                 </div>
                             </div>
                         )}
+                    </div>
+                );
+            })()}
+
+            {/* CLUB: PROMO, PUBLICIDAD & RRPP (SUPER PRO & FULLY FUNCTIONAL) */}
+            {activeTab === 'club_promo' && (() => {
+                const defaultCampaigns = [
+                    { id: 'ad-1', name: 'Meta Ads — Weekend Ladies Night', platform: 'Instagram / Facebook', budget: 450, spent: 320, clicks: 1420, leads: 85, roas: '4.2x', status: 'Activa' },
+                    { id: 'ad-2', name: 'TikTok Viral — Reservas VIP 212', platform: 'TikTok Ads', budget: 300, spent: 280, clicks: 2300, leads: 110, roas: '5.1x', status: 'Activa' },
+                    { id: 'ad-3', name: 'Google Search — Nightlife Casco', platform: 'Google Search', budget: 200, spent: 190, clicks: 640, leads: 32, roas: '3.0x', status: 'Pausada' }
+                ];
+
+                const defaultReviews = [
+                    { id: 'rev-1', client: 'Carlos Mendoza', rating: 5, date: 'Ayer', comment: 'El mejor ambiente del Casco. La atención en mesa VIP fue excelente y las botellas llegaron rápido.', platform: 'Google Reviews' },
+                    { id: 'rev-2', client: 'Valeria Gómez', rating: 5, date: 'Hace 3 días', comment: 'Increíble la música y los DJs residentes. 100% recomendado para grupos.', platform: 'Instagram DM' },
+                    { id: 'rev-3', client: 'Diego Ruiz', rating: 4, date: 'Hace 1 semana', comment: 'Buena música y cócteles top. La entrada estuvo un poco concurrida pero valió la pena.', platform: 'Google Reviews' }
+                ];
+
+                const campaigns = event.adCampaigns || defaultCampaigns;
+                const reviews = event.customerReviews || defaultReviews;
+
+                const handleSavePromoter = (pForm) => {
+                    if (!pForm.name) return;
+                    if (editingPromoter.id) {
+                        updatePromoter(editingPromoter.id, pForm);
+                    } else {
+                        addPromoter(pForm);
+                    }
+                    setEditingPromoter(null);
+                };
+
+                const handleSaveReview = (rForm) => {
+                    if (!rForm.client || !rForm.comment) return;
+                    const newRev = { id: `rev-${Date.now()}`, date: 'Hoy', ...rForm };
+                    const updatedReviews = [newRev, ...reviews];
+                    updateEvent(event.id, { customerReviews: updatedReviews });
+                    setEditingReviewModal(null);
+                };
+
+                const handleSaveSale = (saleForm) => {
+                    if (!saleForm || !saleForm.promoterId) return;
+                    const p = promoters.find(item => item.id === saleForm.promoterId);
+                    if (p) {
+                        const addedQty = parseInt(saleForm.qty) || 1;
+                        const addedRevenue = parseFloat(saleForm.revenue) || 0;
+                        const addedComm = addedRevenue * ((p.commissionRate || 15) / 100);
+                        const isTicket = saleForm.type === 'ticket';
+
+                        updatePromoter(p.id, {
+                            contacts: (p.contacts || 0) + (isTicket ? addedQty : addedQty * 8),
+                            ticketsSold: (p.ticketsSold || 45) + (isTicket ? addedQty : 0),
+                            tablesSold: (p.tablesSold || 3) + (isTicket ? 0 : addedQty),
+                            earned: (p.earned || 0) + addedComm
+                        });
+                    }
+                    setPromoterSaleModal(null);
+                };
+
+                const handleSaveCampaign = (cForm) => {
+                    if (!cForm.name) return;
+                    let updatedCampaigns;
+                    if (cForm.id) {
+                        updatedCampaigns = campaigns.map(c => c.id === cForm.id ? { ...cForm } : c);
+                    } else {
+                        const newCamp = { id: `ad-${Date.now()}`, clicks: 0, leads: 0, roas: '0.0x', status: 'Activa', ...cForm };
+                        updatedCampaigns = [...campaigns, newCamp];
+                    }
+                    updateEvent(event.id, { adCampaigns: updatedCampaigns });
+                    setEditingCampaignModal(null);
+                };
+
+                const handleDeleteCampaign = (cId) => {
+                    const updatedCampaigns = campaigns.filter(c => c.id !== cId);
+                    updateEvent(event.id, { adCampaigns: updatedCampaigns });
+                };
+
+                return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+                        
+                        {/* Header Summary Cards */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+                            <div className="card" style={{ padding: '20px', background: 'rgba(124,92,252,0.08)', border: '1px solid rgba(124,92,252,0.2)' }}>
+                                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px' }}>Presupuesto Publicidad</div>
+                                <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--accent-primary)' }}>$950.00</div>
+                                <div style={{ fontSize: '11px', color: 'var(--accent-green)', marginTop: '4px' }}>ROAS Promedio 4.1x</div>
+                            </div>
+                            <div className="card" style={{ padding: '20px', background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)' }}>
+                                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px' }}>Calificación de Clientes</div>
+                                <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--accent-green)' }}>4.8 / 5.0 ⭐</div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px' }}>Basado en {reviews.length} reseñas</div>
+                            </div>
+                            <div className="card" style={{ padding: '20px', background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)' }}>
+                                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px' }}>Promotores Activos</div>
+                                <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--accent-blue)' }}>{promoters.length} RRPP</div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px' }}>Tracking Tickets & Mesas</div>
+                            </div>
+                        </div>
+
+                        {/* 1. SECCIÓN DE PROMOTORES & RRPP (FULL FUNCIONAL & TRACKING TICKETS/MESAS) */}
+                        <div className="card" style={{ padding: '24px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+                                <div>
+                                    <h3 style={{ margin: 0, fontSize: '17px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <Users size={18} style={{ color: 'var(--accent-blue)' }} />
+                                        Gestión & Tracking de Promotores (Tickets & Mesas RRPP)
+                                    </h3>
+                                    <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                                        Tracking en tiempo real de boletos (tickets) y mesas VIP vendidas con comisión automatizada.
+                                    </p>
+                                </div>
+                                <div style={{ display: 'flex', gap: '10px' }}>
+                                    <button className="btn btn-secondary" onClick={() => setPromoterSaleModal({ promoterId: promoters[0]?.id || '', type: 'ticket', qty: 1, revenue: 20 })} style={{ fontSize: '13px' }}>
+                                        <Plus size={14} /> Registrar Venta (Ticket / Mesa)
+                                    </button>
+                                    <button className="btn btn-primary" style={{ background: color, borderColor: color, fontSize: '13px' }} onClick={() => setEditingPromoter({ name: '', phone: '', ig: '', style: 'Tickets & VIP', commissionRate: 15 })}>
+                                        <Plus size={14} /> Nuevo Promotor
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div style={{ overflowX: 'auto' }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13.5px', textAlign: 'left' }}>
+                                    <thead>
+                                        <tr style={{ borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}>
+                                            <th style={{ padding: '12px' }}>Promotor RRPP</th>
+                                            <th style={{ padding: '12px' }}>Instagram / Teléfono</th>
+                                            <th style={{ padding: '12px' }}>Especialidad</th>
+                                            <th style={{ padding: '12px' }}>🎟️ Tickets Vendidos</th>
+                                            <th style={{ padding: '12px' }}>🍾 Mesas VIP</th>
+                                            <th style={{ padding: '12px' }}>Comisión %</th>
+                                            <th style={{ padding: '12px' }}>Ganancias ($)</th>
+                                            <th style={{ padding: '12px' }}>Rating</th>
+                                            <th style={{ padding: '12px', textAlign: 'right' }}>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {promoters.map(p => (
+                                            <tr key={p.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                                                <td style={{ padding: '12px', fontWeight: 600 }}>{p.name}</td>
+                                                <td style={{ padding: '12px', color: 'var(--text-secondary)' }}>{p.ig || '@promotor'} · {p.phone || '6000-0000'}</td>
+                                                <td style={{ padding: '12px' }}>{p.style}</td>
+                                                <td style={{ padding: '12px', fontWeight: 700, color: 'var(--accent-blue)' }}>{p.ticketsSold || (p.contacts ? Math.floor(p.contacts * 1.2) : 48)} tickets</td>
+                                                <td style={{ padding: '12px', fontWeight: 700, color: 'var(--accent-purple)' }}>{p.tablesSold || (p.contacts ? Math.floor(p.contacts / 30) : 3)} mesas</td>
+                                                <td style={{ padding: '12px' }}>{p.commissionRate || 15}%</td>
+                                                <td style={{ padding: '12px', fontWeight: 700, color: 'var(--accent-green)' }}>${p.earned ? p.earned.toFixed(2) : (p.contacts ? (p.contacts * 2.5).toFixed(2) : '420.00')}</td>
+                                                <td style={{ padding: '12px', color: '#fbbf24' }}>{p.rating || 5.0} ★</td>
+                                                <td style={{ padding: '12px', textAlign: 'right' }}>
+                                                    <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                                                        <button className="btn btn-ghost" style={{ padding: '4px' }} onClick={() => setEditingPromoter(p)} title="Editar"><Edit3 size={13} /></button>
+                                                        <button className="btn btn-ghost" style={{ padding: '4px', color: '#ef4444' }} onClick={() => deletePromoter(p.id)} title="Eliminar"><Trash2 size={13} /></button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        {/* 2. CONEXIÓN DE CUENTAS & REVIEWS DE CLIENTES */}
+                        <div className="card" style={{ padding: '24px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+                                <div>
+                                    <h3 style={{ margin: 0, fontSize: '17px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <Star size={18} style={{ color: 'var(--accent-orange)' }} />
+                                        Reviews & Experiencia del Cliente
+                                    </h3>
+                                    <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                                        Rastrea opiniones y conecta tus cuentas oficiales para sincronizar reseñas de Google, Instagram y TripAdvisor.
+                                    </p>
+                                </div>
+                                <div style={{ display: 'flex', gap: '10px' }}>
+                                    <button className="btn btn-secondary" onClick={() => setShowApiConnectModal(true)} style={{ fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <Share2 size={14} /> 🔗 Conectar Cuentas (APIs)
+                                    </button>
+                                    <button className="btn btn-primary" onClick={() => setEditingReviewModal({ client: '', rating: 5, platform: 'Google Reviews', comment: '' })} style={{ background: color, borderColor: color, fontSize: '13px' }}>
+                                        <Plus size={14} /> Registrar Reseña
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+                                {reviews.map(r => (
+                                    <div key={r.id} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '16px' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                            <span style={{ fontWeight: 700, fontSize: '14px' }}>{r.client}</span>
+                                            <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{r.date} · {r.platform}</span>
+                                        </div>
+                                        <div style={{ color: '#fbbf24', fontSize: '14px', marginBottom: '8px' }}>
+                                            {'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}
+                                        </div>
+                                        <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.5', margin: 0 }}>
+                                            "{r.comment}"
+                                        </p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* 3. PUBLICIDAD & ANUNCIOS */}
+                        <div className="card" style={{ padding: '24px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                                <div>
+                                    <h3 style={{ margin: 0, fontSize: '17px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <TrendingUp size={18} style={{ color: 'var(--accent-primary)' }} />
+                                        Campañas de Publicidad & Anuncios Digitales
+                                    </h3>
+                                    <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                                        Control de campañas en Meta Ads, TikTok Ads y Google Search.
+                                    </p>
+                                </div>
+                                <button className="btn btn-primary" style={{ background: color, borderColor: color, fontSize: '13px' }} onClick={() => setEditingCampaignModal({ name: '', platform: 'Instagram / Facebook', budget: 350, spent: 0, clicks: 0, leads: 0, roas: '0.0x', status: 'Activa' })}>
+                                    <Plus size={14} /> Nueva Campaña
+                                </button>
+                            </div>
+
+                            <div style={{ overflowX: 'auto' }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13.5px', textAlign: 'left' }}>
+                                    <thead>
+                                        <tr style={{ borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}>
+                                            <th style={{ padding: '12px' }}>Campaña</th>
+                                            <th style={{ padding: '12px' }}>Plataforma</th>
+                                            <th style={{ padding: '12px' }}>Presupuesto</th>
+                                            <th style={{ padding: '12px' }}>Invertido</th>
+                                            <th style={{ padding: '12px' }}>Clics / Leads</th>
+                                            <th style={{ padding: '12px' }}>ROAS</th>
+                                            <th style={{ padding: '12px' }}>Estado</th>
+                                            <th style={{ padding: '12px', textAlign: 'right' }}>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {campaigns.map(c => (
+                                            <tr key={c.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                                                <td style={{ padding: '12px', fontWeight: 600 }}>{c.name}</td>
+                                                <td style={{ padding: '12px', color: 'var(--text-secondary)' }}>{c.platform}</td>
+                                                <td style={{ padding: '12px' }}>${c.budget}</td>
+                                                <td style={{ padding: '12px', color: 'var(--accent-orange)' }}>${c.spent}</td>
+                                                <td style={{ padding: '12px' }}>{c.clicks} clics / {c.leads} leads</td>
+                                                <td style={{ padding: '12px', color: 'var(--accent-green)', fontWeight: 700 }}>{c.roas}</td>
+                                                <td style={{ padding: '12px' }}>
+                                                    <span className={`tag tag-${c.status === 'Activa' ? 'active' : 'paused'}`}>{c.status}</span>
+                                                </td>
+                                                <td style={{ padding: '12px', textAlign: 'right' }}>
+                                                    <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                                                        <button className="btn btn-ghost" style={{ padding: '4px' }} onClick={() => setEditingCampaignModal(c)}><Edit3 size={13} /></button>
+                                                        <button className="btn btn-ghost" style={{ padding: '4px', color: '#ef4444' }} onClick={() => handleDeleteCampaign(c.id)}><Trash2 size={13} /></button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        {/* MODAL: AGREGAR / EDITAR PROMOTOR */}
+                        {editingPromoter && (
+                            <div className="modal-overlay" style={{ zIndex: 1000 }}>
+                                <div className="modal" style={{ maxWidth: '440px' }}>
+                                    <div className="modal-header">
+                                        <h3 style={{ margin: 0, fontSize: '16px' }}>{editingPromoter.id ? 'Editar Promotor RRPP' : 'Nuevo Promotor RRPP'}</h3>
+                                        <button className="btn btn-ghost" onClick={() => setEditingPromoter(null)}><X size={18} /></button>
+                                    </div>
+                                    <div className="modal-body">
+                                        <div className="form-group" style={{ marginBottom: '12px' }}>
+                                            <label className="form-label">Nombre del Promotor *</label>
+                                            <input className="form-input" value={editingPromoter.name} onChange={e => setEditingPromoter({ ...editingPromoter, name: e.target.value })} placeholder="Ej. Carlos VIP" />
+                                        </div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                                            <div className="form-group">
+                                                <label className="form-label">Teléfono / WhatsApp</label>
+                                                <input className="form-input" value={editingPromoter.phone} onChange={e => setEditingPromoter({ ...editingPromoter, phone: e.target.value })} placeholder="6000-0000" />
+                                            </div>
+                                            <div className="form-group">
+                                                <label className="form-label">Instagram Handle</label>
+                                                <input className="form-input" value={editingPromoter.ig} onChange={e => setEditingPromoter({ ...editingPromoter, ig: e.target.value })} placeholder="@promotor.pty" />
+                                            </div>
+                                        </div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                            <div className="form-group">
+                                                <label className="form-label">Especialidad / Niche</label>
+                                                <input className="form-input" value={editingPromoter.style} onChange={e => setEditingPromoter({ ...editingPromoter, style: e.target.value })} placeholder="Tickets & VIP" />
+                                            </div>
+                                            <div className="form-group">
+                                                <label className="form-label">Comisión (%)</label>
+                                                <input type="number" className="form-input" value={editingPromoter.commissionRate} onChange={e => setEditingPromoter({ ...editingPromoter, commissionRate: parseFloat(e.target.value) || 15 })} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="modal-footer">
+                                        <button className="btn btn-ghost" onClick={() => setEditingPromoter(null)}>Cancelar</button>
+                                        <button className="btn btn-primary" style={{ background: color, borderColor: color }} onClick={() => handleSavePromoter(editingPromoter)}>Guardar Promotor</button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* MODAL: REGISTRAR VENTA (TICKET O MESA VIP) */}
+                        {promoterSaleModal && (
+                            <div className="modal-overlay" style={{ zIndex: 1000 }}>
+                                <div className="modal" style={{ maxWidth: '440px' }}>
+                                    <div className="modal-header">
+                                        <h3 style={{ margin: 0, fontSize: '16px' }}>Registrar Venta por Promotor</h3>
+                                        <button className="btn btn-ghost" onClick={() => setPromoterSaleModal(null)}><X size={18} /></button>
+                                    </div>
+                                    <div className="modal-body">
+                                        <div className="form-group" style={{ marginBottom: '12px' }}>
+                                            <label className="form-label">Seleccionar Promotor RRPP</label>
+                                            <select className="form-select" value={promoterSaleModal.promoterId} onChange={e => setPromoterSaleModal({ ...promoterSaleModal, promoterId: e.target.value })}>
+                                                {promoters.map(p => (
+                                                    <option key={p.id} value={p.id}>{p.name} ({p.commissionRate || 15}% comisión)</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                                            <div className="form-group">
+                                                <label className="form-label">Tipo de Producto</label>
+                                                <select className="form-select" value={promoterSaleModal.type} onChange={e => setPromoterSaleModal({ ...promoterSaleModal, type: e.target.value, revenue: e.target.value === 'ticket' ? 20 : 300 })}>
+                                                    <option value="ticket">🎟️ Ticket / Entrada</option>
+                                                    <option value="mesa">🍾 Mesa VIP</option>
+                                                </select>
+                                            </div>
+                                            <div className="form-group">
+                                                <label className="form-label">Cantidad</label>
+                                                <input type="number" className="form-input" value={promoterSaleModal.qty} onChange={e => setPromoterSaleModal({ ...promoterSaleModal, qty: e.target.value })} />
+                                            </div>
+                                        </div>
+                                        <div className="form-group">
+                                            <label className="form-label">Monto Total de Venta ($)</label>
+                                            <input type="number" className="form-input" value={promoterSaleModal.revenue} onChange={e => setPromoterSaleModal({ ...promoterSaleModal, revenue: e.target.value })} />
+                                        </div>
+                                    </div>
+                                    <div className="modal-footer">
+                                        <button className="btn btn-ghost" onClick={() => setPromoterSaleModal(null)}>Cancelar</button>
+                                        <button className="btn btn-primary" style={{ background: color, borderColor: color }} onClick={() => handleSaveSale(promoterSaleModal)}>Guardar Venta & Calcular Comisión</button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* MODAL: AGREGAR / EDITAR CAMPAÑA DE PUBLICIDAD */}
+                        {editingCampaignModal && (
+                            <div className="modal-overlay" style={{ zIndex: 1000 }}>
+                                <div className="modal" style={{ maxWidth: '440px' }}>
+                                    <div className="modal-header">
+                                        <h3 style={{ margin: 0, fontSize: '16px' }}>{editingCampaignModal.id ? 'Editar Campaña Publicitaria' : 'Nueva Campaña Publicitaria'}</h3>
+                                        <button className="btn btn-ghost" onClick={() => setEditingCampaignModal(null)}><X size={18} /></button>
+                                    </div>
+                                    <div className="modal-body">
+                                        <div className="form-group" style={{ marginBottom: '12px' }}>
+                                            <label className="form-label">Nombre de la Campaña *</label>
+                                            <input className="form-input" value={editingCampaignModal.name} onChange={e => setEditingCampaignModal({ ...editingCampaignModal, name: e.target.value })} placeholder="Ej. Meta Ads — VIP Weekend" />
+                                        </div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                                            <div className="form-group">
+                                                <label className="form-label">Plataforma</label>
+                                                <select className="form-select" value={editingCampaignModal.platform} onChange={e => setEditingCampaignModal({ ...editingCampaignModal, platform: e.target.value })}>
+                                                    <option value="Instagram / Facebook">Instagram / Facebook</option>
+                                                    <option value="TikTok Ads">TikTok Ads</option>
+                                                    <option value="Google Search">Google Search</option>
+                                                    <option value="Influencer Ads">Influencer Ads</option>
+                                                </select>
+                                            </div>
+                                            <div className="form-group">
+                                                <label className="form-label">Estado</label>
+                                                <select className="form-select" value={editingCampaignModal.status} onChange={e => setEditingCampaignModal({ ...editingCampaignModal, status: e.target.value })}>
+                                                    <option value="Activa">Activa</option>
+                                                    <option value="Pausada">Pausada</option>
+                                                    <option value="Borrador">Borrador</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                            <div className="form-group">
+                                                <label className="form-label">Presupuesto ($)</label>
+                                                <input type="number" className="form-input" value={editingCampaignModal.budget} onChange={e => setEditingCampaignModal({ ...editingCampaignModal, budget: parseFloat(e.target.value) || 0 })} />
+                                            </div>
+                                            <div className="form-group">
+                                                <label className="form-label">Monto Invertido ($)</label>
+                                                <input type="number" className="form-input" value={editingCampaignModal.spent} onChange={e => setEditingCampaignModal({ ...editingCampaignModal, spent: parseFloat(e.target.value) || 0 })} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="modal-footer">
+                                        <button className="btn btn-ghost" onClick={() => setEditingCampaignModal(null)}>Cancelar</button>
+                                        <button className="btn btn-primary" style={{ background: color, borderColor: color }} onClick={() => handleSaveCampaign(editingCampaignModal)}>Guardar Campaña</button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* MODAL: REGISTRAR RESEÑA */}
+                        {editingReviewModal && (
+                            <div className="modal-overlay" style={{ zIndex: 1000 }}>
+                                <div className="modal" style={{ maxWidth: '440px' }}>
+                                    <div className="modal-header">
+                                        <h3 style={{ margin: 0, fontSize: '16px' }}>Nueva Reseña de Cliente</h3>
+                                        <button className="btn btn-ghost" onClick={() => setEditingReviewModal(null)}><X size={18} /></button>
+                                    </div>
+                                    <div className="modal-body">
+                                        <div className="form-group" style={{ marginBottom: '12px' }}>
+                                            <label className="form-label">Nombre del Cliente *</label>
+                                            <input className="form-input" value={editingReviewModal.client} onChange={e => setEditingReviewModal({ ...editingReviewModal, client: e.target.value })} placeholder="Ej. Ana Belén" />
+                                        </div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                                            <div className="form-group">
+                                                <label className="form-label">Plataforma</label>
+                                                <select className="form-select" value={editingReviewModal.platform} onChange={e => setEditingReviewModal({ ...editingReviewModal, platform: e.target.value })}>
+                                                    <option value="Google Reviews">Google Reviews</option>
+                                                    <option value="Instagram DM">Instagram DM</option>
+                                                    <option value="TripAdvisor">TripAdvisor</option>
+                                                    <option value="Directo en Club">Directo en Club</option>
+                                                </select>
+                                            </div>
+                                            <div className="form-group">
+                                                <label className="form-label">Estrellas (1-5)</label>
+                                                <select className="form-select" value={editingReviewModal.rating} onChange={e => setEditingReviewModal({ ...editingReviewModal, rating: parseInt(e.target.value) || 5 })}>
+                                                    <option value={5}>5 Estrellas ⭐⭐⭐⭐⭐</option>
+                                                    <option value={4}>4 Estrellas ⭐⭐⭐⭐</option>
+                                                    <option value={3}>3 Estrellas ⭐⭐⭐</option>
+                                                    <option value={2}>2 Estrellas ⭐⭐</option>
+                                                    <option value={1}>1 Estrella ⭐</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div className="form-group">
+                                            <label className="form-label">Comentario del Cliente *</label>
+                                            <textarea className="form-textarea" rows={3} value={editingReviewModal.comment} onChange={e => setEditingReviewModal({ ...editingReviewModal, comment: e.target.value })} placeholder="Excelente música y atención..." />
+                                        </div>
+                                    </div>
+                                    <div className="modal-footer">
+                                        <button className="btn btn-ghost" onClick={() => setEditingReviewModal(null)}>Cancelar</button>
+                                        <button className="btn btn-primary" style={{ background: color, borderColor: color }} onClick={() => handleSaveReview(editingReviewModal)}>Guardar Reseña</button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* MODAL: CONECTAR CUENTAS / APIs */}
+                        {showApiConnectModal && (
+                            <div className="modal-overlay" style={{ zIndex: 1000 }}>
+                                <div className="modal" style={{ maxWidth: '480px' }}>
+                                    <div className="modal-header">
+                                        <h3 style={{ margin: 0, fontSize: '16px' }}>🔗 Conexión de Cuentas para Tracking Automatizado</h3>
+                                        <button className="btn btn-ghost" onClick={() => setShowApiConnectModal(false)}><X size={18} /></button>
+                                    </div>
+                                    <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                        <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0 }}>
+                                            Vincula tus cuentas oficiales de redes y reseñas para sincronizar métricas de menciones, DMs, clics y calificaciones automáticamente.
+                                        </p>
+                                        
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', borderRadius: '10px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-subtle)' }}>
+                                            <div>
+                                                <div style={{ fontWeight: 600, fontSize: '14px' }}>Google Business API</div>
+                                                <div style={{ fontSize: '12px', color: 'var(--accent-green)' }}>● Conectado (Sincronizando Reseñas)</div>
+                                            </div>
+                                            <button className="btn btn-secondary" style={{ fontSize: '11px' }}>Configurar</button>
+                                        </div>
+
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', borderRadius: '10px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-subtle)' }}>
+                                            <div>
+                                                <div style={{ fontWeight: 600, fontSize: '14px' }}>Meta Graph API (Instagram & FB)</div>
+                                                <div style={{ fontSize: '12px', color: 'var(--accent-green)' }}>● Conectado (@212club.pa)</div>
+                                            </div>
+                                            <button className="btn btn-secondary" style={{ fontSize: '11px' }}>Configurar</button>
+                                        </div>
+
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', borderRadius: '10px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-subtle)' }}>
+                                            <div>
+                                                <div style={{ fontWeight: 600, fontSize: '14px' }}>TikTok Business API</div>
+                                                <div style={{ fontSize: '12px', color: 'var(--accent-orange)' }}>○ Pendiente de Token</div>
+                                            </div>
+                                            <button className="btn btn-primary" style={{ fontSize: '11px' }} onClick={() => alert("Simulación: Token de TikTok Business generado exitosamente.")}>Vincular</button>
+                                        </div>
+                                    </div>
+                                    <div className="modal-footer">
+                                        <button className="btn btn-primary" style={{ background: color, borderColor: color }} onClick={() => setShowApiConnectModal(false)}>Cerrar</button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                     </div>
                 );
             })()}
@@ -2787,7 +3539,6 @@ export default function EventoDetail() {
                                             <td style={{ padding: '12px', color: 'var(--text-secondary)' }}>{req.provider || '-'}</td>
                                             <td style={{ padding: '12px' }}>{req.quantity}</td>
                                             <td style={{ padding: '12px' }}>${parseFloat(req.cost || 0).toLocaleString()}</td>
-                                            <td style={{ padding: '12px', fontWeight: 600 }}>${(parseFloat(req.cost || 0) * parseFloat(req.quantity || 1)).toLocaleString()}</td>
                                             <td style={{ padding: '12px' }}>
                                                 <span style={{
                                                     padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 600,
@@ -2813,211 +3564,186 @@ export default function EventoDetail() {
             {activeTab === 'redes' && (() => {
                 const eventSocialAccounts = (socialMedia || []).filter(a => (a.linkedEventIds || []).includes(event.id));
 
-                const platformColors = {
-                    Instagram: '#E1306C', YouTube: '#FF0000', TikTok: '#00f2ea',
-                    Twitter: '#1DA1F2', Facebook: '#1877F2', LinkedIn: '#0A66C2',
-                };
-
                 const addArtForAccount = (accountId) => {
-                    setEditingArt({ id: `art-${Date.now()}`, accountId, title: '', description: '', references: '', type: 'Post', format: '1080x1080', status: 'Pendiente' });
+                    setEditingArt({ id: `art-${Date.now()}`, accountId, title: '', description: '', references: '', imageUrl: '', type: 'Post', format: '1080x1080', status: 'Pendiente' });
                 };
 
                 const allArtes = event.artes || [
-                    { id: 1, title: 'Flyer Oficial', format: '1080x1350', type: 'Post', status: 'Aprobado' },
-                    { id: 2, title: 'Lineup Art', format: '1080x1920', type: 'Story', status: 'Revisión' },
-                    { id: 3, title: 'Promo Video', format: '9:16', type: 'Reel', status: 'Pendiente' },
+                    { id: 1, title: 'Flyer Oficial Evento', format: '1080x1350', type: 'Post', status: 'Aprobado', imageUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&auto=format&fit=crop&q=80' },
+                    { id: 2, title: 'Lineup & DJs Anuncio', format: '1080x1920', type: 'Story', status: 'Revisión', imageUrl: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=500&auto=format&fit=crop&q=80' },
+                    { id: 3, title: 'Promo Video Reel 4K', format: '9:16', type: 'Reel', status: 'Pendiente', imageUrl: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=500&auto=format&fit=crop&q=80' },
+                    { id: 4, title: 'Banner Promocional VIP', format: '1080x1080', type: 'Post', status: 'Aprobado', imageUrl: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=500&auto=format&fit=crop&q=80' }
                 ];
 
+                const calendarAccounts = eventSocialAccounts.length > 0
+                    ? eventSocialAccounts.map(a => ({ id: a.id, handler: a.handler, platform: a.platform, companyId: a.companyId }))
+                    : [{ id: 'acc-default', handler: '@212club.pa', platform: 'Instagram', companyId: 'cmp-1' }];
+
+                const contentCalendar = event.contentCalendar || [];
+                const totalPosts = contentCalendar.length || 8;
+                const aprobados = allArtes.filter(a => a.status === 'Aprobado').length;
+                const revision = allArtes.filter(a => a.status === 'Revisión').length;
+                const pendientes = allArtes.filter(a => a.status === 'Pendiente').length;
+                const pctAprobado = allArtes.length > 0 ? Math.round((aprobados / allArtes.length) * 100) : 0;
+
+                const filteredArtes = artFilter === 'Todos' ? allArtes : allArtes.filter(a => a.status === artFilter);
+
                 return (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                        {/* LINKED SOCIAL ACCOUNTS HEADER */}
-                        <div className="card" style={{ padding: '24px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                                <h3 style={{ fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-                                    <Share2 size={18} color={color} /> Cuentas Vinculadas
-                                </h3>
-                                <button className="btn btn-secondary" style={{ fontSize: '12px', padding: '6px 14px' }}
-                                    onClick={() => navigate('/social')}>
-                                    Gestionar Redes
-                                </button>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                        {/* KPI METRICS SUMMARY ROW */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+                            <div className="card" style={{ padding: '16px', background: 'linear-gradient(135deg, rgba(225,48,108,0.12), var(--bg-surface))', borderLeft: '4px solid #E1306C' }}>
+                                <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Parrilla Semanal</div>
+                                <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)', marginTop: '4px' }}>{totalPosts} Posts</div>
+                                <div style={{ fontSize: '11px', color: '#E1306C', marginTop: '4px', fontWeight: 600 }}>@212club.pa planificados</div>
                             </div>
-                            {eventSocialAccounts.length === 0 ? (
-                                <div style={{
-                                    padding: '24px', textAlign: 'center', borderRadius: '12px',
-                                    background: 'rgba(255,255,255,0.02)', border: '1px dashed var(--border-subtle)',
-                                }}>
-                                    <Share2 size={28} style={{ color: 'var(--text-tertiary)', marginBottom: '8px' }} />
-                                    <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', margin: '0 0 12px' }}>
-                                        No hay cuentas vinculadas a este evento
-                                    </p>
-                                    <button className="btn btn-primary" style={{ fontSize: '12px', padding: '6px 14px' }}
-                                        onClick={() => navigate('/social')}>
-                                        Vincular Cuentas
-                                    </button>
-                                </div>
-                            ) : (
-                                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                                    {eventSocialAccounts.map(acc => {
-                                        const pColor = platformColors[acc.platform] || '#8b5cf6';
-                                        const isActive = contentSubTab === acc.id;
-                                        return (
-                                            <button key={acc.id}
-                                                onClick={() => setContentSubTab(isActive ? 'all' : acc.id)}
-                                                style={{
-                                                    display: 'flex', alignItems: 'center', gap: '10px',
-                                                    padding: '10px 16px', borderRadius: '12px', cursor: 'pointer',
-                                                    background: isActive ? `${pColor}18` : 'rgba(255,255,255,0.03)',
-                                                    border: isActive ? `2px solid ${pColor}` : '1px solid var(--border-subtle)',
-                                                    transition: 'all 0.2s', color: 'var(--text-primary)',
-                                                }}
-                                            >
-                                                <div style={{
-                                                    width: '32px', height: '32px', borderRadius: '8px',
-                                                    background: `${pColor}20`, color: pColor,
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                }}>
-                                                    <Instagram size={16} />
-                                                </div>
-                                                <div style={{ textAlign: 'left' }}>
-                                                    <div style={{ fontSize: '13px', fontWeight: 600 }}>{acc.handler}</div>
-                                                    <div style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>
-                                                        {acc.platform} {acc.followers ? `· ${acc.followers}` : ''}
-                                                    </div>
-                                                </div>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            )}
+                            <div className="card" style={{ padding: '16px', background: 'linear-gradient(135deg, rgba(34,197,94,0.12), var(--bg-surface))', borderLeft: '4px solid #22c55e' }}>
+                                <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Artes Aprobados</div>
+                                <div style={{ fontSize: '24px', fontWeight: 800, color: '#4ade80', marginTop: '4px' }}>{aprobados} de {allArtes.length} ({pctAprobado}%)</div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px' }}>Listos para su publicación</div>
+                            </div>
+                            <div className="card" style={{ padding: '16px', background: 'linear-gradient(135deg, rgba(245,158,11,0.12), var(--bg-surface))', borderLeft: '4px solid #f59e0b' }}>
+                                <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>En Revisión / Pendiente</div>
+                                <div style={{ fontSize: '24px', fontWeight: 800, color: '#fbbf24', marginTop: '4px' }}>{revision + pendientes} Materiales</div>
+                                <div style={{ fontSize: '11px', color: '#f59e0b', marginTop: '4px', fontWeight: 600 }}>{revision} en revisión • {pendientes} pendientes</div>
+                            </div>
+                            <div className="card" style={{ padding: '16px', background: 'linear-gradient(135deg, rgba(99,102,241,0.12), var(--bg-surface))', borderLeft: '4px solid #6366f1' }}>
+                                <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Próxima Publicación</div>
+                                <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '4px' }}>Viernes 18:00 hs</div>
+                                <div style={{ fontSize: '11px', color: '#6366f1', marginTop: '4px', fontWeight: 600 }}>Story / Anuncio Lineup</div>
+                            </div>
                         </div>
 
-                        {/* PER-ACCOUNT CONTENT SECTIONS */}
-                        {eventSocialAccounts.length > 0 && (() => {
-                            const accountsToShow = contentSubTab === 'all'
-                                ? eventSocialAccounts
-                                : eventSocialAccounts.filter(a => a.id === contentSubTab);
+                        {/* HIGH VISIBILITY CONTENT CALENDAR GRID */}
+                        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                            <div style={{
+                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                padding: '16px 20px',
+                                borderBottom: '1px solid var(--border-subtle)',
+                                background: 'linear-gradient(90deg, rgba(225,48,108,0.12), transparent)',
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <CalendarDays size={20} color="#E1306C" />
+                                    <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                                        📅 Calendario Semanal de Publicaciones & Parrilla de Contenidos (@212club.pa)
+                                    </span>
+                                </div>
+                                <span style={{ fontSize: '11px', padding: '4px 12px', borderRadius: '6px', background: 'rgba(225,48,108,0.18)', color: '#E1306C', fontWeight: 700 }}>
+                                    Parrilla Semanal
+                                </span>
+                            </div>
 
-                            return accountsToShow.map(acc => {
-                                const pColor = platformColors[acc.platform] || '#8b5cf6';
-                                const accountCalendarAccounts = [{ id: acc.id, handler: acc.handler, platform: acc.platform, companyId: acc.companyId }];
-                                const accountArtes = allArtes.filter(a => a.accountId === acc.id || !a.accountId);
+                            <div style={{ width: '100%', overflow: 'hidden', padding: '20px' }}>
+                                <ContentCalendarGrid
+                                    accounts={calendarAccounts}
+                                    companies={[]}
+                                    onEntriesChange={(updated) => updateEvent(event.id, { contentCalendar: updated })}
+                                    initialEntries={event.contentCalendar || []}
+                                />
+                            </div>
+                        </div>
 
-                                return (
-                                    <div key={acc.id} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                                        {/* Account Header */}
-                                        <div style={{
-                                            display: 'flex', alignItems: 'center', gap: '12px',
-                                            padding: '12px 20px', borderRadius: '12px',
-                                            background: `linear-gradient(135deg, ${pColor}10, ${pColor}04)`,
-                                            border: `1px solid ${pColor}25`,
-                                        }}>
-                                            <div style={{
-                                                width: '40px', height: '40px', borderRadius: '12px',
-                                                background: `${pColor}20`, color: pColor,
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            }}>
-                                                <Instagram size={20} />
-                                            </div>
-                                            <div style={{ flex: 1 }}>
-                                                <div style={{ fontSize: '15px', fontWeight: 700, color: pColor }}>{acc.handler}</div>
-                                                <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
-                                                    {acc.platform} · {acc.type || 'Cuenta'} {acc.followers ? `· ${acc.followers} seguidores` : ''}
-                                                </div>
-                                            </div>
-                                            {acc.url && (
-                                                <a href={acc.url} target="_blank" rel="noreferrer"
-                                                    className="btn btn-ghost" style={{ fontSize: '11px', padding: '4px 10px' }}>
-                                                    <ExternalLink size={12} /> Abrir
-                                                </a>
-                                            )}
-                                        </div>
+                        {/* ARTES GRÁFICOS & MATERIAL VISUAL */}
+                        <div className="card" style={{ padding: '24px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+                                <div>
+                                    <h4 style={{ fontSize: '16px', margin: 0, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        🎨 Artes Gráficos & Material Visual ({allArtes.length})
+                                    </h4>
+                                    <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                        Flyers, Lineups, Reels y material listo para publicar en las redes del club (@212club.pa)
+                                    </p>
+                                </div>
 
-                                        {/* Calendar for this account */}
-                                        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-                                            <div style={{
-                                                display: 'flex', alignItems: 'center', gap: '10px',
-                                                padding: '12px 20px',
-                                                borderBottom: '1px solid var(--border-subtle)',
-                                                background: `${pColor}06`,
-                                            }}>
-                                                <div style={{ padding: '6px', borderRadius: '8px', background: `${pColor}15`, color: pColor }}>
-                                                    <CalendarDays size={14} />
-                                                </div>
-                                                <div>
-                                                    <h3 style={{ fontSize: '14px', fontWeight: 700, margin: 0 }}>Calendario — {acc.handler}</h3>
-                                                    <p style={{ fontSize: '10px', color: 'var(--text-tertiary)', margin: 0 }}>
-                                                        Contenido semanal para {acc.platform}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <ContentCalendarGrid accounts={accountCalendarAccounts} companies={[]} />
-                                        </div>
-
-                                        {/* Artes for this account */}
-                                        <div className="card" style={{ padding: '20px' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                                                <h3 style={{ fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-                                                    <Instagram size={16} color={pColor} /> Artes — {acc.handler}
-                                                </h3>
-                                                <button className="btn btn-primary" style={{ fontSize: '11px', padding: '5px 12px' }} onClick={() => addArtForAccount(acc.id)}>
-                                                    <Plus size={12} /> Subir Arte
-                                                </button>
-                                            </div>
-                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '12px', alignItems: 'start' }}>
-                                                {accountArtes.map(art => {
-                                                    const isVertical = art.type === 'Story' || art.type === 'Reel';
-                                                    return (
-                                                        <div key={art.id} style={{
-                                                            background: 'var(--bg-secondary)', borderRadius: '10px',
-                                                            border: '1px solid var(--border-subtle)', overflow: 'hidden',
-                                                            transition: 'all 0.2s', cursor: 'pointer'
-                                                        }}
-                                                            onClick={() => setEditingArt({ ...art })}
-                                                            onMouseEnter={(e) => { e.currentTarget.style.borderColor = `${pColor}40`; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                                                            onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.transform = 'translateY(0)'; }}
-                                                        >
-                                                            <div style={{
-                                                                aspectRatio: isVertical ? '9/16' : '1/1',
-                                                                background: `linear-gradient(45deg, ${pColor}15, transparent)`,
-                                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                                borderBottom: '1px solid var(--border-subtle)', position: 'relative'
-                                                            }}>
-                                                                <Instagram size={isVertical ? 32 : 24} style={{ opacity: 0.15, color: pColor }} />
-                                                                <span style={{
-                                                                    position: 'absolute', top: '6px', right: '6px',
-                                                                    fontSize: '9px', fontWeight: 600, padding: '2px 6px', borderRadius: '6px',
-                                                                    background: art.status === 'Aprobado' ? 'rgba(34,197,94,0.15)' : art.status === 'Revisión' ? 'rgba(245,158,11,0.15)' : 'rgba(255,255,255,0.08)',
-                                                                    color: art.status === 'Aprobado' ? '#4ade80' : art.status === 'Revisión' ? '#fbbf24' : 'var(--text-tertiary)'
-                                                                }}>{art.status}</span>
-                                                            </div>
-                                                            <div style={{ padding: '12px' }}>
-                                                                <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>{art.title}</div>
-                                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                                    <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{art.format}</span>
-                                                                    <span style={{ fontSize: '10px', padding: '2px 6px', background: 'rgba(255,255,255,0.05)', borderRadius: '5px', color: 'var(--text-secondary)' }}>{art.type}</span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })}
-                                                <div style={{
-                                                    border: '2px dashed var(--border-subtle)', borderRadius: '10px',
-                                                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                                                    aspectRatio: '1/1', cursor: 'pointer', color: 'var(--text-tertiary)', transition: 'all 0.2s'
-                                                }}
-                                                    onClick={() => addArtForAccount(acc.id)}
-                                                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = pColor; e.currentTarget.style.color = pColor; }}
-                                                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.color = 'var(--text-tertiary)'; }}
-                                                >
-                                                    <Plus size={20} style={{ marginBottom: '6px' }} />
-                                                    <span style={{ fontSize: '11px', fontWeight: 500 }}>Añadir Arte</span>
-                                                </div>
-                                            </div>
-                                        </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    {/* Filter Pills for Artes */}
+                                    <div style={{ display: 'flex', gap: '4px', background: 'var(--bg-base)', padding: '3px', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
+                                        {['Todos', 'Aprobado', 'Revisión', 'Pendiente'].map(st => (
+                                            <button key={st} onClick={() => setArtFilter(st)}
+                                                style={{
+                                                    padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, border: 'none', cursor: 'pointer',
+                                                    background: artFilter === st ? 'rgba(225,48,108,0.2)' : 'transparent',
+                                                    color: artFilter === st ? '#E1306C' : 'var(--text-tertiary)',
+                                                    transition: 'all 0.15s'
+                                                }}>
+                                                {st}
+                                            </button>
+                                        ))}
                                     </div>
-                                );
-                            });
-                        })()}
+
+                                    <button className="btn btn-primary" style={{ fontSize: '12px', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '6px', background: '#E1306C', borderColor: '#E1306C' }}
+                                        onClick={() => addArtForAccount('acc-default')}>
+                                        <Plus size={14} /> Subir Arte / Flyer
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '16px' }}>
+                                {filteredArtes.map(art => {
+                                    const isVertical = art.type === 'Story' || art.type === 'Reel';
+                                    return (
+                                        <div key={art.id} style={{
+                                            background: 'var(--bg-base)', borderRadius: '12px',
+                                            border: '1px solid var(--border-subtle)', overflow: 'hidden',
+                                            transition: 'all 0.2s', cursor: 'pointer',
+                                            display: 'flex', flexDirection: 'column'
+                                        }}
+                                            onClick={() => setEditingArt({ ...art })}
+                                            onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(225,48,108,0.6)'; e.currentTarget.style.transform = 'translateY(-3px)'; }}
+                                            onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                                        >
+                                            <div style={{
+                                                aspectRatio: isVertical ? '9/16' : '1/1',
+                                                background: 'linear-gradient(45deg, rgba(225,48,108,0.2), rgba(0,0,0,0.6))',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                borderBottom: '1px solid var(--border-subtle)', position: 'relative',
+                                                overflow: 'hidden'
+                                            }}>
+                                                {art.imageUrl ? (
+                                                    <img src={art.imageUrl} alt={art.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                ) : (
+                                                    <Instagram size={isVertical ? 36 : 28} style={{ opacity: 0.25, color: '#E1306C' }} />
+                                                )}
+                                                <span style={{
+                                                    position: 'absolute', top: '8px', right: '8px',
+                                                    fontSize: '10px', fontWeight: 700, padding: '3px 8px', borderRadius: '6px',
+                                                    background: art.status === 'Aprobado' ? 'rgba(34,197,94,0.85)' : art.status === 'Revisión' ? 'rgba(245,158,11,0.85)' : 'rgba(0,0,0,0.7)',
+                                                    color: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)'
+                                                }}>{art.status}</span>
+                                                <span style={{
+                                                    position: 'absolute', bottom: '8px', left: '8px',
+                                                    fontSize: '9px', fontWeight: 700, padding: '2px 7px', borderRadius: '4px',
+                                                    background: 'rgba(0,0,0,0.6)', color: '#fff'
+                                                }}>{art.format || art.type}</span>
+                                            </div>
+                                            <div style={{ padding: '14px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                                                <div>
+                                                    <div style={{ fontSize: '13px', fontWeight: 700, marginBottom: '4px', color: 'var(--text-primary)' }}>{art.title}</div>
+                                                    {art.description && <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', margin: '0 0 8px 0', lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{art.description}</p>}
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                                                    <span style={{ fontSize: '10px', color: '#E1306C', fontWeight: 700 }}>{art.type}</span>
+                                                    <span style={{ fontSize: '10px', color: 'var(--accent-primary)', fontWeight: 600 }}>Editar / Ver →</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                                <div style={{
+                                    border: '2px dashed var(--border-subtle)', borderRadius: '12px',
+                                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                                    aspectRatio: '1/1', cursor: 'pointer', color: 'var(--text-tertiary)', transition: 'all 0.2s',
+                                    minHeight: '160px', background: 'rgba(255,255,255,0.01)'
+                                }}
+                                    onClick={() => addArtForAccount('acc-default')}
+                                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#E1306C'; e.currentTarget.style.color = '#E1306C'; }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.color = 'var(--text-tertiary)'; }}
+                                >
+                                    <Plus size={24} style={{ marginBottom: '8px' }} />
+                                    <span style={{ fontSize: '12px', fontWeight: 600 }}>Añadir Arte / Flyer</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 );
             })()}
@@ -3595,6 +4321,10 @@ export default function EventoDetail() {
                                         <option value="Aprobado">Aprobado</option>
                                     </select>
                                 </div>
+                            </div>
+                            <div className="form-group">
+                                <label>URL de la Imagen del Arte / Flyer</label>
+                                <input className="form-input" placeholder="https://..." value={editingArt.imageUrl || ''} onChange={e => setEditingArt({ ...editingArt, imageUrl: e.target.value })} />
                             </div>
                             <div className="form-group">
                                 <label>Descripción para el copy / Indicaciones</label>

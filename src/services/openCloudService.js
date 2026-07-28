@@ -5,7 +5,7 @@
  * server (3001) where the OpenCloud Engine resides.
  */
 
-const COMMAND_CENTER_API = 'http://localhost:3001/api';
+const COMMAND_CENTER_API = '/api';
 
 class OpenCloudService {
     /**

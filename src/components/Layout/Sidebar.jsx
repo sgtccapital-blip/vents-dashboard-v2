@@ -11,6 +11,7 @@ const navItems = [
     { path: '/calendar', icon: Calendar, label: 'Master Calendar', section: 'OPERATIONS' },
     { path: '/eventos', icon: CalendarDays, label: 'Eventos', section: 'OPERATIONS' },
     { path: '/social', icon: Share2, label: 'Redes Sociales', section: 'OPERATIONS' },
+    { path: '/agent-brain', icon: BrainCircuit, label: 'IA & Cerebro RAG', section: 'INTELLIGENCE' },
 ];
 
 export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }) {

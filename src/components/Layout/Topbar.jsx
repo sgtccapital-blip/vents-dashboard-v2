@@ -34,17 +34,11 @@ const ProgressRing = ({ percent, size = 36, stroke = 3 }) => {
 
 const pageTitles = {
     '/': 'Command Center',
-    '/projects': 'Projects',
-    '/ai-tools': 'AI Tools Matrix',
-    '/infrastructure': 'Infrastructure',
-    '/gemini': 'Gemini AI',
-    '/notebook': 'NotebookLM',
-    '/chat': 'Assistant Chat',
-    '/ideas': 'Idea Vault',
-    '/personal': 'Personal',
-    '/social': 'Redes Sociales',
-    '/workspace': '',
+    '/workspace': 'Workspace 2.0',
     '/calendar': 'Master Calendar',
+    '/eventos': 'Eventos',
+    '/social': 'Redes Sociales',
+    '/agent-brain': 'IA & Cerebro RAG',
 };
 
 export default function Topbar({ collapsed, searchQuery, onSearchChange, onMobileMenuToggle, onCloudSyncToggle }) {
