@@ -5,7 +5,7 @@ import {
     Search, Zap, Play, Pause, RotateCcw, PanelRightClose,
     PanelRightOpen, StickyNote, Target, Check, AlertCircle,
     Sparkles, Command, ChevronDown, ChevronRight, ChevronsUp, ChevronsDown,
-    ListChecks, Flame, ArrowRight
+    ListChecks, Flame, ArrowRight, MessageSquare
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
@@ -18,6 +18,7 @@ import EventAnalytics from '../components/EventAnalytics';
 import EventFocusMode from '../components/EventFocusMode';
 import EventCalendar from '../components/EventCalendar';
 import OpenCloudChat from '../components/OpenCloudChat';
+import EventDmSpam from '../components/EventDmSpam';
 
 // ─── Helpers ──────────────────────────────────────────────────────────
 
@@ -50,6 +51,7 @@ const TABS = [
     { id: 'timeline', icon: CalendarDays, label: 'Timeline', group: 'schedule', key: '6' },
     { id: 'calendar', icon: CalendarDays, label: 'Calendar', group: 'schedule', key: '7' },
     { id: 'analytics', icon: BarChart3, label: 'War Room', group: 'schedule', key: '8' },
+    { id: 'dmspam', icon: MessageSquare, label: 'DM SPAM', group: 'execute', key: '9' },
 ];
 
 const GROUP_COLORS = {
@@ -200,9 +202,10 @@ export default function Workspace() {
             case 'timeline': return <EventTimeline />;
             case 'calendar': return <EventCalendar />;
             case 'analytics': return <EventAnalytics tasks={tasks} />;
-            case 'focus': return <EventFocusMode />;
-            case 'notes': return <EventNotepad />;
             case 'canvas': return <EventCanvas />;
+            case 'notes': return <EventNotepad />;
+            case 'focus': return <EventFocusMode />;
+            case 'dmspam': return <EventDmSpam />;
             default: return <EventKanbanBoard events={events} />;
         }
     };
