@@ -9,7 +9,8 @@ import {
     seedContentTasks,
     seedTasks,
     seedNotes,
-    seedSubscriptions
+    seedSubscriptions,
+    seedContacts
 } from '../lib/seedData';
 
 const AppContext = createContext();
@@ -114,6 +115,7 @@ export const AppProvider = ({ children }) => {
     const [notes, setNotes] = useState(() => initializeState('os_live_notes', seedNotes));
     const [activityFeed, setActivityFeed] = useState(() => initializeState('os_live_activityFeed', []));
     const [subscriptions, setSubscriptions] = useState(() => initializeState('os_live_subscriptions', seedSubscriptions));
+    const [contacts, setContacts] = useState(() => initializeState('os_live_contacts', seedContacts));
 
     const [events, setEvents] = useState(() => {
         const local = initializeState('os_live_events', seedEvents);
@@ -181,7 +183,7 @@ export const AppProvider = ({ children }) => {
         }
 
         try {
-            const [apiEvents, apiTasks, apiNotes, apiIdeas, apiSubs, apiActivity, apiOrders, apiSops, apiSocial] = await Promise.all([
+            const [apiEvents, apiTasks, apiNotes, apiIdeas, apiSubs, apiActivity, apiOrders, apiSops, apiSocial, apiContacts] = await Promise.all([
                 fetch(`${API_BASE}/events`).then(r => r.json()).catch(() => null),
                 fetch(`${API_BASE}/tasks`).then(r => r.json()).catch(() => null),
                 fetch(`${API_BASE}/notes`).then(r => r.json()).catch(() => null),
@@ -191,6 +193,7 @@ export const AppProvider = ({ children }) => {
                 fetch(`${API_BASE}/orders`).then(r => r.json()).catch(() => null),
                 fetch(`${API_BASE}/sops`).then(r => r.json()).catch(() => null),
                 fetch(`${API_BASE}/socialMedia`).then(r => r.json()).catch(() => null),
+                fetch(`${API_BASE}/contacts`).then(r => r.json()).catch(() => null),
             ]);
 
             checkSupabaseStatus().catch(() => null);
@@ -204,6 +207,7 @@ export const AppProvider = ({ children }) => {
             if (apiOrders) setOrders(apiOrders);
             if (apiSops) setSops(apiSops);
             if (apiSocial) setSocialMedia(apiSocial);
+            if (apiContacts) setContacts(apiContacts);
         } catch (err) {
             console.warn('Polling sync error:', err.message);
         }
@@ -235,6 +239,7 @@ export const AppProvider = ({ children }) => {
     useEffect(() => { safeSetLocal('os_live_events', events); }, [events]);
     useEffect(() => { safeSetLocal('os_live_orders', orders); }, [orders]);
     useEffect(() => { safeSetLocal('os_live_sops', sops); }, [sops]);
+    useEffect(() => { safeSetLocal('os_live_contacts', contacts); }, [contacts]);
 
     useEffect(() => { safeSetLocal('os_live_promoters', promoters); }, [promoters]);
     useEffect(() => { safeSetLocal('os_live_image_girls', imageGirls); }, [imageGirls]);
@@ -432,6 +437,23 @@ export const AppProvider = ({ children }) => {
         } catch (e) {}
     };
 
+    // Contacts
+    const addContact = async (cData) => {
+        const newC = { id: `cnt-${Date.now()}`, ...cData };
+        setContacts(prev => [...prev, newC]);
+        await apiFetch('/contacts', { method: 'POST', body: newC });
+    };
+
+    const updateContact = async (cId, updatedData) => {
+        setContacts(prev => prev.map(c => c.id === cId ? { ...c, ...updatedData } : c));
+        await apiFetch(`/contacts/${cId}`, { method: 'PUT', body: updatedData });
+    };
+
+    const deleteContact = async (cId) => {
+        setContacts(prev => prev.filter(c => c.id !== cId));
+        await apiFetch(`/contacts/${cId}`, { method: 'DELETE' });
+    };
+
     // Google Calendar integration callbacks
     const connectGoogleCalendar = useCallback(() => {
         if (!window.google) {
@@ -596,6 +618,12 @@ export const AppProvider = ({ children }) => {
         deletePromoter,
         imageGirls,
         setImageGirls,
+
+        contacts,
+        setContacts,
+        addContact,
+        updateContact,
+        deleteContact,
         
         supabaseStatus,
         checkSupabaseStatus,

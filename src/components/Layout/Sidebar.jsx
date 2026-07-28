@@ -10,6 +10,7 @@ const navItems = [
     { path: '/workspace', icon: LayoutTemplate, label: 'Workspace', section: 'OPERATIONS' },
     { path: '/calendar', icon: Calendar, label: 'Master Calendar', section: 'OPERATIONS' },
     { path: '/eventos', icon: CalendarDays, label: 'Eventos', section: 'OPERATIONS' },
+    { path: '/contactos', icon: User, label: 'Contactos', section: 'OPERATIONS' },
     { path: '/social', icon: Share2, label: 'Redes Sociales', section: 'OPERATIONS' },
     { path: '/agent-brain', icon: BrainCircuit, label: 'IA & Cerebro RAG', section: 'INTELLIGENCE' },
 ];

@@ -157,7 +157,7 @@ function readDB() {
         return JSON.parse(raw);
     } catch (err) {
         console.error('Error reading db.json:', err.message);
-        return { agents: [], projects: [], companies: [], tasks: [], agentTasks: [], agentMemory: [], agentKPIs: [], circuitBreakers: [], notes: [], ideas: [], subscriptions: [], socialMedia: [], contentTasks: [], activityFeed: [], orders: [], ragStore: [] };
+        return { agents: [], projects: [], companies: [], events: [], tasks: [], agentTasks: [], agentMemory: [], agentKPIs: [], circuitBreakers: [], notes: [], ideas: [], subscriptions: [], socialMedia: [], contentTasks: [], activityFeed: [], orders: [], ragStore: [], contacts: [] };
     }
 }
 
@@ -532,7 +532,7 @@ app.post('/api/vault/upload', upload.single('file'), async (req, res) => {
 
 // ─── Register CRUD Routes ─────────────────────────────────────
 
-const entities = ['agents', 'projects', 'companies', 'events', 'tasks', 'agentTasks', 'agentMemory', 'agentKPIs', 'circuitBreakers', 'notes', 'ideas', 'subscriptions', 'socialMedia', 'contentTasks', 'orders'];
+const entities = ['agents', 'projects', 'companies', 'events', 'tasks', 'agentTasks', 'agentMemory', 'agentKPIs', 'circuitBreakers', 'notes', 'ideas', 'subscriptions', 'socialMedia', 'contentTasks', 'orders', 'contacts'];
 
 entities.forEach(entity => {
     app.use(`/api/${entity}`, createCRUDRoutes(entity));

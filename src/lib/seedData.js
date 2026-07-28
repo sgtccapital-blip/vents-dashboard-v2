@@ -565,3 +565,11 @@ export const seedEvents = [
     ]
   }
 ];
+
+export const seedContacts = [
+    { id: 'cnt-1', name: 'Juan Pérez', phone: '+507 6123-4567', email: 'juan@example.com', instagram: '@juanp', role: 'VIP', dob: '1990-05-15', tags: ['High Spender', 'Frecuente'] },
+    { id: 'cnt-2', name: 'Ana Gómez', phone: '+507 6987-6543', email: 'ana.gomez@example.com', instagram: '@anita_g', role: 'Promotor', dob: '1995-10-22', tags: ['RRPP', 'Staff'] },
+    { id: 'cnt-3', name: 'Carlos Díaz', phone: '+507 6555-1234', email: 'carlos.d@example.com', instagram: '@carlos.dj', role: 'Proveedor', dob: '1988-12-01', tags: ['DJ', 'Audio'] },
+    { id: 'cnt-4', name: 'María López', phone: '+507 6333-9876', email: 'maria.lop@example.com', instagram: '@mary.lopez', role: 'Invitado', dob: '1998-03-08', tags: ['Lista Chicas', 'Nuevo'] },
+    { id: 'cnt-5', name: 'Roberto Chen', phone: '+507 6777-4444', email: 'roberto.c@example.com', instagram: '@robchen', role: 'Staff', dob: '1992-07-30', tags: ['Barra', 'Bartender'] }
+];
