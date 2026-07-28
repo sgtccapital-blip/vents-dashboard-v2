@@ -153,7 +153,7 @@ export default function AgentBrain() {
         setUploading(true);
         setRagStatus(null);
         try {
-            RagIndexer.clearNamespace(namespace);
+            await RagIndexer.clearNamespace(namespace);
             setRagStatus({ type: 'success', msg: `Índice borrado para el namespace "${namespace}". Sube archivos de nuevo.` });
         } catch (err) {
             setRagStatus({ type: 'error', msg: err.message });

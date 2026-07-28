@@ -32,8 +32,8 @@ class NativeBrainService {
             console.log(`[NativeBrain] Sending:`, prompt);
             const genAI = await this.getEngine();
             
-            // Inyección RAG Local In-Browser
-            const localDocs = RagIndexer.getDocuments(namespace);
+            // Inyección RAG desde la nube
+            const localDocs = await RagIndexer.getDocuments(namespace);
             let ragContext = '';
             if (localDocs.length > 0) {
                 ragContext = "CONOCIMIENTO LOCAL DEL SISTEMA RAG:\n" + localDocs.map(d => `--- Archivo: ${d.filename} ---\n${d.content}`).join('\n\n');

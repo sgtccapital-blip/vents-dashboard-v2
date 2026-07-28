@@ -1,39 +1,42 @@
 /**
- * RAG Indexer — Procesamiento In-Browser de Documentos
- * Lee archivos, extrae texto y lo guarda localmente (LocalStorage)
- * para ser utilizado por el NativeBrainService.
+ * RAG Indexer — Procesamiento de Documentos con Sincronización en la Nube
+ * Lee archivos, extrae texto y lo envía al backend para que Supabase lo persista.
  */
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 
 class RagIndexer {
-    static STORAGE_KEY = '__openclaw_rag_store';
-
     /**
-     * Obtiene todos los documentos guardados en un namespace
+     * Obtiene todos los documentos guardados en un namespace desde el backend
      */
-    static getDocuments(namespace = 'default') {
+    static async getDocuments(namespace = 'default') {
         try {
-            const raw = localStorage.getItem(this.STORAGE_KEY);
-            if (!raw) return [];
-            const data = JSON.parse(raw);
-            return data.filter(doc => doc.namespace === namespace);
+            const res = await fetch(`${API_BASE}/rag/${namespace}`);
+            if (!res.ok) throw new Error('Network response was not ok');
+            return await res.json();
         } catch (e) {
-            console.error('Error reading RAG store:', e);
+            console.error('Error reading RAG store from cloud:', e);
+            // Fallback en caso de que no haya conexión
             return [];
         }
     }
 
     /**
-     * Guarda un documento en LocalStorage
+     * Guarda un documento en la nube
      */
-    static saveDocument(doc) {
+    static async saveDocument(doc, namespace = 'default') {
         try {
-            const raw = localStorage.getItem(this.STORAGE_KEY);
-            const data = raw ? JSON.parse(raw) : [];
-            data.push(doc);
-            localStorage.setItem(this.STORAGE_KEY, JSON.stringify(data));
+            const res = await fetch(`${API_BASE}/rag/${namespace}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(doc)
+            });
+            if (!res.ok) throw new Error('Error saving document');
+            return await res.json();
         } catch (e) {
-            console.error('Error saving to RAG store:', e);
-            throw new Error('No hay suficiente espacio local para guardar el documento.');
+            console.error('Error saving to RAG cloud store:', e);
+            throw new Error('Error de conexión al guardar el documento en la nube.');
         }
     }
 
@@ -47,44 +50,37 @@ class RagIndexer {
             reader.onload = async (e) => {
                 const text = e.target.result;
                 
-                // En un sistema avanzado haríamos "chunking" (partir en trozos de 1000 tokens)
-                // y "embeddings". Aquí usaremos almacenamiento en crudo para inyección directa de contexto.
                 const doc = {
-                    id: `doc_${Date.now()}`,
                     filename: file.name,
-                    namespace,
-                    content: text.substring(0, 50000), // Límite por seguridad de LocalStorage
+                    content: text.substring(0, 50000), // Límite de seguridad
                     addedAt: new Date().toISOString()
                 };
 
                 try {
-                    this.saveDocument(doc);
-                    resolve({ success: true, doc });
+                    const savedDoc = await this.saveDocument(doc, namespace);
+                    resolve({ success: true, doc: savedDoc });
                 } catch (err) {
                     reject(err);
                 }
             };
 
-            reader.onerror = (e) => reject(new Error('Error leyendo el archivo.'));
+            reader.onerror = () => reject(new Error('Error leyendo el archivo.'));
 
-            // Dependiendo del tipo, leemos como texto
-            // (Para PDFs complejos requeriría pdf.js, pero para txt/csv/md funciona directo)
+            // Leer como texto
             reader.readAsText(file);
         });
     }
 
     /**
-     * Borra todo el conocimiento de un namespace
+     * Borra todo el conocimiento de un namespace en la nube
      */
-    static clearNamespace(namespace = 'default') {
+    static async clearNamespace(namespace = 'default') {
         try {
-            const raw = localStorage.getItem(this.STORAGE_KEY);
-            if (!raw) return;
-            let data = JSON.parse(raw);
-            data = data.filter(doc => doc.namespace !== namespace);
-            localStorage.setItem(this.STORAGE_KEY, JSON.stringify(data));
+            await fetch(`${API_BASE}/rag/${namespace}`, {
+                method: 'DELETE'
+            });
         } catch (e) {
-            console.error('Error clearing RAG store:', e);
+            console.error('Error clearing RAG store from cloud:', e);
         }
     }
 }

@@ -157,7 +157,7 @@ function readDB() {
         return JSON.parse(raw);
     } catch (err) {
         console.error('Error reading db.json:', err.message);
-        return { agents: [], projects: [], companies: [], tasks: [], agentTasks: [], agentMemory: [], agentKPIs: [], circuitBreakers: [], notes: [], ideas: [], subscriptions: [], socialMedia: [], contentTasks: [], activityFeed: [], orders: [] };
+        return { agents: [], projects: [], companies: [], tasks: [], agentTasks: [], agentMemory: [], agentKPIs: [], circuitBreakers: [], notes: [], ideas: [], subscriptions: [], socialMedia: [], contentTasks: [], activityFeed: [], orders: [], ragStore: [] };
     }
 }
 
