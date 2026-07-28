@@ -347,17 +347,17 @@ export default function ContentCalendarGrid({
                                                 <td rowSpan={CONTENT_TYPES.length} style={{
                                                     ...cellStyle, background: `${accentColor}20`, color: accentColor, fontWeight: 700, fontSize: '12px',
                                                     textAlign: 'center',
-                                                    borderBottom: '3px solid var(--bg-canvas)', borderLeft: `3px solid ${accentColor}`,
-                                                    padding: '6px 4px', verticalAlign: 'middle',
+                                                    borderBottom: '3px solid var(--bg-canvas)', borderLeft: `4px solid ${accentColor}`,
+                                                    padding: '12px 8px', verticalAlign: 'middle',
                                                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
                                                 }}>
-                                                    <div style={{ lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis' }}>{account.handler || account.platform}</div>
-                                                    {cmp && <div style={{ fontSize: '9px', opacity: 0.7, marginTop: '2px' }}>{cmp.name}</div>}
+                                                    <div style={{ lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '13px' }}>{account.handler || account.platform}</div>
+                                                    {cmp && <div style={{ fontSize: '10px', opacity: 0.8, marginTop: '4px' }}>{cmp.name}</div>}
                                                 </td>
                                             )}
                                             <td style={{
-                                                ...cellStyle, background: `${accentColor}0a`, fontSize: '11px', fontWeight: 600,
-                                                color: TYPE_COLORS[type] || 'var(--text-secondary)',
+                                                ...cellStyle, background: `${accentColor}0a`, fontSize: '11.5px', fontWeight: 600,
+                                                color: TYPE_COLORS[type] || 'var(--text-secondary)', padding: '12px 8px',
                                                 borderBottom: typeIdx === CONTENT_TYPES.length - 1 ? '3px solid var(--bg-canvas)' : '1px solid rgba(255,255,255,0.08)',
                                             }}>{type}</td>
                                             {DAY_LABELS.map((_, dayIdx) => {
@@ -393,7 +393,7 @@ export default function ContentCalendarGrid({
                                                             borderBottom: typeIdx === CONTENT_TYPES.length - 1 ? '3px solid var(--bg-canvas)' : '1px solid rgba(255,255,255,0.06)',
                                                             borderRight: '1px solid rgba(255,255,255,0.05)',
                                                             borderLeft: isTodayCell ? '2px solid rgba(225,48,108,0.3)' : 'none',
-                                                            padding: '6px', verticalAlign: 'top', minHeight: '62px', height: 'auto',
+                                                            padding: '8px', verticalAlign: 'top', minHeight: '90px', height: '90px',
                                                             outline: isSelected ? '2px solid #E1306C' : 'none',
                                                             outlineOffset: isSelected ? '-2px' : '0',
                                                             position: 'relative',
@@ -413,27 +413,28 @@ export default function ContentCalendarGrid({
                                                             <div style={{
                                                                 background: `linear-gradient(135deg, ${statusInfo?.color || '#6b7280'}22, rgba(20,20,30,0.85))`,
                                                                 border: `1px solid ${statusInfo?.color || '#6b7280'}40`,
-                                                                borderRadius: '8px', padding: '5px 7px', fontSize: '10px',
+                                                                borderRadius: '8px', padding: '6px 8px', fontSize: '11px',
                                                                 color: statusInfo?.color || 'var(--text-secondary)', fontWeight: 600,
-                                                                display: 'flex', flexDirection: 'column', gap: '4px',
+                                                                display: 'flex', flexDirection: 'column', gap: '6px',
                                                                 boxShadow: isSelected ? '0 0 12px rgba(225,48,108,0.3)' : '0 2px 6px rgba(0,0,0,0.2)',
                                                                 backdropFilter: 'blur(8px)',
+                                                                height: '100%',
                                                             }}>
                                                                 {/* Top Row: Thumbnail + Status pill */}
-                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', overflow: 'hidden' }}>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden' }}>
                                                                     {thumbnailSrc ? (
-                                                                        <img src={thumbnailSrc} alt="Preview" style={{ width: '20px', height: '20px', borderRadius: '4px', objectFit: 'cover', flexShrink: 0, border: '1px solid rgba(255,255,255,0.2)' }} />
+                                                                        <img src={thumbnailSrc} alt="Preview" style={{ width: '22px', height: '22px', borderRadius: '4px', objectFit: 'cover', flexShrink: 0, border: '1px solid rgba(255,255,255,0.2)' }} />
                                                                     ) : (
-                                                                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: statusInfo?.color || '#6b7280', flexShrink: 0 }} />
+                                                                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: statusInfo?.color || '#6b7280', flexShrink: 0 }} />
                                                                     )}
-                                                                    <span style={{ fontSize: '9px', fontWeight: 700, color: statusInfo?.color, textTransform: 'uppercase', letterSpacing: '0.3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                                    <span style={{ fontSize: '9.5px', fontWeight: 700, color: statusInfo?.color, textTransform: 'uppercase', letterSpacing: '0.4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                                                         {statusInfo?.label}
                                                                     </span>
                                                                 </div>
 
                                                                 {/* Title / Topic */}
-                                                                <span style={{ color: 'var(--text-primary)', fontSize: '10px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.2 }}>
-                                                                    {entry.topic ? entry.topic : (entry.caption ? entry.caption.substring(0, 18) + '…' : 'Sin título')}
+                                                                <span style={{ color: 'var(--text-primary)', fontSize: '11px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'normal', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', lineHeight: 1.3 }}>
+                                                                    {entry.topic ? entry.topic : (entry.caption ? entry.caption.substring(0, 30) + '…' : 'Sin título')}
                                                                 </span>
                                                             </div>
                                                         ) : (
