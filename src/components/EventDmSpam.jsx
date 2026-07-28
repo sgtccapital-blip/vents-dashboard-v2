@@ -59,7 +59,8 @@ export default function EventDmSpam() {
                 </div>
             </div>
 
-            {/* Create New Message */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px', alignItems: 'start' }}>
+                {/* Create New Message */}
             <div className="card" style={{ padding: '20px', marginBottom: '32px', background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: '12px' }}>
                 <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <Plus size={18} /> Nuevo Mensaje de Difusión
@@ -131,6 +132,7 @@ export default function EventDmSpam() {
                         </div>
                     ))
                 )}
+            </div>
             </div>
         </div>
     );

@@ -1051,7 +1051,7 @@ export default function EventoDetail() {
             })()}
 
             {/* LOCAL: RESERVAS & BOXES VIP */}
-            {event.type === 'local' && activeTab === 'local_reservas' && (() => {
+            {event.type === 'local' && (activeTab === 'local_reservas' || (activeTab === 'extras' && event.id === 'ev-casco-lounge')) && (() => {
                 const defaultTables = [
                     { id: 't-b1', name: 'Box VIP 1', capacity: 10, minConsumption: 500, status: 'Disponible', client: '', promoter: '', phone: '', deposit: 0 },
                     { id: 't-b2', name: 'Box VIP 2', capacity: 10, minConsumption: 500, status: 'Disponible', client: '', promoter: '', phone: '', deposit: 0 },
@@ -3755,28 +3755,6 @@ export default function EventoDetail() {
                 const activeInstance = event.instances?.[0]; // Fallback to first instance
                 return (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
-                        <div style={{ padding: '24px', background: 'rgba(225,48,108,0.05)', borderRadius: '16px', border: '1px solid rgba(225,48,108,0.2)' }}>
-                            <h3 style={{ margin: '0 0 16px 0', fontSize: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <Users size={22} color="#E1306C" /> Invitados & RRPP
-                            </h3>
-                            <LeadsFunnel 
-                                leads={activeInstance?.leads || []} 
-                                updateLeadStatus={(leadId, status) => updateLeadStatus(activeInstance?.id, leadId, status)}
-                                onManageLeads={() => {}}
-                                onManageGirls={() => {}}
-                            />
-                        </div>
-                        
-                        <div style={{ padding: '24px', background: 'rgba(59,130,246,0.05)', borderRadius: '16px', border: '1px solid rgba(59,130,246,0.2)' }}>
-                            <h3 style={{ margin: '0 0 16px 0', fontSize: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <Star size={22} color="#3b82f6" /> Modelos & Promotores
-                            </h3>
-                            <PromoterTracking 
-                                promoters={promoters}
-                                leads={activeInstance?.leads || []}
-                                assignedPromoterIds={activeInstance?.assignedPromoters || []}
-                            />
-                        </div>
                         
                         <div style={{ padding: '24px', background: 'rgba(34,197,94,0.05)', borderRadius: '16px', border: '1px solid rgba(34,197,94,0.2)' }}>
                             <h3 style={{ margin: '0 0 16px 0', fontSize: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -4801,7 +4779,7 @@ export default function EventoDetail() {
             )}
 
             {/* ═══ LISTAS ESPECIALES TAB ═══ */}
-            {activeTab === 'listas' && !isSpecialProject && (() => {
+            {(activeTab === 'listas' || (activeTab === 'extras' && event.id === 'ev-casco-lounge')) && !isSpecialProject && (() => {
                 const promotersList = event.promotersList || [];
                 const girlsList = event.girlsList || [];
                 const invitationsList = event.invitationsList || [];
