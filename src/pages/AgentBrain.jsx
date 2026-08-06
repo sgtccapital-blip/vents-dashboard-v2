@@ -98,7 +98,12 @@ export default function AgentBrain() {
 
         try {
             const dynamicContext = `${systemRole}\n\n[SKILLS/REGLAS ASIGNADAS]:\n${agentSkills}\n\n${buildLiveIntel()}`;
-            const reply = await NativeBrainService.sendCommand(userText, messages, dynamicContext, namespace);
+            const contextCallbacks = {
+                addTask: appContext.addTask,
+                addEvent: appContext.addEvent,
+                addActivity: appContext.addActivity
+            };
+            const reply = await NativeBrainService.sendCommand(userText, messages, dynamicContext, namespace, contextCallbacks);
             setMessages(prev => [...prev, {
                 id: (Date.now() + 1).toString(),
                 role: 'bot',
