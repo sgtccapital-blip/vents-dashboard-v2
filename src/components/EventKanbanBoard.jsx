@@ -18,8 +18,10 @@ const statusConfig = {
 // ── Individual Card Component (to allow useState per-card) ──
 const ASSIGNEE_CONFIG = {
     'GG': { bg: 'rgba(129, 140, 248, 0.15)', border: '1px solid rgba(129, 140, 248, 0.3)', color: '#818cf8' },
-    'GEN': { bg: 'rgba(244, 114, 182, 0.15)', border: '1px solid rgba(244, 114, 182, 0.3)', color: '#f472b6' },
-    'ITA': { bg: 'rgba(52, 211, 153, 0.15)', border: '1px solid rgba(52, 211, 153, 0.3)', color: '#34d399' }
+    'MARIO': { bg: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.3)', color: '#38bdf8' },
+    'ANDREA': { bg: 'rgba(244, 114, 182, 0.15)', border: '1px solid rgba(244, 114, 182, 0.3)', color: '#f472b6' },
+    'ANDY': { bg: 'rgba(52, 211, 153, 0.15)', border: '1px solid rgba(52, 211, 153, 0.3)', color: '#34d399' },
+    'MAMA': { bg: 'rgba(251, 146, 60, 0.15)', border: '1px solid rgba(251, 146, 60, 0.3)', color: '#fb923c' }
 };
 
 function KanbanCard({ t, colStatus, events, deleteTask, updateTaskStatus, updateTaskContext, updateTaskDate, updateTaskAssignee }) {
@@ -105,8 +107,10 @@ function KanbanCard({ t, colStatus, events, deleteTask, updateTaskStatus, update
                 >
                     <option value="">👤 Asignado...</option>
                     <option value="GG">👤 GG</option>
-                    <option value="GEN">👤 GEN</option>
-                    <option value="ITA">👤 ITA</option>
+                    <option value="MARIO">👤 MARIO</option>
+                    <option value="ANDREA">👤 ANDREA</option>
+                    <option value="ANDY">👤 ANDY</option>
+                    <option value="MAMA">👤 MAMA</option>
                 </select>
 
                 {/* Date Picker */}
@@ -358,8 +362,10 @@ export default function EventKanbanBoard({ events, filterEventId }) {
                                     >
                                         <option value="">👤 Asignado...</option>
                                         <option value="GG">👤 GG</option>
-                                        <option value="GEN">👤 GEN</option>
-                                        <option value="ITA">👤 ITA</option>
+                                        <option value="MARIO">👤 MARIO</option>
+                                        <option value="ANDREA">👤 ANDREA</option>
+                                        <option value="ANDY">👤 ANDY</option>
+                                        <option value="MAMA">👤 MAMA</option>
                                     </select>
                                     {!filterEventId && (
                                         <select

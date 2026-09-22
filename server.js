@@ -1050,7 +1050,8 @@ app.post(['/api/openclaw/action', '/api/openclaw/webhook', '/api/hermes/action',
                     done: false,
                     projectId: data.projectId || null,
                     eventId: data.eventId || null,
-                    assignedTo: data.assignedTo || 'Hermes Agent',
+                    assignedTo: data.assignee || data.assignedTo || 'GG',
+                    assignee: data.assignee || data.assignedTo || 'GG',
                     dueDate: data.dueDate || null,
                     createdAt: new Date().toISOString()
                 };
@@ -1351,7 +1352,8 @@ function executeOpenClawAction(actionName, data, db) {
                 status: 'todo',
                 projectId: data.projectId || null,
                 eventId: data.eventId || null,
-                assignedTo: data.assignedTo || 'OpenClaw Super Agent',
+                assignedTo: data.assignee || data.assignedTo || 'GG',
+                assignee: data.assignee || data.assignedTo || 'GG',
                 dueDate: data.dueDate || null,
                 createdAt: new Date().toISOString()
             };
@@ -1632,6 +1634,7 @@ ${ragContext || 'No se requirieron documentos adicionales para esta consulta.'}
 - Eventos Activos (${liveEvents.length}): ${JSON.stringify(liveEvents.slice(0, 10))}
 - Proyectos (${liveProjects.length}): ${JSON.stringify(liveProjects)}
 - Tareas Pendientes (${pendingTasks.length}): ${JSON.stringify(pendingTasks)}
+- Miembros del Equipo Asignables: GG, MARIO, ANDREA, ANDY, MAMA.
 
 ${systemRole || ''}`;
 
@@ -1665,7 +1668,8 @@ ${systemRole || ''}`;
                             properties: {
                                 text: { type: "STRING", description: "Descripción clara de la tarea" },
                                 priority: { type: "STRING", enum: ["high", "medium", "low"], description: "Nivel de prioridad" },
-                                category: { type: "STRING", description: "Categoría o evento (ej: Terraplén, Furia, Piano Bar, General)" }
+                                category: { type: "STRING", description: "Categoría o evento (ej: Terraplén, Furia, Piano Bar, General)" },
+                                assignee: { type: "STRING", enum: ["GG", "MARIO", "ANDREA", "ANDY", "MAMA"], description: "Usuario responsable de la tarea: GG, MARIO, ANDREA, ANDY, o MAMA" }
                             },
                             required: ["text"]
                         }

@@ -148,7 +148,7 @@ export default function PortfolioOS() {
     const [newTaskProject, setNewTaskProject] = useState('portfolio-hangout');
     const [newTaskBlock, setNewTaskBlock] = useState('estrategia');
     const [newTaskPriority, setNewTaskPriority] = useState('high');
-    const [newTaskOwner, setNewTaskOwner] = useState('OpenClaw');
+    const [newTaskOwner, setNewTaskOwner] = useState('GG');
 
     // Decision Log Modal
     const [showDecisionModal, setShowDecisionModal] = useState(false);
@@ -675,6 +675,18 @@ export default function PortfolioOS() {
                             <option value="critical">🚨 Crítica</option>
                             <option value="high">⚡ Alta</option>
                             <option value="medium">● Media</option>
+                        </select>
+                        <select
+                            value={newTaskOwner}
+                            onChange={e => setNewTaskOwner(e.target.value)}
+                            style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-subtle)', color: 'white', padding: '9px 12px', borderRadius: '8px', fontSize: '13px' }}
+                        >
+                            <option value="GG">👤 GG</option>
+                            <option value="MARIO">👤 MARIO</option>
+                            <option value="ANDREA">👤 ANDREA</option>
+                            <option value="ANDY">👤 ANDY</option>
+                            <option value="MAMA">👤 MAMA</option>
+                            <option value="OpenClaw">🤖 OpenClaw</option>
                         </select>
                         <button type="submit" className="btn btn-primary" style={{ padding: '9px 18px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
                             <Plus size={16} /> Añadir Tarea

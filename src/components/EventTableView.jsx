@@ -20,8 +20,10 @@ const MONDAY_PRIORITY_COLORS = {
 
 const MONDAY_ASSIGNEE_COLORS = {
     'GG': { bg: 'rgba(129, 140, 248, 0.15)', border: '1px solid rgba(129, 140, 248, 0.3)', text: '#818cf8' },
-    'GEN': { bg: 'rgba(244, 114, 182, 0.15)', border: '1px solid rgba(244, 114, 182, 0.3)', text: '#f472b6' },
-    'ITA': { bg: 'rgba(52, 211, 153, 0.15)', border: '1px solid rgba(52, 211, 153, 0.3)', text: '#34d399' }
+    'MARIO': { bg: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.3)', text: '#38bdf8' },
+    'ANDREA': { bg: 'rgba(244, 114, 182, 0.15)', border: '1px solid rgba(244, 114, 182, 0.3)', text: '#f472b6' },
+    'ANDY': { bg: 'rgba(52, 211, 153, 0.15)', border: '1px solid rgba(52, 211, 153, 0.3)', text: '#34d399' },
+    'MAMA': { bg: 'rgba(251, 146, 60, 0.15)', border: '1px solid rgba(251, 146, 60, 0.3)', text: '#fb923c' }
 };
 
 export default function EventTableView({ events, filterEventId }) {
@@ -305,8 +307,10 @@ export default function EventTableView({ events, filterEventId }) {
                                                     >
                                                         <option value="">— Sin Asignar —</option>
                                                         <option value="GG">👤 GG</option>
-                                                        <option value="GEN">👤 GEN</option>
-                                                        <option value="ITA">👤 ITA</option>
+                                                        <option value="MARIO">👤 MARIO</option>
+                                                        <option value="ANDREA">👤 ANDREA</option>
+                                                        <option value="ANDY">👤 ANDY</option>
+                                                        <option value="MAMA">👤 MAMA</option>
                                                     </select>
                                                     <span style={{ textShadow: '0 1px 2px rgba(0,0,0,0.1)' }}>
                                                         {task.assignee ? `👤 ${task.assignee}` : '—'}
