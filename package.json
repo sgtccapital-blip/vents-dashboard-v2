@@ -9,7 +9,7 @@
     "server": "node server.js",
     "dev:backend": "node server.js",
     "seed": "node seed-db.js",
-    "build": "vite build",
+    "build": "vite build && node seed-db.js",
     "lint": "eslint .",
     "preview": "vite preview"
   },

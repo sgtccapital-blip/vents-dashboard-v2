@@ -33,7 +33,27 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 8090;
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'db.json');
+const SEED_PATH = path.join(__dirname, 'db.seed.json');
 const VAULT_PATH = process.env.VAULT_PATH || path.join(__dirname, '_agent_inbox');
+
+// Ensure db.json exists immediately on startup
+function ensureDBFile() {
+    if (!fs.existsSync(DB_PATH)) {
+        if (fs.existsSync(SEED_PATH)) {
+            try {
+                fs.copyFileSync(SEED_PATH, DB_PATH);
+                console.log('📦 Auto-inicializado db.json desde db.seed.json');
+            } catch (e) {
+                console.warn('No se pudo copiar db.seed.json:', e.message);
+            }
+        } else {
+            const initial = { agents: [], projects: [], companies: [], events: [], tasks: [], agentTasks: [], agentMemory: [], agentKPIs: [], circuitBreakers: [], notes: [], ideas: [], subscriptions: [], socialMedia: [], contentTasks: {}, activityFeed: [], orders: [], ragStore: [], contacts: [] };
+            fs.writeFileSync(DB_PATH, JSON.stringify(initial, null, 2), 'utf-8');
+            console.log('📦 Auto-creado db.json inicial por defecto');
+        }
+    }
+}
+ensureDBFile();
 
 // Ensure vault directory exists
 if (!fs.existsSync(VAULT_PATH)) fs.mkdirSync(VAULT_PATH, { recursive: true });
@@ -60,10 +80,8 @@ app.use(express.json({ limit: '10mb' }));
 
 // ─── Data Layer ───────────────────────────────────────────────
 
-// ─── Data Layer ───────────────────────────────────────────────
-
-let SUPABASE_URL = process.env.SUPABASE_URL;
-let SUPABASE_KEY = process.env.SUPABASE_KEY;
+let SUPABASE_URL = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').replace(/\/$/, '');
+let SUPABASE_KEY = (process.env.SUPABASE_KEY || process.env.VITE_SUPABASE_KEY || '').trim();
 
 // Sincronización inicial de Supabase al arrancar
 async function initSupabaseSync() {
@@ -153,11 +171,14 @@ async function syncToSupabase(data) {
 
 function readDB() {
     try {
+        if (!fs.existsSync(DB_PATH)) {
+            ensureDBFile();
+        }
         const raw = fs.readFileSync(DB_PATH, 'utf-8');
         return JSON.parse(raw);
     } catch (err) {
         console.error('Error reading db.json:', err.message);
-        return { agents: [], projects: [], companies: [], events: [], tasks: [], agentTasks: [], agentMemory: [], agentKPIs: [], circuitBreakers: [], notes: [], ideas: [], subscriptions: [], socialMedia: [], contentTasks: [], activityFeed: [], orders: [], ragStore: [], contacts: [] };
+        return { agents: [], projects: [], companies: [], events: [], tasks: [], agentTasks: [], agentMemory: [], agentKPIs: [], circuitBreakers: [], notes: [], ideas: [], subscriptions: [], socialMedia: [], contentTasks: {}, activityFeed: [], orders: [], ragStore: [], contacts: [] };
     }
 }
 
