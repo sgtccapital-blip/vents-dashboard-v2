@@ -103,16 +103,16 @@ export default function Workspace() {
 
     const quickInputRef = useRef(null);
 
-    // ─── Derived Data ──────────────────────────────────────
-    const pendingTasks = tasks.filter(t => !t.done);
-    const completedTasks = tasks.filter(t => t.done);
+    const safeTasks = Array.isArray(tasks) ? tasks : [];
+    const pendingTasks = safeTasks.filter(t => !t.done);
+    const completedTasks = safeTasks.filter(t => t.done);
     const pendingCount = pendingTasks.length;
     const completedCount = completedTasks.length;
-    const totalTasks = tasks.length;
+    const totalTasks = safeTasks.length;
     const completionPercent = totalTasks > 0 ? (completedCount / totalTasks) * 100 : 0;
     const highPriorityTasks = pendingTasks.filter(t => t.priority === 'high').slice(0, 5);
     const focusTasks = pendingTasks.slice(0, 5);
-    const activeEvents = events?.filter(e => ['planeacion', 'planificacion', 'ejecucion', 'activo', 'upcoming', 'ongoing'].includes(e.status)) || [];
+    const activeEvents = (events || []).filter(e => ['planeacion', 'planificacion', 'ejecucion', 'activo', 'upcoming', 'ongoing'].includes(e.status));
 
     // ─── Save last view ────────────────────────────────────
     useEffect(() => {
@@ -247,6 +247,23 @@ export default function Workspace() {
                         <div className="ws2-banner-metric-label">Events</div>
                     </div>
 
+                    <button
+                        onClick={() => setShowChat(true)}
+                        className="btn"
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: '8px',
+                            padding: '6px 14px', borderRadius: '10px', fontSize: '13px',
+                            fontWeight: 600,
+                            background: 'linear-gradient(135deg, rgba(139,92,246,0.2), rgba(6,182,212,0.2))',
+                            border: '1px solid rgba(139,92,246,0.35)',
+                            color: '#c4b5fd',
+                            cursor: 'pointer',
+                            marginLeft: '8px'
+                        }}
+                        title="Abrir panel lateral de OpenClaw Super Agent"
+                    >
+                        <Bot size={16} /> OpenClaw Chat
+                    </button>
                 </div>
             </div>
 
@@ -343,16 +360,7 @@ export default function Workspace() {
 
             </div>
 
-            {/* ═══ FAB — OpenCloud AI ══════════════════════════ */}
-            <button
-                onClick={() => setShowChat(true)}
-                className="ws2-fab"
-                title="OpenCloud AI Assistant"
-            >
-                <Bot size={26} />
-            </button>
-
-            {/* ═══ Side Drawer: Chat ══════════════════════════ */}
+            {/* ═══ Side Drawer: OpenClaw Chat (Synced with DashboardCopilot) ══════ */}
             <div style={{
                 position: 'fixed',
                 top: 0, right: 0, bottom: 0,

@@ -67,6 +67,21 @@ class NativeBrainService {
                                 },
                                 required: ["name", "date"]
                             }
+                        },
+                        {
+                            name: "create_project",
+                            description: "Crea un nuevo proyecto tecnológico, de negocio o pipeline IA en el Hub de Proyectos & Eventos.",
+                            parameters: {
+                                type: "OBJECT",
+                                properties: {
+                                    name: { type: "STRING", description: "Nombre del proyecto" },
+                                    category: { type: "STRING", description: "Categoría: 'project'" },
+                                    type: { type: "STRING", description: "Tipo de proyecto: software, business, marketing, ai_pipeline" },
+                                    description: { type: "STRING", description: "Descripción y alcance del proyecto" },
+                                    leadAgent: { type: "STRING", description: "Responsable o agente principal (Ej: OpenClaw Agent)" }
+                                },
+                                required: ["name"]
+                            }
                         }
                     ]
                 }
@@ -75,7 +90,7 @@ class NativeBrainService {
             // Usamos un modelo flash, ligero y rapido
             const model = genAI.getGenerativeModel({ 
                 model: 'gemini-1.5-flash',
-                systemInstruction: `Eres la Inteligencia OpenClaw del Dashboard Vents.\nTu rol es ayudar al operador a orquestar eventos, leads y redes sociales.\n\n${ragContext}\n\n${systemContext}`,
+                systemInstruction: `Eres la Inteligencia OpenClaw del Dashboard Vents & Hub de Proyectos.\nTu rol es ayudar al operador a orquestar proyectos, software, agentes OpenClaw, eventos, leads y redes sociales.\n\n${ragContext}\n\n${systemContext}`,
                 tools: contextCallbacks ? tools : undefined
             });
 
@@ -118,6 +133,29 @@ class NativeBrainService {
                             await contextCallbacks.addEvent(newEvent);
                             functionResult = { success: true, message: `Evento agregado exitosamente: ${newEvent.name}` };
                             if (contextCallbacks.addActivity) contextCallbacks.addActivity(`✅ Evento creado vía AI: ${newEvent.name}`, '#10b981');
+                        } else if (call.name === 'create_project' && (contextCallbacks.addProject || contextCallbacks.addEvent)) {
+                            const newProj = {
+                                id: `proj-${Date.now()}`,
+                                name: call.args.name,
+                                category: 'project',
+                                type: call.args.type || 'software',
+                                description: call.args.description || '',
+                                leadAgent: call.args.leadAgent || 'OpenClaw Agent',
+                                status: 'active',
+                                color: '#6366f1',
+                                icon: '💻',
+                                techStack: ['React', 'Node.js', 'OpenClaw AI'],
+                                milestones: [
+                                    { id: `m-${Date.now()}-1`, title: 'Arquitectura y Setup Inicial', done: true }
+                                ]
+                            };
+                            if (contextCallbacks.addProject) {
+                                await contextCallbacks.addProject(newProj);
+                            } else {
+                                await contextCallbacks.addEvent(newProj);
+                            }
+                            functionResult = { success: true, message: `Proyecto creado exitosamente: ${newProj.name}` };
+                            if (contextCallbacks.addActivity) contextCallbacks.addActivity(`🚀 Proyecto creado vía AI: ${newProj.name}`, '#6366f1');
                         } else {
                             functionResult = { success: false, message: `Función ${call.name} no soportada localmente.` };
                         }

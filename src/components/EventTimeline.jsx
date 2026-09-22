@@ -5,13 +5,16 @@ import { useApp } from '../context/AppContext';
 // Parse a due string or ISO date into a Date object
 function parseDueDate(due) {
     if (!due) return null;
-    // ISO date or date strings like "2026-04-14"
+    if (typeof due === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(due.trim())) {
+        const [y, m, day] = due.trim().split('-').map(Number);
+        return new Date(y, m - 1, day);
+    }
     const d = new Date(due);
     if (!isNaN(d.getTime())) return d;
 
     // Relative strings
     const today = new Date();
-    const lower = due.toLowerCase().trim();
+    const lower = String(due).toLowerCase().trim();
     if (lower === 'today') return today;
     if (lower === 'tomorrow') { const t = new Date(today); t.setDate(t.getDate() + 1); return t; }
     if (lower === 'this week' || lower === 'esta semana') {
@@ -33,7 +36,7 @@ function parseDueDate(due) {
 }
 
 export default function EventTimeline() {
-    const { tasks, agents } = useApp();
+    const { tasks, agents, events } = useApp();
     const [offsetWeeks, setOffsetWeeks] = useState(0);
 
     const today = new Date();
@@ -51,8 +54,41 @@ export default function EventTimeline() {
 
     // Map tasks to timeline
     const mappedTasks = useMemo(() => {
-        return tasks.map(t => {
-            const dueDate = parseDueDate(t.due);
+        const safeTasks = Array.isArray(tasks) ? tasks : [];
+        const safeAgents = Array.isArray(agents) ? agents : [];
+        const items = [...safeTasks];
+
+        // Include venue event dates & instances into the timeline
+        (events || []).forEach(ev => {
+            if (ev.instances && Array.isArray(ev.instances)) {
+                ev.instances.forEach(inst => {
+                    if (inst.date) {
+                        items.push({
+                            id: inst.id || `${ev.id}-${inst.date}`,
+                            text: `${ev.icon || '🍸'} ${ev.name}: ${inst.name || inst.day || ''}`,
+                            due: inst.date,
+                            priority: 'critical',
+                            isEvent: true,
+                            done: false,
+                            agentName: 'Venue'
+                        });
+                    }
+                });
+            } else if (ev.date) {
+                items.push({
+                    id: ev.id,
+                    text: `${ev.icon || '🍸'} ${ev.name}`,
+                    due: ev.date,
+                    priority: 'critical',
+                    isEvent: true,
+                    done: false,
+                    agentName: 'Venue'
+                });
+            }
+        });
+
+        return items.map(t => {
+            const dueDate = parseDueDate(t.due || t.deadline || t.date);
             const createdDate = t.createdAt ? new Date(t.createdAt) : null;
 
             // Calculate start and end positions relative to view window
@@ -62,7 +98,7 @@ export default function EventTimeline() {
             if (dueDate) {
                 const dueDiff = Math.floor((dueDate - startDate) / (1000 * 60 * 60 * 24));
                 // Approximate a 2-day duration for tasks, or use created → due span
-                let taskStart = dueDiff - 2;
+                let taskStart = dueDiff - 1;
                 let taskEnd = dueDiff;
 
                 if (createdDate) {
@@ -76,18 +112,18 @@ export default function EventTimeline() {
                 endIdx = Math.min(27, taskEnd);
             }
 
-            const agent = agents.find(a => a.id === t.agentId);
+            const agent = safeAgents.find(a => a.id === t.agentId || a.id === t.owner);
 
             return {
                 ...t,
                 startIdx,
                 endIdx,
-                duration: endIdx - startIdx + 1,
+                duration: Math.max(1, endIdx - startIdx + 1),
                 visible: startIdx >= 0 && startIdx <= 27 && endIdx >= 0,
-                agentName: agent ? agent.name.split(' ')[0] : null,
+                agentName: t.agentName || (agent ? agent.name.split(' ')[0] : (t.owner || null)),
             };
         }).filter(t => t.visible);
-    }, [tasks, agents, startDate]);
+    }, [tasks, agents, events, startDate]);
 
     const todayIdx = Math.floor((today - startDate) / (1000 * 60 * 60 * 24));
 

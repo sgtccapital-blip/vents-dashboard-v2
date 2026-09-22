@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "start": "node server.js",
     "dev": "vite --host",
     "server": "node server.js",
     "dev:backend": "node server.js",

@@ -59,13 +59,52 @@ export default function EventCalendar() {
 
     // Map tasks to their due dates
     const scheduledTasks = useMemo(() => {
-        return tasks.map(t => {
+        return (tasks || []).map(t => {
             const dueDate = parseDueDate(t.due);
             if (!dueDate) return null;
             if (dueDate.getMonth() !== viewMonth || dueDate.getFullYear() !== viewYear) return null;
             return { ...t, dueDay: dueDate.getDate() };
         }).filter(Boolean);
     }, [tasks, viewMonth, viewYear]);
+
+    // Map events and recurring instances to their dates
+    const scheduledEvents = useMemo(() => {
+        const evList = [];
+        (events || []).forEach(e => {
+            if (e.instances && Array.isArray(e.instances)) {
+                e.instances.forEach(inst => {
+                    if (inst.date) {
+                        const d = new Date(inst.date + 'T12:00:00');
+                        if (d.getMonth() === viewMonth && d.getFullYear() === viewYear) {
+                            evList.push({
+                                id: inst.id,
+                                dueDay: d.getDate(),
+                                text: `${e.icon || '🍸'} ${e.name}: ${inst.name || inst.day || ''}`.trim(),
+                                color: e.color || '#f59e0b',
+                                isEvent: true
+                            });
+                        }
+                    }
+                });
+            }
+            if (e.date) {
+                const hasInst = (e.instances || []).some(inst => inst.date === e.date);
+                if (!hasInst) {
+                    const d = new Date(e.date + 'T12:00:00');
+                    if (d.getMonth() === viewMonth && d.getFullYear() === viewYear) {
+                        evList.push({
+                            id: `ev-${e.id}`,
+                            dueDay: d.getDate(),
+                            text: `${e.icon || '📅'} ${e.name}`,
+                            color: e.color || '#10b981',
+                            isEvent: true
+                        });
+                    }
+                }
+            }
+        });
+        return evList;
+    }, [events, viewMonth, viewYear]);
 
     const prevMonth = () => {
         if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
@@ -136,6 +175,7 @@ export default function EventCalendar() {
 
                     {/* Actual Days */}
                     {daysArray.map(day => {
+                        const dayEvents = scheduledEvents.filter(e => e.dueDay === day);
                         const dayTasks = scheduledTasks.filter(t => t.dueDay === day);
                         const isToday = isCurrentMonth && day === today.getDate();
 
@@ -182,6 +222,22 @@ export default function EventCalendar() {
                                     </button>
                                 </div>
                                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px', overflowY: 'auto', scrollbarWidth: 'none', minHeight: 0 }}>
+                                    {dayEvents.map(e => (
+                                        <div key={e.id} style={{ 
+                                            fontSize: '9.5px', 
+                                            fontWeight: 600,
+                                            padding: '2px 4px', 
+                                            borderRadius: '3px', 
+                                            background: `${e.color}25`,
+                                            color: '#fff',
+                                            borderLeft: `2px solid ${e.color}`,
+                                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                                            flexShrink: 0,
+                                            lineHeight: '1.4'
+                                        }} title={e.text}>
+                                            {e.text}
+                                        </div>
+                                    ))}
                                     {dayTasks.map(t => (
                                         <div key={t.id} style={{ 
                                             fontSize: '10px', 

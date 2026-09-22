@@ -90,20 +90,22 @@ export default function Contactos() {
     };
 
     return (
-        <div className="page-container" style={{ padding: '32px' }}>
+        <div className="page-content animate-in">
             {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+            <div className="page-header" style={{ marginBottom: '24px' }}>
                 <div>
-                    <h1 style={{ fontSize: '28px', fontWeight: 800, margin: '0 0 8px 0', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <User size={28} color="var(--accent-primary)" /> Directorio de Contactos
+                    <h1 style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <User size={26} color="var(--accent-primary)" /> Directorio de Contactos
                     </h1>
-                    <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '14px' }}>
-                        Gestiona tu base de datos central de clientes VIP, staff, proveedores e invitados. ({contacts?.length || 0} en total)
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '13.5px', marginTop: '4px' }}>
+                        Gestiona tu base de datos central de clientes VIP, staff, proveedores e invitados ({contacts?.length || 0} en total).
                     </p>
                 </div>
-                <button className="btn btn-primary" onClick={() => openModal()} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', borderRadius: '12px' }}>
-                    <Plus size={18} /> Añadir Contacto
-                </button>
+                <div className="page-header-actions">
+                    <button className="btn btn-primary" onClick={() => openModal()} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Plus size={16} /> Añadir Contacto
+                    </button>
+                </div>
             </div>
 
             {/* Toolbar */}
@@ -131,7 +133,7 @@ export default function Contactos() {
                             key={role}
                             onClick={() => setFilterRole(role)}
                             style={{
-                                padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: 600, border: 'none', cursor: 'pointer',
+                                padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
                                 background: filterRole === role ? 'var(--accent-primary)' : 'var(--bg-base)',
                                 color: filterRole === role ? '#fff' : 'var(--text-secondary)',
                                 border: filterRole === role ? 'none' : '1px solid var(--border-subtle)',

@@ -1,6 +1,686 @@
 // Production state initializes empty. Real data comes from OpenClaw backend and user input.
 
-export const seedProjects = [];
+export const seedProjects = [
+  {
+    "id": "proj-venues-panama",
+    "name": "Operaciones Venues: Terraplén, Furia & Piano Bar",
+    "description": "Gestión semanal de los 3 venues estratégicos: convocatorias de cenas para chicas, acuerdos de barra libre, control de promotores, venta de mesas VIP y facturación recurrente.",
+    "category": "business",
+    "type": "business",
+    "templateKey": "project_business",
+    "status": "active",
+    "priority": "critical",
+    "deadline": "2026-12-31",
+    "budget": "15000",
+    "estimatedBudget": "15000",
+    "leadAgent": "Pulse (WhatsApp & Community)",
+    "tags": [
+      "Nightlife",
+      "Cenas Chicas",
+      "Mesas VIP",
+      "Terraplén",
+      "Furia",
+      "Piano Bar"
+    ],
+    "milestones": [
+      {
+        "id": "m-v1",
+        "title": "Estandarización de cenas semanales para chicas en los 3 locales",
+        "done": true
+      },
+      {
+        "id": "m-v2",
+        "title": "Sistema automatizado de WhatsApp para confirmar invitaciones 1 a 1",
+        "done": true
+      },
+      {
+        "id": "m-v3",
+        "title": "Ocupación sostenida del 100% en mesas VIP jueves a sábado",
+        "done": false
+      }
+    ]
+  },
+  {
+    "id": "proj-2",
+    "name": "LicitIA",
+    "description": "Plataforma de inteligencia y automatización para licitaciones, análisis de pliegos y procurement.",
+    "status": "active",
+    "priority": "high",
+    "deadline": "2026-03-15",
+    "kpi": {
+      "name": "Demos Agendadas",
+      "current": 2,
+      "target": 10,
+      "unit": "demos"
+    },
+    "leadAgent": "OpenClaw Super Agent",
+    "links": [
+      "https://www.panamacompra.gob.pa/"
+    ],
+    "tags": [
+      "Licitaciones",
+      "IA",
+      "Procurement",
+      "Portfolio Oficial"
+    ],
+    "tasks": [
+      {
+        "id": "t3",
+        "text": "Scrapear listado de proponentes >$100k",
+        "done": false
+      },
+      {
+        "id": "t4",
+        "text": "Armar script de Cold Email",
+        "done": false
+      }
+    ],
+    "activityLog": [
+      {
+        "id": "log-1775414851986",
+        "text": "🚨 [SISTEMA] El proyecto 'SaaS Licitaciones' permanece PAUSADO. Deadline: 15-Mar-2026. KPI: 2/10 demos. Tareas pendientes: Scrapear proponentes >$100k, Script Cold Email. Acción recomendada: Reactivar o archivar.",
+        "time": "01:47 PM",
+        "type": "critical"
+      },
+      {
+        "id": "log-1775415345681",
+        "text": "[ALERTA CRÍTICA] El proyecto \"SaaS Licitaciones\" tiene prioridad crítica y se encuentra en estado PAUSADO. Requiere atención inmediata del COO.",
+        "time": "01:55 PM",
+        "type": "status"
+      },
+      {
+        "id": "log-1775415345768",
+        "text": "[ALERTA CRÍTICA] El proyecto \"SaaS Licitaciones\" tiene prioridad crítica y está PAUSADO. Requiere atención inmediata del COO.",
+        "time": "01:55 PM",
+        "type": "status"
+      },
+      {
+        "id": "log-1775415456184",
+        "text": "El proyecto \"SaaS Licitaciones\" se mantiene en estado PAUSADO y con prioridad CRÍTICA. Se requiere revisión inmediata para determinar acciones a seguir.",
+        "time": "01:57 PM",
+        "type": "status"
+      },
+      {
+        "id": "log-1775415456542",
+        "text": "[ALERTA CRÍTICA] Proyecto \"SaaS Licitaciones\" está en estado PAUSADO y es de prioridad CRÍTICA. Requiere revisión inmediata para determinar el bloqueo y reactivación.",
+        "time": "01:57 PM",
+        "type": "status"
+      },
+      {
+        "id": "log-1775415516772",
+        "text": "[ALERTA CRÍTICA] El proyecto \"SaaS Licitaciones\" tiene prioridad crítica y se encuentra en estado PAUSADO. Requiere atención inmediata del COO.",
+        "time": "01:58 PM",
+        "type": "status"
+      },
+      {
+        "id": "log-1775415576876",
+        "text": "[CRITICAL ALERT] El proyecto SaaS Licitaciones está en estado PAUSADO y tiene prioridad CRÍTICA. Se requiere atención inmediata.",
+        "time": "01:59 PM",
+        "type": "status"
+      },
+      {
+        "id": "log-1775415578189",
+        "text": "ATENCIÓN: El proyecto \"SaaS Licitaciones\" se encuentra en estado PAUSADO y tiene prioridad CRÍTICA. Requiere revisión inmediata.",
+        "time": "01:59 PM",
+        "type": "status"
+      }
+    ],
+    "notes": "Licitación objetivo de demo: 2026-0-07-20-02-LP-000135 (6.7M IPT La Pintada).",
+    "members": [
+      "GG",
+      "Bart (AI COO)"
+    ],
+    "category": "project",
+    "type": "software",
+    "templateKey": "project_software",
+    "path": "/Users/admin/Documents/LicitIA",
+    "docsPath": "/Users/admin/Documents/LicitIA/docs",
+    "currentObjective": "Organizar producto, propuesta de valor y sistema operativo antes de programar.",
+    "milestones": [
+      {
+        "id": "licitia-m1",
+        "title": "Completar documentación estratégica",
+        "done": false,
+        "deadline": ""
+      },
+      {
+        "id": "licitia-m2",
+        "title": "Definir MVP comercial",
+        "done": false,
+        "deadline": ""
+      },
+      {
+        "id": "licitia-m3",
+        "title": "Estabilizar arquitectura y operación",
+        "done": false,
+        "deadline": ""
+      }
+    ]
+  },
+  {
+    "id": "proj-3",
+    "name": "Marketing Agency",
+    "description": "Agencia por desarrollar para branding, webs, marketing, automatización y activos comerciales.",
+    "status": "active",
+    "priority": "medium",
+    "deadline": "2026-03-30",
+    "kpi": {
+      "name": "Nuevos Clientes",
+      "current": 0,
+      "target": 3,
+      "unit": "clientes"
+    },
+    "leadAgent": "OpenClaw Super Agent",
+    "links": [
+      "https://youtube.com/@konektalabs"
+    ],
+    "tags": [
+      "Agencia",
+      "Marketing",
+      "Branding",
+      "Portfolio Oficial"
+    ],
+    "tasks": [
+      {
+        "id": "t5",
+        "text": "Cerrar prospectos del Q1",
+        "done": false,
+        "priority": "critical",
+        "due": "2026-03-10",
+        "assignee": "GG"
+      },
+      {
+        "id": "t5b",
+        "text": "Crear pitch deck v1 para constructoras",
+        "done": false,
+        "priority": "high",
+        "due": "2026-03-12",
+        "assignee": "GG"
+      },
+      {
+        "id": "t5c",
+        "text": "Publicar 3 posts en LinkedIn esta semana",
+        "done": false,
+        "priority": "medium",
+        "due": "2026-03-14",
+        "assignee": "GG"
+      },
+      {
+        "id": "t5d",
+        "text": "Configurar CRM básico (Google Sheets)",
+        "done": false,
+        "priority": "high",
+        "due": "2026-03-11",
+        "assignee": "GG"
+      }
+    ],
+    "activityLog": [
+      {
+        "id": "a1",
+        "text": "VisionDesk finished ad creatives for LinkedIn",
+        "time": "16:45",
+        "type": "completed"
+      },
+      {
+        "id": "a2",
+        "text": "GG approved Q1 sales script",
+        "time": "Yesterday",
+        "type": "update"
+      },
+      {
+        "id": "a3",
+        "text": "CopyForge updated landing page copy",
+        "time": "Mar 07",
+        "type": "delegation"
+      },
+      {
+        "id": "a4",
+        "text": "CloserOps sent 25 cold emails to constructoras",
+        "time": "Mar 08",
+        "type": "completed"
+      }
+    ],
+    "notes": "Agencia de Marketing IA rebrandeada de Orbit.\n\nServicios:\n• Social Media Management\n• Paid Ads (Meta + Google)\n• Web Development & Landing Pages\n• SEO & Content Marketing\n• AI Automation & Chatbots\n• Branding & Diseño\n\nICP: Constructoras, consultoras, startups B2B en Panamá.\nPricing: Retainers $800-$2,500/mes.",
+    "members": [
+      "GG"
+    ],
+    "driveUrl": "https://drive.google.com/embeddedfolderview?id=1OeI9TUzqhtgXUp86V5Pq6LKvlni3zf5C#list",
+    "dashboardConfig": {
+      "type": "agency",
+      "widgets": [
+        {
+          "id": "w1",
+          "icon": "👥",
+          "label": "Sistemas de Lead Activos",
+          "value": "3",
+          "detail": "Cold Email + LinkedIn + Referrals"
+        },
+        {
+          "id": "w2",
+          "icon": "🧠",
+          "label": "Servicios Activos",
+          "value": "6",
+          "detail": "Social, Ads, Web, SEO, AI, Branding"
+        },
+        {
+          "id": "w3",
+          "icon": "📅",
+          "label": "Posts Programados",
+          "value": "8",
+          "detail": "Esta semana en LinkedIn e IG"
+        },
+        {
+          "id": "w4",
+          "icon": "📩",
+          "label": "Leads Nuevos",
+          "value": "5",
+          "detail": "3 constructoras + 2 consultorias"
+        },
+        {
+          "id": "w5",
+          "icon": "📝",
+          "label": "Contenido de Ventas",
+          "value": "4",
+          "detail": "Pitch deck, caso estudio, propuesta, one-pager"
+        },
+        {
+          "id": "w6",
+          "icon": "⚠️",
+          "label": "Tareas Pendientes",
+          "value": "7",
+          "detail": "Acción requerida esta semana"
+        }
+      ],
+      "quickActions": [
+        {
+          "id": "qa1",
+          "icon": "➕",
+          "label": "Nuevo Cliente",
+          "color": "#22c55e"
+        },
+        {
+          "id": "qa2",
+          "icon": "🚀",
+          "label": "Nueva Campaña",
+          "color": "#6366f1"
+        },
+        {
+          "id": "qa3",
+          "icon": "📅",
+          "label": "Agendar Publicación",
+          "color": "#3b82f6"
+        },
+        {
+          "id": "qa4",
+          "icon": "📄",
+          "label": "Crear Propuesta",
+          "color": "#f59e0b"
+        }
+      ],
+      "services": [
+        {
+          "name": "Social Media Management",
+          "process": "Calendario → Diseño (VisionDesk) → Copy (CopyForge) → Aprobación → Publicación",
+          "status": "active"
+        },
+        {
+          "name": "Paid Ads (Meta + Google)",
+          "process": "Audiencia → Creativo → Lanzamiento → Optimización semanal",
+          "status": "active"
+        },
+        {
+          "name": "Web Development",
+          "process": "Wireframe → Diseño → Desarrollo (Antigravity) → QA → Deploy",
+          "status": "active"
+        },
+        {
+          "name": "SEO & Content",
+          "process": "Keyword Research → Redacción (CopyForge) → Publicación → Link Building",
+          "status": "active"
+        },
+        {
+          "name": "AI Automation",
+          "process": "Diagnóstico → Flujo → Implementación → Testing → Entrega",
+          "status": "active"
+        },
+        {
+          "name": "Branding & Diseño",
+          "process": "Brief → Propuestas → Iteración → Entregables finales",
+          "status": "active"
+        }
+      ],
+      "salesContent": [
+        {
+          "id": "sc1",
+          "title": "Pitch Deck Konekta 2026",
+          "type": "Presentación",
+          "icon": "📊",
+          "link": "#"
+        },
+        {
+          "id": "sc2",
+          "title": "Casos de Éxito B2B",
+          "type": "Presentación",
+          "icon": "📈",
+          "link": "#"
+        },
+        {
+          "id": "sc3",
+          "title": "Brochure de Servicios Generales",
+          "type": "PDF",
+          "icon": "📄",
+          "link": "#"
+        },
+        {
+          "id": "sc4",
+          "title": "Mensaje de Prospección Directa",
+          "type": "WhatsApp",
+          "icon": "💬",
+          "link": "#"
+        },
+        {
+          "id": "sc5",
+          "title": "Secuencia Cold Email (3 pasos)",
+          "type": "Email",
+          "icon": "📧",
+          "link": "#"
+        }
+      ],
+      "leadSystems": [
+        {
+          "id": "ls1",
+          "name": "Cold Email B2B",
+          "platform": "Apollo -> Instantly",
+          "status": "active",
+          "leads": 45,
+          "costPerLead": "$0.50"
+        },
+        {
+          "id": "ls2",
+          "name": "LinkedIn Automation",
+          "platform": "Sales Nav -> HeyReach",
+          "status": "active",
+          "leads": 22,
+          "costPerLead": "$1.20"
+        },
+        {
+          "id": "ls3",
+          "name": "Inbound Content (SEO)",
+          "platform": "Blog Corporativo",
+          "status": "building",
+          "leads": 5,
+          "costPerLead": "Orgánico"
+        },
+        {
+          "id": "ls4",
+          "name": "Meta Ads (Retargeting)",
+          "platform": "Facebook/IG Ads",
+          "status": "paused",
+          "leads": 0,
+          "costPerLead": "-"
+        }
+      ]
+    },
+    "category": "project",
+    "type": "marketing",
+    "templateKey": "project_marketing",
+    "path": "/Users/admin/Documents/Panamerican Web",
+    "relatedPath": "/Users/admin/Documents/Shoteame",
+    "docsPath": "/Users/admin/Documents/Panamerican Web/docs",
+    "currentObjective": "Definir tesis, nichos, oferta, pipeline y sistema de entrega de la agencia.",
+    "milestones": [
+      {
+        "id": "agency-m1",
+        "title": "Definir posicionamiento y nichos",
+        "done": false,
+        "deadline": ""
+      },
+      {
+        "id": "agency-m2",
+        "title": "Crear oferta y pricing preliminar",
+        "done": false,
+        "deadline": ""
+      },
+      {
+        "id": "agency-m3",
+        "title": "Crear pipeline y activos comerciales",
+        "done": false,
+        "deadline": ""
+      }
+    ]
+  },
+  {
+    "id": "proj-4",
+    "name": "RecordAI",
+    "description": "Desarrollo de plataforma AI.",
+    "status": "active",
+    "priority": "medium",
+    "deadline": "2026-04-10",
+    "kpi": {
+      "name": "MVP Features",
+      "current": 1,
+      "target": 3,
+      "unit": "features"
+    },
+    "leadAgent": "Agent 2 (Antigravity)",
+    "links": [],
+    "tags": [
+      "AI",
+      "SaaS"
+    ],
+    "tasks": [],
+    "activityLog": [
+      {
+        "id": "a1",
+        "text": "Antigravity submitted PR for desktop capture module",
+        "time": "08:30",
+        "type": "delegation"
+      },
+      {
+        "id": "a2",
+        "text": "Codex configured local SQLite vector database",
+        "time": "Yesterday",
+        "type": "completed"
+      },
+      {
+        "id": "a3",
+        "text": "GG finalized wireframes for the dashboard UI",
+        "time": "Mar 08",
+        "type": "update"
+      }
+    ],
+    "notes": "Captura de pantalla en el escritorio, iterando UI.",
+    "members": [
+      "GG"
+    ]
+  },
+  {
+    "id": "proj-6",
+    "name": "Waller App",
+    "description": "Aplicación en diseño (Adobe XD).",
+    "status": "active",
+    "priority": "low",
+    "deadline": "",
+    "kpi": null,
+    "leadAgent": "Agent 2 (Antigravity)",
+    "links": [
+      "/Users/gg/Desktop/Waller"
+    ],
+    "tags": [
+      "App",
+      "UI/UX"
+    ],
+    "tasks": [],
+    "activityLog": [
+      {
+        "id": "a1",
+        "text": "Project status changed to Paused",
+        "time": "Mar 05",
+        "type": "status"
+      },
+      {
+        "id": "a2",
+        "text": "GG backed up Adobe XD files to Drive",
+        "time": "Mar 05",
+        "type": "update"
+      },
+      {
+        "id": "log-1775368444369",
+        "text": "El proyecto Waller App está PAUSADO. Requiere atención inmediata.",
+        "time": "12:54 AM",
+        "type": "status"
+      },
+      {
+        "id": "log-1775368565816",
+        "text": "[ALERTA CRON] Proyecto Waller App está PAUSADO. Considerar reactivación o cierre.",
+        "time": "12:56 AM",
+        "type": "status"
+      },
+      {
+        "id": "log-1775369404495",
+        "text": "El proyecto Waller App se encuentra en estado PAUSADO. Se requiere revisión urgente para determinar el motivo y los próximos pasos.",
+        "time": "01:10 AM",
+        "type": "status"
+      }
+    ],
+    "notes": "Pausado temporalmente mientras arranca SaaS Licitaciones.",
+    "members": [
+      "GG"
+    ]
+  },
+  {
+    "id": "portfolio-hangout",
+    "name": "Hang Out",
+    "description": "Plataforma para descubrir qué está pasando en Panamá, con foco en eventos, nightlife, lugares y experiencias.",
+    "category": "project",
+    "type": "business",
+    "templateKey": "project_business",
+    "status": "active",
+    "priority": "critical",
+    "path": "/Users/admin/Documents/HangOut",
+    "docsPath": "/Users/admin/Documents/HangOut/docs",
+    "currentObjective": "Completar documentación, definir wedge, ICP y MVP antes de programar.",
+    "leadAgent": "OpenClaw Super Agent",
+    "tags": [
+      "Eventos",
+      "Nightlife",
+      "Panamá",
+      "Portfolio Oficial"
+    ],
+    "milestones": [
+      {
+        "id": "hangout-m1",
+        "title": "Completar documentación estratégica",
+        "done": false,
+        "deadline": ""
+      },
+      {
+        "id": "hangout-m2",
+        "title": "Definir wedge, ICP y MVP",
+        "done": false,
+        "deadline": ""
+      },
+      {
+        "id": "hangout-m3",
+        "title": "Convertir tareas en roadmap",
+        "done": false,
+        "deadline": ""
+      }
+    ]
+  },
+  {
+    "id": "proj-1787275228256",
+    "name": "Sistema Autónomo OpenClaw Test",
+    "description": "Prueba de integración de OpenClaw Bridge",
+    "category": "software",
+    "type": "software",
+    "templateKey": "project_software",
+    "status": "active",
+    "priority": "high",
+    "deadline": "",
+    "budget": "2500",
+    "techStack": [
+      "React",
+      "FastAPI",
+      "Gemini AI"
+    ],
+    "githubRepo": "",
+    "leadAgent": "OpenClaw Super Agent",
+    "milestones": [
+      {
+        "id": "m-1",
+        "title": "Definición de arquitectura y roadmap",
+        "done": true,
+        "deadline": ""
+      },
+      {
+        "id": "m-2",
+        "title": "Desarrollo del Core MVP",
+        "done": false,
+        "deadline": ""
+      },
+      {
+        "id": "m-3",
+        "title": "Pruebas y despliegue inicial",
+        "done": false,
+        "deadline": ""
+      }
+    ],
+    "tasks": [],
+    "tags": [
+      "OpenClaw",
+      "Proyecto"
+    ],
+    "activityLog": [
+      {
+        "id": "log-1787275228256",
+        "text": "🚀 Proyecto creado e inicializado por OpenClaw Super Agent",
+        "time": "8:20:28 PM",
+        "type": "created"
+      }
+    ],
+    "createdAt": "2026-08-21T01:20:28.270Z"
+  },
+  {
+    "id": "proj-5",
+    "name": "Eventos y Entretenimiento",
+    "description": "Fest, Livin, 360 MONA, Praia, Euphoria.",
+    "status": "active",
+    "priority": "low",
+    "deadline": "",
+    "kpi": null,
+    "leadAgent": "Agent 8 (VisionDesk)",
+    "links": [
+      "/Users/gg/Desktop/Fest",
+      "/Users/gg/Desktop/Livin",
+      "/Users/gg/Desktop/Menu Euphoria"
+    ],
+    "tags": [
+      "Eventos",
+      "Nocturno"
+    ],
+    "tasks": [],
+    "activityLog": [
+      {
+        "id": "a1",
+        "text": "VisionDesk drafted new flyers for Bayano Island",
+        "time": "Yesterday",
+        "type": "completed"
+      },
+      {
+        "id": "a2",
+        "text": "GG reviewed social media content calendar",
+        "time": "Mar 08",
+        "type": "update"
+      }
+    ],
+    "notes": "Revisar flyers y contenido de Bayano Island.",
+    "members": [
+      "GG"
+    ]
+  }
+];
+
 export const seedAITools = [];
 export const seedInfrastructure = [];
 export const seedSubscriptions = [
@@ -36,533 +716,2075 @@ export const seedContentTasks = {
 export const seedNotes = [];
 export const seedCompanies = [];
 export const seedPromoters = [
-    { id: 'prom-1', name: 'Juan Top', contacts: 850, style: 'VIP / Mesas', rating: 4.8 },
-    { id: 'prom-2', name: 'Maria VIP', contacts: 1200, style: 'Chicas / Volumen', rating: 4.9 },
-    { id: 'prom-3', name: 'Pedro Party', contacts: 400, style: 'Universitarios', rating: 3.5 }
+    { id: 'prom-1', name: 'Juan Top', phone: '+507 6500-1122', contacts: 850, style: 'VIP / Mesas & Botellas', rating: 4.9 },
+    { id: 'prom-2', name: 'María VIP', phone: '+507 6700-3344', contacts: 1200, style: 'Chicas a Cenar & Listas Exclusivas', rating: 5.0 },
+    { id: 'prom-3', name: 'Carlos Casco', phone: '+507 6800-5566', contacts: 600, style: 'Rooftops & Sunset Sessions', rating: 4.8 },
+    { id: 'prom-4', name: 'Diego Furia', phone: '+507 6900-7788', contacts: 750, style: 'Clubbing & High Energy', rating: 4.7 }
 ];
 
 export const seedImageGirls = [
-    { id: 'girl-1', name: 'Sofía', ig: '@sofia.pty', type: 'VIP / Mesas', rating: 5.0, available: true },
-    { id: 'girl-2', name: 'Camila', ig: '@camila.oficial', type: 'Contenido', rating: 4.5, available: true },
-    { id: 'girl-3', name: 'Valentina', ig: '@valen_vibes', type: 'Shots / Energía', rating: 4.8, available: false }
+    { id: 'girl-1', name: 'Sofía M.', ig: '@sofia.pty', phone: '+507 6211-4455', type: 'Cena VIP & Cócteles', rating: 5.0, available: true },
+    { id: 'girl-2', name: 'Camila R.', ig: '@camila.oficial', phone: '+507 6390-1122', type: 'Contenido / Stories', rating: 4.9, available: true },
+    { id: 'girl-3', name: 'Valentina D.', ig: '@valen_vibes', phone: '+507 6555-8899', type: 'Mesa Anfitriona', rating: 4.8, available: true },
+    { id: 'girl-4', name: 'Isabella S.', ig: '@isa.solis', phone: '+507 6712-3344', type: 'Cena VIP & Maridaje', rating: 5.0, available: true },
+    { id: 'girl-5', name: 'Andrea B.', ig: '@andreab_pty', phone: '+507 6443-2211', type: 'Cena VIP & Mesa Furia', rating: 4.9, available: true },
+    { id: 'girl-6', name: 'Nicole C.', ig: '@nicole.casco', phone: '+507 6899-7766', type: 'Rooftop Sunset Hostess', rating: 4.7, available: true },
+    { id: 'girl-7', name: 'Mariana T.', ig: '@mariana.t', phone: '+507 6122-3399', type: 'Cena VIP & Networking', rating: 4.8, available: true },
+    { id: 'girl-8', name: 'Daniela G.', ig: '@dani.gomez', phone: '+507 6633-8822', type: 'Animación & Shots VIP', rating: 4.9, available: true }
 ];
 
 export const seedEvents = [
   {
-    id: 'ev-casco-peatonal',
-    name: 'Casco Peatonal',
-    templateKey: 'casco_peatonal',
-    date: '2026-08-30',
-    time: '14:00',
-    location: 'Casco Antiguo — Plaza Catedral',
-    capacity: 'Masivo (Plaza Catedral)',
-    budget: '12000',
-    estimatedBudget: '12000',
-    type: 'casco_peatonal',
-    status: 'planificacion',
-    description: 'Evento público mensual (último domingo de cada mes de agosto a enero). Nuestra responsabilidad principal es la contratación de artistas y el montaje de la tarima en Plaza Catedral. Otras plazas (Plaza Bolívar, Plaza Herrera y La Playita) quedan reservadas a futuro.',
-    color: '#f59e0b',
-    icon: '🚶‍♂️',
-    zones: [
-      'Plaza Catedral (Principal — Tarima & Artistas)',
-      'Plaza Bolívar (Futuras actividades / Reserva)',
-      'Plaza Herrera (Futuras actividades / Reserva)',
-      'La Playita (Futuras actividades / Reserva)'
-    ],
-    instances: [
+    "id": "ev-terraplen-rooftop",
+    "name": "Terraplen Rooftop",
+    "type": "nightclub",
+    "status": "activo",
+    "color": "#f59e0b",
+    "icon": "🍸",
+    "location": "Terraplén, Casco Antiguo / Santa Ana, Panamá",
+    "capacity": "250 personas",
+    "budget": "3500",
+    "estimatedBudget": "3500",
+    "description": "Rooftop exclusivo con vista al mar y skyline. Sunset Sessions semanales, cenas con invitación VIP para chicas (degustación y cócteles de cortesía), música Afrohouse / Melodic / Chic Open Format y mesas VIP.",
+    "organizer": "Operaciones Terraplén / Pulse",
+    "phone": "+507 6200-1100",
+    "email": "terraplen@nightlifepty.com",
+    "notes": "Dinámica semanal: Jueves de Sunset & Girls Dinner (mesa imperial reservada a las 8:00 PM con cócteles de autor); Viernes & Sábado con DJ invitado, botellas premium y acceso selecto.",
+    "instances": [
       {
-        id: 'inst-casco-2026-08',
-        date: '2026-08-30',
-        name: 'Edición Agosto 2026',
-        status: 'upcoming',
-        location: 'Plaza Catedral',
-        artists: [
-          { id: 'art-1', name: 'Orquesta Latin Swing', genre: 'Salsa / En vivo', time: '16:00 - 17:15', soundcheck: '13:30', status: 'confirmado', rider: '12 micrófonos, 4 monitores' },
-          { id: 'art-2', name: 'Panaashe', genre: 'Urbano / Fusion', time: '17:30 - 18:30', soundcheck: '14:15', status: 'confirmado', rider: '2 In-Ears, Dj Set' },
-          { id: 'art-3', name: 'Orquesta Servicio de Migración', genre: 'Tropical / Cierre', time: '18:45 - 20:00', soundcheck: '15:00', status: 'confirmado', rider: 'Rider completo orquesta' }
+        "id": "inst-terraplen-jueves",
+        "date": "2026-09-24",
+        "name": "Sunset Sessions & Girls Dinner",
+        "day": "Jueves",
+        "status": "Confirmado",
+        "targetCapacity": 200,
+        "targetDemo": "Chicas VIP (+21), Lifestyle, Expats, Afrohouse / Melodic",
+        "leads": [
+          {
+            "id": "l-t1",
+            "name": "Sofía Morales",
+            "phone": "+507 6211-4455",
+            "promoter": "prom-2",
+            "interest": "Cena Chicas",
+            "status": "Confirmado"
+          },
+          {
+            "id": "l-t2",
+            "name": "Camila Ríos",
+            "phone": "+507 6390-1122",
+            "promoter": "prom-2",
+            "interest": "Cena Chicas",
+            "status": "Confirmado"
+          },
+          {
+            "id": "l-t3",
+            "name": "Isabella Solís",
+            "phone": "+507 6712-3344",
+            "promoter": "prom-2",
+            "interest": "Cena Chicas",
+            "status": "Confirmado"
+          },
+          {
+            "id": "l-t4",
+            "name": "Federico Gómez",
+            "phone": "+507 6999-1122",
+            "promoter": "prom-1",
+            "interest": "Mesa Terraza",
+            "status": "Confirmado"
+          },
+          {
+            "id": "l-t5",
+            "name": "Nicole Castillo",
+            "phone": "+507 6899-7766",
+            "promoter": "prom-2",
+            "interest": "Cena Chicas",
+            "status": "Respondió"
+          },
+          {
+            "id": "l-t6",
+            "name": "Lucas Brand",
+            "phone": "+507 6444-5555",
+            "promoter": "prom-1",
+            "interest": "Mesa Lounge",
+            "status": "Contactado"
+          }
         ],
-        stageSetup: {
-          provider: 'AudioTech Panama',
-          stageSize: '10m x 8m con techado truss',
-          soundSystem: 'Line Array JBL VTX 12kW',
-          lighting: '16 Moving Heads + Pantalla LED 6x3m',
-          setupTime: '08:00 AM',
-          soundcheckTime: '13:30 PM',
-          teardownTime: '21:00 PM'
+        "vipFlow": [
+          {
+            "id": "vip-t1",
+            "name": "Mesa Imperial Chicas (Cena)",
+            "type": "Cena VIP",
+            "benefit": "Menú degustación + Barra libre cócteles 8-10 PM",
+            "confirmed": true
+          },
+          {
+            "id": "vip-t2",
+            "name": "Mesa Terraza 1 - Don Julio 1942",
+            "type": "Mesa VIP",
+            "benefit": "Botella Tequila + Moët & Chandon",
+            "confirmed": true
+          },
+          {
+            "id": "vip-t3",
+            "name": "DJ Residente (Afrohouse Set)",
+            "type": "Artista",
+            "benefit": "Consumo DJ Booth",
+            "confirmed": true
+          }
+        ],
+        "assignedPromoters": [
+          "prom-1",
+          "prom-2",
+          "prom-3"
+        ],
+        "assignedGirls": [
+          {
+            "id": "girl-1",
+            "name": "Sofía M.",
+            "role": "Cena VIP & Cócteles",
+            "time": "20:00",
+            "phone": "@sofia.pty"
+          },
+          {
+            "id": "girl-2",
+            "name": "Camila R.",
+            "role": "Contenido / Stories",
+            "time": "20:00",
+            "phone": "@camila.oficial"
+          },
+          {
+            "id": "girl-4",
+            "name": "Isabella S.",
+            "role": "Cena VIP & Cócteles",
+            "time": "20:15",
+            "phone": "@isa.solis"
+          },
+          {
+            "id": "girl-6",
+            "name": "Nicole C.",
+            "role": "Mesa Anfitriona",
+            "time": "20:30",
+            "phone": "@nicole.casco"
+          }
+        ],
+        "checklist": {
+          "promo": [
+            {
+              "id": "chk-tp1",
+              "task": "Flyer digital Sunset & Girls Dinner listo",
+              "done": true
+            },
+            {
+              "id": "chk-tp2",
+              "task": "Invitaciones directas por WhatsApp a base de chicas VIP enviadas",
+              "done": true
+            },
+            {
+              "id": "chk-tp3",
+              "task": "Pauta local en Instagram Stories activa",
+              "done": false
+            }
+          ],
+          "logistica": [
+            {
+              "id": "chk-tl1",
+              "task": "Mesa imperial reservada y montada para 16 chicas a las 8:00 PM",
+              "done": true
+            },
+            {
+              "id": "chk-tl2",
+              "task": "Menú de tapas y cócteles de bienvenida coordinado con cocina/barra",
+              "done": true
+            },
+            {
+              "id": "chk-tl3",
+              "task": "Line-up de DJ de atardecer a cierre confirmado",
+              "done": true
+            },
+            {
+              "id": "chk-tl4",
+              "task": "Hostess en recepción con lista de invitadas a cena",
+              "done": true
+            }
+          ],
+          "imagen": [
+            {
+              "id": "chk-ti1",
+              "task": "Mesa decorada con copas de cortesía y flores",
+              "done": true
+            },
+            {
+              "id": "chk-ti2",
+              "task": "12+ chicas confirmadas para la cena",
+              "done": true
+            },
+            {
+              "id": "chk-ti3",
+              "task": "Fotógrafo asignado para tomas de atardecer y mesa de cena",
+              "done": false
+            }
+          ]
         }
       },
       {
-        id: 'inst-casco-2026-09',
-        date: '2026-09-27',
-        name: 'Edición Septiembre 2026',
-        status: 'planificacion',
-        location: 'Plaza Catedral',
-        artists: [],
-        stageSetup: {
-          provider: 'AudioTech Panama',
-          stageSize: '10m x 8m',
-          setupTime: '08:00 AM'
-        }
-      },
-      {
-        id: 'inst-casco-2026-10',
-        date: '2026-10-25',
-        name: 'Edición Octubre 2026',
-        status: 'planificacion',
-        location: 'Plaza Catedral',
-        artists: [],
-        stageSetup: {}
-      },
-      {
-        id: 'inst-casco-2026-11',
-        date: '2026-11-29',
-        name: 'Edición Noviembre 2026',
-        status: 'planificacion',
-        location: 'Plaza Catedral',
-        artists: [],
-        stageSetup: {}
-      },
-      {
-        id: 'inst-casco-2026-12',
-        date: '2026-12-27',
-        name: 'Edición Diciembre 2026 (Fin de Año)',
-        status: 'planificacion',
-        location: 'Plaza Catedral',
-        artists: [],
-        stageSetup: {}
-      },
-      {
-        id: 'inst-casco-2027-01',
-        date: '2027-01-31',
-        name: 'Edición Enero 2027 (Cierre de Temporada)',
-        status: 'planificacion',
-        location: 'Plaza Catedral',
-        artists: [],
-        stageSetup: {}
-      }
-    ],
-    futurePlazas: [
-      { id: 'plz-bolivar', name: 'Plaza Bolívar', status: 'En lista / Reserva futura', notes: 'Reservado para futura expansión de bazar cultural o pasarela' },
-      { id: 'plz-herrera', name: 'Plaza Herrera', status: 'En lista / Reserva futura', notes: 'Reservado para futuros torneos deportivos o ajedrez' },
-      { id: 'plz-playita', name: 'La Playita', status: 'En lista / Reserva futura', notes: 'Reservado para futuras activaciones de playa o Sunset DJ' }
-    ],
-    agenda: [
-      { id: 'ag-c1', time: '08:00', title: 'Llegada de camiones y montaje de estructura de tarima', speaker: 'Plaza Catedral (AudioTech)', description: 'Armado de tarima 10x8m, trusses y soporte de iluminación' },
-      { id: 'ag-c2', time: '11:00', title: 'Montaje de sistema de sonido e iluminación', speaker: 'Plaza Catedral (AudioTech)', description: 'Pruebas de parches, amplificadores y consolas' },
-      { id: 'ag-c3', time: '13:30', title: 'Soundcheck de artistas', speaker: 'Plaza Catedral (Artistas)', description: 'Pruebas de sonido en orden de presentación' },
-      { id: 'ag-c4', time: '16:00', title: 'Inicio de Shows en Tarima Principal', speaker: 'Plaza Catedral', description: 'Presentaciones de agrupaciones y DJs' },
-      { id: 'ag-c5', time: '20:30', title: 'Cierre de tarima y desmontaje', speaker: 'Plaza Catedral', description: 'Desmontaje completo y entrega de plaza limpia' }
-    ],
-    requirements: [
-      { id: 'req-c1', name: 'Contratos y riders técnicos de artistas confirmados', done: false },
-      { id: 'req-c2', name: 'Reserva y contratación de tarima (AudioTech)', done: true },
-      { id: 'req-c3', name: 'Permiso de alcaldía y sonido en Plaza Catedral', done: true },
-      { id: 'req-c4', name: 'Generador eléctrico de respaldo (60 kVA)', done: false },
-      { id: 'req-c5', name: 'Seguridad y backstage para artistas en Catedral', done: false }
-    ],
-    todos: [],
-    organizer: 'Oficina del Casco Antiguo',
-    contactPerson: 'Comité Casco Peatonal',
-    phone: '+507 6000-0000',
-    email: 'casco@peatonal.com',
-    notes: 'Foco exclusivo en Plaza Catedral. Plazas Bolívar, Herrera y La Playita en lista de reserva a futuro.',
-    driveFolderId: ''
-  },
-  {
-    id: 'ev-candela-trump',
-    name: 'Candela Trump',
-    type: 'nightclub',
-    status: 'activo',
-    color: '#ef4444',
-    icon: '🔥',
-    description: 'Serie de eventos nocturnos enfocados en reggaeton y mesas VIP.',
-    instances: [
-      {
-        id: 'inst-candela-1',
-        date: '2026-06-14',
-        day: 'Viernes',
-        status: 'Fuerte',
-        targetCapacity: 400,
-        targetDemo: '+21, Reggaeton, VIP Heavy',
-        leads: [
-            { id: 'l-1', name: 'Carlos Perez', phone: '@carlosp', promoter: 'prom-1', interest: 'Mesa', status: 'Confirmado' },
-            { id: 'l-2', name: 'Ana Gomez', phone: '6543-2109', promoter: 'prom-2', interest: 'Lista', status: 'Contactado' },
-            { id: 'l-3', name: 'Luis M', phone: '@luis_mpty', promoter: 'prom-1', interest: 'General', status: 'Confirmado' },
-            { id: 'l-4', name: 'Valeria R', phone: '6111-2222', promoter: 'prom-3', interest: 'Lista', status: 'Llegó' }
+        "id": "inst-terraplen-viernes",
+        "date": "2026-09-25",
+        "name": "Skyline Afrohouse & Bottle Service",
+        "day": "Viernes",
+        "status": "Promoción",
+        "targetCapacity": 250,
+        "targetDemo": "VIP, Mesas, Creadores de contenido, Música electrónica",
+        "leads": [
+          {
+            "id": "l-t7",
+            "name": "Valentina Díaz",
+            "phone": "+507 6555-8899",
+            "promoter": "prom-2",
+            "interest": "Mesa VIP",
+            "status": "Confirmado"
+          },
+          {
+            "id": "l-t8",
+            "name": "Grupo Mesas Tech",
+            "phone": "+507 6777-8888",
+            "promoter": "prom-1",
+            "interest": "Mesa VIP",
+            "status": "Confirmado"
+          }
         ],
-        vipFlow: [
-            { id: 'vip-1', name: 'Influencer PTY', type: 'Influencer', benefit: 'Mesa Free', confirmed: true },
-            { id: 'vip-2', name: 'DJ Invitado', type: 'VIP', benefit: 'Botella', confirmed: false }
+        "vipFlow": [
+          {
+            "id": "vip-t4",
+            "name": "Mesa VIP 2 - Clase Azul",
+            "type": "Mesa VIP",
+            "benefit": "Clase Azul Reposado + Mezcladores",
+            "confirmed": true
+          }
         ],
-        assignedPromoters: ['prom-1', 'prom-2', 'prom-3'],
-        assignedGirls: [
-            { id: 'g-1', role: 'Mesa', time: '22:00' },
-            { id: 'g-2', role: 'Contenido', time: '23:00' }
+        "assignedPromoters": [
+          "prom-1",
+          "prom-2"
         ],
-        checklist: {
-            promo: [
-                { id: 'chk-p1', task: 'Arte listo', done: true }, 
-                { id: 'chk-p2', task: 'Stories activas', done: true },
-                { id: 'chk-p3', task: 'Broadcast enviado', done: false }
-            ],
-            logistica: [
-                { id: 'chk-l1', task: 'Lista abierta', done: true },
-                { id: 'chk-l2', task: 'Puerta definida', done: false },
-                { id: 'chk-l3', task: 'DJ confirmado', done: true }
-            ],
-            imagen: [
-                { id: 'chk-i1', task: 'Chicas confirmadas', done: true },
-                { id: 'chk-i2', task: 'Distribución mesas', done: false }
-            ]
-        }
-      },
-      {
-        id: 'inst-candela-2',
-        date: '2026-06-15',
-        day: 'Sábado',
-        status: 'Promoción',
-        targetCapacity: 500,
-        targetDemo: 'Crossover, VIP',
-        leads: [],
-        vipFlow: [],
-        assignedPromoters: ['prom-2'],
-        assignedGirls: [],
-        checklist: {
-            promo: [{ id: 'chk-p4', task: 'Arte listo', done: true }], 
-            logistica: [{ id: 'chk-l4', task: 'Staff asignado', done: false }], 
-            imagen: []
+        "assignedGirls": [
+          {
+            "id": "girl-3",
+            "name": "Valentina D.",
+            "role": "Mesa Anfitriona",
+            "time": "22:00",
+            "phone": "@valen_vibes"
+          },
+          {
+            "id": "girl-2",
+            "name": "Camila R.",
+            "role": "Contenido / Stories",
+            "time": "22:30",
+            "phone": "@camila.oficial"
+          }
+        ],
+        "checklist": {
+          "promo": [
+            {
+              "id": "chk-tp4",
+              "task": "Stories de line-up del viernes publicadas",
+              "done": true
+            }
+          ],
+          "logistica": [
+            {
+              "id": "chk-tl5",
+              "task": "Inventario de botellas premium verificado",
+              "done": true
+            }
+          ],
+          "imagen": [
+            {
+              "id": "chk-ti4",
+              "task": "Coordinación de chicas en mesas VIP",
+              "done": true
+            }
+          ]
         }
       }
-    ],
-    agenda: [],
-    requirements: [],
-    todos: []
-  },
-  {
-    id: 'ev-grafiti-tour',
-    name: 'I⭐️GRAFITI TOUR',
-    date: '2026-07-10',
-    time: '14:00',
-    location: 'Rutas urbanas',
-    capacity: 'General',
-    budget: '0',
-    type: 'social',
-    status: 'borrador',
-    description: 'Recorrido artístico y cultural por puntos clave de arte urbano.',
-    color: '#8b5cf6',
-    icon: '🎨',
-    agenda: [],
-    requirements: [],
-    todos: []
-  },
-  {
-    id: 'ev-music-pty',
-    name: 'Music PTY',
-    date: '2026-08-05',
-    time: '18:00',
-    location: 'Estudio Principal, Panama City',
-    capacity: 'Producción TV',
-    budget: '0',
-    type: 'tvshow',
-    status: 'planificacion',
-    description: 'Programa de televisión musical con segmentos en vivo, entrevistas a artistas, sesiones acústicas y cobertura de la escena musical panameña. Transmisión semanal con gestión integral de redes sociales y contenido multiplataforma.',
-    color: '#ec4899',
-    icon: '🎬',
-    showFrequency: 'Semanal',
-    showDay: 'Viernes',
-    showDuration: '60 min',
-    showChannel: 'Canal / Streaming',
-    segments: [
-      { id: 'seg-1', name: 'Intro / Apertura', duration: '5 min', type: 'Apertura', description: 'Bienvenida del host, resumen de lo que viene en el episodio y branding.', order: 1 },
-      { id: 'seg-2', name: 'Entrevista Artista Invitado', duration: '15 min', type: 'Entrevista', description: 'Conversación en profundidad con artista invitado sobre su carrera, proyectos y música nueva.', order: 2 },
-      { id: 'seg-3', name: 'Live Session / Acústico', duration: '10 min', type: 'Performance', description: 'Presentación en vivo o acústica del artista invitado en el estudio.', order: 3 },
-      { id: 'seg-4', name: 'Top 5 PTY', duration: '8 min', type: 'Ranking', description: 'Ranking semanal de las 5 canciones más escuchadas en Panamá con datos de streaming.', order: 4 },
-      { id: 'seg-5', name: 'Behind The Beat', duration: '10 min', type: 'Documental', description: 'Mini-documental sobre un productor, estudio o historia detrás de un hit panameño.', order: 5 },
-      { id: 'seg-6', name: 'Redes en Vivo / Q&A', duration: '7 min', type: 'Interactivo', description: 'Interacción en vivo con la audiencia: preguntas de Instagram/TikTok al artista.', order: 6 },
-      { id: 'seg-7', name: 'Cierre / Avance Próximo Episodio', duration: '5 min', type: 'Cierre', description: 'Resumen del episodio, despedida y preview del próximo programa.', order: 7 }
-    ],
-    episodes: [
-      { id: 'ep-1', number: 1, title: 'Episodio Piloto', date: '2026-08-05', guest: 'Por confirmar', status: 'Pre-producción', notes: 'Primer episodio - definir formato final.' },
-      { id: 'ep-2', number: 2, title: 'Episodio 2', date: '2026-08-12', guest: '', status: 'Planeación', notes: '' },
-      { id: 'ep-3', number: 3, title: 'Episodio 3', date: '2026-08-19', guest: '', status: 'Planeación', notes: '' }
-    ],
-    crew: [
-      { id: 'crew-1', name: '', role: 'Host / Presentador', department: 'Talento', status: 'Por asignar' },
-      { id: 'crew-2', name: '', role: 'Director', department: 'Dirección', status: 'Por asignar' },
-      { id: 'crew-3', name: '', role: 'Productor General', department: 'Producción', status: 'Por asignar' },
-      { id: 'crew-4', name: '', role: 'Camarógrafo 1', department: 'Cámaras', status: 'Por asignar' },
-      { id: 'crew-5', name: '', role: 'Camarógrafo 2', department: 'Cámaras', status: 'Por asignar' },
-      { id: 'crew-6', name: '', role: 'Ingeniero de Sonido', department: 'Audio', status: 'Por asignar' },
-      { id: 'crew-7', name: '', role: 'Editor de Video', department: 'Post-producción', status: 'Por asignar' },
-      { id: 'crew-8', name: '', role: 'Community Manager', department: 'Redes Sociales', status: 'Por asignar' },
-      { id: 'crew-9', name: '', role: 'Diseñador Gráfico', department: 'Arte', status: 'Por asignar' },
-      { id: 'crew-10', name: '', role: 'Iluminación', department: 'Técnico', status: 'Por asignar' }
-    ],
-    agenda: [],
-    requirements: [
-      { id: 'req-tv-1', name: 'Kit de cámaras (2+ cámaras)', category: 'Equipo', quantity: 1, cost: 0, status: 'Pendiente' },
-      { id: 'req-tv-2', name: 'Iluminación de estudio (LED panels)', category: 'Equipo', quantity: 1, cost: 0, status: 'Pendiente' },
-      { id: 'req-tv-3', name: 'Consola de audio / mixer', category: 'Audio', quantity: 1, cost: 0, status: 'Pendiente' },
-      { id: 'req-tv-4', name: 'Micrófonos (lavalier + boom)', category: 'Audio', quantity: 3, cost: 0, status: 'Pendiente' },
-      { id: 'req-tv-5', name: 'Pantalla verde / Set decoration', category: 'Escenografía', quantity: 1, cost: 0, status: 'Pendiente' },
-      { id: 'req-tv-6', name: 'Software de edición (Premiere / DaVinci)', category: 'Post-producción', quantity: 1, cost: 0, status: 'Pendiente' },
-      { id: 'req-tv-7', name: 'Streaming setup (OBS / encoder)', category: 'Transmisión', quantity: 1, cost: 0, status: 'Pendiente' }
-    ],
-    todos: []
-  },
-  {
-    id: 'ev-urban-nights',
-    name: 'Urban Nights',
-    type: 'nightclub',
-    status: 'borrador',
-    color: '#3b82f6',
-    icon: '🌃',
-    description: 'Fiesta temática de música urbana y activaciones de marca.',
-    instances: [
-      {
-        id: 'inst-urban-1',
-        date: '2026-09-20',
-        day: 'Viernes',
-        status: 'Promoción',
-        targetCapacity: 300,
-        targetDemo: 'Urbano, Jóvenes',
-        leads: [],
-        vipFlow: [],
-        assignedPromoters: [],
-        assignedGirls: [],
-        checklist: { promo: [], logistica: [], imagen: [] }
-      }
-    ],
-    agenda: [],
-    requirements: [],
-    todos: []
-  },
-  {
-    id: 'ev-party-pa-vacilar',
-    name: 'Party en Pa’ Vacilar',
-    type: 'nightclub',
-    status: 'borrador',
-    color: '#f59e0b',
-    icon: '🎉',
-    description: 'El party definitivo en Pa’ Vacilar.',
-    instances: [
-      {
-        id: 'inst-party-1',
-        date: '2026-10-31',
-        day: 'Sábado',
-        status: 'Promoción',
-        targetCapacity: 500,
-        targetDemo: 'General, Crossover',
-        leads: [],
-        vipFlow: [],
-        assignedPromoters: [],
-        assignedGirls: [],
-        checklist: { promo: [], logistica: [], imagen: [] }
-      }
-    ],
-    agenda: [],
-    requirements: [],
-    todos: []
-  },
-  {
-    id: 'ev-the-room',
-    name: 'The Room',
-    type: 'nightclub',
-    status: 'borrador',
-    color: '#8b5cf6',
-    icon: '🍸',
-    description: 'Evento The Room.',
-    instances: [
-      {
-        id: 'inst-theroom-1',
-        date: '2026-11-01',
-        day: 'Viernes',
-        status: 'Promoción',
-        targetCapacity: 200,
-        targetDemo: 'VIP, Exclusivo',
-        leads: [],
-        vipFlow: [],
-        assignedPromoters: [],
-        assignedGirls: [],
-        checklist: { promo: [], logistica: [], imagen: [] }
-      }
-    ],
-    agenda: [],
-    requirements: [],
-    todos: []
-  },
-  {
-    id: 'ev-arrive-models',
-    name: 'Arrive Models',
-    type: 'nightclub',
-    status: 'borrador',
-    color: '#8b5cf6',
-    icon: '💃',
-    description: 'Evento exclusivo con agencias y modelos de Arrive Models.',
-    instances: [
-      {
-        id: 'inst-arrive-1',
-        date: '2026-11-15',
-        day: 'Viernes',
-        status: 'Promoción',
-        targetCapacity: 200,
-        targetDemo: 'Modelos, VIP, Invitados Especiales',
-        leads: [],
-        vipFlow: [],
-        assignedPromoters: [],
-        assignedGirls: [],
-        checklist: { promo: [], logistica: [], imagen: [] }
-      }
-    ],
-    agenda: [],
-    requirements: [],
-    todos: []
-  },
-  {
-    id: 'ev-activacion-mundial',
-    name: 'Activación Mundial',
-    type: 'nightclub',
-    status: 'borrador',
-    color: '#10b981',
-    icon: '🌍',
-    description: 'Activación global de marca con experiencias interactivas.',
-    instances: [
-      {
-        id: 'inst-activacion-1',
-        date: '2026-12-05',
-        day: 'Sábado',
-        status: 'Promoción',
-        targetCapacity: 800,
-        targetDemo: 'General, Extranjeros, Turistas',
-        leads: [],
-        vipFlow: [],
-        assignedPromoters: [],
-        assignedGirls: [],
-        checklist: { promo: [], logistica: [], imagen: [] }
-      }
-    ],
-    agenda: [],
-    requirements: [],
-    todos: []
-  },
-  {
-    id: 'ev-vale-bash',
-    name: 'Vale Bash @Terraplen',
-    type: 'nightclub',
-    status: 'borrador',
-    color: '#f43f5e',
-    icon: '🥂',
-    description: 'Fiesta especial Vale Bash en locación Terraplen.',
-    instances: [
-      {
-        id: 'inst-vale-bash-1',
-        date: '2026-12-20',
-        day: 'Viernes',
-        status: 'Promoción',
-        targetCapacity: 500,
-        targetDemo: 'VIP, Universitarios, Crossover',
-        leads: [],
-        vipFlow: [],
-        assignedPromoters: [],
-        assignedGirls: [],
-        checklist: { promo: [], logistica: [], imagen: [] }
-      }
-    ],
-    agenda: [],
-    requirements: [],
-    todos: []
-  },
-  {
-    id: 'ev-guaya-fest',
-    name: 'Guaya Fest 2026',
-    type: 'festival',
-    status: 'planificacion',
-    date: '2026-10-16',
-    time: '15:00',
-    location: 'Explanada Amador, Panamá',
-    capacity: '12000',
-    budget: '150000',
-    estimatedBudget: '150000',
-    description: 'El festival de música urbana y cultura del año. Múltiples escenarios, áreas de comida, activaciones de marca y zonas VIP con boxes exclusivos.',
-    color: '#fbbf24',
-    icon: '🎪',
-    agenda: [
-      { id: 'ag-gf1', time: '15:00', title: 'Apertura de Puertas', speaker: 'Escenario Principal', description: 'Acceso del público general y DJ de bienvenida' },
-      { id: 'ag-gf2', time: '17:00', title: 'Show de Talentos Locales', speaker: 'Escenario Local', description: 'Presentación de artistas emergentes nacionales' },
-      { id: 'ag-gf3', time: '19:00', title: 'Competencia Freestyle Final', speaker: 'Escenario Urbano', description: 'Batalla de los mejores 8 MCs de la región' },
-      { id: 'ag-gf4', time: '21:00', title: 'Set de DJ Invitado Internacional', speaker: 'Escenario Principal', description: 'Presentación de DJ residente de Miami' },
-      { id: 'ag-gf5', time: '22:30', title: 'Artista Estelar Principal', speaker: 'Escenario Principal', description: 'Show en vivo de la estrella internacional de reggaetón' }
-    ],
-    requirements: [
-      { id: 'req-gf-1', name: 'Montaje de Tarima Principal', category: 'Producción', quantity: 1, cost: 25000, status: 'Confirmado' },
-      { id: 'req-gf-2', name: 'Sistema de Sonido Line Array', category: 'Audio', quantity: 2, cost: 18000, status: 'Confirmado' },
-      { id: 'req-gf-3', name: 'Pantallas LED Gigantes', category: 'Video', quantity: 4, cost: 15000, status: 'Pendiente' },
-      { id: 'req-gf-4', name: 'Seguridad Privada (150 unidades)', category: 'Logística', quantity: 1, cost: 9500, status: 'Confirmado' },
-      { id: 'req-gf-5', name: 'Permisos Municipales y de Salud', category: 'Legal', quantity: 1, cost: 3000, status: 'En Proceso' }
-    ],
-    todos: []
-  },
-  {
-    id: 'ev-casco-lounge',
-    name: '212 club',
-    type: 'local',
-    status: 'activo',
-    date: '2026-06-11',
-    time: '18:00',
-    location: 'Calle 8va, Casco Antiguo, Panamá',
-    capacity: '250',
-    budget: '12000',
-    estimatedBudget: '12000',
-    description: 'Lounge bar premium en el Casco Antiguo. Gestión diaria de reservas de boxes VIP, inventario de barra y asistencia de personal.',
-    color: '#10b981',
-    icon: '🏪',
-    agenda: [
-      { id: 'ag-cl1', date: '2026-06-11', time: '18:00', title: 'Apertura y Happy Hour', speaker: 'Barra Principal', description: '2x1 en cócteles seleccionados' },
-      { id: 'ag-cl2', date: '2026-06-11', time: '21:00', title: 'DJ Live Set - Chill & Deep House', speaker: 'Cabina DJ', description: 'Set en vivo para ambientar el Lounge' },
-      { id: 'ag-cl3', date: '2026-06-12', time: '23:30', title: 'Urban & Crossover Night', speaker: 'Todo el local', description: 'Música bailable hasta el cierre' },
-      { id: 'ag-cl4', date: '2026-06-13', time: '22:00', title: 'Sábado Gigante - Open Bar Premium', speaker: 'Main Stage', description: 'Barra libre para VIPs y DJs nacionales' }
-    ],
-    requirements: [],
-    instances: [
-      {
-        id: 'inst-212-1',
-        date: '2026-06-11',
-        day: 'Viernes',
-        status: 'Activo',
-        leads: [],
-        assignedPromoters: []
-      }
-    ],
-    todos: [],
-    tables: [
-      { id: 't-b1', name: 'Box VIP 1', capacity: 10, minConsumption: 500, status: 'Disponible', client: '', promoter: '', phone: '', deposit: 0 },
-      { id: 't-b2', name: 'Box VIP 2', capacity: 10, minConsumption: 500, status: 'Reservado', client: 'Esteban Ruiz', promoter: 'prom-1', phone: '@estebanr', deposit: 100 },
-      { id: 't-b3', name: 'Box VIP 3', capacity: 12, minConsumption: 600, status: 'Ocupado', client: 'Grupo Arrive', promoter: 'prom-2', phone: '@arrive.models', deposit: 200 },
-      { id: 't-b4', name: 'Box VIP 4', capacity: 8, minConsumption: 400, status: 'Disponible', client: '', promoter: '', phone: '', deposit: 0 },
-      { id: 't-m1', name: 'Mesa Gold 1', capacity: 6, minConsumption: 250, status: 'Reservado', client: 'Valeria M', promoter: 'prom-3', phone: '6123-4567', deposit: 50 },
-      { id: 't-m2', name: 'Mesa Gold 2', capacity: 6, minConsumption: 250, status: 'Disponible', client: '', promoter: '', phone: '', deposit: 0 },
-      { id: 't-m3', name: 'Mesa Silver 1', capacity: 4, minConsumption: 150, status: 'Disponible', client: '', promoter: '', phone: '', deposit: 0 },
-      { id: 't-m4', name: 'Mesa Silver 2', capacity: 4, minConsumption: 150, status: 'Disponible', client: '', promoter: '', phone: '', deposit: 0 }
-    ],
-    inventory: [
-      { id: 'inv-1', name: 'Ron Abuelo 12 Años', category: 'Licores', quantity: 24, cost: 25.0, price: 90.0, minStock: 5, status: 'Normal' },
-      { id: 'inv-2', name: 'Whisky Old Parr 12 Años', category: 'Licores', quantity: 18, cost: 30.0, price: 110.0, minStock: 6, status: 'Normal' },
-      { id: 'inv-3', name: 'Vodka Grey Goose', category: 'Licores', quantity: 4, cost: 35.0, price: 120.0, minStock: 5, status: 'Bajo Stock' },
-      { id: 'inv-4', name: 'Ginebra Tanqueray', category: 'Licores', quantity: 15, cost: 20.0, price: 85.0, minStock: 4, status: 'Normal' },
-      { id: 'inv-5', name: 'Tequila Don Julio Reposado', category: 'Licores', quantity: 0, cost: 45.0, price: 150.0, minStock: 3, status: 'Sin Stock' },
-      { id: 'inv-6', name: 'Cerveza Corona (Caja x24)', category: 'Cervezas', quantity: 12, cost: 18.0, price: 48.0, minStock: 10, status: 'Normal' },
-      { id: 'inv-7', name: 'Red Bull (Caja x24)', category: 'Bebidas/Mixers', quantity: 8, cost: 22.0, price: 72.0, minStock: 15, status: 'Bajo Stock' },
-      { id: 'inv-8', name: 'Agua Tónica Fever-Tree (Caja)', category: 'Bebidas/Mixers', quantity: 20, cost: 15.0, price: 50.0, minStock: 5, status: 'Normal' }
-    ],
-    staff: [
-      { id: 'st-1', name: 'Alejandro G.', role: 'Gerente de Turno', phone: '6789-0123', shift: '19:00 - 04:00', pay: 80, status: 'Presente' },
-      { id: 'st-2', name: 'David M.', role: 'Bartender Principal', phone: '6543-0987', shift: '20:00 - 04:00', pay: 50, status: 'Presente' },
-      { id: 'st-3', name: 'Laura S.', role: 'Bartender', phone: '6211-5432', shift: '20:00 - 04:00', pay: 45, status: 'Retrasado' },
-      { id: 'st-4', name: 'Moisés R.', role: 'Seguridad Jefe', phone: '6333-8888', shift: '19:00 - 04:00', pay: 60, status: 'Presente' },
-      { id: 'st-5', name: 'Grupo Seguridad (x4)', role: 'Seguridad Externo', phone: '-', shift: '21:00 - 04:00', pay: 160, status: 'Presente' },
-      { id: 'st-6', name: 'Estefanía L.', role: 'Cajera', phone: '6999-7777', shift: '20:00 - 04:00', pay: 40, status: 'Presente' },
-      { id: 'st-7', name: 'DJ Gianluca', role: 'DJ Residente', phone: '6111-9999', shift: '22:00 - 03:30', pay: 150, status: 'Ausente' }
     ]
+  },
+  {
+    "id": "ev-furia-panama",
+    "name": "Furia",
+    "type": "nightclub",
+    "status": "activo",
+    "color": "#ef4444",
+    "icon": "🔥",
+    "location": "Calle 50 / Obarrio, Ciudad de Panamá",
+    "capacity": "450 personas",
+    "budget": "5000",
+    "estimatedBudget": "5000",
+    "description": "Club nocturno insignia de alta energía, iluminación láser inmersiva y producción visual premium. Cenas pre-party para chicas invitadas con barra libre y mesa VIP central con bottle service para la noche de fiesta reggaeton comercial & tech.",
+    "organizer": "Operaciones Furia / CloserOps",
+    "phone": "+507 6300-2200",
+    "email": "furia@nightlifepty.com",
+    "notes": "Dinámica semanal: Viernes \"Furia Ladies Pre-Dinner & Club Takeover\" (Cena de sushi/tapas y cócteles para chicas invitadas a las 8:30 PM, paso directo a Mesa VIP 1 a las 11:00 PM); Sábado \"Furia Peak\" con mesas full y show de luces.",
+    "instances": [
+      {
+        "id": "inst-furia-viernes",
+        "date": "2026-09-25",
+        "name": "Furia Ladies Pre-Dinner & Club Takeover",
+        "day": "Viernes",
+        "status": "Confirmado",
+        "targetCapacity": 400,
+        "targetDemo": "+21, Ladies Night, Reggaeton Élite, Mesas VIP Heavy",
+        "leads": [
+          {
+            "id": "l-f1",
+            "name": "Andrea Barreto",
+            "phone": "+507 6443-2211",
+            "promoter": "prom-2",
+            "interest": "Cena Chicas",
+            "status": "Confirmado"
+          },
+          {
+            "id": "l-f2",
+            "name": "Mariana Terán",
+            "phone": "+507 6122-3399",
+            "promoter": "prom-2",
+            "interest": "Cena Chicas",
+            "status": "Confirmado"
+          },
+          {
+            "id": "l-f3",
+            "name": "Daniela Gómez",
+            "phone": "+507 6633-8822",
+            "promoter": "prom-2",
+            "interest": "Cena Chicas",
+            "status": "Confirmado"
+          },
+          {
+            "id": "l-f4",
+            "name": "Roberto Chen",
+            "phone": "+507 6888-9900",
+            "promoter": "prom-1",
+            "interest": "Mesa VIP 1",
+            "status": "Confirmado"
+          },
+          {
+            "id": "l-f5",
+            "name": "Martín K.",
+            "phone": "+507 6555-1234",
+            "promoter": "prom-4",
+            "interest": "Mesa VIP 2",
+            "status": "Confirmado"
+          }
+        ],
+        "vipFlow": [
+          {
+            "id": "vip-f1",
+            "name": "Mesa Central Chicas (Cena & Club)",
+            "type": "Cena VIP",
+            "benefit": "Sushi platters + Espumante + 2 Botellas en Mesa 1",
+            "confirmed": true
+          },
+          {
+            "id": "vip-f2",
+            "name": "Mesa VIP 3 - Empresarios",
+            "type": "Mesa VIP",
+            "benefit": "3 Botellas Premium + Servicio Hostess",
+            "confirmed": true
+          }
+        ],
+        "assignedPromoters": [
+          "prom-1",
+          "prom-2",
+          "prom-4"
+        ],
+        "assignedGirls": [
+          {
+            "id": "girl-5",
+            "name": "Andrea B.",
+            "role": "Cena VIP & Mesa",
+            "time": "20:30",
+            "phone": "@andreab_pty"
+          },
+          {
+            "id": "girl-7",
+            "name": "Mariana T.",
+            "role": "Cena VIP & Mesa",
+            "time": "20:30",
+            "phone": "@mariana.t"
+          },
+          {
+            "id": "girl-8",
+            "name": "Daniela G.",
+            "role": "Animación & Shots VIP",
+            "time": "21:00",
+            "phone": "@dani.gomez"
+          },
+          {
+            "id": "girl-2",
+            "name": "Camila R.",
+            "role": "Contenido / TikTok",
+            "time": "21:00",
+            "phone": "@camila.oficial"
+          }
+        ],
+        "checklist": {
+          "promo": [
+            {
+              "id": "chk-fp1",
+              "task": "Video teaser Furia Ladies Night en redes",
+              "done": true
+            },
+            {
+              "id": "chk-fp2",
+              "task": "Lista de chicas invitadas a cenar cerrada (20 cupos)",
+              "done": true
+            },
+            {
+              "id": "chk-fp3",
+              "task": "Difusión de WhatsApp para mesas VIP enviada",
+              "done": true
+            }
+          ],
+          "logistica": [
+            {
+              "id": "chk-fl1",
+              "task": "Catering sushi & finger food montado para las 8:30 PM",
+              "done": true
+            },
+            {
+              "id": "chk-fl2",
+              "task": "Mesas VIP 1 y 2 reservadas y delimitadas con cordón",
+              "done": true
+            },
+            {
+              "id": "chk-fl3",
+              "task": "Bengalas de botella y pirotecnia fría listas",
+              "done": true
+            }
+          ],
+          "imagen": [
+            {
+              "id": "chk-fi1",
+              "task": "Coordinadora de chicas en puerta con lista VIP",
+              "done": true
+            },
+            {
+              "id": "chk-fi2",
+              "task": "Brindis de bienvenida con espumante preparado",
+              "done": true
+            }
+          ]
+        }
+      },
+      {
+        "id": "inst-furia-sabado",
+        "date": "2026-09-26",
+        "name": "Furia Sábado Salvaje",
+        "day": "Sábado",
+        "status": "Promoción",
+        "targetCapacity": 450,
+        "targetDemo": "Sold Out Tables, Partygoers, DJs Invitados",
+        "leads": [
+          {
+            "id": "l-f6",
+            "name": "Esteban V.",
+            "phone": "+507 6333-1100",
+            "promoter": "prom-1",
+            "interest": "Mesa Escenario",
+            "status": "Confirmado"
+          }
+        ],
+        "vipFlow": [],
+        "assignedPromoters": [
+          "prom-1",
+          "prom-4"
+        ],
+        "assignedGirls": [
+          {
+            "id": "girl-5",
+            "name": "Andrea B.",
+            "role": "Mesa VIP",
+            "time": "22:30",
+            "phone": "@andreab_pty"
+          },
+          {
+            "id": "girl-3",
+            "name": "Valentina D.",
+            "role": "Animación & Shots",
+            "time": "23:00",
+            "phone": "@valen_vibes"
+          }
+        ],
+        "checklist": {
+          "promo": [
+            {
+              "id": "chk-fp4",
+              "task": "Campaña de sold out mesas activa",
+              "done": true
+            }
+          ],
+          "logistica": [
+            {
+              "id": "chk-fl4",
+              "task": "Pruebas de visuales e iluminación láser",
+              "done": true
+            }
+          ],
+          "imagen": [
+            {
+              "id": "chk-fi3",
+              "task": "Chicas de imagen asignadas a mesas VIP",
+              "done": true
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "ev-piano-bar",
+    "name": "Piano Bar",
+    "type": "nightclub",
+    "status": "activo",
+    "color": "#8b5cf6",
+    "icon": "🎹",
+    "location": "Casco Antiguo, Ciudad de Panamá",
+    "capacity": "180 personas",
+    "budget": "3000",
+    "estimatedBudget": "3000",
+    "description": "Speakeasy refinado y exclusivo con piano de cola en vivo, alta gastronomía, coctelería de autor y ambiente íntimo. Cenas semanales para chicas con pianista en vivo, maridaje de vinos/espumantes y transición a fiesta lounge elegante.",
+    "organizer": "Operaciones Piano Bar / Bart (COO)",
+    "phone": "+507 6400-3300",
+    "email": "pianobar@nightlifepty.com",
+    "notes": "Dinámica semanal: Miércoles & Jueves \"Piano & Wine: Girls Dinner Edition\" (Cena maridaje exclusiva para chicas invitadas con música de piano en vivo de 8:00 a 10:30 PM); Viernes & Sábado fiesta chic con piano pop & DJ late night.",
+    "instances": [
+      {
+        "id": "inst-pianobar-jueves",
+        "date": "2026-09-24",
+        "name": "Piano & Wine: Exclusive Girls Dinner",
+        "day": "Jueves",
+        "status": "Confirmado",
+        "targetCapacity": 120,
+        "targetDemo": "Chicas VIP, Networking de alto perfil, Amantes del vino y piano en vivo",
+        "leads": [
+          {
+            "id": "l-p1",
+            "name": "Isabella Solís",
+            "phone": "+507 6712-3344",
+            "promoter": "prom-2",
+            "interest": "Cena Maridaje",
+            "status": "Confirmado"
+          },
+          {
+            "id": "l-p2",
+            "name": "Sofía Morales",
+            "phone": "+507 6211-4455",
+            "promoter": "prom-2",
+            "interest": "Cena Maridaje",
+            "status": "Confirmado"
+          },
+          {
+            "id": "l-p3",
+            "name": "Mariana Terán",
+            "phone": "+507 6122-3399",
+            "promoter": "prom-2",
+            "interest": "Cena Maridaje",
+            "status": "Confirmado"
+          },
+          {
+            "id": "l-p4",
+            "name": "Nicole Castillo",
+            "phone": "+507 6899-7766",
+            "promoter": "prom-2",
+            "interest": "Cena Maridaje",
+            "status": "Confirmado"
+          },
+          {
+            "id": "l-p5",
+            "name": "Gabriel Mendoza",
+            "phone": "+507 6111-9988",
+            "promoter": "prom-3",
+            "interest": "Mesa Lounge",
+            "status": "Confirmado"
+          }
+        ],
+        "vipFlow": [
+          {
+            "id": "vip-p1",
+            "name": "Mesa Imperial Chicas (Cena & Vino)",
+            "type": "Cena VIP",
+            "benefit": "Menú 3 tiempos + Cata maridaje de espumantes + Piano privado",
+            "confirmed": true
+          },
+          {
+            "id": "vip-p2",
+            "name": "Mesa Piano Frontal - Reserva Especial",
+            "type": "Mesa VIP",
+            "benefit": "Botella Champagne Laurent-Perrier",
+            "confirmed": true
+          }
+        ],
+        "assignedPromoters": [
+          "prom-2",
+          "prom-3"
+        ],
+        "assignedGirls": [
+          {
+            "id": "girl-4",
+            "name": "Isabella S.",
+            "role": "Cena Maridaje VIP",
+            "time": "20:00",
+            "phone": "@isa.solis"
+          },
+          {
+            "id": "girl-1",
+            "name": "Sofía M.",
+            "role": "Cena Maridaje VIP",
+            "time": "20:00",
+            "phone": "@sofia.pty"
+          },
+          {
+            "id": "girl-7",
+            "name": "Mariana T.",
+            "role": "Cena Maridaje VIP",
+            "time": "20:00",
+            "phone": "@mariana.t"
+          },
+          {
+            "id": "girl-6",
+            "name": "Nicole C.",
+            "role": "Lounge Hostess",
+            "time": "20:30",
+            "phone": "@nicole.casco"
+          }
+        ],
+        "checklist": {
+          "promo": [
+            {
+              "id": "chk-pp1",
+              "task": "Invitaciones formales estilo tarjeta digital enviadas a chicas VIP",
+              "done": true
+            },
+            {
+              "id": "chk-pp2",
+              "task": "Confirmación de asistencia para los 14 puestos de cena",
+              "done": true
+            },
+            {
+              "id": "chk-pp3",
+              "task": "Repertorio del pianista coordinado (baladas pop & jazz chic)",
+              "done": true
+            }
+          ],
+          "logistica": [
+            {
+              "id": "chk-pl1",
+              "task": "Piano de cola afinado y micrófono de sala verificado",
+              "done": true
+            },
+            {
+              "id": "chk-pl2",
+              "task": "Menú degustación de 3 tiempos y selección de vinos lista",
+              "done": true
+            },
+            {
+              "id": "chk-pl3",
+              "task": "Montaje de mesa con velas, copas de cristal y rosas",
+              "done": true
+            }
+          ],
+          "imagen": [
+            {
+              "id": "chk-pi1",
+              "task": "Sommelier listo para recibir y presentar cada copa",
+              "done": true
+            },
+            {
+              "id": "chk-pi2",
+              "task": "Contenido visual íntimo grabado con el pianista y la mesa",
+              "done": false
+            }
+          ]
+        }
+      },
+      {
+        "id": "inst-pianobar-viernes",
+        "date": "2026-09-25",
+        "name": "Midnight Keys & Cocktails",
+        "day": "Viernes",
+        "status": "Confirmado",
+        "targetCapacity": 160,
+        "targetDemo": "Speakeasy chic, Expats, Cócteles de autor, Late night party",
+        "leads": [
+          {
+            "id": "l-p6",
+            "name": "Camila Ríos",
+            "phone": "+507 6390-1122",
+            "promoter": "prom-2",
+            "interest": "Lounge VIP",
+            "status": "Confirmado"
+          }
+        ],
+        "vipFlow": [],
+        "assignedPromoters": [
+          "prom-2",
+          "prom-3"
+        ],
+        "assignedGirls": [
+          {
+            "id": "girl-2",
+            "name": "Camila R.",
+            "role": "Contenido / Stories",
+            "time": "21:30",
+            "phone": "@camila.oficial"
+          },
+          {
+            "id": "girl-3",
+            "name": "Valentina D.",
+            "role": "Lounge VIP",
+            "time": "22:00",
+            "phone": "@valen_vibes"
+          }
+        ],
+        "checklist": {
+          "promo": [
+            {
+              "id": "chk-pp4",
+              "task": "Stories de coctelería y ambientación nocturna",
+              "done": true
+            }
+          ],
+          "logistica": [
+            {
+              "id": "chk-pl4",
+              "task": "Transición de piano acústico a DJ set programada (11:00 PM)",
+              "done": true
+            }
+          ],
+          "imagen": [
+            {
+              "id": "chk-pi3",
+              "task": "Atención personalizada en mesas lounge",
+              "done": true
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "proj-1787275228256",
+    "name": "Sistema Autónomo OpenClaw Test",
+    "description": "Prueba de integración de OpenClaw Bridge",
+    "category": "project",
+    "type": "software",
+    "templateKey": "project_software",
+    "status": "active",
+    "priority": "high",
+    "date": "2026-08-21",
+    "budget": "2500",
+    "estimatedBudget": "2500",
+    "organizer": "OpenClaw Super Agent",
+    "techStack": [
+      "React",
+      "FastAPI",
+      "Gemini AI"
+    ],
+    "githubRepo": "",
+    "milestones": [
+      {
+        "id": "m-1",
+        "title": "Definición de arquitectura y roadmap",
+        "done": true,
+        "deadline": ""
+      },
+      {
+        "id": "m-2",
+        "title": "Desarrollo del Core MVP",
+        "done": false,
+        "deadline": ""
+      },
+      {
+        "id": "m-3",
+        "title": "Pruebas y despliegue inicial",
+        "done": false,
+        "deadline": ""
+      }
+    ],
+    "color": "#6366f1",
+    "icon": "💻",
+    "agenda": [
+      {
+        "id": "ag-1",
+        "time": "09:00",
+        "title": "Definición de arquitectura y roadmap",
+        "speaker": "OpenClaw Super Agent",
+        "description": "Hito del proyecto"
+      },
+      {
+        "id": "ag-2",
+        "time": "09:00",
+        "title": "Desarrollo del Core MVP",
+        "speaker": "OpenClaw Super Agent",
+        "description": "Hito del proyecto"
+      },
+      {
+        "id": "ag-3",
+        "time": "09:00",
+        "title": "Pruebas y despliegue inicial",
+        "speaker": "OpenClaw Super Agent",
+        "description": "Hito del proyecto"
+      }
+    ],
+    "requirements": [
+      {
+        "id": "req-1",
+        "name": "Configuración: React",
+        "done": false
+      },
+      {
+        "id": "req-2",
+        "name": "Configuración: FastAPI",
+        "done": false
+      },
+      {
+        "id": "req-3",
+        "name": "Configuración: Gemini AI",
+        "done": false
+      }
+    ]
+  },
+  {
+    "id": "ev-casco-peatonal",
+    "name": "Casco Peatonal",
+    "templateKey": "casco_peatonal",
+    "date": "2026-08-30",
+    "time": "14:00",
+    "location": "Casco Antiguo — Plaza Catedral",
+    "capacity": "Masivo (Plaza Catedral)",
+    "budget": "12000",
+    "estimatedBudget": "12000",
+    "type": "casco_peatonal",
+    "status": "planificacion",
+    "description": "Evento público mensual (último domingo de cada mes de agosto a enero). Nuestra responsabilidad principal es la contratación de artistas y el montaje de la tarima en Plaza Catedral. Otras plazas (Plaza Bolívar, Plaza Herrera y La Playita) quedan reservadas a futuro.",
+    "color": "#f59e0b",
+    "icon": "🚶‍♂️",
+    "zones": [
+      "Plaza Catedral (Principal — Tarima & Artistas)",
+      "Plaza Bolívar (Futuras actividades / Reserva)",
+      "Plaza Herrera (Futuras actividades / Reserva)",
+      "La Playita (Futuras actividades / Reserva)"
+    ],
+    "instances": [
+      {
+        "id": "inst-casco-2026-08",
+        "date": "2026-08-30",
+        "name": "Edición Agosto 2026",
+        "status": "upcoming",
+        "location": "Plaza Catedral",
+        "artists": [
+          {
+            "id": "art-1",
+            "name": "Orquesta Latin Swing",
+            "genre": "Salsa / En vivo",
+            "time": "16:00 - 17:15",
+            "soundcheck": "13:30",
+            "status": "confirmado",
+            "rider": "12 micrófonos, 4 monitores"
+          },
+          {
+            "id": "art-2",
+            "name": "Panaashe",
+            "genre": "Urbano / Fusion",
+            "time": "17:30 - 18:30",
+            "soundcheck": "14:15",
+            "status": "confirmado",
+            "rider": "2 In-Ears, Dj Set"
+          },
+          {
+            "id": "art-3",
+            "name": "Orquesta Servicio de Migración",
+            "genre": "Tropical / Cierre",
+            "time": "18:45 - 20:00",
+            "soundcheck": "15:00",
+            "status": "confirmado",
+            "rider": "Rider completo orquesta"
+          }
+        ],
+        "stageSetup": {
+          "provider": "AudioTech Panama",
+          "stageSize": "10m x 8m con techado truss",
+          "soundSystem": "Line Array JBL VTX 12kW",
+          "lighting": "16 Moving Heads + Pantalla LED 6x3m",
+          "setupTime": "08:00 AM",
+          "soundcheckTime": "13:30 PM",
+          "teardownTime": "21:00 PM"
+        }
+      },
+      {
+        "id": "inst-casco-2026-09",
+        "date": "2026-09-27",
+        "name": "Edición Septiembre 2026",
+        "status": "planificacion",
+        "location": "Plaza Catedral",
+        "artists": [],
+        "stageSetup": {
+          "provider": "AudioTech Panama",
+          "stageSize": "10m x 8m",
+          "setupTime": "08:00 AM"
+        }
+      },
+      {
+        "id": "inst-casco-2026-10",
+        "date": "2026-10-25",
+        "name": "Edición Octubre 2026",
+        "status": "planificacion",
+        "location": "Plaza Catedral",
+        "artists": [],
+        "stageSetup": {}
+      },
+      {
+        "id": "inst-casco-2026-11",
+        "date": "2026-11-29",
+        "name": "Edición Noviembre 2026",
+        "status": "planificacion",
+        "location": "Plaza Catedral",
+        "artists": [],
+        "stageSetup": {}
+      },
+      {
+        "id": "inst-casco-2026-12",
+        "date": "2026-12-27",
+        "name": "Edición Diciembre 2026 (Fin de Año)",
+        "status": "planificacion",
+        "location": "Plaza Catedral",
+        "artists": [],
+        "stageSetup": {}
+      },
+      {
+        "id": "inst-casco-2027-01",
+        "date": "2027-01-31",
+        "name": "Edición Enero 2027 (Cierre de Temporada)",
+        "status": "planificacion",
+        "location": "Plaza Catedral",
+        "artists": [],
+        "stageSetup": {}
+      }
+    ],
+    "futurePlazas": [
+      {
+        "id": "plz-bolivar",
+        "name": "Plaza Bolívar",
+        "status": "En lista / Reserva futura",
+        "notes": "Reservado para futura expansión de bazar cultural o pasarela"
+      },
+      {
+        "id": "plz-herrera",
+        "name": "Plaza Herrera",
+        "status": "En lista / Reserva futura",
+        "notes": "Reservado para futuros torneos deportivos o ajedrez"
+      },
+      {
+        "id": "plz-playita",
+        "name": "La Playita",
+        "status": "En lista / Reserva futura",
+        "notes": "Reservado para futuras activaciones de playa o Sunset DJ"
+      }
+    ],
+    "agenda": [
+      {
+        "id": "ag-c1",
+        "time": "08:00",
+        "title": "Llegada de camiones y montaje de estructura de tarima",
+        "speaker": "Plaza Catedral (AudioTech)",
+        "description": "Armado de tarima 10x8m, trusses y soporte de iluminación"
+      },
+      {
+        "id": "ag-c2",
+        "time": "11:00",
+        "title": "Montaje de sistema de sonido e iluminación",
+        "speaker": "Plaza Catedral (AudioTech)",
+        "description": "Pruebas de parches, amplificadores y consolas"
+      },
+      {
+        "id": "ag-c3",
+        "time": "13:30",
+        "title": "Soundcheck de artistas",
+        "speaker": "Plaza Catedral (Artistas)",
+        "description": "Pruebas de sonido en orden de presentación"
+      },
+      {
+        "id": "ag-c4",
+        "time": "16:00",
+        "title": "Inicio de Shows en Tarima Principal",
+        "speaker": "Plaza Catedral",
+        "description": "Presentaciones de agrupaciones y DJs"
+      },
+      {
+        "id": "ag-c5",
+        "time": "20:30",
+        "title": "Cierre de tarima y desmontaje",
+        "speaker": "Plaza Catedral",
+        "description": "Desmontaje completo y entrega de plaza limpia"
+      }
+    ],
+    "requirements": [
+      {
+        "id": "req-c1",
+        "name": "Contratos y riders técnicos de artistas confirmados",
+        "done": false
+      },
+      {
+        "id": "req-c2",
+        "name": "Reserva y contratación de tarima (AudioTech)",
+        "done": true
+      },
+      {
+        "id": "req-c3",
+        "name": "Permiso de alcaldía y sonido en Plaza Catedral",
+        "done": true
+      },
+      {
+        "id": "req-c4",
+        "name": "Generador eléctrico de respaldo (60 kVA)",
+        "done": false
+      },
+      {
+        "id": "req-c5",
+        "name": "Seguridad y backstage para artistas en Catedral",
+        "done": false
+      }
+    ],
+    "todos": [],
+    "organizer": "Oficina del Casco Antiguo",
+    "contactPerson": "Comité Casco Peatonal",
+    "phone": "+507 6000-0000",
+    "email": "casco@peatonal.com",
+    "notes": "Foco exclusivo en Plaza Catedral. Plazas Bolívar, Herrera y La Playita en lista de reserva a futuro.",
+    "driveFolderId": ""
+  },
+  {
+    "id": "ev-candela-trump",
+    "name": "The Room @Terraplen",
+    "type": "Nightclub",
+    "status": "activo",
+    "color": "#ef4444",
+    "icon": "🔥",
+    "description": "Serie de eventos nocturnos enfocados en reggaeton y mesas VIP.",
+    "instances": [
+      {
+        "id": "inst-candela-1",
+        "date": "2026-06-14",
+        "day": "Viernes",
+        "status": "Fuerte",
+        "targetCapacity": 400,
+        "targetDemo": "+21, Reggaeton, VIP Heavy",
+        "leads": [
+          {
+            "id": "l-1",
+            "name": "Carlos Perez",
+            "phone": "@carlosp",
+            "promoter": "prom-1",
+            "interest": "Mesa",
+            "status": "Confirmado"
+          },
+          {
+            "id": "l-2",
+            "name": "Ana Gomez",
+            "phone": "6543-2109",
+            "promoter": "prom-2",
+            "interest": "Lista",
+            "status": "Contactado"
+          },
+          {
+            "id": "l-3",
+            "name": "Luis M",
+            "phone": "@luis_mpty",
+            "promoter": "prom-1",
+            "interest": "General",
+            "status": "Confirmado"
+          },
+          {
+            "id": "l-4",
+            "name": "Valeria R",
+            "phone": "6111-2222",
+            "promoter": "prom-3",
+            "interest": "Lista",
+            "status": "Llegó"
+          }
+        ],
+        "vipFlow": [
+          {
+            "id": "vip-1",
+            "name": "Influencer PTY",
+            "type": "Influencer",
+            "benefit": "Mesa Free",
+            "confirmed": true
+          },
+          {
+            "id": "vip-2",
+            "name": "DJ Invitado",
+            "type": "VIP",
+            "benefit": "Botella",
+            "confirmed": false
+          }
+        ],
+        "assignedPromoters": [
+          "prom-1",
+          "prom-2",
+          "prom-3"
+        ],
+        "assignedGirls": [
+          {
+            "id": "g-1",
+            "role": "Mesa",
+            "time": "22:00"
+          },
+          {
+            "id": "g-2",
+            "role": "Contenido",
+            "time": "23:00"
+          }
+        ],
+        "checklist": {
+          "promo": [
+            {
+              "id": "chk-p1",
+              "task": "Arte listo",
+              "done": true
+            },
+            {
+              "id": "chk-p2",
+              "task": "Stories activas",
+              "done": true
+            },
+            {
+              "id": "chk-p3",
+              "task": "Broadcast enviado",
+              "done": false
+            }
+          ],
+          "logistica": [
+            {
+              "id": "chk-l1",
+              "task": "Lista abierta",
+              "done": true
+            },
+            {
+              "id": "chk-l2",
+              "task": "Puerta definida",
+              "done": false
+            },
+            {
+              "id": "chk-l3",
+              "task": "DJ confirmado",
+              "done": true
+            }
+          ],
+          "imagen": [
+            {
+              "id": "chk-i1",
+              "task": "Chicas confirmadas",
+              "done": true
+            },
+            {
+              "id": "chk-i2",
+              "task": "Distribución mesas",
+              "done": false
+            }
+          ]
+        }
+      },
+      {
+        "id": "inst-candela-2",
+        "date": "2026-06-15",
+        "day": "Sábado",
+        "status": "Promoción",
+        "targetCapacity": 500,
+        "targetDemo": "Crossover, VIP",
+        "leads": [],
+        "vipFlow": [],
+        "assignedPromoters": [
+          "prom-2"
+        ],
+        "assignedGirls": [],
+        "checklist": {
+          "promo": [
+            {
+              "id": "chk-p4",
+              "task": "Arte listo",
+              "done": true
+            }
+          ],
+          "logistica": [
+            {
+              "id": "chk-l4",
+              "task": "Staff asignado",
+              "done": false
+            }
+          ],
+          "imagen": []
+        }
+      }
+    ],
+    "agenda": [],
+    "requirements": [],
+    "todos": [],
+    "date": "2026-06-05",
+    "time": "",
+    "location": "",
+    "capacity": "",
+    "budget": "",
+    "estimatedBudget": "",
+    "organizer": "",
+    "contactPerson": "",
+    "phone": "",
+    "email": "",
+    "notes": "",
+    "driveFolderId": ""
+  },
+  {
+    "id": "ev-grafiti-tour",
+    "name": "I⭐️GRAFITI TOUR",
+    "date": "2026-07-10",
+    "time": "14:00",
+    "location": "Rutas urbanas",
+    "capacity": "General",
+    "budget": "0",
+    "type": "social",
+    "status": "borrador",
+    "description": "Recorrido artístico y cultural por puntos clave de arte urbano.",
+    "color": "#8b5cf6",
+    "icon": "🎨",
+    "agenda": [],
+    "requirements": [],
+    "todos": []
+  },
+  {
+    "id": "ev-urban-nights",
+    "name": "Urban Nights",
+    "date": "2026-06-20",
+    "time": "22:00",
+    "location": "Rosalia Downtown",
+    "capacity": "General",
+    "budget": "0",
+    "type": "Nightclub",
+    "status": "activo",
+    "description": "Presentaciond e Danny Yash",
+    "color": "#3b82f6",
+    "icon": "🌃",
+    "agenda": [],
+    "requirements": [],
+    "todos": [],
+    "estimatedBudget": "0",
+    "organizer": "",
+    "contactPerson": "",
+    "phone": "",
+    "email": "",
+    "notes": "",
+    "driveFolderId": ""
+  },
+  {
+    "id": "evt-1779135935446",
+    "name": "Arrive Models",
+    "type": "",
+    "description": "",
+    "status": "upcoming",
+    "date": "",
+    "time": "",
+    "location": "",
+    "capacity": "",
+    "estimatedBudget": "",
+    "organizer": "",
+    "contactPerson": "",
+    "phone": "",
+    "email": "",
+    "notes": "",
+    "color": "#919191",
+    "icon": "📸",
+    "driveFolderId": "",
+    "agenda": [],
+    "requirements": [],
+    "budget": ""
+  },
+  {
+    "id": "ev-guaya-fest",
+    "name": "Guaya Fest 2026",
+    "type": "festival",
+    "status": "planificacion",
+    "date": "2026-10-16",
+    "time": "15:00",
+    "location": "Explanada Amador, Panamá",
+    "capacity": "12000",
+    "budget": "150000",
+    "estimatedBudget": "150000",
+    "description": "El festival de música urbana y cultura del año. Múltiples escenarios, áreas de comida, activaciones de marca y zonas VIP con boxes exclusivos.",
+    "color": "#fbbf24",
+    "icon": "🎪",
+    "agenda": [
+      {
+        "id": "ag-gf1",
+        "time": "15:00",
+        "title": "Apertura de Puertas",
+        "speaker": "Escenario Principal",
+        "description": "Acceso del público general y DJ de bienvenida"
+      },
+      {
+        "id": "ag-gf2",
+        "time": "17:00",
+        "title": "Show de Talentos Locales",
+        "speaker": "Escenario Local",
+        "description": "Presentación de artistas emergentes nacionales"
+      },
+      {
+        "id": "ag-gf3",
+        "time": "19:00",
+        "title": "Competencia Freestyle Final",
+        "speaker": "Escenario Urbano",
+        "description": "Batalla de los mejores 8 MCs de la región"
+      },
+      {
+        "id": "ag-gf4",
+        "time": "21:00",
+        "title": "Set de DJ Invitado Internacional",
+        "speaker": "Escenario Principal",
+        "description": "Presentación de DJ residente de Miami"
+      },
+      {
+        "id": "ag-gf5",
+        "time": "22:30",
+        "title": "Artista Estelar Principal",
+        "speaker": "Escenario Principal",
+        "description": "Show en vivo de la estrella internacional de reggaetón"
+      }
+    ],
+    "requirements": [
+      {
+        "id": "req-gf-1",
+        "name": "Montaje de Tarima Principal",
+        "category": "Producción",
+        "quantity": 1,
+        "cost": 25000,
+        "status": "Confirmado"
+      },
+      {
+        "id": "req-gf-2",
+        "name": "Sistema de Sonido Line Array",
+        "category": "Audio",
+        "quantity": 2,
+        "cost": 18000,
+        "status": "Confirmado"
+      },
+      {
+        "id": "req-gf-3",
+        "name": "Pantallas LED Gigantes",
+        "category": "Video",
+        "quantity": 4,
+        "cost": 15000,
+        "status": "Pendiente"
+      },
+      {
+        "id": "req-gf-4",
+        "name": "Seguridad Privada (150 unidades)",
+        "category": "Logística",
+        "quantity": 1,
+        "cost": 9500,
+        "status": "Confirmado"
+      },
+      {
+        "id": "req-gf-5",
+        "name": "Permisos Municipales y de Salud",
+        "category": "Legal",
+        "quantity": 1,
+        "cost": 3000,
+        "status": "En Proceso"
+      }
+    ],
+    "todos": []
+  },
+  {
+    "id": "ev-casco-lounge",
+    "name": "212 club",
+    "type": "local",
+    "status": "activo",
+    "date": "2026-06-11",
+    "time": "18:00",
+    "location": "Calle 8va, Casco Antiguo, Panamá",
+    "capacity": "250",
+    "budget": "12000",
+    "estimatedBudget": "12000",
+    "description": "Lounge bar premium en el Casco Antiguo. Gestión diaria de reservas de boxes VIP, inventario de barra y asistencia de personal.",
+    "color": "#10b981",
+    "icon": "🏪",
+    "agenda": [
+      {
+        "id": "ag-cl1",
+        "date": "2026-06-11",
+        "time": "18:00",
+        "title": "Apertura y Happy Hour",
+        "speaker": "Barra Principal",
+        "description": "2x1 en cócteles seleccionados"
+      },
+      {
+        "id": "ag-cl2",
+        "date": "2026-06-11",
+        "time": "21:00",
+        "title": "DJ Live Set - Chill & Deep House",
+        "speaker": "Cabina DJ",
+        "description": "Set en vivo para ambientar el Lounge"
+      },
+      {
+        "id": "ag-cl3",
+        "date": "2026-06-12",
+        "time": "23:30",
+        "title": "Urban & Crossover Night",
+        "speaker": "Todo el local",
+        "description": "Música bailable hasta el cierre"
+      },
+      {
+        "id": "ag-cl4",
+        "date": "2026-06-13",
+        "time": "22:00",
+        "title": "Sábado Gigante - Open Bar Premium",
+        "speaker": "Main Stage",
+        "description": "Barra libre para VIPs y DJs nacionales"
+      }
+    ],
+    "requirements": [],
+    "todos": [],
+    "tables": [
+      {
+        "id": "t-b1",
+        "name": "Box VIP 1",
+        "capacity": 10,
+        "minConsumption": 500,
+        "status": "Disponible",
+        "client": "",
+        "promoter": "",
+        "phone": "",
+        "deposit": 0
+      },
+      {
+        "id": "t-b2",
+        "name": "Box VIP 2",
+        "capacity": 10,
+        "minConsumption": 500,
+        "status": "Disponible",
+        "client": "",
+        "promoter": "",
+        "phone": "",
+        "deposit": 0
+      },
+      {
+        "id": "t-b3",
+        "name": "Box VIP 3",
+        "capacity": 12,
+        "minConsumption": 600,
+        "status": "Ocupado",
+        "client": "Grupo Arrive",
+        "promoter": "prom-2",
+        "phone": "@arrive.models",
+        "deposit": 200
+      },
+      {
+        "id": "t-b4",
+        "name": "Box VIP 4",
+        "capacity": 8,
+        "minConsumption": 400,
+        "status": "Disponible",
+        "client": "",
+        "promoter": "",
+        "phone": "",
+        "deposit": 0
+      },
+      {
+        "id": "t-m1",
+        "name": "Mesa Gold 1",
+        "capacity": 6,
+        "minConsumption": 250,
+        "status": "Disponible",
+        "client": "",
+        "promoter": "",
+        "phone": "",
+        "deposit": 0
+      },
+      {
+        "id": "t-m2",
+        "name": "Mesa Gold 2",
+        "capacity": 6,
+        "minConsumption": 250,
+        "status": "Disponible",
+        "client": "",
+        "promoter": "",
+        "phone": "",
+        "deposit": 0
+      },
+      {
+        "id": "t-m3",
+        "name": "Mesa Silver 1",
+        "capacity": 4,
+        "minConsumption": 150,
+        "status": "Disponible",
+        "client": "",
+        "promoter": "",
+        "phone": "",
+        "deposit": 0
+      },
+      {
+        "id": "t-m4",
+        "name": "Mesa Silver 2",
+        "capacity": 4,
+        "minConsumption": 150,
+        "status": "Disponible",
+        "client": "",
+        "promoter": "",
+        "phone": "",
+        "deposit": 0
+      }
+    ],
+    "inventory": [
+      {
+        "id": "inv-1",
+        "name": "Ron Abuelo 12 Años",
+        "category": "Licores",
+        "quantity": 24,
+        "cost": 25,
+        "price": 90,
+        "minStock": 5,
+        "status": "Normal"
+      },
+      {
+        "id": "inv-2",
+        "name": "Whisky Old Parr 12 Años",
+        "category": "Licores",
+        "quantity": 18,
+        "cost": 30,
+        "price": 110,
+        "minStock": 6,
+        "status": "Normal"
+      },
+      {
+        "id": "inv-3",
+        "name": "Vodka Grey Goose",
+        "category": "Licores",
+        "quantity": 4,
+        "cost": 35,
+        "price": 120,
+        "minStock": 5,
+        "status": "Bajo Stock"
+      },
+      {
+        "id": "inv-4",
+        "name": "Ginebra Tanqueray",
+        "category": "Licores",
+        "quantity": 15,
+        "cost": 20,
+        "price": 85,
+        "minStock": 4,
+        "status": "Normal"
+      },
+      {
+        "id": "inv-5",
+        "name": "Tequila Don Julio Reposado",
+        "category": "Licores",
+        "quantity": 0,
+        "cost": 45,
+        "price": 150,
+        "minStock": 3,
+        "status": "Sin Stock"
+      },
+      {
+        "id": "inv-6",
+        "name": "Cerveza Corona (Caja x24)",
+        "category": "Cervezas",
+        "quantity": 12,
+        "cost": 18,
+        "price": 48,
+        "minStock": 10,
+        "status": "Normal"
+      },
+      {
+        "id": "inv-7",
+        "name": "Red Bull (Caja x24)",
+        "category": "Bebidas/Mixers",
+        "quantity": 8,
+        "cost": 22,
+        "price": 72,
+        "minStock": 15,
+        "status": "Bajo Stock"
+      },
+      {
+        "id": "inv-8",
+        "name": "Agua Tónica Fever-Tree (Caja)",
+        "category": "Bebidas/Mixers",
+        "quantity": 20,
+        "cost": 15,
+        "price": 50,
+        "minStock": 5,
+        "status": "Normal"
+      }
+    ],
+    "staff": [
+      {
+        "id": "st-1",
+        "name": "Alejandro G.",
+        "role": "Gerente de Turno",
+        "phone": "6789-0123",
+        "shift": "19:00 - 04:00",
+        "pay": 80,
+        "status": "Presente"
+      },
+      {
+        "id": "st-2",
+        "name": "David M.",
+        "role": "Bartender Principal",
+        "phone": "6543-0987",
+        "shift": "20:00 - 04:00",
+        "pay": 50,
+        "status": "Presente"
+      },
+      {
+        "id": "st-3",
+        "name": "Laura S.",
+        "role": "Bartender",
+        "phone": "6211-5432",
+        "shift": "20:00 - 04:00",
+        "pay": 45,
+        "status": "Retrasado"
+      },
+      {
+        "id": "st-4",
+        "name": "Moisés R.",
+        "role": "Seguridad Jefe",
+        "phone": "6333-8888",
+        "shift": "19:00 - 04:00",
+        "pay": 60,
+        "status": "Presente"
+      },
+      {
+        "id": "st-5",
+        "name": "Grupo Seguridad (x4)",
+        "role": "Seguridad Externo",
+        "phone": "-",
+        "shift": "21:00 - 04:00",
+        "pay": 160,
+        "status": "Presente"
+      },
+      {
+        "id": "st-6",
+        "name": "Estefanía L.",
+        "role": "Cajera",
+        "phone": "6999-7777",
+        "shift": "20:00 - 04:00",
+        "pay": 40,
+        "status": "Presente"
+      },
+      {
+        "id": "st-7",
+        "name": "DJ Gianluca",
+        "role": "DJ Residente",
+        "phone": "6111-9999",
+        "shift": "22:00 - 03:30",
+        "pay": 150,
+        "status": "Ausente"
+      }
+    ],
+    "organizer": "",
+    "contactPerson": "",
+    "phone": "",
+    "email": "",
+    "notes": "",
+    "driveFolderId": ""
+  },
+  {
+    "id": "ev-music-pty",
+    "name": "Music PTY",
+    "date": "2026-08-05",
+    "time": "18:00",
+    "location": "Estudio Principal, Panama City",
+    "capacity": "Producción TV",
+    "budget": "0",
+    "type": "tvshow",
+    "status": "planificacion",
+    "description": "Programa de televisión musical con segmentos en vivo, entrevistas a artistas, sesiones acústicas y cobertura de la escena musical panameña. Transmisión semanal con gestión integral de redes sociales y contenido multiplataforma.",
+    "color": "#ec4899",
+    "icon": "🎬",
+    "showFrequency": "Semanal",
+    "showDay": "Viernes",
+    "showDuration": "60 min",
+    "showChannel": "Canal / Streaming",
+    "segments": [
+      {
+        "id": "seg-1",
+        "name": "Intro / Apertura",
+        "duration": "5 min",
+        "type": "Apertura",
+        "description": "Bienvenida del host, resumen de lo que viene en el episodio y branding.",
+        "order": 1
+      },
+      {
+        "id": "seg-2",
+        "name": "Entrevista Artista Invitado",
+        "duration": "15 min",
+        "type": "Entrevista",
+        "description": "Conversación en profundidad con artista invitado sobre su carrera, proyectos y música nueva.",
+        "order": 2
+      },
+      {
+        "id": "seg-3",
+        "name": "Live Session / Acústico",
+        "duration": "10 min",
+        "type": "Performance",
+        "description": "Presentación en vivo o acústica del artista invitado en el estudio.",
+        "order": 3
+      },
+      {
+        "id": "seg-4",
+        "name": "Top 5 PTY",
+        "duration": "8 min",
+        "type": "Ranking",
+        "description": "Ranking semanal de las 5 canciones más escuchadas en Panamá con datos de streaming.",
+        "order": 4
+      },
+      {
+        "id": "seg-5",
+        "name": "Behind The Beat",
+        "duration": "10 min",
+        "type": "Documental",
+        "description": "Mini-documental sobre un productor, estudio o historia detrás de un hit panameño.",
+        "order": 5
+      },
+      {
+        "id": "seg-6",
+        "name": "Redes en Vivo / Q&A",
+        "duration": "7 min",
+        "type": "Interactivo",
+        "description": "Interacción en vivo con la audiencia: preguntas de Instagram/TikTok al artista.",
+        "order": 6
+      },
+      {
+        "id": "seg-7",
+        "name": "Cierre / Avance Próximo Episodio",
+        "duration": "5 min",
+        "type": "Cierre",
+        "description": "Resumen del episodio, despedida y preview del próximo programa.",
+        "order": 7
+      }
+    ],
+    "episodes": [
+      {
+        "id": "ep-1",
+        "number": 1,
+        "title": "Episodio Piloto",
+        "date": "2026-08-05",
+        "guest": "Por confirmar",
+        "status": "Pre-producción",
+        "notes": "Primer episodio - definir formato final."
+      },
+      {
+        "id": "ep-2",
+        "number": 2,
+        "title": "Episodio 2",
+        "date": "2026-08-12",
+        "guest": "",
+        "status": "Planeación",
+        "notes": ""
+      },
+      {
+        "id": "ep-3",
+        "number": 3,
+        "title": "Episodio 3",
+        "date": "2026-08-19",
+        "guest": "",
+        "status": "Planeación",
+        "notes": ""
+      }
+    ],
+    "crew": [
+      {
+        "id": "crew-1",
+        "name": "",
+        "role": "Host / Presentador",
+        "department": "Talento",
+        "status": "Por asignar"
+      },
+      {
+        "id": "crew-2",
+        "name": "",
+        "role": "Director",
+        "department": "Dirección",
+        "status": "Por asignar"
+      },
+      {
+        "id": "crew-3",
+        "name": "",
+        "role": "Productor General",
+        "department": "Producción",
+        "status": "Por asignar"
+      },
+      {
+        "id": "crew-4",
+        "name": "",
+        "role": "Camarógrafo 1",
+        "department": "Cámaras",
+        "status": "Por asignar"
+      },
+      {
+        "id": "crew-5",
+        "name": "",
+        "role": "Camarógrafo 2",
+        "department": "Cámaras",
+        "status": "Por asignar"
+      },
+      {
+        "id": "crew-6",
+        "name": "",
+        "role": "Ingeniero de Sonido",
+        "department": "Audio",
+        "status": "Por asignar"
+      },
+      {
+        "id": "crew-7",
+        "name": "",
+        "role": "Editor de Video",
+        "department": "Post-producción",
+        "status": "Por asignar"
+      },
+      {
+        "id": "crew-8",
+        "name": "",
+        "role": "Community Manager",
+        "department": "Redes Sociales",
+        "status": "Por asignar"
+      },
+      {
+        "id": "crew-9",
+        "name": "",
+        "role": "Diseñador Gráfico",
+        "department": "Arte",
+        "status": "Por asignar"
+      },
+      {
+        "id": "crew-10",
+        "name": "",
+        "role": "Iluminación",
+        "department": "Técnico",
+        "status": "Por asignar"
+      }
+    ],
+    "agenda": [],
+    "requirements": [
+      {
+        "id": "req-tv-1",
+        "name": "Kit de cámaras (2+ cámaras)",
+        "category": "Equipo",
+        "quantity": 1,
+        "cost": 0,
+        "status": "Pendiente"
+      },
+      {
+        "id": "req-tv-2",
+        "name": "Iluminación de estudio (LED panels)",
+        "category": "Equipo",
+        "quantity": 1,
+        "cost": 0,
+        "status": "Pendiente"
+      },
+      {
+        "id": "req-tv-3",
+        "name": "Consola de audio / mixer",
+        "category": "Audio",
+        "quantity": 1,
+        "cost": 0,
+        "status": "Pendiente"
+      },
+      {
+        "id": "req-tv-4",
+        "name": "Micrófonos (lavalier + boom)",
+        "category": "Audio",
+        "quantity": 3,
+        "cost": 0,
+        "status": "Pendiente"
+      },
+      {
+        "id": "req-tv-5",
+        "name": "Pantalla verde / Set decoration",
+        "category": "Escenografía",
+        "quantity": 1,
+        "cost": 0,
+        "status": "Pendiente"
+      },
+      {
+        "id": "req-tv-6",
+        "name": "Software de edición (Premiere / DaVinci)",
+        "category": "Post-producción",
+        "quantity": 1,
+        "cost": 0,
+        "status": "Pendiente"
+      },
+      {
+        "id": "req-tv-7",
+        "name": "Streaming setup (OBS / encoder)",
+        "category": "Transmisión",
+        "quantity": 1,
+        "cost": 0,
+        "status": "Pendiente"
+      }
+    ],
+    "todos": []
+  },
+  {
+    "id": "ev-party-pa-vacilar",
+    "name": "Party en Pa’ Vacilar",
+    "type": "nightclub",
+    "status": "borrador",
+    "color": "#f59e0b",
+    "icon": "🎉",
+    "description": "El party definitivo en Pa’ Vacilar.",
+    "instances": [
+      {
+        "id": "inst-party-1",
+        "date": "2026-10-31",
+        "day": "Sábado",
+        "status": "Promoción",
+        "targetCapacity": 500,
+        "targetDemo": "General, Crossover",
+        "leads": [],
+        "vipFlow": [],
+        "assignedPromoters": [],
+        "assignedGirls": [],
+        "checklist": {
+          "promo": [],
+          "logistica": [],
+          "imagen": []
+        }
+      }
+    ],
+    "agenda": [],
+    "requirements": [],
+    "todos": []
+  },
+  {
+    "id": "ev-the-room",
+    "name": "The Room",
+    "type": "nightclub",
+    "status": "borrador",
+    "color": "#8b5cf6",
+    "icon": "🍸",
+    "description": "Evento The Room.",
+    "instances": [
+      {
+        "id": "inst-theroom-1",
+        "date": "2026-11-01",
+        "day": "Viernes",
+        "status": "Promoción",
+        "targetCapacity": 200,
+        "targetDemo": "VIP, Exclusivo",
+        "leads": [],
+        "vipFlow": [],
+        "assignedPromoters": [],
+        "assignedGirls": [],
+        "checklist": {
+          "promo": [],
+          "logistica": [],
+          "imagen": []
+        }
+      }
+    ],
+    "agenda": [],
+    "requirements": [],
+    "todos": []
+  },
+  {
+    "id": "ev-arrive-models",
+    "name": "Arrive Models",
+    "type": "nightclub",
+    "status": "borrador",
+    "color": "#8b5cf6",
+    "icon": "💃",
+    "description": "Evento exclusivo con agencias y modelos de Arrive Models.",
+    "instances": [
+      {
+        "id": "inst-arrive-1",
+        "date": "2026-11-15",
+        "day": "Viernes",
+        "status": "Promoción",
+        "targetCapacity": 200,
+        "targetDemo": "Modelos, VIP, Invitados Especiales",
+        "leads": [],
+        "vipFlow": [],
+        "assignedPromoters": [],
+        "assignedGirls": [],
+        "checklist": {
+          "promo": [],
+          "logistica": [],
+          "imagen": []
+        }
+      }
+    ],
+    "agenda": [],
+    "requirements": [],
+    "todos": []
+  },
+  {
+    "id": "ev-activacion-mundial",
+    "name": "Activación Mundial",
+    "type": "nightclub",
+    "status": "borrador",
+    "color": "#10b981",
+    "icon": "🌍",
+    "description": "Activación global de marca con experiencias interactivas.",
+    "instances": [
+      {
+        "id": "inst-activacion-1",
+        "date": "2026-12-05",
+        "day": "Sábado",
+        "status": "Promoción",
+        "targetCapacity": 800,
+        "targetDemo": "General, Extranjeros, Turistas",
+        "leads": [],
+        "vipFlow": [],
+        "assignedPromoters": [],
+        "assignedGirls": [],
+        "checklist": {
+          "promo": [],
+          "logistica": [],
+          "imagen": []
+        }
+      }
+    ],
+    "agenda": [],
+    "requirements": [],
+    "todos": []
+  },
+  {
+    "id": "ev-vale-bash",
+    "name": "Vale Bash @Terraplen",
+    "type": "nightclub",
+    "status": "borrador",
+    "color": "#f43f5e",
+    "icon": "🥂",
+    "description": "Fiesta especial Vale Bash en locación Terraplen.",
+    "instances": [
+      {
+        "id": "inst-vale-bash-1",
+        "date": "2026-12-20",
+        "day": "Viernes",
+        "status": "Promoción",
+        "targetCapacity": 500,
+        "targetDemo": "VIP, Universitarios, Crossover",
+        "leads": [],
+        "vipFlow": [],
+        "assignedPromoters": [],
+        "assignedGirls": [],
+        "checklist": {
+          "promo": [],
+          "logistica": [],
+          "imagen": []
+        }
+      }
+    ],
+    "agenda": [],
+    "requirements": [],
+    "todos": []
   }
 ];
 
@@ -572,4 +2794,101 @@ export const seedContacts = [
     { id: 'cnt-3', name: 'Carlos Díaz', phone: '+507 6555-1234', email: 'carlos.d@example.com', instagram: '@carlos.dj', role: 'Proveedor', dob: '1988-12-01', tags: ['DJ', 'Audio'] },
     { id: 'cnt-4', name: 'María López', phone: '+507 6333-9876', email: 'maria.lop@example.com', instagram: '@mary.lopez', role: 'Invitado', dob: '1998-03-08', tags: ['Lista Chicas', 'Nuevo'] },
     { id: 'cnt-5', name: 'Roberto Chen', phone: '+507 6777-4444', email: 'roberto.c@example.com', instagram: '@robchen', role: 'Staff', dob: '1992-07-30', tags: ['Barra', 'Bartender'] }
+];
+
+export const seedDecisionLog = [
+    {
+        id: 'dec-1',
+        date: '2026-09-15',
+        project: 'Hang Out App',
+        projectId: 'portfolio-hangout',
+        decision: 'Hang Out será Mobile-First centrado en Nightlife, Mesas VIP y Social RSVPs',
+        motivo: 'Mayor tracción inicial, monetización rápida con promotores de eventos y validación inmediata del ecosistema nocturno panameño antes de expandir a otros verticales.',
+        impacto: 'Crítico / Estratégico',
+        decisor: 'OpenClaw & Product Squad'
+    },
+    {
+        id: 'dec-2',
+        date: '2026-09-18',
+        project: 'LicitIA',
+        projectId: 'portfolio-licitia',
+        decision: 'LicitIA enfocará su primer MVP en constructoras y proveedores de obras públicas >$100k',
+        motivo: 'Contratos estatales de alto valor con matrices de requisitos complejas y alta disposición a pagar por automatización y detección de riesgos en pliegos de PanamáCompra.',
+        impacto: 'Crítico / Mercado',
+        decisor: 'OpenClaw Core & CloserOps'
+    },
+    {
+        id: 'dec-3',
+        date: '2026-09-20',
+        project: 'RecordAI',
+        projectId: 'portfolio-recordai',
+        decision: 'Arquitectura híbrida Whisper Large v3 + Gemini Flash para transcripción y extracción ejecutiva',
+        motivo: 'Garantizar latencia inferior a 15 segundos y diarización precisa de hablantes para directores ejecutivos y comités de operaciones.',
+        impacto: 'Alto / Arquitectura AI',
+        decisor: 'Audio AI Lab & Bart (COO)'
+    },
+    {
+        id: 'dec-4',
+        date: '2026-09-22',
+        project: 'Waller App',
+        projectId: 'portfolio-waller',
+        decision: 'Modelo de Split Bills y QR Pay para mesas de hospitalidad sin requerir licencia bancaria directa',
+        motivo: 'Operar mediante adquirencia aliada / sandbox regulatorio de pasarelas locales para acelerar el time-to-market y reducir barreras de cumplimiento AML.',
+        impacto: 'Alto / Regulatorio',
+        decisor: 'Fintech Squad & OpenClaw'
+    }
+];
+
+export const seedPortfolioRoadmap = [
+    { id: 'rd-1', title: 'Wedge & Prototipo Interactivo Figma', project: 'Hang Out App', projectId: 'portfolio-hangout', column: 'now', priority: 'critical', block: 'producto', deadline: '2026-10-15', desc: 'Validar flujo de reserva de mesa y lista con 20 promotores' },
+    { id: 'rd-2', title: 'Extractor RAG de Pliegos PanamáCompra', project: 'LicitIA', projectId: 'portfolio-licitia', column: 'now', priority: 'critical', block: 'producto', deadline: '2026-10-20', desc: 'Pruebas con 50 pliegos oficiales y extracción de checklist legal' },
+    { id: 'rd-3', title: 'Pipeline de Diarización & Prompt Minutas', project: 'RecordAI', projectId: 'portfolio-recordai', column: 'now', priority: 'high', block: 'estrategia', deadline: '2026-11-01', desc: 'Configurar Whisper + Gemini para estructurar tareas automáticas' },
+    { id: 'rd-4', title: 'Auditoría Regulatoria & Pasarela QR', project: 'Waller App', projectId: 'portfolio-waller', column: 'next', priority: 'high', block: 'estrategia', deadline: '2026-11-15', desc: 'Verificar esquema de adquirencia para cobros QR en barras' },
+    { id: 'rd-5', title: 'Beta Privada de Hang Out con 100 Clubbers', project: 'Hang Out App', projectId: 'portfolio-hangout', column: 'next', priority: 'critical', block: 'marketing', deadline: '2026-12-01', desc: 'Despliegue piloto en eventos de Casco Antiguo' },
+    { id: 'rd-6', title: 'Demo Comercial con 10 Constructoras', project: 'LicitIA', projectId: 'portfolio-licitia', column: 'next', priority: 'high', block: 'comercial', deadline: '2026-12-15', desc: 'Presentar demo interactivo de auditoría de pliegos públicos' },
+    { id: 'rd-7', title: 'App Nativa iOS & Android Hang Out', project: 'Hang Out App', projectId: 'portfolio-hangout', column: 'later', priority: 'medium', block: 'producto', deadline: '2027-02-15', desc: 'Lanzamiento público en tiendas de aplicaciones' },
+    { id: 'rd-8', title: 'Sandbox de Pago QR en Vivo', project: 'Waller App', projectId: 'portfolio-waller', column: 'blocked', priority: 'high', block: 'operacion', deadline: '2027-03-30', desc: 'Pendiente de aprobación de credenciales de sandbox bancario' }
+];
+
+export const seedWhatsAppGroups = [
+    {
+        id: 'wag-1',
+        name: '🔥 VIP Casco & Nightlife Panama',
+        category: 'VIP & Clientes Frecuentes',
+        memberCount: 420,
+        inviteLink: 'https://chat.whatsapp.com/demo-vip-casco',
+        postDays: ['Lunes', 'Viernes', 'Sábado'],
+        lastBroadcast: '',
+        notes: 'Comunidad de alto poder adquisitivo para venta de mesas y boxes VIP.'
+    },
+    {
+        id: 'wag-2',
+        name: '🚶‍♂️ Comunidad Casco Peatonal 2026',
+        category: 'Comunidad Masiva / Cultural',
+        memberCount: 1150,
+        inviteLink: 'https://chat.whatsapp.com/demo-casco-peatonal',
+        postDays: ['Lunes', 'Miércoles', 'Domingo'],
+        lastBroadcast: '',
+        notes: 'Público general para shows, tarimas en Plaza Catedral y actividades familiares.'
+    },
+    {
+        id: 'wag-3',
+        name: '⚡ Promotores & RRPP Squad',
+        category: 'Staff & Fuerza de Venta',
+        memberCount: 65,
+        inviteLink: 'https://chat.whatsapp.com/demo-promotores-rrpp',
+        postDays: ['Lunes', 'Miércoles', 'Viernes'],
+        lastBroadcast: '',
+        notes: 'Directivas semanales, metas de venta de entradas y listas.'
+    },
+    {
+        id: 'wag-4',
+        name: '🎧 Electronic & Tech House PTY',
+        category: 'Música & Fanbase',
+        memberCount: 680,
+        inviteLink: 'https://chat.whatsapp.com/demo-electronic-pty',
+        postDays: ['Jueves', 'Viernes', 'Sábado'],
+        lastBroadcast: '',
+        notes: 'Comunidad de DJs, amantes del techno y clubbers de 212 Club.'
+    }
 ];

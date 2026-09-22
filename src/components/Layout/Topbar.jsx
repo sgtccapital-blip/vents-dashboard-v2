@@ -38,7 +38,7 @@ const pageTitles = {
     '/calendar': 'Master Calendar',
     '/eventos': 'Eventos',
     '/social': 'Redes Sociales',
-    '/agent-brain': 'IA & Cerebro RAG',
+    '/agent-brain': 'OpenClaw & Cerebro RAG',
 };
 
 export default function Topbar({ collapsed, searchQuery, onSearchChange, onMobileMenuToggle, onCloudSyncToggle }) {
@@ -66,11 +66,11 @@ export default function Topbar({ collapsed, searchQuery, onSearchChange, onMobil
         return '🌙 Buena noche';
     };
 
-    // Supabase status UI config
-    let statusColor = 'var(--text-tertiary)';
-    let statusLabel = 'Local Offline';
-    let dotColor = '#6b7280';
-    let isLive = false;
+    // Database status UI config (Local db.json or Supabase cloud sync)
+    let statusColor = 'var(--accent-green)';
+    let statusLabel = 'DB Local Activa';
+    let dotColor = 'var(--accent-green)';
+    let isLive = true;
 
     if (supabaseStatus?.status === 'connected') {
         statusColor = 'var(--accent-green)';
@@ -85,6 +85,7 @@ export default function Topbar({ collapsed, searchQuery, onSearchChange, onMobil
         statusColor = 'var(--accent-red)';
         statusLabel = 'Sync Error';
         dotColor = 'var(--accent-red)';
+        isLive = false;
     }
 
     return (

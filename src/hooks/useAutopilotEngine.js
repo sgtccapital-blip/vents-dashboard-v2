@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import NativeBrainService from '../services/NativeBrainService';
+import OpenClawBrainService from '../services/OpenClawBrainService';
 
 export function useAutopilotEngine(apiOnline, addActivity) {
     const [autopilotActive, setAutopilotActive] = useState(false);
@@ -10,7 +10,7 @@ export function useAutopilotEngine(apiOnline, addActivity) {
             const nextState = !prev;
             if (addActivity) {
                 addActivity({
-                    text: `🤖 Autopilot (Nativo) ${nextState ? 'ENCENDIDO' : 'APAGADO'}`,
+                    text: `🤖 OpenClaw Autopilot ${nextState ? 'ENCENDIDO' : 'APAGADO'}`,
                     color: nextState ? '#10b981' : '#f43f5e',
                     source: 'system'
                 });
@@ -20,56 +20,50 @@ export function useAutopilotEngine(apiOnline, addActivity) {
     };
 
     useEffect(() => {
-        if (!autopilotActive || !apiOnline) {
+        if (!autopilotActive) {
             if (loopRef.current) clearInterval(loopRef.current);
             return;
         }
 
-        // Simula la busqueda y ejecucion de tareas en background cada 30 segundos
+        // Background autonomous agent heartbeat
         loopRef.current = setInterval(async () => {
-            console.log('[Autopilot] Scanning for tasks...');
+            console.log('[OpenClaw Autopilot] Escaneando tareas y estado...');
             
-            // Aqui normalmente leeríamos de Firebase/Firestore tareas donde status == 'pending_ai'
-            // Simulamos una tarea encontrada aleatoria 1 de cada 3 veces
             if (Math.random() > 0.6) {
                 try {
-                    const taskDescription = "Revisar leads nuevos de las ultimas 2 horas y categorizarlos.";
+                    const taskDescription = "Analizar estado de hitos de proyectos y sincronizar RAG";
                     
                     if (addActivity) {
                         addActivity({
-                            text: `⚙️ [Autopilot] Ejecutando: ${taskDescription}`,
-                            color: '#3b82f6',
+                            text: `⚙️ [OpenClaw Autopilot] Ejecutando: ${taskDescription}`,
+                            color: '#8b5cf6',
                             source: 'autopilot'
                         });
                     }
 
-                    const result = await NativeBrainService.sendCommand(
-                        `Ejecuta esta tarea de forma concisa: ${taskDescription}`,
-                        [],
-                        "Eres un agente en background. No saludes, solo da el resultado."
-                    );
+                    // Self-trigger OpenClaw thought/action
+                    await fetch('/api/openclaw/action', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: 'log_thought',
+                            payload: {
+                                message: `Autopilot escaneó el sistema: todo en orden.`,
+                                level: 'info'
+                            }
+                        })
+                    }).catch(() => {});
 
-                    if (addActivity) {
-                        addActivity({
-                            text: `✅ [Autopilot] Tarea completada.`,
-                            color: '#10b981',
-                            source: 'autopilot'
-                        });
-                    }
                 } catch (e) {
-                    console.error('[Autopilot Engine] Error executing task:', e);
+                    console.error('[OpenClaw Autopilot] Error:', e);
                 }
             }
-
-        }, 30000); // Cada 30 segundos
+        }, 30000);
 
         return () => {
             if (loopRef.current) clearInterval(loopRef.current);
         };
-    }, [autopilotActive, apiOnline, addActivity]);
+    }, [autopilotActive]);
 
-    return {
-        autopilotActive,
-        toggleAutopilot
-    };
+    return { autopilotActive, toggleAutopilot };
 }

@@ -4,7 +4,12 @@ const path = require('path');
 const DB_PATH = path.join(__dirname, 'db.json');
 const VAULT_DIR = path.join(__dirname, 'BrainVault');
 
-const db = JSON.parse(fs.readFileSync(DB_PATH, 'utf-8'));
+let db = {};
+try {
+    db = JSON.parse(fs.readFileSync(DB_PATH, 'utf-8'));
+} catch (e) {
+    console.warn('[BrainVault Generator] Warning leyendo db.json:', e.message);
+}
 
 const sections = [
     { name: 'OPERATIONS' },

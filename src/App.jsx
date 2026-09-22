@@ -14,6 +14,8 @@ import SocialMedia from './pages/SocialMedia';
 import MasterCalendar from './pages/MasterCalendar';
 import AgentBrain from './pages/AgentBrain';
 import Contactos from './pages/Contactos';
+import PortfolioOS from './pages/PortfolioOS';
+import WhatsAppAgent from './pages/WhatsAppAgent';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -44,6 +46,8 @@ class ErrorBoundary extends React.Component {
   }
 }
 
+import DashboardCopilot from './components/DashboardCopilot';
+
 function AppLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -69,12 +73,14 @@ function AppLayout() {
         <ErrorBoundary>
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/portfolio" element={<PortfolioOS />} />
             <Route path="/workspace" element={<Workspace />} />
             <Route path="/calendar" element={<MasterCalendar />} />
             <Route path="/eventos" element={<Eventos />} />
             <Route path="/eventos/:id" element={<EventoDetail />} />
             <Route path="/social" element={<SocialMedia />} />
             <Route path="/contactos" element={<Contactos />} />
+            <Route path="/whatsapp-agent" element={<WhatsAppAgent />} />
             <Route path="/agent-brain" element={<AgentBrain />} />
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
@@ -83,6 +89,9 @@ function AppLayout() {
 
       {/* Cloud Sync Side-over Modal */}
       <CloudSyncPanel isOpen={cloudSyncOpen} onClose={() => setCloudSyncOpen(false)} />
+
+      {/* Persistent Dashboard Copilot Agent */}
+      <DashboardCopilot />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 /**
  * Command Center API Server
- * Puerto: 3001
+ * Puerto: 8090
  * 
  * Este servidor actúa como el "cerebro compartido" entre:
  * - El frontend React (localhost:5173)
@@ -31,7 +31,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT || 3002;
+const PORT = process.env.PORT || 8090;
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'db.json');
 const VAULT_PATH = process.env.VAULT_PATH || path.join(__dirname, '_agent_inbox');
 
@@ -532,7 +532,7 @@ app.post('/api/vault/upload', upload.single('file'), async (req, res) => {
 
 // ─── Register CRUD Routes ─────────────────────────────────────
 
-const entities = ['agents', 'projects', 'companies', 'events', 'tasks', 'agentTasks', 'agentMemory', 'agentKPIs', 'circuitBreakers', 'notes', 'ideas', 'subscriptions', 'socialMedia', 'contentTasks', 'orders', 'contacts'];
+const entities = ['agents', 'projects', 'companies', 'events', 'tasks', 'agentTasks', 'agentMemory', 'agentKPIs', 'circuitBreakers', 'notes', 'ideas', 'subscriptions', 'socialMedia', 'contentTasks', 'orders', 'contacts', 'decisionLog', 'portfolioRoadmap', 'promoters', 'imageGirls'];
 
 entities.forEach(entity => {
     app.use(`/api/${entity}`, createCRUDRoutes(entity));
@@ -668,19 +668,1200 @@ app.put('/api/sops/:filename', (req, res) => {
         writeDB(db);
 
         const stats = fs.statSync(filePath);
-        return res.json({
-            id: filename,
-            filename,
-            date: stats.mtime.toISOString(),
-            content,
-            success: true
+        res.json({
+            success: true,
+            message: `SOP ${filename} updated successfully`,
+            sop: {
+                name: filename,
+                filename,
+                size: stats.size,
+                lastModified: stats.mtime
+            }
         });
-
     } catch (err) {
-        console.error('Error writing SOP:', err);
+        console.error(`[SOPs] Error updating ${req.params.filename}:`, err);
         res.status(500).json({ error: err.message });
     }
 });
+
+// ─── OpenClaw Super Agent Integration Bridge ────────────────────────────
+
+// 1. Get OpenClaw tools schema (OpenAI / JSON formatted tools for OpenClaw)
+app.get(['/api/openclaw/tools', '/api/hermes/tools'], (req, res) => {
+    res.json({
+        agent: 'OpenClaw Super Agent',
+        version: '2.0',
+        endpoint: '/api/openclaw/action',
+        stateEndpoint: '/api/openclaw/state',
+        tools: [
+            {
+                type: 'function',
+                function: {
+                    name: 'create_project',
+                    description: 'Crea un nuevo proyecto en el Command Center Hub. Úsalo para proyectos de software, desarrollo, lanzamientos de negocio, campañas o pipelines.',
+                    parameters: {
+                        type: 'object',
+                        properties: {
+                            name: { type: 'string', description: 'Nombre del proyecto' },
+                            description: { type: 'string', description: 'Descripción o alcance del proyecto' },
+                            category: { type: 'string', enum: ['software', 'business', 'marketing', 'operations', 'ai_pipeline', 'custom'], description: 'Categoría del proyecto' },
+                            priority: { type: 'string', enum: ['low', 'medium', 'high', 'critical'], description: 'Prioridad del proyecto' },
+                            status: { type: 'string', enum: ['planning', 'active', 'in_progress', 'paused', 'completed'], description: 'Estado inicial' },
+                            deadline: { type: 'string', description: 'Fecha límite (YYYY-MM-DD)' },
+                            budget: { type: 'string', description: 'Presupuesto estimado o costo' },
+                            techStack: { type: 'array', items: { type: 'string' }, description: 'Stack tecnológico o herramientas clave' },
+                            githubRepo: { type: 'string', description: 'URL o nombre del repositorio' },
+                            leadAgent: { type: 'string', description: 'Agente o responsable líder (default: OpenClaw Agent)' },
+                            milestones: {
+                                type: 'array',
+                                items: {
+                                    type: 'object',
+                                    properties: {
+                                        title: { type: 'string' },
+                                        deadline: { type: 'string' },
+                                        status: { type: 'string' }
+                                    }
+                                },
+                                description: 'Hitos o entregables principales'
+                            },
+                            tags: { type: 'array', items: { type: 'string' }, description: 'Etiquetas clave' }
+                        },
+                        required: ['name', 'description']
+                    }
+                }
+            },
+            {
+                type: 'function',
+                function: {
+                    name: 'create_event',
+                    description: 'Crea un nuevo evento en el calendario de eventos (conciertos, fiestas, producciones, casco peatonal, etc.).',
+                    parameters: {
+                        type: 'object',
+                        properties: {
+                            name: { type: 'string', description: 'Nombre del evento' },
+                            date: { type: 'string', description: 'Fecha del evento (YYYY-MM-DD)' },
+                            time: { type: 'string', description: 'Hora (HH:MM)' },
+                            location: { type: 'string', description: 'Ubicación o venue' },
+                            type: { type: 'string', enum: ['eventos', 'casco_peatonal', 'nightclub', 'local', 'social', 'tv_show', 'custom'], description: 'Tipo de evento' },
+                            description: { type: 'string', description: 'Descripción o detalles' },
+                            budget: { type: 'string', description: 'Presupuesto' },
+                            capacity: { type: 'string', description: 'Aforo estimado' },
+                            organizer: { type: 'string', description: 'Organizador o contacto' }
+                        },
+                        required: ['name', 'date']
+                    }
+                }
+            },
+            {
+                type: 'function',
+                function: {
+                    name: 'add_task',
+                    description: 'Agrega una tarea o to-do a un proyecto específico o a la lista global.',
+                    parameters: {
+                        type: 'object',
+                        properties: {
+                            text: { type: 'string', description: 'Descripción de la tarea a realizar' },
+                            priority: { type: 'string', enum: ['alta', 'media', 'baja', 'critica'], description: 'Prioridad' },
+                            projectId: { type: 'string', description: 'ID del proyecto al que pertenece la tarea (opcional)' },
+                            eventId: { type: 'string', description: 'ID del evento al que pertenece la tarea (opcional)' },
+                            assignedTo: { type: 'string', description: 'Responsable o agente asignado' },
+                            dueDate: { type: 'string', description: 'Fecha límite (YYYY-MM-DD)' }
+                        },
+                        required: ['text']
+                    }
+                }
+            },
+            {
+                type: 'function',
+                function: {
+                    name: 'update_status',
+                    description: 'Actualiza el estado, progreso o métrica de un proyecto o evento.',
+                    parameters: {
+                        type: 'object',
+                        properties: {
+                            entityType: { type: 'string', enum: ['project', 'event'], description: 'Tipo de entidad' },
+                            entityId: { type: 'string', description: 'ID del proyecto o evento' },
+                            status: { type: 'string', description: 'Nuevo estado' },
+                            progress: { type: 'number', description: 'Porcentaje de avance (0 a 100)' },
+                            kpiCurrent: { type: 'number', description: 'Valor actual del KPI' },
+                            notes: { type: 'string', description: 'Nota sobre el avance' }
+                        },
+                        required: ['entityType', 'entityId', 'status']
+                    }
+                }
+            },
+            {
+                type: 'function',
+                function: {
+                    name: 'add_milestone',
+                    description: 'Agrega un hito / milestone a un proyecto existente.',
+                    parameters: {
+                        type: 'object',
+                        properties: {
+                            projectId: { type: 'string', description: 'ID del proyecto' },
+                            title: { type: 'string', description: 'Título del hito' },
+                            deadline: { type: 'string', description: 'Fecha límite (YYYY-MM-DD)' },
+                            deliverables: { type: 'array', items: { type: 'string' }, description: 'Lista de entregables' }
+                        },
+                        required: ['projectId', 'title']
+                    }
+                }
+            },
+            {
+                type: 'function',
+                function: {
+                    name: 'log_thought',
+                    description: 'Registra un pensamiento, reporte de investigación, ejecución de código o actualización de Hermes Agent.',
+                    parameters: {
+                        type: 'object',
+                        properties: {
+                            message: { type: 'string', description: 'Mensaje o resumen del log' },
+                            level: { type: 'string', enum: ['info', 'success', 'warning', 'action', 'code'], description: 'Nivel o tipo de registro' },
+                            projectId: { type: 'string', description: 'ID del proyecto relacionado (opcional)' },
+                            details: { type: 'string', description: 'Detalle extendido, salida de comando o código generado' }
+                        },
+                        required: ['message']
+                    }
+                }
+            },
+            {
+                type: 'function',
+                function: {
+                    name: 'add_note',
+                    description: 'Crea una nota o documento rápido en el sistema.',
+                    parameters: {
+                        type: 'object',
+                        properties: {
+                            title: { type: 'string', description: 'Título de la nota' },
+                            text: { type: 'string', description: 'Contenido markdown de la nota' },
+                            category: { type: 'string', description: 'Categoría' },
+                            projectId: { type: 'string', description: 'ID del proyecto relacionado (opcional)' }
+                        },
+                        required: ['title', 'text']
+                    }
+                }
+            }
+        ]
+    });
+});
+
+// 2. Get full state snapshot for OpenClaw Super Agent
+app.get(['/api/openclaw/state', '/api/hermes/state'], (req, res) => {
+    const db = readDB();
+    const logs = db.openclawLogs || db.hermesLogs || [];
+    res.json({
+        timestamp: new Date().toISOString(),
+        agent: 'OpenClaw Super Agent',
+        counts: {
+            projects: (db.projects || []).length,
+            events: (db.events || []).length,
+            tasks: (db.tasks || []).length,
+            notes: (db.notes || []).length,
+            contacts: (db.contacts || []).length
+        },
+        projects: db.projects || [],
+        events: db.events || [],
+        tasks: (db.tasks || []).filter(t => !t.done),
+        recentCompletedTasks: (db.tasks || []).filter(t => t.done).slice(0, 10),
+        notes: (db.notes || []).slice(0, 20),
+        ideas: db.ideas || [],
+        socialMedia: db.socialMedia || [],
+        contacts: (db.contacts || []).slice(0, 30),
+        recentActivity: (db.activityFeed || []).slice(0, 25),
+        openclawLogs: logs.slice(0, 30),
+        hermesLogs: logs.slice(0, 30)
+    });
+});
+
+// 3. OpenClaw Logs endpoint
+app.get(['/api/openclaw/logs', '/api/hermes/logs'], (req, res) => {
+    const db = readDB();
+    res.json(db.openclawLogs || db.hermesLogs || []);
+});
+
+app.delete(['/api/openclaw/logs', '/api/hermes/logs'], (req, res) => {
+    const db = readDB();
+    db.openclawLogs = [];
+    db.hermesLogs = [];
+    writeDB(db);
+    res.json({ success: true, message: 'OpenClaw logs cleared' });
+});
+
+// 4. OpenClaw Action / Webhook handler
+app.post(['/api/openclaw/action', '/api/openclaw/webhook', '/api/hermes/action', '/api/hermes/webhook'], (req, res) => {
+    const db = readDB();
+    if (!db.openclawLogs) db.openclawLogs = [];
+    if (!db.hermesLogs) db.hermesLogs = db.openclawLogs;
+    if (!db.activityFeed) db.activityFeed = [];
+    if (!db.projects) db.projects = [];
+    if (!db.events) db.events = [];
+    if (!db.tasks) db.tasks = [];
+    if (!db.notes) db.notes = [];
+
+    const { action, payload, tool, arguments: toolArgs } = req.body;
+    const actionName = action || tool || req.body.name;
+    const data = payload || toolArgs || req.body.data || req.body;
+
+    const logEntry = {
+        id: `olog-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+        action: actionName || 'general_interaction',
+        timestamp: new Date().toISOString(),
+        source: 'OpenClaw Super Agent',
+        data: data,
+        status: 'success'
+    };
+
+    try {
+        let result = {};
+
+        switch (actionName) {
+            case 'create_project': {
+                const category = data.category || 'software';
+                const newProject = {
+                    id: data.id || `proj-${Date.now()}`,
+                    name: data.name || 'Nuevo Proyecto Hermes',
+                    description: data.description || '',
+                    category: category,
+                    type: data.type || (category === 'software' ? 'software' : category === 'business' ? 'business' : category === 'ai_pipeline' ? 'ai_pipeline' : 'project'),
+                    templateKey: data.templateKey || (category === 'software' ? 'project_software' : category === 'business' ? 'project_business' : category === 'ai_pipeline' ? 'project_hermes' : 'project_custom'),
+                    status: data.status || 'active',
+                    priority: data.priority || 'high',
+                    deadline: data.deadline || '',
+                    budget: data.budget || '0',
+                    techStack: Array.isArray(data.techStack) ? data.techStack : (typeof data.techStack === 'string' ? data.techStack.split(',').map(s => s.trim()) : ['Hermes Agent', 'React', 'Node.js']),
+                    githubRepo: data.githubRepo || '',
+                    leadAgent: data.leadAgent || 'Hermes Agent',
+                    milestones: Array.isArray(data.milestones) ? data.milestones.map((m, i) => ({ id: `m-${i+1}`, title: m.title || m.name || m, deadline: m.deadline || '', done: !!m.done, deliverables: m.deliverables || [] })) : [
+                        { id: 'm-1', title: 'Definición de arquitectura y roadmap', done: true, deadline: '' },
+                        { id: 'm-2', title: 'Desarrollo del Core MVP', done: false, deadline: data.deadline || '' },
+                        { id: 'm-3', title: 'Pruebas y despliegue inicial', done: false, deadline: '' }
+                    ],
+                    tasks: Array.isArray(data.tasks) ? data.tasks : [],
+                    tags: Array.isArray(data.tags) ? data.tags : ['Hermes', 'Proyecto'],
+                    activityLog: [
+                        { id: `log-${Date.now()}`, text: `🚀 Proyecto creado e inicializado por Hermes Agent`, time: new Date().toLocaleTimeString(), type: 'created' }
+                    ],
+                    createdAt: new Date().toISOString()
+                };
+
+                db.projects.unshift(newProject);
+                
+                // Also duplicate to db.events for unified Hub rendering if needed
+                const mirrorEvent = {
+                    id: newProject.id,
+                    name: newProject.name,
+                    description: newProject.description,
+                    category: 'project',
+                    type: newProject.type,
+                    templateKey: newProject.templateKey,
+                    status: newProject.status,
+                    priority: newProject.priority,
+                    date: newProject.deadline || new Date().toISOString().split('T')[0],
+                    budget: newProject.budget,
+                    estimatedBudget: newProject.budget,
+                    organizer: newProject.leadAgent,
+                    techStack: newProject.techStack,
+                    githubRepo: newProject.githubRepo,
+                    milestones: newProject.milestones,
+                    color: category === 'software' ? '#6366f1' : category === 'business' ? '#10b981' : category === 'ai_pipeline' ? '#8b5cf6' : '#ec4899',
+                    icon: category === 'software' ? '💻' : category === 'business' ? '💼' : category === 'ai_pipeline' ? '🤖' : '🚀',
+                    agenda: newProject.milestones.map((m, i) => ({ id: `ag-${i+1}`, time: '09:00', title: m.title, speaker: newProject.leadAgent, description: 'Hito del proyecto' })),
+                    requirements: (newProject.techStack || []).map((t, i) => ({ id: `req-${i+1}`, name: `Configuración: ${t}`, done: false }))
+                };
+                
+                const existingEvIdx = db.events.findIndex(e => e.id === mirrorEvent.id);
+                if (existingEvIdx >= 0) db.events[existingEvIdx] = mirrorEvent;
+                else db.events.unshift(mirrorEvent);
+
+                db.activityFeed.unshift({
+                    id: `act-${Date.now()}`,
+                    text: `🤖 Hermes Agent creó el proyecto "${newProject.name}"`,
+                    color: '#8b5cf6',
+                    timestamp: new Date().toISOString()
+                });
+
+                result = { success: true, project: newProject, mirrorEvent };
+                break;
+            }
+
+            case 'create_event': {
+                const newEvent = {
+                    id: data.id || `ev-${Date.now()}`,
+                    name: data.name || 'Nuevo Evento Hermes',
+                    date: data.date || new Date().toISOString().split('T')[0],
+                    time: data.time || '20:00',
+                    location: data.location || '',
+                    type: data.type || 'eventos',
+                    templateKey: data.templateKey || data.type || 'eventos',
+                    category: 'event',
+                    status: data.status || 'planning',
+                    description: data.description || '',
+                    budget: data.budget || '0',
+                    estimatedBudget: data.budget || '0',
+                    capacity: data.capacity || '',
+                    organizer: data.organizer || 'Hermes Agent',
+                    color: data.color || '#f43f5e',
+                    icon: data.icon || '🎉',
+                    agenda: Array.isArray(data.agenda) ? data.agenda : [
+                        { id: 'ag-1', time: '20:00', title: 'Inicio del evento', speaker: 'Hermes / Staff', description: 'Apertura' }
+                    ],
+                    requirements: Array.isArray(data.requirements) ? data.requirements : []
+                };
+
+                db.events.unshift(newEvent);
+
+                db.activityFeed.unshift({
+                    id: `act-${Date.now()}`,
+                    text: `🎉 Hermes Agent agendó el evento "${newEvent.name}" (${newEvent.date})`,
+                    color: '#f43f5e',
+                    timestamp: new Date().toISOString()
+                });
+
+                result = { success: true, event: newEvent };
+                break;
+            }
+
+            case 'add_task': {
+                const newTask = {
+                    id: data.id || `task-${Date.now()}`,
+                    text: data.text || 'Nueva tarea creada por Hermes',
+                    priority: data.priority || 'media',
+                    done: false,
+                    projectId: data.projectId || null,
+                    eventId: data.eventId || null,
+                    assignedTo: data.assignedTo || 'Hermes Agent',
+                    dueDate: data.dueDate || null,
+                    createdAt: new Date().toISOString()
+                };
+
+                db.tasks.unshift(newTask);
+
+                if (data.projectId) {
+                    const pIdx = db.projects.findIndex(p => p.id === data.projectId);
+                    if (pIdx >= 0) {
+                        if (!db.projects[pIdx].tasks) db.projects[pIdx].tasks = [];
+                        db.projects[pIdx].tasks.push({ id: newTask.id, text: newTask.text, done: false });
+                    }
+                }
+
+                db.activityFeed.unshift({
+                    id: `act-${Date.now()}`,
+                    text: `📋 Hermes Agent añadió tarea: "${newTask.text}"`,
+                    color: '#06b6d4',
+                    timestamp: new Date().toISOString()
+                });
+
+                result = { success: true, task: newTask };
+                break;
+            }
+
+            case 'add_milestone': {
+                const { projectId, title, deadline, deliverables } = data;
+                const p = db.projects.find(pr => pr.id === projectId);
+                const ev = db.events.find(e => e.id === projectId);
+
+                const newMilestone = {
+                    id: `m-${Date.now()}`,
+                    title: title || 'Nuevo Hito',
+                    deadline: deadline || '',
+                    done: false,
+                    deliverables: deliverables || []
+                };
+
+                if (p) {
+                    if (!p.milestones) p.milestones = [];
+                    p.milestones.push(newMilestone);
+                }
+                if (ev) {
+                    if (!ev.milestones) ev.milestones = [];
+                    ev.milestones.push(newMilestone);
+                }
+
+                result = { success: true, milestone: newMilestone };
+                break;
+            }
+
+            case 'update_status': {
+                const { entityType, entityId, status, progress, kpiCurrent, notes: updateNotes } = data;
+                let target = null;
+                if (entityType === 'project' || !entityType) {
+                    target = db.projects.find(p => p.id === entityId);
+                }
+                if (!target && (entityType === 'event' || !entityType)) {
+                    target = db.events.find(e => e.id === entityId);
+                }
+
+                if (target) {
+                    if (status) target.status = status;
+                    if (progress !== undefined) target.progress = progress;
+                    if (kpiCurrent !== undefined && target.kpi) target.kpi.current = kpiCurrent;
+                    if (updateNotes) target.notes = (target.notes ? target.notes + '\n' : '') + `\n[Hermes ${new Date().toLocaleTimeString()}]: ${updateNotes}`;
+                    
+                    db.activityFeed.unshift({
+                        id: `act-${Date.now()}`,
+                        text: `🔄 Hermes actualizó estado de "${target.name}" a [${status || 'progreso'}]`,
+                        color: '#3b82f6',
+                        timestamp: new Date().toISOString()
+                    });
+                    result = { success: true, entity: target };
+                } else {
+                    result = { success: false, error: `Entidad ${entityId} no encontrada` };
+                }
+                break;
+            }
+
+            case 'log_thought':
+            case 'log_activity': {
+                const thought = {
+                    id: `th-${Date.now()}`,
+                    message: data.message || data.text || 'Ejecución Hermes',
+                    level: data.level || 'info',
+                    details: data.details || '',
+                    projectId: data.projectId || null,
+                    timestamp: new Date().toISOString()
+                };
+
+                logEntry.thought = thought;
+
+                const colorMap = {
+                    info: '#8b5cf6',
+                    success: '#10b981',
+                    warning: '#f59e0b',
+                    action: '#ec4899',
+                    code: '#3b82f6'
+                };
+
+                db.activityFeed.unshift({
+                    id: `act-${Date.now()}`,
+                    text: `🧠 [Hermes]: ${thought.message}`,
+                    color: colorMap[thought.level] || '#8b5cf6',
+                    timestamp: new Date().toISOString()
+                });
+
+                result = { success: true, log: thought };
+                break;
+            }
+
+            case 'add_note': {
+                const newNote = {
+                    id: data.id || `note-${Date.now()}`,
+                    title: data.title || 'Nota de Hermes',
+                    text: data.text || data.content || '',
+                    category: data.category || 'Hermes AI',
+                    projectId: data.projectId || null,
+                    date: new Date().toISOString().split('T')[0]
+                };
+
+                db.notes.unshift(newNote);
+                result = { success: true, note: newNote };
+                break;
+            }
+
+            default: {
+                db.activityFeed.unshift({
+                    id: `act-${Date.now()}`,
+                    text: `🤖 Hermes Agent ejecutó acción: ${actionName}`,
+                    color: '#8b5cf6',
+                    timestamp: new Date().toISOString()
+                });
+                result = { success: true, message: `Action ${actionName} received and logged`, payload: data };
+                break;
+            }
+        }
+
+        db.activityFeed = db.activityFeed.slice(0, 50);
+        db.hermesLogs.unshift(logEntry);
+        db.hermesLogs = db.hermesLogs.slice(0, 50);
+
+        writeDB(db);
+
+        return res.status(200).json({
+            status: 'ok',
+            agent: 'Hermes Agent',
+            action: actionName,
+            result
+        });
+
+    } catch (err) {
+        console.error('[Hermes Bridge] Error processing action:', err);
+        logEntry.status = 'error';
+        logEntry.error = err.message;
+        db.hermesLogs.unshift(logEntry);
+        writeDB(db);
+        return res.status(500).json({ error: err.message, status: 'error' });
+    }
+});
+
+// Helper para ejecutar acciones de OpenClaw Super Agent reutilizable en API y Chat
+function executeOpenClawAction(actionName, data, db) {
+    if (!db.openclawLogs) db.openclawLogs = [];
+    if (!db.hermesLogs) db.hermesLogs = db.openclawLogs;
+    if (!db.activityFeed) db.activityFeed = [];
+    if (!db.projects) db.projects = [];
+    if (!db.events) db.events = [];
+    if (!db.tasks) db.tasks = [];
+    if (!db.notes) db.notes = [];
+
+    const logEntry = {
+        id: `olog-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+        action: actionName,
+        timestamp: new Date().toISOString(),
+        source: 'OpenClaw Super Agent',
+        data: data || {},
+        status: 'success'
+    };
+
+    let result = null;
+
+    switch (actionName) {
+        case 'create_project': {
+            const category = data.category || 'software';
+            const newProject = {
+                id: data.id || `proj-${Date.now()}`,
+                name: data.name || 'Nuevo Proyecto OpenClaw',
+                description: data.description || '',
+                category: category,
+                type: data.type || category,
+                templateKey: `project_${category}`,
+                status: data.status || 'active',
+                priority: data.priority || 'high',
+                deadline: data.deadline || '',
+                budget: data.budget || '0',
+                techStack: Array.isArray(data.techStack) ? data.techStack : (typeof data.techStack === 'string' ? data.techStack.split(',').map(s => s.trim()) : ['OpenClaw Agent', 'React', 'Node.js']),
+                githubRepo: data.githubRepo || '',
+                leadAgent: data.leadAgent || 'OpenClaw Super Agent',
+                milestones: Array.isArray(data.milestones) ? data.milestones.map((m, i) => ({ id: `m-${i+1}`, title: m.title || m.name || m, deadline: m.deadline || '', done: !!m.done, deliverables: m.deliverables || [] })) : [
+                    { id: 'm-1', title: 'Definición de arquitectura y roadmap', done: true, deadline: '' },
+                    { id: 'm-2', title: 'Desarrollo del Core MVP', done: false, deadline: data.deadline || '' },
+                    { id: 'm-3', title: 'Pruebas y despliegue inicial', done: false, deadline: '' }
+                ],
+                tasks: Array.isArray(data.tasks) ? data.tasks : [],
+                tags: Array.isArray(data.tags) ? data.tags : ['OpenClaw', 'Proyecto'],
+                activityLog: [
+                    { id: `log-${Date.now()}`, text: `🚀 Proyecto creado e inicializado por OpenClaw Super Agent`, time: new Date().toLocaleTimeString(), type: 'created' }
+                ],
+                createdAt: new Date().toISOString()
+            };
+
+            db.projects.unshift(newProject);
+            
+            const mirrorEvent = {
+                id: newProject.id,
+                name: newProject.name,
+                description: newProject.description,
+                category: 'project',
+                type: newProject.type,
+                templateKey: newProject.templateKey,
+                status: newProject.status,
+                priority: newProject.priority,
+                date: newProject.deadline || new Date().toISOString().split('T')[0],
+                budget: newProject.budget,
+                estimatedBudget: newProject.budget,
+                organizer: newProject.leadAgent,
+                techStack: newProject.techStack,
+                githubRepo: newProject.githubRepo,
+                milestones: newProject.milestones,
+                color: category === 'software' ? '#6366f1' : category === 'business' ? '#10b981' : category === 'ai_pipeline' ? '#8b5cf6' : '#ec4899',
+                icon: category === 'software' ? '💻' : category === 'business' ? '💼' : category === 'ai_pipeline' ? '🤖' : '🚀',
+                agenda: newProject.milestones.map((m, i) => ({ id: `ag-${i+1}`, time: '09:00', title: m.title, speaker: newProject.leadAgent, description: 'Hito del proyecto' })),
+                requirements: (newProject.techStack || []).map((t, i) => ({ id: `req-${i+1}`, name: `Configuración: ${t}`, done: false }))
+            };
+            
+            const existingEvIdx = db.events.findIndex(e => e.id === mirrorEvent.id);
+            if (existingEvIdx >= 0) db.events[existingEvIdx] = mirrorEvent;
+            else db.events.unshift(mirrorEvent);
+
+            db.activityFeed.unshift({
+                id: `act-${Date.now()}`,
+                text: `🤖 OpenClaw Super Agent creó el proyecto "${newProject.name}"`,
+                color: '#8b5cf6',
+                timestamp: new Date().toISOString()
+            });
+
+            result = { success: true, project: newProject, mirrorEvent };
+            break;
+        }
+
+        case 'create_event': {
+            const newEvent = {
+                id: data.id || `ev-${Date.now()}`,
+                name: data.name || 'Nuevo Evento OpenClaw',
+                date: data.date || new Date().toISOString().split('T')[0],
+                time: data.time || '20:00',
+                location: data.location || '',
+                type: data.type || 'eventos',
+                templateKey: data.templateKey || data.type || 'eventos',
+                category: 'event',
+                status: data.status || 'planning',
+                description: data.description || '',
+                budget: data.budget || '0',
+                estimatedBudget: data.budget || '0',
+                capacity: data.capacity || '',
+                organizer: data.organizer || 'OpenClaw Super Agent',
+                color: data.color || '#f43f5e',
+                icon: data.icon || '🎉',
+                agenda: Array.isArray(data.agenda) ? data.agenda : [
+                    { id: 'ag-1', time: '20:00', title: 'Inicio del evento', speaker: 'OpenClaw / Staff', description: 'Apertura' }
+                ],
+                requirements: Array.isArray(data.requirements) ? data.requirements : []
+            };
+
+            db.events.unshift(newEvent);
+
+            db.activityFeed.unshift({
+                id: `act-${Date.now()}`,
+                text: `🎉 OpenClaw Super Agent agendó el evento "${newEvent.name}" (${newEvent.date})`,
+                color: '#f43f5e',
+                timestamp: new Date().toISOString()
+            });
+
+            result = { success: true, event: newEvent };
+            break;
+        }
+
+        case 'add_task': {
+            const newTask = {
+                id: data.id || `task-${Date.now()}`,
+                text: data.text || data.title || 'Nueva tarea creada por OpenClaw',
+                title: data.text || data.title || 'Nueva tarea creada por OpenClaw',
+                priority: data.priority || 'media',
+                category: data.category || 'General',
+                done: false,
+                status: 'todo',
+                projectId: data.projectId || null,
+                eventId: data.eventId || null,
+                assignedTo: data.assignedTo || 'OpenClaw Super Agent',
+                dueDate: data.dueDate || null,
+                createdAt: new Date().toISOString()
+            };
+
+            db.tasks.unshift(newTask);
+
+            if (data.projectId) {
+                const pIdx = db.projects.findIndex(p => p.id === data.projectId);
+                if (pIdx >= 0) {
+                    if (!db.projects[pIdx].tasks) db.projects[pIdx].tasks = [];
+                    db.projects[pIdx].tasks.push({ id: newTask.id, text: newTask.text, done: false });
+                }
+            }
+
+            db.activityFeed.unshift({
+                id: `act-${Date.now()}`,
+                text: `📋 OpenClaw Super Agent añadió tarea: "${newTask.text}"`,
+                color: '#06b6d4',
+                timestamp: new Date().toISOString()
+            });
+
+            result = { success: true, task: newTask };
+            break;
+        }
+
+        case 'complete_task':
+        case 'toggle_task': {
+            const taskId = data.id || data.taskId;
+            let found = null;
+            if (taskId) {
+                found = db.tasks.find(t => t.id === taskId);
+            }
+            if (!found && (data.text || data.title)) {
+                const q = (data.text || data.title).toLowerCase();
+                found = db.tasks.find(t => (t.text && t.text.toLowerCase().includes(q)) || (t.title && t.title.toLowerCase().includes(q)));
+            }
+
+            if (found) {
+                found.done = true;
+                found.status = 'done';
+                db.activityFeed.unshift({
+                    id: `act-${Date.now()}`,
+                    text: `🎯 OpenClaw Super Agent completó la tarea: "${found.text || found.title}"`,
+                    color: '#10b981',
+                    timestamp: new Date().toISOString()
+                });
+                result = { success: true, task: found, id: found.id };
+            } else {
+                result = { success: false, error: 'Tarea no encontrada' };
+            }
+            break;
+        }
+
+        case 'add_milestone': {
+            const { projectId, title, deadline, deliverables } = data;
+            const newMilestone = {
+                id: `m-${Date.now()}`,
+                title: title || 'Nuevo Hito',
+                deadline: deadline || '',
+                done: false,
+                deliverables: deliverables || []
+            };
+
+            if (projectId) {
+                const pIdx = db.projects.findIndex(p => p.id === projectId);
+                if (pIdx >= 0) {
+                    if (!db.projects[pIdx].milestones) db.projects[pIdx].milestones = [];
+                    db.projects[pIdx].milestones.push(newMilestone);
+                }
+                const eIdx = db.events.findIndex(e => e.id === projectId);
+                if (eIdx >= 0) {
+                    if (!db.events[eIdx].milestones) db.events[eIdx].milestones = [];
+                    db.events[eIdx].milestones.push(newMilestone);
+                }
+            }
+
+            db.activityFeed.unshift({
+                id: `act-${Date.now()}`,
+                text: `🗺️ Hermes Agent añadió hito: "${newMilestone.title}"`,
+                color: '#10b981',
+                timestamp: new Date().toISOString()
+            });
+
+            result = { success: true, milestone: newMilestone };
+            break;
+        }
+
+        case 'log_thought': {
+            const thought = {
+                id: `thought-${Date.now()}`,
+                message: data.message || data.text || 'Pensamiento registrado',
+                level: data.level || 'info',
+                details: data.details || '',
+                projectId: data.projectId || null,
+                timestamp: new Date().toISOString()
+            };
+
+            logEntry.thought = thought;
+            db.activityFeed.unshift({
+                id: `act-${Date.now()}`,
+                text: `🧠 Hermes: ${thought.message}`,
+                color: '#8b5cf6',
+                timestamp: new Date().toISOString()
+            });
+
+            result = { success: true, log: thought };
+            break;
+        }
+
+        case 'add_note': {
+            const newNote = {
+                id: data.id || `note-${Date.now()}`,
+                title: data.title || 'Nota de Hermes',
+                text: data.text || data.content || '',
+                category: data.category || 'Hermes AI',
+                projectId: data.projectId || null,
+                date: new Date().toISOString().split('T')[0]
+            };
+
+            db.notes.unshift(newNote);
+            result = { success: true, note: newNote };
+            break;
+        }
+
+        default: {
+            db.activityFeed.unshift({
+                id: `act-${Date.now()}`,
+                text: `🤖 OpenClaw Agent ejecutó acción: ${actionName}`,
+                color: '#8b5cf6',
+                timestamp: new Date().toISOString()
+            });
+            result = { success: true, message: `Action ${actionName} received and logged`, payload: data };
+            break;
+        }
+    }
+
+    db.activityFeed = db.activityFeed.slice(0, 50);
+    db.openclawLogs.unshift(logEntry);
+    db.openclawLogs = db.openclawLogs.slice(0, 50);
+    db.hermesLogs = db.openclawLogs;
+    writeDB(db);
+
+    return result;
+}
+
+const executeHermesAction = executeOpenClawAction;
+
+// 5. OpenClaw & Gemini Config Endpoints
+app.get('/api/openclaw/config', (req, res) => {
+    const db = readDB();
+    const config = db.openclawConfig || db.hermesConfig || {
+        baseUrl: 'http://localhost:18789/v1',
+        chatUrl: '/api/openclaw/chat',
+        model: 'gemini-3.6-flash',
+        apiKey: ''
+    };
+    res.json(config);
+});
+
+app.post('/api/openclaw/config', (req, res) => {
+    const db = readDB();
+    db.openclawConfig = { ...(db.openclawConfig || {}), ...req.body };
+    writeDB(db);
+    res.json({ success: true, config: db.openclawConfig });
+});
+
+// Gemini Specific Config Endpoints
+app.post('/api/openclaw/gemini/config', (req, res) => {
+    const db = readDB();
+    if (!db.openclawConfig) db.openclawConfig = {};
+    if (req.body.geminiApiKey !== undefined) {
+        db.openclawConfig.geminiApiKey = (req.body.geminiApiKey || '').trim();
+    }
+    writeDB(db);
+    const activeKey = process.env.GEMINI_API_KEY || db.openclawConfig.geminiApiKey;
+    res.json({
+        success: true,
+        geminiActive: !!activeKey,
+        model: 'gemini-3.6-flash'
+    });
+});
+
+app.get('/api/openclaw/gemini/status', (req, res) => {
+    const db = readDB();
+    const activeKey = process.env.GEMINI_API_KEY || db.openclawConfig?.geminiApiKey;
+    res.json({
+        configured: !!activeKey,
+        active: !!activeKey,
+        model: 'gemini-3.6-flash',
+        provider: 'Google Gemini'
+    });
+});
+
+// Backward compatibility alias for Hermes config
+app.get('/api/hermes/config', (req, res) => {
+    const db = readDB();
+    res.json(db.openclawConfig || db.hermesConfig || {});
+});
+app.post('/api/hermes/config', (req, res) => {
+    const db = readDB();
+    db.openclawConfig = { ...(db.openclawConfig || {}), ...req.body };
+    db.hermesConfig = db.openclawConfig;
+    writeDB(db);
+    res.json({ success: true, config: db.openclawConfig });
+});
+
+// 6. OpenClaw Health Check Endpoint
+app.get(['/api/openclaw/health', '/api/hermes/health'], async (req, res) => {
+    const db = readDB();
+    const geminiKey = process.env.GEMINI_API_KEY || db.openclawConfig?.geminiApiKey;
+    
+    return res.json({
+        online: true,
+        mode: geminiKey ? 'gemini_3.6_flash' : 'embedded_orchestrator',
+        latencyMs: 1,
+        model: geminiKey ? 'gemini-3.6-flash' : 'openclaw-agent',
+        status: 'ready',
+        geminiActive: !!geminiKey,
+        label: geminiKey ? 'OpenClaw Super Agent (Gemini 3.6 Flash)' : 'OpenClaw Super Agent (Orquestador Embebido + RAG)'
+    });
+});
+
+// 6.5 Shared Chat History Endpoints (Synchronizes Copilot, Workspace and AgentBrain)
+app.get('/api/openclaw/chat/history', (req, res) => {
+    const db = readDB();
+    res.json(db.openclawChatHistory || []);
+});
+
+app.post('/api/openclaw/chat/history', (req, res) => {
+    const db = readDB();
+    const { messages } = req.body;
+    if (Array.isArray(messages)) {
+        db.openclawChatHistory = messages.slice(-100);
+        writeDB(db);
+    }
+    res.json({ success: true, count: (db.openclawChatHistory || []).length });
+});
+
+app.delete('/api/openclaw/chat/history', (req, res) => {
+    const db = readDB();
+    db.openclawChatHistory = [];
+    writeDB(db);
+    res.json({ success: true, message: 'OpenClaw chat history cleared' });
+});
+
+// 7. OpenClaw Live Chat with Gemini 3.6 Flash, Tool Calling & RAG Knowledge Injection
+async function handleOpenClawChat(req, res) {
+    const db = readDB();
+    const { prompt, history = [], systemRole, skills, namespace = 'default' } = req.body;
+    if (!prompt) return res.status(400).json({ error: 'Prompt es requerido' });
+
+    // Determine Gemini API Key
+    const geminiApiKey = req.body.geminiApiKey || process.env.GEMINI_API_KEY || db.openclawConfig?.geminiApiKey || '';
+
+    // Inyectar RAG Knowledge
+    let ragContext = '';
+    const ragEngine = req.app.get('ragEngine') || EmbeddedRAGEngine;
+    const ragSearchResult = ragEngine.query(prompt, namespace, 4);
+    if (ragSearchResult && ragSearchResult.sources && ragSearchResult.sources.length > 0) {
+        ragContext = ragSearchResult.context;
+    }
+
+    // Inyectar Contexto Operativo en Tiempo Real
+    const liveProjects = (db.projects || []).map(p => ({ id: p.id, name: p.name, status: p.status, priority: p.priority }));
+    const liveEvents = (db.events || []).map(e => ({ id: e.id, name: e.name, date: e.date, status: e.status, location: e.location, budget: e.budget }));
+    const pendingTasks = (db.tasks || []).filter(t => !t.done).slice(0, 20).map(t => ({ id: t.id, text: t.text || t.title, priority: t.priority }));
+
+    const systemMessageContent = `Eres OpenClaw Super Agent, el orquestador autónomo maestro y cerebro central del Command Center & Dashboard de Eventos.
+Tienes acceso total para gestionar eventos (Terraplén Rooftop, Furia, Piano Bar, etc.), proyectos, finanzas, tareas, promotores y modelos Image Girls.
+
+[SKILLS Y DIRECTIVAS]:
+${skills || 'Actúa con precisión, proactividad y liderazgo. Responde en español estructurado y ejecuta acciones en el sistema siempre que el usuario lo solicite.'}
+
+[BASE DE CONOCIMIENTOS RAG DE OPENCLAW]:
+${ragContext || 'No se requirieron documentos adicionales para esta consulta.'}
+
+[ESTADO EN VIVO DEL DASHBOARD]:
+- Eventos Activos (${liveEvents.length}): ${JSON.stringify(liveEvents.slice(0, 10))}
+- Proyectos (${liveProjects.length}): ${JSON.stringify(liveProjects)}
+- Tareas Pendientes (${pendingTasks.length}): ${JSON.stringify(pendingTasks)}
+
+${systemRole || ''}`;
+
+    // ─── 1. INTEGRACIÓN CON GOOGLE GEMINI (Multi-Model Resiliente con Fast Fallback) ───
+    if (geminiApiKey) {
+        const candidateModels = [
+            'gemini-3.5-flash-lite',
+            'gemini-3.6-flash',
+            'gemini-3.1-flash-lite'
+        ];
+
+        const geminiContents = [
+            ...history.slice(-8).map(h => ({
+                role: h.role === 'assistant' || h.role === 'model' || h.role === 'bot' || h.role === 'copilot' ? 'model' : 'user',
+                parts: [{ text: h.content || h.text || '' }]
+            })),
+            {
+                role: 'user',
+                parts: [{ text: prompt }]
+            }
+        ];
+
+        const toolsDeclaration = [
+            {
+                functionDeclarations: [
+                    {
+                        name: "add_task",
+                        description: "Crea una nueva tarea en el Dashboard de eventos y operaciones",
+                        parameters: {
+                            type: "OBJECT",
+                            properties: {
+                                text: { type: "STRING", description: "Descripción clara de la tarea" },
+                                priority: { type: "STRING", enum: ["high", "medium", "low"], description: "Nivel de prioridad" },
+                                category: { type: "STRING", description: "Categoría o evento (ej: Terraplén, Furia, Piano Bar, General)" }
+                            },
+                            required: ["text"]
+                        }
+                    },
+                    {
+                        name: "complete_task",
+                        description: "Marca una tarea existente como completada",
+                        parameters: {
+                            type: "OBJECT",
+                            properties: {
+                                text: { type: "STRING", description: "Nombre o palabra clave de la tarea a marcar como completada" }
+                            },
+                            required: ["text"]
+                        }
+                    },
+                    {
+                        name: "create_event",
+                        description: "Agenda un nuevo evento en el calendario y base de eventos",
+                        parameters: {
+                            type: "OBJECT",
+                            properties: {
+                                name: { type: "STRING", description: "Nombre del evento" },
+                                date: { type: "STRING", description: "Fecha en formato YYYY-MM-DD" },
+                                location: { type: "STRING", description: "Ubicación del evento" },
+                                budget: { type: "STRING", description: "Presupuesto estimado en USD" },
+                                description: { type: "STRING", description: "Detalles del evento" }
+                            },
+                            required: ["name"]
+                        }
+                    },
+                    {
+                        name: "create_project",
+                        description: "Crea un nuevo proyecto en el Command Center",
+                        parameters: {
+                            type: "OBJECT",
+                            properties: {
+                                name: { type: "STRING", description: "Nombre del proyecto" },
+                                description: { type: "STRING", description: "Objetivo y descripción del proyecto" },
+                                category: { type: "STRING", description: "software, business, marketing o eventos" }
+                            },
+                            required: ["name"]
+                        }
+                    }
+                ]
+            }
+        ];
+
+        for (const modelName of candidateModels) {
+            try {
+                const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiApiKey}`;
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+                const geminiRes = await fetch(geminiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    signal: controller.signal,
+                    body: JSON.stringify({
+                        contents: geminiContents,
+                        systemInstruction: {
+                            parts: [{ text: systemMessageContent }]
+                        },
+                        tools: toolsDeclaration,
+                        generationConfig: {
+                            temperature: 0.7,
+                            maxOutputTokens: 1200
+                        }
+                    })
+                });
+                clearTimeout(timeoutId);
+
+                if (geminiRes.ok) {
+                    const geminiData = await geminiRes.json();
+                    const candidate = geminiData.candidates && geminiData.candidates[0];
+                    if (candidate && candidate.content && candidate.content.parts) {
+                        const executedTools = [];
+                        let replyText = '';
+
+                        for (const part of candidate.content.parts) {
+                            if (part.text) {
+                                replyText += (replyText ? '\n\n' : '') + part.text;
+                            }
+                            if (part.functionCall) {
+                                const call = part.functionCall;
+                                const toolResult = executeOpenClawAction(call.name, call.args || {}, db);
+                                executedTools.push({ name: call.name, args: call.args || {}, result: toolResult });
+                            }
+                        }
+
+                        if (!replyText && executedTools.length > 0) {
+                            replyText = `✅ **OpenClaw Super Agent (${modelName})** ejecutó ${executedTools.length} acción(es) solicitada(s) correctamente.`;
+                        }
+
+                        // Sincronizar en historial compartido
+                        if (!db.openclawChatHistory) db.openclawChatHistory = [];
+                        db.openclawChatHistory.push({
+                            id: `usr-${Date.now()}`,
+                            role: 'user',
+                            text: prompt,
+                            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                        });
+                        db.openclawChatHistory.push({
+                            id: `bot-${Date.now()}`,
+                            role: 'copilot',
+                            text: replyText,
+                            model: modelName,
+                            provider: `Google ${modelName}`,
+                            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                            executedTools
+                        });
+                        writeDB(db);
+
+                        return res.json({
+                            reply: replyText,
+                            executedTools,
+                            model: modelName,
+                            provider: `Google Gemini (${modelName})`,
+                            usage: geminiData.usageMetadata || null
+                        });
+                    }
+                } else {
+                    const errStatus = geminiRes.status;
+                    const errText = await geminiRes.text();
+                    console.warn(`[Gemini API] Modelo ${modelName} devolvió ${errStatus}, intentando siguiente fallback...`, errText.slice(0, 150));
+                }
+            } catch (modelErr) {
+                console.warn(`[Gemini API] Excepción en ${modelName}, intentando siguiente fallback...`, modelErr.message);
+            }
+        }
+    }
+
+    // ─── 2. MODO AUTÓNOMO EMBEBIDO OPENCLAW (Fallback 100% Funcional) ───
+    const executedTools = [];
+    const pLower = prompt.toLowerCase();
+    let replyText = '';
+
+    if (pLower.includes('crea') && (pLower.includes('proyecto') || pLower.includes('project'))) {
+        const projNameMatch = prompt.match(/(?:proyecto|project)\s+(?:llamado\s+|de\s+|para\s+|titulado\s+)?["']?([^"',.\n]+)["']?/i);
+        const name = projNameMatch ? projNameMatch[1].trim() : 'Nuevo Proyecto OpenClaw';
+        const newProj = executeHermesAction('create_project', {
+            name,
+            description: `Proyecto planificado por OpenClaw Super Agent en base a la instrucción: "${prompt}"`,
+            category: pLower.includes('software') || pLower.includes('app') ? 'software' : pLower.includes('marketing') ? 'marketing' : 'business',
+            priority: pLower.includes('urgente') || pLower.includes('critico') ? 'critical' : 'high',
+            techStack: ['React', 'Node.js', 'OpenClaw RAG']
+        }, db);
+        executedTools.push({ name: 'create_project', args: { name }, result: newProj });
+        replyText = `🚀 **Proyecto "${name}" creado exitosamente** en el Command Center. He configurado la estructura inicial, hitos de desarrollo y registrado la actividad en el sistema.`;
+
+    } else if (pLower.includes('crea') && (pLower.includes('evento') || pLower.includes('event'))) {
+        const evMatch = prompt.match(/(?:evento|event)\s+(?:llamado\s+|de\s+|para\s+|titulado\s+)?["']?([^"',.\n]+)["']?/i);
+        const name = evMatch ? evMatch[1].trim() : 'Nuevo Evento OpenClaw';
+        const newEv = executeHermesAction('create_event', {
+            name,
+            description: `Evento agendado por OpenClaw Super Agent: "${prompt}"`,
+            date: new Date(Date.now() + 86400000 * 7).toISOString().split('T')[0],
+            category: 'event'
+        }, db);
+        executedTools.push({ name: 'create_event', args: { name }, result: newEv });
+        replyText = `🎉 **Evento "${name}" agendado con éxito**. Puedes ver los detalles, fecha y asignación en la pestaña de Eventos y en el Calendario.`;
+
+    } else if (pLower.includes('completa') || pLower.includes('completar') || pLower.includes('terminé') || pLower.includes('marcar como hecha')) {
+        const matchText = prompt.replace(/(?:completa|completar|terminé|marcar como hecha)\s+(?:la\s+)?(?:tarea\s+)?(?:de\s+|para\s+)?/i, '').trim();
+        const resTask = executeHermesAction('complete_task', { text: matchText }, db);
+        if (resTask.success) {
+            executedTools.push({ name: 'complete_task', args: { text: matchText }, result: resTask });
+            replyText = `🎯 **Tarea completada exitosamente:** "${resTask.task.text || resTask.task.title}". El progreso en el Dashboard ha sido actualizado.`;
+        } else {
+            replyText = `⚠️ No encontré una tarea pendiente que coincida con "${matchText}".`;
+        }
+
+    } else if (pLower.includes('resumen') || pLower.includes('estado') || pLower.includes('status') || pLower.includes('reporte') || pLower.includes('operaciones')) {
+        replyText = `📊 **Reporte Ejecutivo de OpenClaw Super Agent**:
+- **Eventos Activos**: ${(db.events || []).length} eventos agendados (incluyendo Terraplén Rooftop, Furia y Piano Bar).
+- **Proyectos Activos**: ${(db.projects || []).length} proyectos registrados en el portfolio.
+- **Tareas Pendientes**: ${(db.tasks || []).filter(t => !t.done).length} tareas en cola de ejecución.
+- **Base de Conocimiento RAG**: ${(db.ragDocuments || []).length} documentos y entidades indexadas en namespace "${namespace}".
+
+*El sistema está 100% operativo y sincronizado localmente.*`;
+
+    } else if (pLower.includes('tarea') || pLower.includes('task') || pLower.includes('todo') || pLower.includes('to-do')) {
+        const taskTextMatch = prompt.match(/(?:tarea|task|agregar\s+tarea)\s+(?:de\s+|para\s+)?["']?([^"',.\n]+)["']?/i);
+        const text = taskTextMatch ? taskTextMatch[1].trim() : prompt;
+        const newTask = executeHermesAction('add_task', {
+            text,
+            priority: pLower.includes('alta') || pLower.includes('urgente') ? 'alta' : 'media',
+            assignedTo: 'OpenClaw Super Agent'
+        }, db);
+        executedTools.push({ name: 'add_task', args: { text }, result: newTask });
+        replyText = `📋 **Tarea registrada**: "${text}". Ha sido agregada a la lista de pendientes y asignada a OpenClaw.`;
+
+    } else {
+        if (ragSearchResult && ragSearchResult.sources && ragSearchResult.sources.length > 0) {
+            replyText = `🧠 **Consulta RAG en Namespace "${namespace}"**:
+Encontré **${ragSearchResult.count} referencias** en tu base de conocimientos:
+
+${ragSearchResult.sources.map(s => `- **${s.title}** (${s.category})`).join('\n')}
+
+**Contexto Extraído**:
+> ${ragSearchResult.context.slice(0, 320)}...`;
+        } else {
+            replyText = `⚡ **OpenClaw Super Agent**: He procesado tu solicitud: *"${prompt}"*. 
+Todos los subsistemas del Command Center, base de datos local y motor RAG están activos y listos para ejecutar cualquier comando o plan de acción.`;
+        }
+    }
+
+    return res.json({
+        reply: replyText,
+        executedTools,
+        model: 'openclaw-super-agent-autonomous',
+        provider: 'OpenClaw Autonomous Engine',
+        usage: { prompt_tokens: prompt.length, completion_tokens: replyText.length, total_tokens: prompt.length + replyText.length }
+    });
+}
+
+app.post('/api/openclaw/chat', handleOpenClawChat);
+app.post('/api/hermes/chat', handleOpenClawChat);
 
 // ─── Orchestrator Engine (Auto-Delegation & Cron) ────────────────
 app.post('/api/orchestrator/delegate', (req, res) => {
@@ -704,6 +1885,8 @@ app.post('/api/orchestrator/delegate', (req, res) => {
         assignedAgent = 'Atlas (Logistics)';
     } else if (tLower.includes('lead') || tLower.includes('crm') || tLower.includes('vender') || tLower.includes('prospecto')) {
         assignedAgent = 'CloserOps (Sales)';
+    } else if (tLower.includes('whatsapp') || tLower.includes('comunidad') || tLower.includes('broadcast') || tLower.includes('difusion') || tLower.includes('cartelera')) {
+        assignedAgent = 'Pulse (WhatsApp & Community)';
     } else if (tLower.includes('codigo') || tLower.includes('ui ') || tLower.includes('frontend') || tLower.includes('react')) {
         assignedAgent = 'Antigravity (Engineer)';
         actionType = 'antigravity_inbox';
@@ -1612,58 +2795,429 @@ app.post('/api/supabase/sync', async (req, res) => {
     }
 });
 
+// ─── Native Embedded OpenClaw RAG Engine ────────────────────────
+const EmbeddedRAGEngine = {
+    async upsertEntity(entityType, entityData, namespace = 'default') {
+        try {
+            const db = readDB();
+            if (!db.ragDocuments) db.ragDocuments = [];
+            const docId = `entity-${entityType}-${entityData.id || Date.now()}`;
+            
+            let title = entityData.name || entityData.title || entityData.text || `${entityType} #${entityData.id}`;
+            let content = '';
+            if (entityType === 'project' || entityType === 'projects') {
+                content = `PROYECTO: ${entityData.name}\nDescripción: ${entityData.description || ''}\nCategoría: ${entityData.category || ''}\nEstado: ${entityData.status || ''}\nPrioridad: ${entityData.priority || ''}\nStack: ${Array.isArray(entityData.techStack) ? entityData.techStack.join(', ') : entityData.techStack || ''}\nLíder: ${entityData.leadAgent || 'Hermes'}\nHitos: ${(entityData.milestones || []).map(m => m.title || m).join(' | ')}`;
+            } else if (entityType === 'event' || entityType === 'events') {
+                content = `EVENTO: ${entityData.name}\nFecha: ${entityData.date}\nHora: ${entityData.time || ''}\nUbicación: ${entityData.location || ''}\nTipo: ${entityData.type || ''}\nDescripción: ${entityData.description || ''}`;
+            } else if (entityType === 'task' || entityType === 'tasks') {
+                content = `TAREA: ${entityData.text}\nPrioridad: ${entityData.priority || ''}\nAsignado: ${entityData.assignedTo || ''}\nEstado: ${entityData.done ? 'Completada' : 'Pendiente'}`;
+            } else if (entityType === 'note' || entityType === 'notes') {
+                content = `NOTA: ${entityData.title || ''}\nContenido: ${entityData.text || entityData.content || ''}\nCategoría: ${entityData.category || ''}`;
+            } else {
+                content = typeof entityData === 'string' ? entityData : JSON.stringify(entityData);
+            }
+
+            const existingIdx = db.ragDocuments.findIndex(d => d.id === docId);
+            const docObj = {
+                id: docId,
+                filename: title,
+                title,
+                content,
+                category: entityType,
+                namespace: namespace || 'default',
+                updatedAt: new Date().toISOString()
+            };
+
+            if (existingIdx >= 0) {
+                db.ragDocuments[existingIdx] = docObj;
+            } else {
+                db.ragDocuments.unshift(docObj);
+            }
+            writeDB(db);
+            return { success: true, documentId: docId };
+        } catch (e) {
+            return { success: false, error: e.message };
+        }
+    },
+
+    async deleteEntity(entityId) {
+        try {
+            const db = readDB();
+            if (db.ragDocuments) {
+                db.ragDocuments = db.ragDocuments.filter(d => !d.id.includes(entityId));
+                writeDB(db);
+            }
+            return { success: true };
+        } catch (e) {
+            return { success: false, error: e.message };
+        }
+    },
+
+    async indexCustomDocument(docId, title, content, category, extraMetadata, namespace = 'default') {
+        const db = readDB();
+        if (!db.ragDocuments) db.ragDocuments = [];
+        const docObj = {
+            id: docId || `doc-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+            filename: title,
+            title: title || 'Sin título',
+            content: content || '',
+            category: category || 'custom_document',
+            namespace: namespace || 'default',
+            addedAt: new Date().toISOString()
+        };
+        db.ragDocuments.unshift(docObj);
+        writeDB(db);
+        return { success: true, documentId: docObj.id, indexed: true };
+    },
+
+    async indexObsidianVault(vaultPath, namespace = 'default') {
+        if (!vaultPath || !fs.existsSync(vaultPath)) return { success: false, error: 'Ruta de vault inválida o inexistente' };
+        
+        function getAllFiles(dirPath, arrayOfFiles = []) {
+            const files = fs.readdirSync(dirPath);
+            files.forEach(file => {
+                const fullPath = path.join(dirPath, file);
+                if (fs.statSync(fullPath).isDirectory()) {
+                    if (!file.startsWith('.')) getAllFiles(fullPath, arrayOfFiles);
+                } else if (file.endsWith('.md') || file.endsWith('.txt')) {
+                    arrayOfFiles.push(fullPath);
+                }
+            });
+            return arrayOfFiles;
+        }
+
+        const files = getAllFiles(vaultPath);
+        const db = readDB();
+        if (!db.ragDocuments) db.ragDocuments = [];
+        let count = 0;
+
+        for (const f of files) {
+            const content = fs.readFileSync(f, 'utf-8');
+            const fname = path.basename(f);
+            const docId = `obsidian-${fname.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+            
+            const existing = db.ragDocuments.findIndex(d => d.id === docId);
+            const docObj = {
+                id: docId,
+                filename: fname,
+                title: fname,
+                content,
+                category: 'obsidian_vault',
+                namespace: namespace || 'default',
+                path: f,
+                updatedAt: new Date().toISOString()
+            };
+            if (existing >= 0) db.ragDocuments[existing] = docObj;
+            else db.ragDocuments.push(docObj);
+            count++;
+        }
+        writeDB(db);
+        return { success: true, count };
+    },
+
+    async indexAllData() {
+        const db = readDB();
+        if (!db.ragDocuments) db.ragDocuments = [];
+        
+        let count = 0;
+        (db.projects || []).forEach(p => { this.upsertEntity('project', p, 'default'); count++; });
+        (db.events || []).forEach(e => { this.upsertEntity('event', e, 'default'); count++; });
+        (db.tasks || []).forEach(t => { this.upsertEntity('task', t, 'default'); count++; });
+        (db.notes || []).forEach(n => { this.upsertEntity('note', n, 'default'); count++; });
+
+        return { success: true, indexed: count, total: db.ragDocuments.length };
+    },
+
+    async query(question, topK = 5, historyContext = [], namespace = 'default') {
+        const db = readDB();
+        const allDocs = (db.ragDocuments || []).concat(db.customDocuments || []);
+        const filteredDocs = allDocs.filter(d => !namespace || namespace === 'default' || d.namespace === namespace || !d.namespace);
+
+        if (!question || filteredDocs.length === 0) {
+            return {
+                answer: 'No hay documentos en la base de conocimientos RAG de OpenClaw para este namespace.',
+                sources: [],
+                count: 0
+            };
+        }
+
+        const terms = question.toLowerCase().split(/\W+/).filter(w => w.length > 2);
+        
+        const scored = filteredDocs.map(doc => {
+            const fullText = `${doc.title || doc.filename || ''} ${doc.content || ''}`.toLowerCase();
+            let score = 0;
+            for (const t of terms) {
+                const matches = (fullText.match(new RegExp(t, 'g')) || []).length;
+                score += matches;
+                if ((doc.title || doc.filename || '').toLowerCase().includes(t)) {
+                    score += 4;
+                }
+            }
+            return { doc, score };
+        });
+
+        scored.sort((a, b) => b.score - a.score);
+        const topMatches = scored.filter(s => s.score > 0).slice(0, topK);
+        const selected = topMatches.length > 0 ? topMatches.map(m => m.doc) : filteredDocs.slice(0, topK);
+
+        const context = selected.map(d => `[Documento: ${d.title || d.filename} (${d.category || 'general'})]:\n${d.content}`).join('\n\n');
+
+        return {
+            answer: `Se encontraron ${selected.length} fuentes relevantes en el índice RAG de OpenClaw.`,
+            context,
+            sources: selected.map(d => ({
+                id: d.id,
+                title: d.title || d.filename,
+                category: d.category || 'document',
+                namespace: d.namespace || 'default'
+            })),
+            count: selected.length
+        };
+    },
+
+    async getStatus() {
+        const db = readDB();
+        const docs = (db.ragDocuments || []).concat(db.customDocuments || []);
+        const namespaces = [...new Set(docs.map(d => d.namespace || 'default'))];
+        return {
+            ready: true,
+            provider: 'OpenClaw RAG Engine (Embedded & Vector)',
+            indexed: docs.length,
+            namespaces,
+            lastSync: new Date().toISOString()
+        };
+    }
+};
+
+app.set('ragEngine', EmbeddedRAGEngine);
+
+// ─── Direct RAG REST Endpoints ───────────────────────────────
+
+app.get('/api/rag/status', async (req, res) => {
+    res.json(await EmbeddedRAGEngine.getStatus());
+});
+
+app.post('/api/rag/sync', async (req, res) => {
+    const result = await EmbeddedRAGEngine.indexAllData();
+    res.json(result);
+});
+
+// Detalle completo de un documento específico
+app.get('/api/rag-doc/:id', (req, res) => {
+    const db = readDB();
+    const allDocs = (db.ragDocuments || []).concat(db.customDocuments || []);
+    const doc = allDocs.find(d => d.id === req.params.id);
+    if (!doc) return res.status(404).json({ error: 'Documento no encontrado' });
+    res.json(doc);
+});
+
+// Búsqueda semántica con scoring porcentual y snippets
+app.post('/api/rag/search', async (req, res) => {
+    const { query, namespace = 'default', category, topK = 6 } = req.body;
+    if (!query) return res.status(400).json({ error: 'Falta término de búsqueda' });
+
+    const db = readDB();
+    const allDocs = (db.ragDocuments || []).concat(db.customDocuments || []);
+    let filtered = allDocs.filter(d => !namespace || namespace === 'default' || d.namespace === namespace || !d.namespace);
+    
+    if (category && category !== 'all') {
+        filtered = filtered.filter(d => d.category === category);
+    }
+
+    const terms = query.toLowerCase().split(/\W+/).filter(w => w.length > 2);
+    
+    const results = filtered.map(doc => {
+        const fullText = `${doc.title || doc.filename || ''} ${doc.content || ''}`.toLowerCase();
+        let matchScore = 0;
+        let matchedTerms = 0;
+
+        for (const t of terms) {
+            const occurrences = (fullText.match(new RegExp(t, 'g')) || []).length;
+            if (occurrences > 0) matchedTerms++;
+            matchScore += Math.min(occurrences, 10);
+            if ((doc.title || doc.filename || '').toLowerCase().includes(t)) {
+                matchScore += 8;
+            }
+        }
+
+        const coverage = terms.length > 0 ? (matchedTerms / terms.length) : 0;
+        const rawSim = Math.min(100, Math.round((coverage * 60) + (Math.min(matchScore, 20) * 2)));
+        const similarity = terms.length === 0 ? 50 : Math.max(15, rawSim);
+
+        // Extraer snippet representativo
+        let snippet = (doc.content || '').substring(0, 220);
+        if (terms.length > 0 && doc.content) {
+            const firstIdx = doc.content.toLowerCase().indexOf(terms[0]);
+            if (firstIdx >= 0) {
+                const start = Math.max(0, firstIdx - 40);
+                const end = Math.min(doc.content.length, firstIdx + 180);
+                snippet = (start > 0 ? '...' : '') + doc.content.substring(start, end) + (end < doc.content.length ? '...' : '');
+            }
+        }
+
+        return {
+            id: doc.id,
+            title: doc.title || doc.filename,
+            filename: doc.filename,
+            category: doc.category || 'document',
+            namespace: doc.namespace || 'default',
+            similarity,
+            score: matchScore,
+            snippet,
+            textLength: (doc.content || '').length,
+            addedAt: doc.addedAt || doc.updatedAt
+        };
+    });
+
+    results.sort((a, b) => b.similarity - a.similarity || b.score - a.score);
+    const topResults = results.slice(0, topK);
+
+    res.json({
+        query,
+        count: topResults.length,
+        totalInNamespace: filtered.length,
+        results: topResults
+    });
+});
+
+app.get('/api/rag/:namespace', (req, res) => {
+    const db = readDB();
+    const ns = req.params.namespace || 'default';
+    const docs = (db.ragDocuments || []).filter(d => !ns || ns === 'default' ? true : d.namespace === ns);
+    res.json(docs);
+});
+
+app.post('/api/rag/:namespace', (req, res) => {
+    const db = readDB();
+    if (!db.ragDocuments) db.ragDocuments = [];
+    const ns = req.params.namespace || 'default';
+    const doc = {
+        id: req.body.id || `rag-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+        filename: req.body.filename || req.body.title || 'Documento sin título',
+        title: req.body.title || req.body.filename || 'Documento',
+        content: req.body.content || '',
+        category: req.body.category || 'document',
+        namespace: ns,
+        addedAt: req.body.addedAt || new Date().toISOString()
+    };
+    db.ragDocuments.unshift(doc);
+    writeDB(db);
+    res.status(201).json({ success: true, doc });
+});
+
+app.delete('/api/rag/:namespace', (req, res) => {
+    const db = readDB();
+    const ns = req.params.namespace;
+    if (db.ragDocuments) {
+        db.ragDocuments = db.ragDocuments.filter(d => d.namespace !== ns);
+        writeDB(db);
+    }
+    res.json({ success: true, message: `Namespace ${ns} limpiado` });
+});
+
+app.delete('/api/rag/:namespace/:id', (req, res) => {
+    const db = readDB();
+    if (db.ragDocuments) {
+        db.ragDocuments = db.ragDocuments.filter(d => d.id !== req.params.id);
+        writeDB(db);
+    }
+    res.json({ success: true });
+});
+
+app.post('/api/rag/sync', async (req, res) => {
+    const result = await EmbeddedRAGEngine.indexAllData();
+    res.json(result);
+});
+
+// ─── Hermes Chat Sessions Persistence ─────────────────────────
+app.get('/api/hermes/sessions', (req, res) => {
+    const db = readDB();
+    res.json(db.hermesSessions || []);
+});
+
+app.post('/api/hermes/sessions', (req, res) => {
+    const db = readDB();
+    if (!db.hermesSessions) db.hermesSessions = [];
+    
+    const session = {
+        id: req.body.id || `sess-${Date.now()}`,
+        title: req.body.title || `Sesión ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`,
+        messages: req.body.messages || [],
+        mode: req.body.mode || 'ejecutivo',
+        namespace: req.body.namespace || 'default',
+        updatedAt: new Date().toISOString()
+    };
+
+    const existingIdx = db.hermesSessions.findIndex(s => s.id === session.id);
+    if (existingIdx >= 0) {
+        db.hermesSessions[existingIdx] = session;
+    } else {
+        db.hermesSessions.unshift(session);
+    }
+    db.hermesSessions = db.hermesSessions.slice(0, 20); // max 20 sessions
+    writeDB(db);
+    res.json({ success: true, session });
+});
+
+app.delete('/api/hermes/sessions/:id', (req, res) => {
+    const db = readDB();
+    if (db.hermesSessions) {
+        db.hermesSessions = db.hermesSessions.filter(s => s.id !== req.params.id);
+        writeDB(db);
+    }
+    res.json({ success: true });
+});
+
+// ─── Hermes Skill Presets ─────────────────────────────────────
+app.get('/api/hermes/skills/presets', (req, res) => {
+    const db = readDB();
+    res.json(db.hermesSkillPresets || [
+        { id: 'budget_calc', name: 'Presupuestos & Costos', icon: '💰', enabled: true, prompt: 'Calcula siempre presupuestos detallados con contingencia del 10%.' },
+        { id: 'casco_safety', name: 'Logística & Casco Peatonal', icon: '🚶‍♂️', enabled: true, prompt: 'Aplica normativas de seguridad vial, inspectores y cierres de calles de Casco Antiguo.' },
+        { id: 'social_copy', name: 'Estrategia de Redes & Copy', icon: '📱', enabled: true, prompt: 'Genera copies virales con hooks, emojis y llamadas a la acción claras.' },
+        { id: 'dev_architect', name: 'Arquitectura de Software', icon: '💻', enabled: true, prompt: 'Estructura proyectos modulares, APIs limpias y stacks modernos.' }
+    ]);
+});
+
+app.post('/api/hermes/skills/presets', (req, res) => {
+    const db = readDB();
+    db.hermesSkillPresets = req.body.presets || [];
+    writeDB(db);
+    res.json({ success: true, presets: db.hermesSkillPresets });
+});
+
 // ─── RAG Brain Endpoints ──────────────────────────────────────
 
-// Query the brain
 app.post('/api/brain/query', async (req, res) => {
     try {
-        const RAGEngine = app.get('ragEngine');
-        if (!RAGEngine) return res.status(503).json({ error: 'RAG engine not available. Check GEMINI_API_KEY in .env' });
-        
         const { question, topK, historyContext, namespace } = req.body;
         if (!question) return res.status(400).json({ error: 'Missing "question" field' });
-        
-        console.log(`[RAG] Query: "${question}" (namespace: ${namespace || 'default'})`);
-        const result = await RAGEngine.query(question, topK || 5, historyContext, namespace);
+        const result = await EmbeddedRAGEngine.query(question, topK || 5, historyContext, namespace);
         res.json(result);
     } catch (err) {
-        console.error('[RAG] Query error:', err.message);
         res.status(500).json({ error: err.message });
     }
 });
 
-// Index all data
 app.post('/api/brain/index', async (req, res) => {
     try {
-        const RAGEngine = app.get('ragEngine');
-        if (!RAGEngine) return res.status(503).json({ error: 'RAG engine not available. Check GEMINI_API_KEY in .env' });
-        
-        console.log('[RAG] Manual re-index triggered...');
-        const result = await RAGEngine.indexAllData();
+        const result = await EmbeddedRAGEngine.indexAllData();
         res.json(result);
     } catch (err) {
-        console.error('[RAG] Index error:', err.message);
         res.status(500).json({ error: err.message });
     }
 });
 
-// Status of RAG index
 app.get('/api/brain/status', async (req, res) => {
     try {
-        const RAGEngine = app.get('ragEngine');
-        if (!RAGEngine) return res.json({ ready: false, reason: 'RAG engine not loaded' });
-        res.json(await RAGEngine.getStatus());
+        res.json(await EmbeddedRAGEngine.getStatus());
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
-// Upload a custom document to the brain
 app.post('/api/brain/upload', upload.single('file'), async (req, res) => {
     try {
-        const RAGEngine = app.get('ragEngine');
-        if (!RAGEngine) return res.status(503).json({ error: 'RAG engine not available' });
-
         const file = req.file;
         const namespace = req.body.namespace || 'default';
         let content = req.body.content || '';
@@ -1679,203 +3233,548 @@ app.post('/api/brain/upload', upload.single('file'), async (req, res) => {
             } else {
                 content = fs.readFileSync(file.path, 'utf-8');
             }
-            // Cleanup tmp file
             fs.unlinkSync(file.path);
         }
 
         if (!content) return res.status(400).json({ error: 'Missing "content" field or file' });
 
         const docId = `custom-${Date.now()}`;
-        const result = await RAGEngine.indexCustomDocument(docId, title, content, category, {}, namespace);
-        
-        // Also save to db.json for persistence
-        const db = readDB();
-        if (!db.customDocuments) db.customDocuments = [];
-        db.customDocuments.push({ id: docId, title: title, content, category: category, uploadedAt: new Date().toISOString() });
-        writeDB(db);
-
+        const result = await EmbeddedRAGEngine.indexCustomDocument(docId, title, content, category, {}, namespace);
         res.status(201).json({ success: true, documentId: docId, ...result });
     } catch (err) {
-        console.error('[RAG] Upload error:', err.message);
-        if (req.file && fs.existsSync(req.file.path)) {
-            fs.unlinkSync(req.file.path);
-        }
+        if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
         res.status(500).json({ error: err.message });
     }
 });
 
-// List uploaded custom documents
 app.post('/api/brain/sync-vault', async (req, res) => {
     try {
-        const RAGEngine = app.get('ragEngine');
-        if (!RAGEngine) return res.status(503).json({ error: 'RAG engine not available' });
-
         const vaultPath = req.body.path;
         const namespace = req.body.namespace || 'default';
-
-        if (!vaultPath || !fs.existsSync(vaultPath)) {
-            return res.status(400).json({ error: 'Invalid or missing vault path' });
-        }
-
-        function getAllFiles(dirPath, arrayOfFiles) {
-            const files = fs.readdirSync(dirPath);
-            arrayOfFiles = arrayOfFiles || [];
-            files.forEach(function(file) {
-                const fullPath = path.join(dirPath, file);
-                if (fs.statSync(fullPath).isDirectory()) {
-                    if (!file.startsWith('.')) {
-                        arrayOfFiles = getAllFiles(fullPath, arrayOfFiles);
-                    }
-                } else {
-                    if (file.endsWith('.md') || file.endsWith('.txt')) {
-                        arrayOfFiles.push(fullPath);
-                    }
-                }
-            });
-            return arrayOfFiles;
-        }
-
-        const files = getAllFiles(vaultPath);
-        let processed = 0;
-
-        for (const file of files) {
-            try {
-                const content = fs.readFileSync(file, 'utf-8');
-                const title = path.basename(file);
-                const docId = `vault-${Date.now()}-${Math.floor(Math.random()*10000)}`;
-                await RAGEngine.indexCustomDocument(docId, title, content, 'obsidian_vault', {}, namespace);
-                processed++;
-            } catch (e) {
-                console.error(`[RAG] Error processing file ${file}:`, e.message);
-            }
-        }
-
-        res.json({ success: true, processed });
+        const result = await EmbeddedRAGEngine.indexObsidianVault(vaultPath, namespace);
+        res.json(result);
     } catch (err) {
-        console.error('[RAG] Vault Sync error:', err.message);
         res.status(500).json({ error: err.message });
     }
 });
 
 app.get('/api/brain/documents', (req, res) => {
     const db = readDB();
-    res.json(db.customDocuments || []);
+    res.json(db.ragDocuments || []);
 });
 
-// Delete a custom document
 app.delete('/api/brain/documents/:id', (req, res) => {
     const db = readDB();
-    db.customDocuments = (db.customDocuments || []).filter(d => d.id !== req.params.id);
-    writeDB(db);
+    if (db.ragDocuments) {
+        db.ragDocuments = db.ragDocuments.filter(d => d.id !== req.params.id);
+        writeDB(db);
+    }
     res.json({ success: true });
 });
 
-// ─── Agent Analysis Channel (RAG + Live Data) ────────────────
+// ─── WhatsApp & Community Outreach Agent Endpoints ───────────
 
-app.post('/api/brain/agent-analysis', async (req, res) => {
+function getWeekEventsForBroadcast(db, weekOffset = 0, startDateStr = null, endDateStr = null) {
+    let start, end;
+    if (startDateStr && endDateStr) {
+        start = new Date(startDateStr + 'T00:00:00');
+        end = new Date(endDateStr + 'T23:59:59');
+    } else {
+        const now = new Date();
+        const day = now.getDay();
+        const diff = now.getDate() - day + (day === 0 ? -6 : 1); // Lunes
+        start = new Date(now);
+        start.setDate(diff + (weekOffset * 7));
+        start.setHours(0, 0, 0, 0);
+
+        end = new Date(start);
+        end.setDate(start.getDate() + 6);
+        end.setHours(23, 59, 59, 999);
+    }
+
+    const allEvents = db.events || [];
+    const matched = [];
+
+    for (const ev of allEvents) {
+        let isMatch = false;
+        let eventDate = ev.date;
+
+        if (ev.date) {
+            const d = new Date(ev.date + 'T12:00:00');
+            if (d >= start && d <= end) {
+                isMatch = true;
+                eventDate = ev.date;
+            }
+        }
+        
+        if (Array.isArray(ev.instances)) {
+            for (const inst of ev.instances) {
+                if (inst.date) {
+                    const idate = new Date(inst.date + 'T12:00:00');
+                    if (idate >= start && idate <= end) {
+                        isMatch = true;
+                        eventDate = inst.date;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (isMatch) {
+            matched.push({ ...ev, activeDate: eventDate });
+        }
+    }
+
+    if (matched.length === 0) {
+        // Fallback to active/upcoming events to ensure rich content
+        return {
+            events: allEvents.filter(e => e.status === 'activo' || e.status === 'planificacion' || e.status === 'upcoming' || e.status === 'ejecucion').slice(0, 6),
+            start,
+            end,
+            isGeneralLineup: true
+        };
+    }
+
+    return { events: matched, start, end, isGeneralLineup: false };
+}
+
+function generateLocalWhatsAppCampaign(events, start, end, tone = 'nightlife_vip', customInstructions = '', contacts = [], groups = []) {
+    const startStr = start.toLocaleDateString('es-PA', { day: 'numeric', month: 'short' });
+    const endStr = end.toLocaleDateString('es-PA', { day: 'numeric', month: 'short', year: 'numeric' });
+    
+    const eventBulletPoints = events.map(e => {
+        const dateStr = e.activeDate || e.date || 'Esta semana';
+        const loc = e.location || 'Casco Antiguo';
+        const artists = (e.instances && e.instances[0]?.artists?.map(a => a.name).join(', ')) || '';
+        return `• *${e.name}* (${dateStr}) @ ${loc}${artists ? ` | Lineup: ${artists}` : ''}${e.description ? `\n  _${e.description.substring(0, 90)}..._` : ''}`;
+    }).join('\n\n');
+
+    const weeklySchedule = [
+        {
+            id: `sch-1-${Date.now()}`,
+            day: 'Lunes',
+            date: start.toISOString().split('T')[0],
+            title: '📢 Lanzamiento de Cartelera Semanal',
+            type: 'Cartelera General',
+            targetAudience: 'Todos los Grupos & Comunidades',
+            status: 'ready',
+            whatsappCopy: `🔥 *CARTELERA SEMANAL VIP | SEMANA ${startStr.toUpperCase()} - ${endStr.toUpperCase()}* 🔥\n\n¡Arrancamos la semana con toda la energía! Aquí tienes la programación oficial de eventos y experiencias para esta semana:\n\n${eventBulletPoints}\n\n📲 *RESERVAS & MESAS VIP:*\nEscríbenos directamente para asegurar tu espacio antes del Sold Out.\n\n📍 _¡Comparte este mensaje con tu grupo de fiesta!_ 🥂`
+        },
+        {
+            id: `sch-2-${Date.now()}`,
+            day: 'Martes',
+            date: new Date(start.getTime() + 86400000).toISOString().split('T')[0],
+            title: '🍾 Preventa de Boxes & Mesas VIP',
+            type: 'Ventas VIP / Botellas',
+            targetAudience: 'Comunidad VIP & Clientes Frecuentes',
+            status: 'ready',
+            whatsappCopy: `🍾 *ATENCIÓN CLIENTES VIP | RESERVAS DE MESAS*\n\nSi vas a salir este fin de semana, no esperes a última hora. Los mejores spots y boxes se llenan rápido:\n\n✅ *Boxes VIP 212 Club / Candela Trump*\n✅ *Atención personalizada & bottle service*\n✅ *Acceso preferencial sin filas*\n\nResponde a este mensaje con la palabra *MESA* para pasarte el menú y ubicación disponible. 🥂⚡`
+        },
+        {
+            id: `sch-3-${Date.now()}`,
+            day: 'Miércoles',
+            date: new Date(start.getTime() + 86400000 * 2).toISOString().split('T')[0],
+            title: '🎟️ Listas de Invitados & Acceso Especial',
+            type: 'Listas Free / Chicas',
+            targetAudience: 'Grupos Masivos & Redes',
+            status: 'ready',
+            whatsappCopy: `✨ *LISTAS ABIERTAS PARA EL FIN DE SEMANA* ✨\n\n¿Ya estás en lista? Tenemos acceso free y beneficios exclusivos para los primeros en confirmar:\n\n🍸 *Chicas Free Pass* hasta las 11:30 PM\n🍹 *Welcome Shots* para grupos de 5+\n\nEnvía tus nombres completos (Nombre + Apellido) por interno para agregarte a la lista oficial de puerta. 💃🕺`
+        },
+        {
+            id: `sch-4-${Date.now()}`,
+            day: 'Jueves',
+            date: new Date(start.getTime() + 86400000 * 3).toISOString().split('T')[0],
+            title: '🎧 Lineup de DJs & Artistas Invitados',
+            type: 'Música & Experiencia',
+            targetAudience: 'Comunidad Electrónica & Música',
+            status: 'ready',
+            whatsappCopy: `🎧 *LINEUP & DJS DE LA SEMANA* 🎶\n\nEste fin de semana el sonido estará a otro nivel con nuestros DJs residentes e invitados especiales.\n\n🔊 *Música curada: Deep, Tech House & Crossover*\n⏰ *Puertas abiertas desde las 9:00 PM*\n\n¡No te quedes por fuera del mejor ambiente de la ciudad! 🚀`
+        },
+        {
+            id: `sch-5-${Date.now()}`,
+            day: 'Viernes',
+            date: new Date(start.getTime() + 86400000 * 4).toISOString().split('T')[0],
+            title: '🔥 HOY ES VIERNES: Kickoff de Fin de Semana',
+            type: 'Apertura de Fin de Semana',
+            targetAudience: 'Todos los Canales',
+            status: 'ready',
+            whatsappCopy: `🚨 *¡HOY SE PRENDE EL FIN DE SEMANA!* 🚨\n\nTodo listo para la noche de hoy. Si buscas el mejor spot con buen ambiente, coctelería y música en vivo:\n\n📍 *Ubicación:* Casco Antiguo / 212 Club / Candela\n⏰ *Apertura:* 09:00 PM\n🍾 *Promoción:* 2x1 en cócteles seleccionados hasta las 11:00 PM\n\n¡Llega temprano para evitar fila en puerta! 💥`
+        },
+        {
+            id: `sch-6-${Date.now()}`,
+            day: 'Sábado',
+            date: new Date(start.getTime() + 86400000 * 5).toISOString().split('T')[0],
+            title: '⚡ SÁBADO GIGANTE | Last Call de Mesas',
+            type: 'Sold Out Warning',
+            targetAudience: 'Todos los Grupos & Directos',
+            status: 'ready',
+            whatsappCopy: `🔥 *SÁBADO DE CASA LLENA | ÚLTIMAS ENTRADAS Y MESAS* 🔥\n\nQuedan muy pocas mesas disponibles para esta noche. El dress code es elegante/casual y la vibra estará insuperable.\n\n⚠️ *Aforo controlado en puerta*\n🍾 *Últimos 2 Boxes VIP disponibles*\n\nEscríbenos YA si vienes en grupo grande para apartar tu mesa. ¡Nos vemos en la pista! 🥂✨`
+        },
+        {
+            id: `sch-7-${Date.now()}`,
+            day: 'Domingo',
+            date: end.toISOString().split('T')[0],
+            title: '🚶‍♂️ Domingo de Casco & After Recap',
+            type: 'Cultural & Cierre',
+            targetAudience: 'Comunidad Casco & General',
+            status: 'ready',
+            whatsappCopy: `☀️ *DOMINGO DE CASCO PEATONAL & TARDEO* 🚶‍♂️✨\n\nCerramos la semana con el mejor plan de tarde: caminata por las plazas, música en vivo, arte urbano y gastronomía.\n\n📍 *Punto de encuentro:* Plaza Catedral, Casco Antiguo\n🎷 *Shows en vivo & acústicos*\n\n¡Gracias a todos los que bailaron con nosotros este fin de semana! Nos vemos el próximo Lunes con nueva cartelera. 🙌💛`
+        }
+    ];
+
+    const vipDirectMessages = [
+        {
+            id: 'vip-msg-1',
+            audience: 'VIP High Spenders (Mesas & Boxes)',
+            title: 'Invitación Privada a Mesa VIP',
+            whatsappCopy: `Hola {{nombre}}, ¿cómo estás? Te escribo para comentarte que esta semana tenemos eventos exclusivos en Casco. Tenemos disponible el Box VIP principal con botella de cortesía si confirmas tu mesa antes del jueves. ¿Te reservo tu espacio habitual? 🍾🥂`
+        },
+        {
+            id: 'vip-msg-2',
+            audience: 'Invitados VIP / Listas Free',
+            title: 'Pase Free & Acceso Directo',
+            whatsappCopy: `¡Hola {{nombre}}! 🌟 Te agregué a la lista VIP de esta semana para nuestros eventos en Casco. Tienes entrada Free Pass + 1 acompañante hasta las 11:30 PM. Solo avísame con quién vas para dejar los nombres en puerta. 🙌`
+        },
+        {
+            id: 'vip-msg-3',
+            audience: 'Promotores & RRPP',
+            title: 'Directiva Semanal & Metas de Venta',
+            whatsappCopy: `Equipo, activa la promoción de esta semana. Tenemos meta de 15 mesas y 80 personas en lista para el fin de semana. El link de reservas ya está abierto y las comisiones aplican desde la primera reserva. ¡Vamos con todo! ⚡`
+        },
+        {
+            id: 'vip-msg-4',
+            audience: 'Cumpleañeros del Mes / Semana',
+            title: 'Paquete de Cumpleaños & Bottle Free',
+            whatsappCopy: `🎉 ¡Feliz cumpleaños {{nombre}}! Queremos celebrarte en grande: te regalamos 1 botella de espumante + mesa reservada + entradas free para tus invitados este fin de semana. Responde aquí para activar tu paquete de cumple. 🎂🍾`
+        }
+    ];
+
+    const communityBroadcasts = [
+        {
+            id: 'cb-1',
+            groupCategory: 'VIP & Clientes Frecuentes',
+            title: 'Comunicado Exclusivo para Comunidad VIP',
+            whatsappCopy: `👑 *COMUNIDAD VIP | ACCESO ANTICIPADO*\n\nMiembros de la comunidad, aquí tienen en primicia los eventos de la semana (${startStr} - ${endStr}):\n\n${eventBulletPoints}\n\nLos miembros de este grupo tienen 15% de descuento en botellas seleccionadas antes de las 11:00 PM. 🥂`
+        },
+        {
+            id: 'cb-2',
+            groupCategory: 'Comunidad Masiva & Seguidores',
+            title: 'Broadcast General para Canales de WhatsApp',
+            whatsappCopy: `🚀 *WEEKLY LINEUP & PLANES DE LA SEMANA*\n\n¡Se viene una semana cargada de buena música, eventos al aire libre y fiesta!\n\n${eventBulletPoints}\n\n¡Guarda la fecha y comparte este mensaje con tu grupo! Nos vemos en el Casco. 💃🕺`
+        }
+    ];
+
+    return {
+        id: `camp-${Date.now()}`,
+        name: `Campaña Semanal (${startStr} - ${endStr})`,
+        startDate: start.toISOString().split('T')[0],
+        endDate: end.toISOString().split('T')[0],
+        tone,
+        customInstructions,
+        summary: `Estrategia de difusión multi-canal que cubre ${events.length} eventos activos para la semana del ${startStr} al ${endStr}. Incluye 7 copys de publicación diaria, 4 plantillas personalizadas para clientes 1 a 1 y 2 comunicados para grupos de WhatsApp.`,
+        weeklySchedule,
+        vipDirectMessages,
+        communityBroadcasts,
+        createdAt: new Date().toISOString()
+    };
+}
+
+// Generate campaign endpoint
+app.post('/api/agent/whatsapp-campaign/generate', async (req, res) => {
     try {
-        const RAGEngine = app.get('ragEngine');
-        if (!RAGEngine) return res.status(503).json({ error: 'RAG engine not available' });
-
-        const { question, historyContext } = req.body;
-        if (!question) return res.status(400).json({ error: 'Missing "question" field' });
-
-        // Enrich with live agent data
+        const { weekOffset = 0, startDate, endDate, tone = 'nightlife_vip', customInstructions = '' } = req.body;
         const db = readDB();
-        const agents = db.agents || [];
-        const projects = db.projects || [];
-        const companies = db.companies || [];
+        const { events, start, end, isGeneralLineup } = getWeekEventsForBroadcast(db, parseInt(weekOffset) || 0, startDate, endDate);
+        const contacts = db.contacts || [];
+        const groups = db.whatsappGroups || [];
 
-        const liveContext = {
-            agentCount: agents.length,
-            onlineAgents: agents.filter(a => a.status === 'online').length,
-            totalTasksCompleted: agents.reduce((sum, a) => sum + (a.tasksCompleted || 0), 0),
-            projectCount: projects.length,
-            companyCount: companies.length,
-            agents: agents.map(a => ({
-                name: a.name, role: a.role, status: a.status,
-                model: a.model, focus: a.focus, provider: a.provider,
-                tasksCompleted: a.tasksCompleted
-            })),
-        };
+        // Try AI generation with Gemini if configured
+        if (process.env.GEMINI_API_KEY) {
+            try {
+                console.log(`[WhatsAppAgent] Generando campaña con Gemini para ${events.length} eventos (Semana ${start.toISOString().split('T')[0]})...`);
+                const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+                const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-        console.log(`[RAG:Agent-Analysis] Query: "${question}"`);
+                const eventsContext = events.map(e => ({
+                    nombre: e.name,
+                    fecha: e.activeDate || e.date,
+                    lugar: e.location,
+                    tipo: e.type,
+                    descripcion: e.description,
+                    artistas: e.instances?.[0]?.artists?.map(a => a.name) || [],
+                    mesas: e.tables?.length || 0,
+                    promos: e.instances?.[0]?.checklist?.promo || []
+                }));
 
-        // Query RAG with enriched context
-        const ragResult = await RAGEngine.query(question, 8, historyContext);
+                const prompt = `Eres "Pulse", el agente de inteligencia artificial especializado en comunicación, difusión de eventos y Community Management de WhatsApp para centros nocturnos, eventos masivos (Casco Peatonal) y hospitalidad VIP en Panamá.
 
-        // Build augmented answer with live stats
-        const enrichedAnswer = {
-            answer: ragResult.answer,
-            sources: ragResult.sources,
-            liveData: liveContext,
-            channel: 'agent-analysis',
-            timestamp: new Date().toISOString()
-        };
+Tus tareas son:
+1. Analizar los siguientes eventos programados para la semana del ${start.toISOString().split('T')[0]} al ${end.toISOString().split('T')[0]}:
+${JSON.stringify(eventsContext, null, 2)}
 
-        res.json(enrichedAnswer);
+2. Redactar una campaña de WhatsApp completa estructurada en JSON estrictamente válido.
+Reglas de formato de WhatsApp:
+- Usa negritas (*texto*), cursivas (_texto_), viñetas (• o ✅), emojis atractivos y llamados a la acción claros.
+- Tono solicitado: "${tone}" (ej: fiesta nocturna, VIP sofisticado, cercano, enérgico).
+- Instrucciones especiales del usuario: "${customInstructions || 'Ninguna'}".
+
+Devuelve ÚNICAMENTE un objeto JSON con este formato exacto:
+{
+  "summary": "Resumen ejecutivo de la estrategia de la semana",
+  "weeklySchedule": [
+    {
+      "id": "sch-1",
+      "day": "Lunes",
+      "date": "${start.toISOString().split('T')[0]}",
+      "title": "Título de la publicación del día",
+      "type": "Cartelera Semanal",
+      "targetAudience": "Grupos de WhatsApp & Comunidades",
+      "status": "ready",
+      "whatsappCopy": "Texto formateado para WhatsApp con emojis y *negrita* listo para enviar..."
+    }
+    // ... genera exactamente los 7 días de Lunes a Domingo
+  ],
+  "vipDirectMessages": [
+    {
+      "id": "vip-1",
+      "audience": "Clientes VIP Mesas",
+      "title": "Invitación Personalizada de Mesa",
+      "whatsappCopy": "Mensaje 1 a 1 usando {{nombre}} para personalizar..."
+    },
+    {
+      "id": "vip-2",
+      "audience": "Invitados Listas Free / Chicas",
+      "title": "Acceso Free Pass",
+      "whatsappCopy": "Mensaje para invitar a listas..."
+    },
+    {
+      "id": "vip-3",
+      "audience": "Promotores & RRPP",
+      "title": "Directiva de Ventas",
+      "whatsappCopy": "Mensaje con metas para promotores..."
+    }
+  ],
+  "communityBroadcasts": [
+    {
+      "id": "cb-1",
+      "groupCategory": "VIP & Clientes Frecuentes",
+      "title": "Anuncio Exclusivo para Comunidad VIP",
+      "whatsappCopy": "Texto de broadcast para comunidad VIP..."
+    },
+    {
+      "id": "cb-2",
+      "groupCategory": "Comunidad General",
+      "title": "Cartelera General para Canales de WhatsApp",
+      "whatsappCopy": "Texto de broadcast para todos los grupos..."
+    }
+  ]
+}`;
+
+                const result = await model.generateContent(prompt);
+                const text = result.response.text();
+                
+                // Parse JSON
+                let parsed = null;
+                const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+                if (jsonMatch) {
+                    parsed = JSON.parse(jsonMatch[1]);
+                } else {
+                    parsed = JSON.parse(text);
+                }
+
+                if (parsed && parsed.weeklySchedule) {
+                    const campaign = {
+                        id: `camp-${Date.now()}`,
+                        name: `Campaña IA Semanal (${start.toISOString().split('T')[0]} al ${end.toISOString().split('T')[0]})`,
+                        startDate: start.toISOString().split('T')[0],
+                        endDate: end.toISOString().split('T')[0],
+                        tone,
+                        customInstructions,
+                        summary: parsed.summary || 'Campaña generada con Gemini 2.5',
+                        weeklySchedule: parsed.weeklySchedule,
+                        vipDirectMessages: parsed.vipDirectMessages || [],
+                        communityBroadcasts: parsed.communityBroadcasts || [],
+                        createdAt: new Date().toISOString(),
+                        model: 'gemini-2.5-flash'
+                    };
+
+                    // Guardar automáticamente en db
+                    if (!db.whatsappCampaigns) db.whatsappCampaigns = [];
+                    db.whatsappCampaigns.unshift(campaign);
+                    db.whatsappCampaigns = db.whatsappCampaigns.slice(0, 10);
+                    writeDB(db);
+
+                    return res.json({ success: true, campaign, eventsCount: events.length, source: 'gemini' });
+                }
+            } catch (aiErr) {
+                console.warn('[WhatsAppAgent] Error con Gemini, recurriendo a generador determinístico:', aiErr.message);
+            }
+        }
+
+        // Local deterministic fallback
+        const localCampaign = generateLocalWhatsAppCampaign(events, start, end, tone, customInstructions, contacts, groups);
+        if (!db.whatsappCampaigns) db.whatsappCampaigns = [];
+        db.whatsappCampaigns.unshift(localCampaign);
+        db.whatsappCampaigns = db.whatsappCampaigns.slice(0, 10);
+        writeDB(db);
+
+        res.json({ success: true, campaign: localCampaign, eventsCount: events.length, source: 'local_engine' });
     } catch (err) {
-        console.error('[RAG:Agent-Analysis] Error:', err.message);
+        console.error('[WhatsAppAgent] Error en generate:', err);
         res.status(500).json({ error: err.message });
     }
 });
 
-
-// (SuperBrain/Obsidian/YouTube/Podcast features removed)
-
-// ─── 24/7 Backend Autonomous Workflow Engine ────────────────────
-let backendAutoPilotActive = true; 
-
-app.post('/api/orch/toggle-autopilot', (req, res) => {
-    backendAutoPilotActive = req.body.active;
-    console.log(`[Native Orchestrator] Backend Auto-Pilot is now ${backendAutoPilotActive ? '🟢 ON' : '🔴 OFF'}`);
-    res.json({ success: true, active: backendAutoPilotActive });
-});
-
-app.get('/api/orch/autopilot-status', (req, res) => {
-    res.json({ active: backendAutoPilotActive });
-});
-
-// The infinite background loop that completely replaces the need for the frontend UI tab to be open
-setInterval(async () => {
-    if (!backendAutoPilotActive) return;
-    
-    try {
-        const db = readDB();
-        const pendingTasks = (db.agentTasks || []).filter(t => t.status === 'pending');
-        if (pendingTasks.length === 0) return;
-
-        // Take highest priority task
-        pendingTasks.sort((a,b) => (b.priorityScore || 0) - (a.priorityScore || 0));
-        const taskToRun = pendingTasks[0];
-        
-        // Optimistic lock
-        const idx = db.agentTasks.findIndex(t => t.id === taskToRun.id);
-        if (idx !== -1) {
-            db.agentTasks[idx].status = 'in-progress';
-            writeDB(db);
-        }
-
-        console.log(`[24/7 Auto-Pilot] Waking up to process task: ${taskToRun.task}`);
-
-        const payload = {
-            taskId: taskToRun.id,
-            agentName: taskToRun.assignedTo || taskToRun.assignedAgent,
-            task: taskToRun.task,
-            description: taskToRun.description || ''
-        };
-
-        // Self-call orchestrator execute endpoint
-        await fetch(`http://localhost:${PORT}/api/orch/execute-task`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        
-    } catch (e) {
-        console.error('[24/7 Auto-Pilot] Loop Error:', e.message);
+// Get current or latest campaign
+app.get('/api/agent/whatsapp-campaign/current', (req, res) => {
+    const db = readDB();
+    const campaigns = db.whatsappCampaigns || [];
+    if (campaigns.length > 0) {
+        return res.json({ success: true, campaign: campaigns[0], total: campaigns.length });
     }
-}, 12000); // Check the queue every 12 seconds autonomously
+    // Generate one immediately if none exist
+    const { events, start, end } = getWeekEventsForBroadcast(db, 0);
+    const campaign = generateLocalWhatsAppCampaign(events, start, end);
+    if (!db.whatsappCampaigns) db.whatsappCampaigns = [];
+    db.whatsappCampaigns.push(campaign);
+    writeDB(db);
+    res.json({ success: true, campaign, total: 1 });
+});
+
+// Save modified campaign
+app.post('/api/agent/whatsapp-campaign/save', (req, res) => {
+    const { campaign } = req.body;
+    if (!campaign || !campaign.id) return res.status(400).json({ error: 'Falta objeto campaign' });
+    
+    const db = readDB();
+    if (!db.whatsappCampaigns) db.whatsappCampaigns = [];
+    const idx = db.whatsappCampaigns.findIndex(c => c.id === campaign.id);
+    if (idx >= 0) {
+        db.whatsappCampaigns[idx] = campaign;
+    } else {
+        db.whatsappCampaigns.unshift(campaign);
+    }
+    writeDB(db);
+    res.json({ success: true, campaign });
+});
+
+// WhatsApp Groups CRUD
+app.get('/api/agent/whatsapp-groups', (req, res) => {
+    const db = readDB();
+    res.json(db.whatsappGroups || []);
+});
+
+app.post('/api/agent/whatsapp-groups', (req, res) => {
+    const group = req.body;
+    if (!group.name) return res.status(400).json({ error: 'El nombre del grupo es obligatorio' });
+    
+    const db = readDB();
+    if (!db.whatsappGroups) db.whatsappGroups = [];
+    
+    if (group.id) {
+        const idx = db.whatsappGroups.findIndex(g => g.id === group.id);
+        if (idx >= 0) {
+            db.whatsappGroups[idx] = { ...db.whatsappGroups[idx], ...group, updatedAt: new Date().toISOString() };
+        } else {
+            db.whatsappGroups.push({ ...group, createdAt: new Date().toISOString() });
+        }
+    } else {
+        const newGroup = {
+            id: `wag-${Date.now()}`,
+            name: group.name,
+            category: group.category || 'Comunidad General',
+            memberCount: parseInt(group.memberCount) || 0,
+            inviteLink: group.inviteLink || '',
+            postDays: group.postDays || ['Lunes', 'Viernes'],
+            notes: group.notes || '',
+            createdAt: new Date().toISOString()
+        };
+        db.whatsappGroups.push(newGroup);
+    }
+    writeDB(db);
+    res.json({ success: true, groups: db.whatsappGroups });
+});
+
+app.delete('/api/agent/whatsapp-groups/:id', (req, res) => {
+    const db = readDB();
+    if (db.whatsappGroups) {
+        db.whatsappGroups = db.whatsappGroups.filter(g => g.id !== req.params.id);
+        writeDB(db);
+    }
+    res.json({ success: true });
+});
+
+// Log dispatches
+app.post('/api/agent/whatsapp-campaign/log-dispatch', (req, res) => {
+    const { title, target, channel, recipientName, recipientPhone, copyPreview } = req.body;
+    const db = readDB();
+    if (!db.whatsappLogs) db.whatsappLogs = [];
+    
+    const newLog = {
+        id: `wlog-${Date.now()}`,
+        title: title || 'Despacho de WhatsApp',
+        target: target || 'Grupo de WhatsApp',
+        channel: channel || 'whatsapp_web',
+        recipientName: recipientName || '',
+        recipientPhone: recipientPhone || '',
+        copyPreview: copyPreview ? copyPreview.substring(0, 120) + '...' : '',
+        timestamp: new Date().toISOString(),
+        status: 'sent'
+    };
+
+    db.whatsappLogs.unshift(newLog);
+    db.whatsappLogs = db.whatsappLogs.slice(0, 100); // max 100 logs
+    
+    // Also record activity in general activity log
+    if (!db.activityLog) db.activityLog = [];
+    db.activityLog.unshift({
+        id: `act-${Date.now()}`,
+        text: `📲 WhatsApp Agent despachó mensaje: "${newLog.title}" para ${newLog.target || newLog.recipientName}`,
+        time: new Date().toLocaleTimeString('es-PA'),
+        type: 'whatsapp_dispatch'
+    });
+
+    writeDB(db);
+    res.json({ success: true, log: newLog });
+});
+
+app.get('/api/agent/whatsapp-campaign/logs', (req, res) => {
+    const db = readDB();
+    res.json(db.whatsappLogs || []);
+});
+
+// Cron Task para preparación automática cada Lunes a las 09:00 AM
+try {
+    cron.schedule('0 9 * * 1', async () => {
+        console.log('\n⏰ [Pulse WhatsApp Agent] Ejecutando compilación semanal programada (Lunes 09:00 AM)...');
+        try {
+            const db = readDB();
+            const { events, start, end } = getWeekEventsForBroadcast(db, 0);
+            const campaign = generateLocalWhatsAppCampaign(events, start, end);
+            
+            if (!db.whatsappCampaigns) db.whatsappCampaigns = [];
+            db.whatsappCampaigns.unshift(campaign);
+            
+            if (!db.whatsappLogs) db.whatsappLogs = [];
+            db.whatsappLogs.unshift({
+                id: `wlog-cron-${Date.now()}`,
+                title: '⚡ Compilación Semanal Automática',
+                target: 'Sistema / Borrador Semanal',
+                channel: 'agent_cron',
+                timestamp: new Date().toISOString(),
+                status: 'ready',
+                copyPreview: `Campaña semanal compilada automáticamente para ${events.length} eventos.`
+            });
+
+            writeDB(db);
+            console.log(`✅ [Pulse WhatsApp Agent] Campaña semanal compilada para ${events.length} eventos.`);
+        } catch (cronErr) {
+            console.error('❌ [Pulse WhatsApp Agent] Error en cron semanal:', cronErr.message);
+        }
+    });
+} catch (e) {
+    console.warn('[Cron] No se pudo inicializar cron job:', e.message);
+}
 
 // ─── Static Frontend Serving ──────────────────────────────────
 app.use(express.static(path.join(__dirname, 'dist')));
@@ -1889,64 +3788,28 @@ app.use((req, res) => {
 app.listen(PORT, '0.0.0.0', async () => {
     console.log(`\n⚡ Command Center API & Frontend running on http://localhost:${PORT}`);
     console.log(`   Health: http://localhost:${PORT}/api/health`);
-    console.log(`   OpenClaw Execute: POST http://localhost:${PORT}/api/openclaw/execute`);
-    console.log(`   Dashboard Status: GET http://localhost:${PORT}/api/openclaw/status`);
+    console.log(`   OpenClaw Chat Proxy: POST http://localhost:${PORT}/api/openclaw/chat`);
+    console.log(`   OpenClaw Health: GET http://localhost:${PORT}/api/openclaw/health`);
     
     // Sincronizar datos con Supabase antes de cualquier consulta RAG o peticiones de clientes
     await initSupabaseSync();
     
     // Initialize db.json if it doesn't exist
     if (!fs.existsSync(DB_PATH)) {
-        console.log('📦 db.json not found. Run: node seed-db.js to initialize.\n');
+        try {
+            console.log('📦 db.json no encontrado. Auto-inicializando base de datos inicial...');
+            const seedScript = path.join(__dirname, 'seed-db.js');
+            if (fs.existsSync(seedScript)) {
+                await import('./seed-db.js');
+            }
+        } catch (e) {
+            console.warn('No se pudo auto-inicializar seed:', e.message);
+        }
     }
 
-    // Load RAG engine
-    try {
-        const RAGEngineProxy = {
-            async upsertEntity(entityType, entityData, namespace) {
-                return fetch('http://localhost:18791/api/rag/upsert', { method: 'POST', headers: { 'Content-Type': 'application/json'}, body: JSON.stringify({ entityType, entityData, namespace }) });
-            },
-            async deleteEntity(entityId) {
-                return fetch(`http://localhost:18791/api/rag/entity/${entityId}`, { method: 'DELETE' });
-            },
-            async query(question, topK, historyContext, namespace) {
-                const res = await fetch('http://localhost:18791/api/rag/query', { method: 'POST', headers: { 'Content-Type': 'application/json'}, body: JSON.stringify({ question, topK, historyContext, namespace }) });
-                return res.json();
-            },
-            async indexCustomDocument(docId, title, content, category, extraMetadata, namespace) {
-                const res = await fetch('http://localhost:18791/api/rag/document', { method: 'POST', headers: { 'Content-Type': 'application/json'}, body: JSON.stringify({ docId, title, content, category, extraMetadata: extraMetadata || {}, namespace }) });
-                return res.json();
-            },
-            async indexYouTubeVideo(url, title, category, namespace) {
-                const res = await fetch('http://localhost:18791/api/rag/youtube', { method: 'POST', headers: { 'Content-Type': 'application/json'}, body: JSON.stringify({ url, title, category, namespace }) });
-                return res.json();
-            },
-            async indexObsidianVault(vaultPath, namespace) {
-                const res = await fetch('http://localhost:18791/api/rag/obsidian', { method: 'POST', headers: { 'Content-Type': 'application/json'}, body: JSON.stringify({ vaultPath, namespace }) });
-                return res.json();
-            },
-            async indexAllData() {
-                const res = await fetch('http://localhost:18791/api/rag/sync', { method: 'POST' });
-                return res.json();
-            },
-            async getStatus() {
-                try {
-                    const res = await fetch('http://localhost:18791/api/rag/status');
-                    if (!res.ok) throw new Error(`RAG status error: ${res.status}`);
-                    return await res.json();
-                } catch(e) {
-                    return { ready: false, provider: 'Microservice (Disconnected)' };
-                }
-            }
-        };
-        app.set('ragEngine', RAGEngineProxy);
-        // BrainVault auto-indexing has been migrated to the native Frontend Agent.
-        const status = await RAGEngineProxy.getStatus();
-        console.log(`   🧠 RAG Brain: ${status.ready ? `ONLINE (${status.indexed} docs indexed)` : 'No index — POST /api/brain/index to build'}`);
-        console.log(`   Brain Query: POST http://localhost:${PORT}/api/brain/query`);
-        console.log(`   Brain Index: POST http://localhost:${PORT}/api/brain/index\n`);
-    } catch (err) {
-        console.warn(`   ⚠️  RAG Brain: Not available — ${err.message}`);
-        console.log('   Ensure the openclaw-rag microservice is running on port 18791.\n');
-    }
+    // Auto-index entities into embedded RAG
+    await EmbeddedRAGEngine.indexAllData();
+    const status = await EmbeddedRAGEngine.getStatus();
+    console.log(`   🧠 OpenClaw RAG Brain: ONLINE (${status.indexed} docs indexed)`);
+    console.log(`   Brain Query: POST http://localhost:${PORT}/api/brain/query\n`);
 });

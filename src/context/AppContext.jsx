@@ -10,8 +10,11 @@ import {
     seedTasks,
     seedNotes,
     seedSubscriptions,
-    seedContacts
+    seedContacts,
+    seedDecisionLog,
+    seedPortfolioRoadmap
 } from '../lib/seedData';
+import OpenClawBrainService from '../services/OpenClawBrainService';
 
 const AppContext = createContext();
 
@@ -116,10 +119,38 @@ export const AppProvider = ({ children }) => {
     const [activityFeed, setActivityFeed] = useState(() => initializeState('os_live_activityFeed', []));
     const [subscriptions, setSubscriptions] = useState(() => initializeState('os_live_subscriptions', seedSubscriptions));
     const [contacts, setContacts] = useState(() => initializeState('os_live_contacts', seedContacts));
+    const [agents, setAgents] = useState(() => initializeState('os_live_agents', []));
+
+    const [projects, setProjects] = useState(() => {
+        const local = initializeState('os_live_projects', seedProjects);
+        const merged = [...(local || [])];
+        seedProjects.forEach(seed => {
+            if (!merged.find(p => p.id === seed.id)) merged.push(seed);
+        });
+        return merged;
+    });
+    const [openclawLogs, setOpenclawLogs] = useState(() => initializeState('os_live_openclaw_logs', initializeState('os_live_hermes_logs', [])));
+    const hermesLogs = openclawLogs;
+
+    // ─── Shared OpenClaw Chat State (Persisted across Copilot, Workspace and AgentBrain) ───
+    const [openclawMessages, setOpenclawMessages] = useState(() => {
+        const saved = initializeState('__openclaw_shared_chat_history', null);
+        if (saved && Array.isArray(saved) && saved.length > 0) return saved;
+        return [
+            {
+                id: 'welcome',
+                role: 'copilot',
+                text: '⚡ **OpenClaw Super Agent activo**.\n\nSoy el cerebro y orquestador autónomo maestro del Command Center & Dashboard Events. Tengo sincronizados en vivo tus **17 eventos** (Terraplén Rooftop, Furia, Piano Bar, etc.), **8 proyectos**, tareas y base RAG.\n\n✨ *Potenciado por Gemini 3.6 Flash, dictado por voz y notas de audio en tiempo real.*',
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            }
+        ];
+    });
+    const [isOpenclawThinking, setIsOpenclawThinking] = useState(false);
+    const [openclawMode, setOpenclawMode] = useState('ejecutivo');
 
     const [events, setEvents] = useState(() => {
         const local = initializeState('os_live_events', seedEvents);
-        let merged = [...local].filter(e => e.id !== 'ev-djs-sets-youtube'); // Cleanup old name
+        const merged = [...(local || [])];
         seedEvents.forEach(seed => {
             if (!merged.find(e => e.id === seed.id)) {
                 merged.push(seed);
@@ -146,6 +177,25 @@ export const AppProvider = ({ children }) => {
     const [orders, setOrders] = useState(() => initializeState('os_live_orders', []));
     const [sops, setSops] = useState(() => initializeState('os_live_sops', []));
     
+    // Portfolio OS states
+    const [decisionLog, setDecisionLog] = useState(() => {
+        const local = initializeState('os_live_decision_log', seedDecisionLog);
+        const merged = [...local];
+        seedDecisionLog.forEach(seed => {
+            if (!merged.find(d => d.id === seed.id)) merged.push(seed);
+        });
+        return merged;
+    });
+
+    const [portfolioRoadmap, setPortfolioRoadmap] = useState(() => {
+        const local = initializeState('os_live_portfolio_roadmap', seedPortfolioRoadmap);
+        const merged = [...local];
+        seedPortfolioRoadmap.forEach(seed => {
+            if (!merged.find(r => r.id === seed.id)) merged.push(seed);
+        });
+        return merged;
+    });
+
     // Google Calendar integration states
     const [gcalToken, setGcalToken] = useState(() => localStorage.getItem('gcal_token') || '');
     const [googleCalendarEvents, setGoogleCalendarEvents] = useState([]);
@@ -183,8 +233,9 @@ export const AppProvider = ({ children }) => {
         }
 
         try {
-            const [apiEvents, apiTasks, apiNotes, apiIdeas, apiSubs, apiActivity, apiOrders, apiSops, apiSocial, apiContacts] = await Promise.all([
+            const [apiEvents, apiProjects, apiTasks, apiNotes, apiIdeas, apiSubs, apiActivity, apiOrders, apiSops, apiSocial, apiContacts, apiHermesLogs, apiDecisionLog, apiPortfolioRoadmap, apiPromoters, apiImageGirls, apiAgents] = await Promise.all([
                 fetch(`${API_BASE}/events`).then(r => r.json()).catch(() => null),
+                fetch(`${API_BASE}/projects`).then(r => r.json()).catch(() => null),
                 fetch(`${API_BASE}/tasks`).then(r => r.json()).catch(() => null),
                 fetch(`${API_BASE}/notes`).then(r => r.json()).catch(() => null),
                 fetch(`${API_BASE}/ideas`).then(r => r.json()).catch(() => null),
@@ -194,11 +245,18 @@ export const AppProvider = ({ children }) => {
                 fetch(`${API_BASE}/sops`).then(r => r.json()).catch(() => null),
                 fetch(`${API_BASE}/socialMedia`).then(r => r.json()).catch(() => null),
                 fetch(`${API_BASE}/contacts`).then(r => r.json()).catch(() => null),
+                fetch(`${API_BASE}/openclaw/logs`).then(r => r.json()).catch(() => fetch(`${API_BASE}/hermes/logs`).then(r => r.json()).catch(() => null)),
+                fetch(`${API_BASE}/decisionLog`).then(r => r.json()).catch(() => null),
+                fetch(`${API_BASE}/portfolioRoadmap`).then(r => r.json()).catch(() => null),
+                fetch(`${API_BASE}/promoters`).then(r => r.json()).catch(() => null),
+                fetch(`${API_BASE}/imageGirls`).then(r => r.json()).catch(() => null),
+                fetch(`${API_BASE}/agents`).then(r => r.json()).catch(() => null),
             ]);
 
             checkSupabaseStatus().catch(() => null);
 
-            if (apiEvents) setEvents(apiEvents);
+            if (apiEvents && Array.isArray(apiEvents)) setEvents(apiEvents);
+            if (apiProjects && Array.isArray(apiProjects)) setProjects(apiProjects);
             if (apiTasks) setTasks(apiTasks);
             if (apiNotes) setNotes(apiNotes);
             if (apiIdeas) setIdeas(apiIdeas);
@@ -208,6 +266,12 @@ export const AppProvider = ({ children }) => {
             if (apiSops) setSops(apiSops);
             if (apiSocial) setSocialMedia(apiSocial);
             if (apiContacts) setContacts(apiContacts);
+            if (apiHermesLogs) setOpenclawLogs(apiHermesLogs);
+            if (apiDecisionLog && Array.isArray(apiDecisionLog) && apiDecisionLog.length > 0) setDecisionLog(apiDecisionLog);
+            if (apiPortfolioRoadmap && Array.isArray(apiPortfolioRoadmap) && apiPortfolioRoadmap.length > 0) setPortfolioRoadmap(apiPortfolioRoadmap);
+            if (apiPromoters && Array.isArray(apiPromoters)) setPromoters(apiPromoters);
+            if (apiImageGirls && Array.isArray(apiImageGirls)) setImageGirls(apiImageGirls);
+            if (apiAgents && Array.isArray(apiAgents)) setAgents(apiAgents);
         } catch (err) {
             console.warn('Polling sync error:', err.message);
         }
@@ -237,9 +301,14 @@ export const AppProvider = ({ children }) => {
     useEffect(() => { safeSetLocal('os_live_activityFeed', activityFeed); }, [activityFeed]);
     useEffect(() => { safeSetLocal('os_live_subscriptions', subscriptions); }, [subscriptions]);
     useEffect(() => { safeSetLocal('os_live_events', events); }, [events]);
+    useEffect(() => { safeSetLocal('os_live_projects', projects); }, [projects]);
+    useEffect(() => { safeSetLocal('os_live_openclaw_logs', openclawLogs); safeSetLocal('os_live_hermes_logs', openclawLogs); }, [openclawLogs]);
+    useEffect(() => { safeSetLocal('__openclaw_shared_chat_history', openclawMessages); }, [openclawMessages]);
     useEffect(() => { safeSetLocal('os_live_orders', orders); }, [orders]);
     useEffect(() => { safeSetLocal('os_live_sops', sops); }, [sops]);
     useEffect(() => { safeSetLocal('os_live_contacts', contacts); }, [contacts]);
+    useEffect(() => { safeSetLocal('os_live_decision_log', decisionLog); }, [decisionLog]);
+    useEffect(() => { safeSetLocal('os_live_portfolio_roadmap', portfolioRoadmap); }, [portfolioRoadmap]);
 
     useEffect(() => { safeSetLocal('os_live_promoters', promoters); }, [promoters]);
     useEffect(() => { safeSetLocal('os_live_image_girls', imageGirls); }, [imageGirls]);
@@ -382,6 +451,180 @@ export const AppProvider = ({ children }) => {
         await apiFetch(`/subscriptions/${subscriptionId}`, { method: 'DELETE' });
     };
 
+    // Projects CRUD
+    const addProject = async (projectData) => {
+        const pWithId = { id: projectData.id || `proj-${Date.now()}`, ...projectData };
+        setProjects(prev => [pWithId, ...prev]);
+        setEvents(prev => {
+            if (prev.find(e => e.id === pWithId.id)) return prev;
+            return [pWithId, ...prev];
+        });
+        await apiFetch('/projects', { method: 'POST', body: pWithId });
+        await apiFetch('/events', { method: 'POST', body: pWithId }).catch(() => null);
+    };
+
+    const updateProject = async (projectId, updatedData) => {
+        setProjects(prev => prev.map(p => p.id === projectId ? { ...p, ...updatedData } : p));
+        setEvents(prev => prev.map(e => e.id === projectId ? { ...e, ...updatedData } : e));
+        await apiFetch(`/projects/${projectId}`, { method: 'PUT', body: updatedData });
+        await apiFetch(`/events/${projectId}`, { method: 'PUT', body: updatedData }).catch(() => null);
+    };
+
+    const deleteProject = async (projectId) => {
+        setProjects(prev => {
+            const next = prev.filter(p => p.id !== projectId);
+            safeSetLocal('os_live_projects', next);
+            return next;
+        });
+        setEvents(prev => {
+            const next = prev.filter(e => e.id !== projectId);
+            safeSetLocal('os_live_events', next);
+            return next;
+        });
+        await apiFetch(`/projects/${projectId}`, { method: 'DELETE' });
+        await apiFetch(`/events/${projectId}`, { method: 'DELETE' }).catch(() => null);
+    };
+
+    const reorderProjects = async (newProjectsList) => {
+        setProjects(newProjectsList);
+        try {
+            localStorage.setItem('os_live_projects', JSON.stringify(newProjectsList));
+            await apiFetch('/projects', { method: 'PUT', body: newProjectsList });
+        } catch (e) {
+            console.error('Error reordering projects:', e);
+        }
+    };
+
+    // ─── OpenClaw Super Agent Dispatcher ───
+    const triggerOpenClawAction = async (actionName, payload = {}) => {
+        try {
+            let res = await apiFetch('/openclaw/action', {
+                method: 'POST',
+                body: { action: actionName, payload }
+            });
+            if (!res || res.status === 404) {
+                res = await apiFetch('/hermes/action', {
+                    method: 'POST',
+                    body: { action: actionName, payload }
+                });
+            }
+            await poll();
+            return res;
+        } catch (e) {
+            console.error('Error triggering OpenClaw action:', e);
+            return { status: 'error', error: e.message };
+        }
+    };
+    const triggerHermesAction = triggerOpenClawAction;
+
+    // ─── Shared OpenClaw Chat Dispatcher (Shared by Copilot, Workspace, AgentBrain) ───
+    const sendOpenclawMessage = async (userText, audioData = null) => {
+        if (!userText && !audioData) return null;
+        
+        const userMsg = {
+            id: `usr-${Date.now()}`,
+            role: 'user',
+            text: userText || (audioData ? '🎙️ [Nota de voz grabada]' : ''),
+            audio: audioData ? audioData.url : undefined,
+            duration: audioData ? audioData.duration : undefined,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+
+        const updatedHistory = [...openclawMessages, userMsg];
+        setOpenclawMessages(updatedHistory);
+        setIsOpenclawThinking(true);
+
+        try {
+            const liveContextStr = `
+[ESTADO EN TIEMPO REAL DEL DASHBOARD]:
+- EVENTOS ACTIVOS (${(events || []).length}): ${(events || []).slice(0, 10).map(e => `${e.name} (${e.date || 'S/F'}) [${e.status || 'planeado'}]`).join(', ')}
+- PROYECTOS (${(projects || []).length}): ${(projects || []).map(p => `${p.name} [${p.status || 'activo'}] (Lead: ${p.leadAgent || 'OpenClaw'})`).join(', ')}
+- TAREAS PENDIENTES (${(tasks || []).filter(t => !t.done).length}): ${(tasks || []).filter(t => !t.done).slice(0, 15).map(t => t.text || t.title).join(', ')}
+- CONTACTOS: ${(contacts || []).length} registrados
+- MODELOS IMAGE GIRLS: ${(imageGirls || []).length} activas
+`;
+
+            const res = await OpenClawBrainService.sendCommand(
+                userText || 'Nota de voz enviada por el usuario',
+                updatedHistory,
+                liveContextStr,
+                '',
+                'default',
+                openclawMode,
+                {
+                    addTask,
+                    addEvent,
+                    addProject,
+                    updateTask,
+                    toggleTask,
+                    addActivity
+                }
+            );
+
+            // Si se ejecutaron herramientas desde el backend/Gemini
+            if (res.executedTools && res.executedTools.length > 0) {
+                for (const tool of res.executedTools) {
+                    if (tool.name === 'add_task' && tool.args?.text) {
+                        await addTask({ text: tool.args.text, priority: tool.args.priority || 'medium', category: tool.args.category || 'general' });
+                    } else if (tool.name === 'complete_task' && tool.args?.text) {
+                        const tMatch = (tasks || []).find(t => (t.text || t.title || '').toLowerCase().includes(tool.args.text.toLowerCase()));
+                        if (tMatch) await toggleTask(tMatch.id);
+                    }
+                }
+                await poll();
+            }
+
+            const botMsg = {
+                id: `bot-${Date.now()}`,
+                role: 'copilot',
+                text: res.reply || 'Acción procesada por OpenClaw Super Agent.',
+                model: res.model || 'gemini-3.6-flash',
+                provider: res.provider || 'OpenClaw RAG Engine',
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                executedTools: res.executedTools || []
+            };
+
+            setOpenclawMessages(prev => {
+                const nextList = [...prev, botMsg];
+                safeSetLocal('__openclaw_shared_chat_history', nextList);
+                return nextList;
+            });
+
+            return botMsg;
+        } catch (err) {
+            console.error('[OpenClaw Chat Error]:', err);
+            const errMsg = {
+                id: `bot-err-${Date.now()}`,
+                role: 'copilot',
+                text: `⚠️ No pude procesar tu solicitud: ${err.message}`,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                error: true
+            };
+            setOpenclawMessages(prev => {
+                const nextList = [...prev, errMsg];
+                safeSetLocal('__openclaw_shared_chat_history', nextList);
+                return nextList;
+            });
+            return errMsg;
+        } finally {
+            setIsOpenclawThinking(false);
+        }
+    };
+
+    const clearOpenclawChat = () => {
+        const resetMsg = [
+            {
+                id: 'welcome',
+                role: 'copilot',
+                text: '⚡ **OpenClaw Super Agent activo** (Conversación reiniciada).\n\n¿En qué puedo asistirte con el Command Center hoy?',
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            }
+        ];
+        setOpenclawMessages(resetMsg);
+        safeSetLocal('__openclaw_shared_chat_history', resetMsg);
+        fetch(`${API_BASE}/openclaw/chat/history`, { method: 'DELETE' }).catch(() => {});
+    };
+
     // Events
     const addEvent = async (eventData) => {
         setEvents(prev => [eventData, ...prev]);
@@ -394,7 +637,11 @@ export const AppProvider = ({ children }) => {
     };
 
     const deleteEvent = async (eventId) => {
-        setEvents(prev => prev.filter(e => e.id !== eventId));
+        setEvents(prev => {
+            const next = prev.filter(e => e.id !== eventId);
+            safeSetLocal('os_live_events', next);
+            return next;
+        });
         await apiFetch(`/events/${eventId}`, { method: 'DELETE' });
     };
 
@@ -452,6 +699,39 @@ export const AppProvider = ({ children }) => {
     const deleteContact = async (cId) => {
         setContacts(prev => prev.filter(c => c.id !== cId));
         await apiFetch(`/contacts/${cId}`, { method: 'DELETE' });
+    };
+
+    // ─── Portfolio OS (Decisions & Roadmap) ───────────────────────
+    const addDecision = async (decData) => {
+        const newD = { id: `dec-${Date.now()}`, date: new Date().toISOString().split('T')[0], ...decData };
+        setDecisionLog(prev => [newD, ...prev]);
+        await apiFetch('/decisionLog', { method: 'POST', body: newD });
+    };
+
+    const updateDecision = async (dId, updatedData) => {
+        setDecisionLog(prev => prev.map(d => d.id === dId ? { ...d, ...updatedData } : d));
+        await apiFetch(`/decisionLog/${dId}`, { method: 'PUT', body: updatedData });
+    };
+
+    const deleteDecision = async (dId) => {
+        setDecisionLog(prev => prev.filter(d => d.id !== dId));
+        await apiFetch(`/decisionLog/${dId}`, { method: 'DELETE' });
+    };
+
+    const addRoadmapItem = async (rData) => {
+        const newR = { id: `rd-${Date.now()}`, column: 'now', priority: 'medium', ...rData };
+        setPortfolioRoadmap(prev => [...prev, newR]);
+        await apiFetch('/portfolioRoadmap', { method: 'POST', body: newR });
+    };
+
+    const updateRoadmapItem = async (rId, updatedData) => {
+        setPortfolioRoadmap(prev => prev.map(r => r.id === rId ? { ...r, ...updatedData } : r));
+        await apiFetch(`/portfolioRoadmap/${rId}`, { method: 'PUT', body: updatedData });
+    };
+
+    const deleteRoadmapItem = async (rId) => {
+        setPortfolioRoadmap(prev => prev.filter(r => r.id !== rId));
+        await apiFetch(`/portfolioRoadmap/${rId}`, { method: 'DELETE' });
     };
 
     // Google Calendar integration callbacks
@@ -604,6 +884,28 @@ export const AppProvider = ({ children }) => {
         deleteEvent,
         reorderEvents,
 
+        projects,
+        setProjects,
+        addProject,
+        updateProject,
+        deleteProject,
+        reorderProjects,
+
+        openclawLogs,
+        setOpenclawLogs,
+        hermesLogs,
+        triggerOpenClawAction,
+        triggerHermesAction,
+
+        // Shared Chat State & Methods
+        openclawMessages,
+        setOpenclawMessages,
+        sendOpenclawMessage,
+        clearOpenclawChat,
+        isOpenclawThinking,
+        openclawMode,
+        setOpenclawMode,
+
         orders,
         updateOrder,
 
@@ -625,6 +927,18 @@ export const AppProvider = ({ children }) => {
         updateContact,
         deleteContact,
         
+        // Portfolio OS Exports
+        decisionLog,
+        setDecisionLog,
+        addDecision,
+        updateDecision,
+        deleteDecision,
+        portfolioRoadmap,
+        setPortfolioRoadmap,
+        addRoadmapItem,
+        updateRoadmapItem,
+        deleteRoadmapItem,
+
         supabaseStatus,
         checkSupabaseStatus,
         manualSync,
@@ -638,6 +952,10 @@ export const AppProvider = ({ children }) => {
         fetchGoogleCalendarEvents,
         syncEventToGoogleCalendar,
         
+        // Agents Exports
+        agents,
+        setAgents,
+
         refreshData: poll
     };
 

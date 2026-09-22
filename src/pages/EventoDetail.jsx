@@ -6,7 +6,8 @@ import {
     CalendarDays, Target, Briefcase, Plus, X, Trash2, Map,
     User, Mic, Package, StickyNote, ChevronRight, Save, TrendingUp,
     Share2, MessageSquare, ExternalLink, Instagram, Sparkles, Star, Phone, MessageCircle,
-    FolderOpen, Mail, Globe, Tv, Video, Film, Radio, Layers, Hash, PlayCircle, PlusCircle
+    FolderOpen, Mail, Globe, Tv, Video, Film, Radio, Layers, Hash, PlayCircle, PlusCircle,
+    LayoutDashboard, Milestone, Bot, Code, Terminal, Zap, GitBranch, Cpu, CheckCircle2, AlertCircle, Play
 } from 'lucide-react';
 import LeadsFunnel from '../components/events/LeadsFunnel';
 import PromoterTracking from '../components/events/PromoterTracking';
@@ -23,8 +24,17 @@ import { useApp } from '../context/AppContext';
 export default function EventoDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { events, updateEvent, tasks, updateTask, promoters, addPromoter, updatePromoter, deletePromoter, imageGirls, socialMedia, gcalToken, googleCalendarEvents, connectGoogleCalendar, disconnectGoogleCalendar, fetchGoogleCalendarEvents, syncEventToGoogleCalendar } = useApp();
-    const event = events.find(e => e.id === id);
+    const {
+        events, updateEvent,
+        projects, updateProject,
+        tasks, updateTask, addTask,
+        triggerOpenClawAction, openclawLogs,
+        promoters, addPromoter, updatePromoter, deletePromoter,
+        imageGirls, socialMedia, gcalToken, googleCalendarEvents,
+        connectGoogleCalendar, disconnectGoogleCalendar,
+        fetchGoogleCalendarEvents, syncEventToGoogleCalendar
+    } = useApp();
+    const event = (events || []).find(e => e.id === id) || (projects || []).find(p => p.id === id);
 
     const zones = event ? (event.zones || Array.from(new Set((event.agenda || []).map(a => a.speaker).filter(Boolean)))) : [];
     
@@ -46,10 +56,114 @@ export default function EventoDetail() {
         }
     };
 
-    const [activeTab, setActiveTab] = useState(event?.type === 'nightclub' ? 'inicio' : event?.type === 'local' ? 'local_inicio' : 'perfil');
+    const isProjectEntity = event?.category === 'project' ||
+        ['software', 'business', 'marketing', 'ai_pipeline'].includes(event?.type) ||
+        (event?.templateKey && event.templateKey.startsWith('project_'));
+
+    const [activeTab, setActiveTab] = useState(
+        isProjectEntity ? 'proj_overview' :
+        event?.type === 'nightclub' ? 'inicio' :
+        event?.type === 'local' ? 'local_inicio' : 'perfil'
+    );
     const [showModal, setShowModal] = useState(false);
     const [selectedInstanceId, setSelectedInstanceId] = useState(null);
     const [contentSubTab, setContentSubTab] = useState('all');
+    
+    // Project Specific States & Handlers
+    const [newMilestoneText, setNewMilestoneText] = useState('');
+    const [newTechTagText, setNewTechTagText] = useState('');
+    const [openclawPromptInput, setOpenClawPromptInput] = useState('');
+    const [openclawExecuting, setOpenClawExecuting] = useState(false);
+    const [openclawFeedback, setOpenClawFeedback] = useState(null);
+    const [projectDocContent, setProjectDocContent] = useState(() => event?.docs || event?.notes || '');
+    const [docSaved, setDocSaved] = useState(false);
+
+    const handleToggleMilestone = (mId) => {
+        if (!event) return;
+        const currentMilestones = event.milestones || [];
+        const updated = currentMilestones.map(m => m.id === mId ? { ...m, done: !m.done } : m);
+        if (event.category === 'project' || isProjectEntity) {
+            updateProject(event.id, { milestones: updated });
+        } else {
+            updateEvent(event.id, { milestones: updated });
+        }
+    };
+
+    const handleAddMilestone = (e) => {
+        e?.preventDefault();
+        if (!newMilestoneText.trim() || !event) return;
+        const currentMilestones = event.milestones || [];
+        const newM = {
+            id: `m-${Date.now()}`,
+            title: newMilestoneText.trim(),
+            done: false,
+            deadline: ''
+        };
+        const updated = [...currentMilestones, newM];
+        if (event.category === 'project' || isProjectEntity) {
+            updateProject(event.id, { milestones: updated });
+        } else {
+            updateEvent(event.id, { milestones: updated });
+        }
+        setNewMilestoneText('');
+    };
+
+    const handleAddTechTag = (e) => {
+        e?.preventDefault();
+        if (!newTechTagText.trim() || !event) return;
+        const currentStack = Array.isArray(event.techStack) ? event.techStack : [];
+        if (currentStack.includes(newTechTagText.trim())) return;
+        const updated = [...currentStack, newTechTagText.trim()];
+        if (event.category === 'project' || isProjectEntity) {
+            updateProject(event.id, { techStack: updated });
+        } else {
+            updateEvent(event.id, { techStack: updated });
+        }
+        setNewTechTagText('');
+    };
+
+    const handleRemoveTechTag = (tag) => {
+        if (!event) return;
+        const currentStack = Array.isArray(event.techStack) ? event.techStack : [];
+        const updated = currentStack.filter(t => t !== tag);
+        if (event.category === 'project' || isProjectEntity) {
+            updateProject(event.id, { techStack: updated });
+        } else {
+            updateEvent(event.id, { techStack: updated });
+        }
+    };
+
+    const handleSaveDocs = () => {
+        if (!event) return;
+        if (event.category === 'project' || isProjectEntity) {
+            updateProject(event.id, { docs: projectDocContent, notes: projectDocContent });
+        } else {
+            updateEvent(event.id, { notes: projectDocContent });
+        }
+        setDocSaved(true);
+        setTimeout(() => setDocSaved(false), 2000);
+    };
+
+    const handleSendOpenClawAction = async (customText = null) => {
+        const text = (customText || openclawPromptInput).trim();
+        if (!text) return;
+        setOpenClawExecuting(true);
+        setOpenClawFeedback(null);
+        try {
+            await triggerOpenClawAction('log_thought', {
+                message: `[${event.name}] ${text}`,
+                level: 'action',
+                projectId: event.id,
+                details: `Ejecución delegada por el operador para el proyecto "${event.name}".`
+            });
+            setOpenClawFeedback({ type: 'success', msg: `Orden enviada a OpenClaw Super Agent. Tarea registrada en el stream.` });
+            if (!customText) setOpenClawPromptInput('');
+        } catch (err) {
+            setOpenClawFeedback({ type: 'error', msg: `Error: ${err.message}` });
+        } finally {
+            setOpenClawExecuting(false);
+        }
+    };
     
     // Tareas
     const [taskViewMode, setTaskViewMode] = useState('kanban'); // 'kanban' or 'table'
@@ -87,7 +201,7 @@ export default function EventoDetail() {
     const [selectedDateStr, setSelectedDateStr] = useState(() => new Date().toISOString().split('T')[0]);
 
     useEffect(() => {
-        if (gcalToken && event?.type === 'local' && activeTab === 'local_agenda') {
+        if (gcalToken && (event?.type === 'local' || event?.type === 'nightclub') && (activeTab === 'local_agenda' || activeTab === 'calendario')) {
             const timeMin = new Date(calYear, calMonth, 1).toISOString();
             const timeMax = new Date(calYear, calMonth + 1, 1).toISOString();
             fetchGoogleCalendarEvents(timeMin, timeMax);
@@ -764,10 +878,18 @@ export default function EventoDetail() {
         return { ...loc, color: palette[i % palette.length] };
     });
     const isSpecialProject = event.id === 'ev-casco-peatonal' || event.id === 'ev-grafiti-tour';
-    const tabs = event.type === 'nightclub' ? [
+    const tabs = isProjectEntity ? [
+        { id: 'proj_overview', label: 'Visión General', icon: LayoutDashboard },
+        { id: 'proj_roadmap', label: 'Roadmap & Hitos', icon: Milestone },
+        { id: 'tareas', label: 'Sprints & Tareas', icon: ListTodo },
+        { id: 'proj_openclaw', label: 'OpenClaw AI Terminal', icon: Bot },
+        { id: 'proj_docs', label: 'Docs & Entregables', icon: FileText },
+        { id: 'masterplan', label: 'Master Plan', icon: Target },
+    ] : event.type === 'nightclub' ? [
         { id: 'inicio', label: 'Inicio', icon: CalendarDays },
         { id: 'invitados', label: 'Invitados', icon: Users },
         { id: 'chicas', label: 'Modelos / Chicas', icon: Star },
+        { id: 'calendario', label: 'Calendario', icon: Clock },
         { id: 'organizacion', label: 'Organización', icon: Briefcase },
         { id: 'tareas', label: 'Tareas', icon: ListTodo },
         { id: 'redes', label: 'Redes & Contenido', icon: Share2 },
@@ -914,6 +1036,412 @@ export default function EventoDetail() {
             </div>
 
             {/* ═══ TAB CONTENT ═══ */}
+
+            {/* ─── PROYECTOS: VISIÓN GENERAL (OVERVIEW) ─── */}
+            {isProjectEntity && activeTab === 'proj_overview' && (() => {
+                const stack = Array.isArray(event.techStack) ? event.techStack : [];
+                const milestones = event.milestones || [];
+                const completedM = milestones.filter(m => m.done).length;
+                const projectTasks = (tasks || []).filter(t => t.projectId === event.id || (event.tasks && event.tasks.some(pt => pt.id === t.id)));
+                const pendingTasks = projectTasks.filter(t => !t.done).length;
+
+                return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                        {/* Project Summary Metrics */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+                            <div className="card" style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '16px', borderLeft: `4px solid ${color}` }}>
+                                <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: `${color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: color }}>
+                                    <Bot size={24} />
+                                </div>
+                                <div>
+                                    <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 600 }}>Lead Agent / Responsable</div>
+                                    <div style={{ fontSize: '18px', fontWeight: '700', color: '#fff', marginTop: '2px' }}>{event.leadAgent || 'OpenClaw Super Agent'}</div>
+                                </div>
+                            </div>
+
+                            <div className="card" style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '16px', borderLeft: '4px solid #10b981' }}>
+                                <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(16,185,129,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981' }}>
+                                    <Milestone size={24} />
+                                </div>
+                                <div>
+                                    <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 600 }}>Hitos Completados</div>
+                                    <div style={{ fontSize: '18px', fontWeight: '700', color: '#fff', marginTop: '2px' }}>{completedM} / {milestones.length || 0}</div>
+                                </div>
+                            </div>
+
+                            <div className="card" style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '16px', borderLeft: '4px solid #06b6d4' }}>
+                                <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(6,182,212,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#06b6d4' }}>
+                                    <ListTodo size={24} />
+                                </div>
+                                <div>
+                                    <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 600 }}>Tareas Pendientes</div>
+                                    <div style={{ fontSize: '18px', fontWeight: '700', color: '#fff', marginTop: '2px' }}>{pendingTasks} tareas</div>
+                                </div>
+                            </div>
+
+                            <div className="card" style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '16px', borderLeft: '4px solid #f59e0b' }}>
+                                <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(245,158,11,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f59e0b' }}>
+                                    <DollarSign size={24} />
+                                </div>
+                                <div>
+                                    <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 600 }}>Presupuesto / Costo</div>
+                                    <div style={{ fontSize: '18px', fontWeight: '700', color: '#fff', marginTop: '2px' }}>
+                                        ${parseFloat(event.budget || event.estimatedBudget || 0).toLocaleString()}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Two Columns: Specs & Tech Stack */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
+                            {/* Left Column: Scope & Objectives */}
+                            <div className="card" style={{ padding: '24px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                                    <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#fff', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <Target size={18} style={{ color }} /> Alcance & Objetivos del Proyecto
+                                    </h3>
+                                    <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: '12px' }} onClick={openEditModal}>
+                                        <Edit3 size={13} /> Editar
+                                    </button>
+                                </div>
+
+                                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '20px' }}>
+                                    {event.description || 'Sin descripción asignada para este proyecto.'}
+                                </p>
+
+                                {/* Links / Repos */}
+                                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                                    {event.githubRepo && (
+                                        <a
+                                            href={event.githubRepo}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="btn btn-secondary"
+                                            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}
+                                        >
+                                            <GitBranch size={14} style={{ color: '#6366f1' }} /> Ver Repositorio GitHub
+                                        </a>
+                                    )}
+                                    {event.driveFolderId && (
+                                        <a
+                                            href={event.driveFolderId}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="btn btn-secondary"
+                                            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}
+                                        >
+                                            <FolderOpen size={14} style={{ color: '#3b82f6' }} /> Google Drive Folder
+                                        </a>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Right Column: Tech Stack / Tools */}
+                            <div className="card" style={{ padding: '24px' }}>
+                                <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#fff', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <Code size={17} style={{ color: '#6366f1' }} /> Tech Stack & Tools
+                                </h3>
+
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
+                                    {stack.map((tech, i) => (
+                                        <span key={i} style={{
+                                            fontSize: '12px', padding: '4px 10px', borderRadius: '8px',
+                                            background: 'rgba(99, 102, 241, 0.12)', color: '#818cf8',
+                                            border: '1px solid rgba(99, 102, 241, 0.25)', display: 'flex', alignItems: 'center', gap: '6px'
+                                        }}>
+                                            {tech}
+                                            <X size={12} style={{ cursor: 'pointer', opacity: 0.6 }} onClick={() => handleRemoveTechTag(tech)} />
+                                        </span>
+                                    ))}
+                                    {stack.length === 0 && (
+                                        <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>No se han configurado tecnologías aún.</span>
+                                    )}
+                                </div>
+
+                                <form onSubmit={handleAddTechTag} style={{ display: 'flex', gap: '6px' }}>
+                                    <input
+                                        className="form-input"
+                                        placeholder="Nueva herramienta (Ej: FastAPI)..."
+                                        value={newTechTagText}
+                                        onChange={e => setNewTechTagText(e.target.value)}
+                                        style={{ fontSize: '12px', padding: '6px 10px' }}
+                                    />
+                                    <button type="submit" className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: '12px' }}>
+                                        <Plus size={14} />
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
+                        {/* OpenClaw Quick Dispatcher Widget */}
+                        <div className="card" style={{
+                            padding: '20px',
+                            background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(22, 22, 35, 0.9))',
+                            border: '1px solid rgba(139, 92, 246, 0.25)'
+                        }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <Bot size={18} style={{ color: '#a78bfa' }} />
+                                    <span style={{ fontSize: '14px', fontWeight: 700, color: '#fff' }}>OpenClaw Super Agent Quick Dispatch</span>
+                                </div>
+                                <span style={{ fontSize: '11px', color: '#4ade80', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#4ade80' }} /> Escuchando órdenes para este proyecto
+                                </span>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                {[
+                                    '⚡ Triage y priorización de backlog',
+                                    '📝 Generar especificación de arquitectura',
+                                    '🔍 Auditar seguridad y dependencias',
+                                    '🚀 Crear sprint de 7 días con tareas'
+                                ].map((prompt, i) => (
+                                    <button
+                                        key={i}
+                                        className="btn btn-ghost"
+                                        style={{ fontSize: '11.5px', padding: '6px 12px', background: 'rgba(255,255,255,0.04)', borderRadius: '8px' }}
+                                        onClick={() => handleSendOpenClawAction(prompt)}
+                                        disabled={openclawExecuting}
+                                    >
+                                        {prompt}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
+
+            {/* ─── PROYECTOS: ROADMAP & HITOS ─── */}
+            {isProjectEntity && activeTab === 'proj_roadmap' && (() => {
+                const milestones = event.milestones || [];
+                const completedM = milestones.filter(m => m.done).length;
+                const progressPct = milestones.length > 0 ? Math.round((completedM / milestones.length) * 100) : 0;
+
+                return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                        {/* Progress Bar Card */}
+                        <div className="card" style={{ padding: '24px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                <div>
+                                    <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#fff', margin: 0 }}>Progreso del Roadmap</h3>
+                                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{completedM} de {milestones.length} hitos completados</span>
+                                </div>
+                                <div style={{ fontSize: '24px', fontWeight: 800, color: color }}>{progressPct}%</div>
+                            </div>
+
+                            <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.06)', borderRadius: '4px', overflow: 'hidden' }}>
+                                <div style={{ width: `${progressPct}%`, height: '100%', background: `linear-gradient(90deg, ${color}, #8b5cf6)`, transition: 'width 0.4s ease' }} />
+                            </div>
+                        </div>
+
+                        {/* Milestones List */}
+                        <div className="card" style={{ padding: '24px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
+                                <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#fff', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <Milestone size={18} style={{ color }} /> Entregables & Hitos Clave
+                                </h3>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
+                                {milestones.map((m, idx) => (
+                                    <div
+                                        key={m.id || idx}
+                                        onClick={() => handleToggleMilestone(m.id)}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                            padding: '14px 18px', borderRadius: '12px',
+                                            background: m.done ? 'rgba(34, 197, 94, 0.06)' : 'rgba(255, 255, 255, 0.03)',
+                                            border: m.done ? '1px solid rgba(34, 197, 94, 0.2)' : '1px solid rgba(255, 255, 255, 0.06)',
+                                            cursor: 'pointer', transition: 'all 0.2s ease'
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                                            <div style={{
+                                                width: '22px', height: '22px', borderRadius: '6px',
+                                                border: m.done ? 'none' : '2px solid var(--text-tertiary)',
+                                                background: m.done ? '#22c55e' : 'transparent',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                color: '#fff'
+                                            }}>
+                                                {m.done && <Check size={14} />}
+                                            </div>
+                                            <div>
+                                                <span style={{
+                                                    fontSize: '14px', fontWeight: 600,
+                                                    color: m.done ? 'var(--text-secondary)' : '#fff',
+                                                    textDecoration: m.done ? 'line-through' : 'none'
+                                                }}>
+                                                    {m.title}
+                                                </span>
+                                                {m.deadline && (
+                                                    <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
+                                                        Límite: {m.deadline}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <span style={{
+                                            fontSize: '11px', fontWeight: 700, padding: '3px 8px', borderRadius: '6px',
+                                            background: m.done ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.06)',
+                                            color: m.done ? '#4ade80' : 'var(--text-tertiary)'
+                                        }}>
+                                            {m.done ? 'Completado' : 'Pendiente'}
+                                        </span>
+                                    </div>
+                                ))}
+
+                                {milestones.length === 0 && (
+                                    <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-tertiary)', fontSize: '13px' }}>
+                                        No hay hitos registrados en el roadmap. Agrega el primer hito abajo:
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Add Milestone Form */}
+                            <form onSubmit={handleAddMilestone} style={{ display: 'flex', gap: '10px' }}>
+                                <input
+                                    className="form-input"
+                                    placeholder="Nombre del nuevo hito (Ej: Integrar pasarela de pago)..."
+                                    value={newMilestoneText}
+                                    onChange={e => setNewMilestoneText(e.target.value)}
+                                    style={{ flex: 1 }}
+                                />
+                                <button type="submit" className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <Plus size={16} /> Añadir Hito
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                );
+            })()}
+
+            {/* ─── PROYECTOS: OPENCLAW AI TERMINAL ─── */}
+            {isProjectEntity && activeTab === 'proj_openclaw' && (() => {
+                const projectOpenClawLogs = (openclawLogs || []).filter(l => l.data?.projectId === event.id || !l.data?.projectId);
+
+                return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                        {/* Terminal Header & Input */}
+                        <div className="card" style={{ padding: '24px', background: '#0f141c', border: '1px solid rgba(139, 92, 246, 0.3)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <Terminal size={20} style={{ color: '#a78bfa' }} />
+                                    <div>
+                                        <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#fff', margin: 0 }}>OpenClaw Super Agent Console</h3>
+                                        <span style={{ fontSize: '11.5px', color: 'var(--text-tertiary)' }}>Ejecución directa de órdenes y síntesis autónoma</span>
+                                    </div>
+                                </div>
+                                <span style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '12px', background: 'rgba(34,197,94,0.15)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.3)' }}>
+                                    ● En Línea (Port 3002)
+                                </span>
+                            </div>
+
+                            {/* Prompt Input Form */}
+                            <div style={{ display: 'flex', gap: '10px', marginBottom: '12px' }}>
+                                <input
+                                    className="form-input"
+                                    placeholder={`Enviar instrucción a OpenClaw para "${event.name}"...`}
+                                    value={openclawPromptInput}
+                                    onChange={e => setOpenClawPromptInput(e.target.value)}
+                                    onKeyDown={e => e.key === 'Enter' && handleSendOpenClawAction()}
+                                    style={{ background: 'rgba(0,0,0,0.4)', borderColor: 'rgba(139,92,246,0.3)', color: '#fff' }}
+                                />
+                                <button
+                                    className="btn btn-primary"
+                                    onClick={() => handleSendOpenClawAction()}
+                                    disabled={openclawExecuting}
+                                    style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'linear-gradient(135deg, #8b5cf6, #6366f1)' }}
+                                >
+                                    <Play size={14} /> {openclawExecuting ? 'Ejecutando...' : 'Ejecutar'}
+                                </button>
+                            </div>
+
+                            {openclawFeedback && (
+                                <div style={{
+                                    padding: '8px 12px', borderRadius: '8px', fontSize: '12px',
+                                    background: openclawFeedback.type === 'success' ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
+                                    color: openclawFeedback.type === 'success' ? '#4ade80' : '#f87171'
+                                }}>
+                                    {openclawFeedback.msg}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Real-time Activity Logs Stream */}
+                        <div className="card" style={{ padding: '24px' }}>
+                            <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#fff', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Bot size={17} style={{ color: '#a78bfa' }} /> Registro de Ejecuciones & Pensamientos de OpenClaw
+                            </h3>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '380px', overflowY: 'auto' }}>
+                                {projectOpenClawLogs.map((log, i) => (
+                                    <div key={log.id || i} style={{
+                                        padding: '12px 16px', borderRadius: '10px',
+                                        background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)',
+                                        display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'
+                                    }}>
+                                        <div>
+                                            <div style={{ fontSize: '13px', fontWeight: 600, color: '#fff' }}>
+                                                {log.thought?.message || log.action || 'Acción ejecutada'}
+                                            </div>
+                                            {log.thought?.details && (
+                                                <div style={{ fontSize: '11.5px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                                                    {log.thought.details}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <span style={{ fontSize: '10.5px', color: 'var(--text-tertiary)', flexShrink: 0 }}>
+                                            {log.timestamp ? new Date(log.timestamp).toLocaleTimeString() : 'Reciente'}
+                                        </span>
+                                    </div>
+                                ))}
+
+                                {projectOpenClawLogs.length === 0 && (
+                                    <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-tertiary)', fontSize: '13px' }}>
+                                        No hay logs de OpenClaw registrados aún. Ejecuta una orden arriba para inicializar el stream.
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
+
+            {/* ─── PROYECTOS: DOCS & ENTREGABLES ─── */}
+            {isProjectEntity && activeTab === 'proj_docs' && (
+                <div className="card" style={{ padding: '24px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                        <div>
+                            <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#fff', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <FileText size={18} style={{ color }} /> Especificaciones & Documentación Técnica
+                            </h3>
+                            <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Notas de arquitectura, endpoints, requisitos y entregables</span>
+                        </div>
+                        <button
+                            className="btn btn-primary"
+                            onClick={handleSaveDocs}
+                            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                        >
+                            <Save size={14} /> {docSaved ? '¡Guardado!' : 'Guardar Documento'}
+                        </button>
+                    </div>
+
+                    <textarea
+                        className="form-textarea"
+                        rows={16}
+                        placeholder={`# ${event.name} - Especificaciones Técnicas\n\n## 1. Arquitectura\n- Stack: ${Array.isArray(event.techStack) ? event.techStack.join(', ') : ''}\n\n## 2. Entregables MVP\n- [ ] Core Backend API\n- [ ] Frontend UI\n\n## 3. Notas de OpenClaw Super Agent\n- `}
+                        value={projectDocContent}
+                        onChange={e => setProjectDocContent(e.target.value)}
+                        style={{
+                            fontFamily: 'monospace', fontSize: '13px', lineHeight: 1.6,
+                            background: '#0d1117', border: '1px solid rgba(255,255,255,0.08)',
+                            color: '#e6edf3', padding: '16px'
+                        }}
+                    />
+                </div>
+            )}
 
             {/* LOCAL: RESUMEN INICIO */}
             {event.type === 'local' && activeTab === 'local_inicio' && (() => {
@@ -2257,8 +2785,8 @@ export default function EventoDetail() {
                 );
             })()}
 
-            {/* LOCAL: PROGRAMACIÓN */}
-            {event.type === 'local' && activeTab === 'local_agenda' && (() => {
+            {/* LOCAL / NIGHTCLUB: PROGRAMACIÓN & CALENDARIO */}
+            {((event.type === 'local' && activeTab === 'local_agenda') || (event.type === 'nightclub' && activeTab === 'calendario')) && (() => {
                 const monthNames = [
                     "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
                     "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
@@ -2327,10 +2855,79 @@ export default function EventoDetail() {
                 };
 
                 const handleGoToToday = () => {
-                    const today = new Date();
-                    setCalMonth(today.getMonth());
-                    setCalYear(today.getFullYear());
-                    setSelectedDateStr(today.toISOString().split('T')[0]);
+                    const now = new Date();
+                    setCalYear(now.getFullYear());
+                    setCalMonth(now.getMonth());
+                    setSelectedDateStr(now.toISOString().split('T')[0]);
+                };
+
+                // Filter Google Calendar events to ONLY those that belong to THIS event
+                const eventGCalEvents = (googleCalendarEvents || []).filter(ag => {
+                    if (ag.eventId && ag.eventId === event.id) return true;
+                    const title = (ag.title || '').toLowerCase();
+                    const eventName = (event.name || '').toLowerCase();
+                    return title.includes(eventName) || (event.shortName && title.includes(event.shortName.toLowerCase()));
+                });
+
+                // Map instances of this event as calendar items
+                const eventInstanceItems = (event.instances || []).map(inst => ({
+                    id: inst.id,
+                    date: inst.date,
+                    time: inst.time || '20:00',
+                    title: inst.name || `${event.name} (${inst.day || 'Noche'})`,
+                    isInstance: true,
+                    status: inst.status,
+                    description: inst.targetDemo || inst.notes || ''
+                }));
+
+                // Map main event date if set and not already present as an instance
+                const mainEventItems = (event.date && !(event.instances || []).some(inst => inst.date === event.date)) ? [{
+                    id: `main-${event.id}`,
+                    date: event.date,
+                    time: event.time || '20:00',
+                    title: event.name,
+                    isMain: true,
+                    description: event.description || ''
+                }] : [];
+
+                // Unified items strictly for THIS event
+                const allThisEventCalendarItems = [
+                    ...mainEventItems,
+                    ...eventInstanceItems,
+                    ...(event.agenda || []),
+                    ...eventGCalEvents
+                ];
+
+                // Calculate current selected week range for the sidebar
+                const selectedDate = new Date(selectedDateStr + 'T12:00:00');
+                const dayOfWeek = selectedDate.getDay();
+                // Find Monday of the current selected date's week
+                const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+                const monday = new Date(selectedDate);
+                monday.setDate(selectedDate.getDate() + mondayOffset);
+
+                const weekDays = [];
+                for (let i = 0; i < 7; i++) {
+                    const d = new Date(monday);
+                    d.setDate(monday.getDate() + i);
+                    const dStr = d.toISOString().split('T')[0];
+                    weekDays.push({
+                        dateStr: dStr,
+                        dayName: weekdays[d.getDay()],
+                        dayNum: d.getDate(),
+                        isToday: dStr === new Date().toISOString().split('T')[0]
+                    });
+                }
+
+                const mondayInfo = {
+                    dayNum: monday.getDate(),
+                    monthNameShort: monthNames[monday.getMonth()].slice(0, 3)
+                };
+                const sunday = new Date(monday);
+                sunday.setDate(monday.getDate() + 6);
+                const sundayInfo = {
+                    dayNum: sunday.getDate(),
+                    monthNameShort: monthNames[sunday.getMonth()].slice(0, 3)
                 };
 
                 const handleSyncToGoogle = async (agItem) => {
@@ -2346,41 +2943,6 @@ export default function EventoDetail() {
                     }
                 };
 
-                const getWeekDays = (dateStr) => {
-                    const date = new Date(dateStr + 'T12:00:00');
-                    const day = date.getDay();
-                    const diff = date.getDate() - day + (day === 0 ? -6 : 1); // Monday adjustment
-                    
-                    const weekdaysList = [];
-                    const monday = new Date(date.setDate(diff));
-                    
-                    for (let i = 0; i < 7; i++) {
-                        const d = new Date(monday);
-                        d.setDate(monday.getDate() + i);
-                        const yyyy = d.getFullYear();
-                        const mm = String(d.getMonth() + 1).padStart(2, '0');
-                        const dd = String(d.getDate()).padStart(2, '0');
-                        const dateString = `${yyyy}-${mm}-${dd}`;
-                        
-                        // Capitalize Spanish weekday names
-                        const rawDayName = d.toLocaleDateString('es-PA', { weekday: 'long' });
-                        const dayName = rawDayName.charAt(0).toUpperCase() + rawDayName.slice(1);
-                        
-                        weekdaysList.push({
-                            dateStr: dateString,
-                            dateObj: d,
-                            dayName,
-                            dayNum: d.getDate(),
-                            monthNameShort: d.toLocaleDateString('es-PA', { month: 'short' })
-                        });
-                    }
-                    return weekdaysList;
-                };
-
-                const weekDays = getWeekDays(selectedDateStr);
-                const mondayInfo = weekDays[0];
-                const sundayInfo = weekDays[6];
-
                 return (
                     <div style={{ display: 'grid', gridTemplateColumns: '1.7fr 1fr', gap: '20px', alignItems: 'start' }}>
                         {/* CALENDAR COLUMN */}
@@ -2391,7 +2953,7 @@ export default function EventoDetail() {
                                         {monthNames[calMonth]} {calYear}
                                     </h3>
                                     <span style={{ fontSize: '11px', background: `${color}15`, color: color, padding: '4px 8px', borderRadius: '20px', fontWeight: 600 }}>
-                                        Calendario 212 Club
+                                        Calendario {event.name}
                                     </span>
                                 </div>
                                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -2432,10 +2994,7 @@ export default function EventoDetail() {
                                 {days.map((d, index) => {
                                     const dateStr = `${d.year}-${String(d.month + 1).padStart(2, '0')}-${String(d.day).padStart(2, '0')}`;
                                     const isSelected = dateStr === selectedDateStr;
-                                    const dayEvents = [
-                                        ...(event.agenda || []).filter(ag => ag.date === dateStr),
-                                        ...googleCalendarEvents.filter(ag => ag.date === dateStr)
-                                    ];
+                                    const dayEvents = allThisEventCalendarItems.filter(ag => ag.date === dateStr);
                                     
                                     const today = new Date();
                                     const isToday = today.getDate() === d.day && today.getMonth() === d.month && today.getFullYear() === d.year;
@@ -2495,21 +3054,22 @@ export default function EventoDetail() {
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', overflow: 'hidden' }}>
                                                 {dayEvents.slice(0, 2).map((ag, eidx) => {
                                                     const isGCal = ag.isGoogleEvent;
+                                                    const isInst = ag.isInstance;
                                                     return (
                                                         <div 
                                                             key={ag.id || eidx} 
                                                             style={{ 
                                                                 fontSize: '9px', 
-                                                                background: isGCal ? 'rgba(66, 133, 244, 0.15)' : `${color}15`, 
+                                                                background: isGCal ? 'rgba(66, 133, 244, 0.15)' : isInst ? `${color}25` : `${color}15`, 
                                                                 color: '#fff', 
                                                                 padding: '2px 4px', 
                                                                 borderRadius: '4px', 
-                                                                borderLeft: `2px solid ${isGCal ? '#4285f4' : color}`,
+                                                                borderLeft: `2px solid ${isGCal ? '#4285f4' : isInst ? '#fff' : color}`,
                                                                 overflow: 'hidden', 
                                                                 textOverflow: 'ellipsis', 
                                                                 whiteSpace: 'nowrap' 
                                                             }}
-                                                            title={`${isGCal ? '[Google] ' : ''}${ag.title}`}
+                                                            title={`${isGCal ? '[Google] ' : isInst ? '[Noche VIP] ' : ''}${ag.title}`}
                                                         >
                                                             {ag.time} {ag.title}
                                                         </div>
@@ -2550,10 +3110,9 @@ export default function EventoDetail() {
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '420px', overflowY: 'auto', paddingRight: '4px' }}>
                                 {weekDays.map((wd) => {
                                     const isSelectedDay = wd.dateStr === selectedDateStr;
-                                    const dayEvents = [
-                                        ...(event.agenda || []).filter(ag => ag.date === wd.dateStr),
-                                        ...googleCalendarEvents.filter(ag => ag.date === wd.dateStr)
-                                    ].sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+                                    const dayEvents = allThisEventCalendarItems
+                                        .filter(ag => ag.date === wd.dateStr)
+                                        .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
 
                                     return (
                                         <div 
@@ -2638,8 +3197,8 @@ export default function EventoDetail() {
                                                                 <span style={{ 
                                                                     fontSize: '10px', 
                                                                     fontWeight: 700, 
-                                                                    color: ag.isGoogleEvent ? '#4285f4' : color, 
-                                                                    background: ag.isGoogleEvent ? 'rgba(66, 133, 244, 0.15)' : `${color}15`, 
+                                                                    color: ag.isGoogleEvent ? '#4285f4' : ag.isInstance ? '#fff' : color, 
+                                                                    background: ag.isGoogleEvent ? 'rgba(66, 133, 244, 0.15)' : ag.isInstance ? `${color}30` : `${color}15`, 
                                                                     padding: '1px 4px', 
                                                                     borderRadius: '3px' 
                                                                 }}>
@@ -2648,6 +3207,10 @@ export default function EventoDetail() {
                                                                 <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
                                                                     {ag.isGoogleEvent ? (
                                                                         <span style={{ fontSize: '9px', color: '#4285f4', fontWeight: 600, background: 'rgba(66, 133, 244, 0.1)', padding: '1px 4px', borderRadius: '3px' }}>GCal</span>
+                                                                    ) : ag.isInstance ? (
+                                                                        <span style={{ fontSize: '9px', color: color, fontWeight: 600, background: `${color}15`, padding: '1px 5px', borderRadius: '3px', border: `1px solid ${color}30` }}>
+                                                                            {ag.status || 'Sesión'}
+                                                                        </span>
                                                                     ) : (
                                                                         <>
                                                                             {gcalToken && !ag.googleEventId && (
@@ -2706,10 +3269,10 @@ export default function EventoDetail() {
                             {/* Upcoming Events Mini-list */}
                             <div style={{ marginTop: '24px' }}>
                                 <h5 style={{ margin: '0 0 10px 0', fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                    Próximos Eventos
+                                    Próximos Eventos de {event.name}
                                 </h5>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto' }}>
-                                    {[...(event.agenda || []), ...googleCalendarEvents]
+                                    {allThisEventCalendarItems
                                         .filter(ag => {
                                             const today = new Date().toISOString().split('T')[0];
                                             return (ag.date || '') >= today;
@@ -2720,7 +3283,7 @@ export default function EventoDetail() {
                                             if (dateA !== dateB) return dateA.localeCompare(dateB);
                                             return (a.time || '').localeCompare(b.time || '');
                                         })
-                                        .slice(0, 5)
+                                        .slice(0, 8)
                                         .map(ag => (
                                             <div 
                                                 key={ag.id} 
@@ -2738,15 +3301,15 @@ export default function EventoDetail() {
                                             >
                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                                                     <span style={{ fontWeight: 600, color: '#fff' }}>{ag.title}</span>
-                                                    <span style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>{ag.date} · {ag.time} {ag.isGoogleEvent ? '· [Google]' : ''}</span>
+                                                    <span style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>{ag.date} · {ag.time} {ag.isGoogleEvent ? '· [Google]' : ag.isInstance ? '· [Sesión]' : ''}</span>
                                                 </div>
                                                 <span style={{ fontSize: '11px', color: ag.isGoogleEvent ? '#4285f4' : color, fontWeight: 600 }}>▶</span>
                                             </div>
                                         ))
                                     }
-                                    {[...(event.agenda || []), ...googleCalendarEvents].filter(ag => (ag.date || '') >= new Date().toISOString().split('T')[0]).length === 0 && (
+                                    {allThisEventCalendarItems.filter(ag => (ag.date || '') >= new Date().toISOString().split('T')[0]).length === 0 && (
                                         <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
-                                            No hay eventos futuros programados.
+                                            No hay fechas futuras programadas para {event.name}.
                                         </div>
                                     )}
                                 </div>
@@ -3030,6 +3593,32 @@ export default function EventoDetail() {
                             {/* Template 1 */}
                             <div className="card" style={{ padding: '20px', background: 'rgba(255,255,255,0.02)' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                                    <h4 style={{ margin: 0, fontSize: '15px', color: 'var(--text-primary)' }}>🍽️ Invitación Chicas a Cenar</h4>
+                                    <button className="btn btn-ghost" style={{ padding: '4px 8px' }} onClick={() => navigator.clipboard.writeText(`¡Hola reina! 🌟 Este jueves/viernes armamos cena exclusiva con cócteles de cortesía en ${event.name} desde las 8:00 PM. Tenemos mesa imperial y drinks por la casa para nuestro grupo de chicas invitadas antes de la fiesta. ¿Cuento contigo y alguna amiga? Confírmame hoy para anotarte en la lista VIP!`)}><Copy size={14} /></button>
+                                </div>
+                                <textarea
+                                    readOnly
+                                    value={`¡Hola reina! 🌟 Este jueves/viernes armamos cena exclusiva con cócteles de cortesía en ${event.name} desde las 8:00 PM. Tenemos mesa imperial y drinks por la casa para nuestro grupo de chicas invitadas antes de la fiesta. ¿Cuento contigo y alguna amiga? Confírmame hoy para anotarte en la lista VIP!`}
+                                    style={{ width: '100%', minHeight: '110px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '12px', color: 'var(--text-secondary)', fontSize: '13px', resize: 'none', outline: 'none' }}
+                                />
+                            </div>
+
+                            {/* Template 2 */}
+                            <div className="card" style={{ padding: '20px', background: 'rgba(255,255,255,0.02)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                                    <h4 style={{ margin: 0, fontSize: '15px', color: 'var(--text-primary)' }}>🍾 Mesas VIP & Bottle Service</h4>
+                                    <button className="btn btn-ghost" style={{ padding: '4px 8px' }} onClick={() => navigator.clipboard.writeText(`¡Bro! 🔥 Este fin de semana la fiesta fuerte está en ${event.name}. Tenemos las mejores mesas VIP con bottle service y ambiente top. ¿Te aparto mesa para tu grupo? Avísame con tiempo porque la ocupación está al límite.`)}><Copy size={14} /></button>
+                                </div>
+                                <textarea
+                                    readOnly
+                                    value={`¡Bro! 🔥 Este fin de semana la fiesta fuerte está en ${event.name}. Tenemos las mejores mesas VIP con bottle service y ambiente top. ¿Te aparto mesa para tu grupo? Avísame con tiempo porque la ocupación está al límite.`}
+                                    style={{ width: '100%', minHeight: '110px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '12px', color: 'var(--text-secondary)', fontSize: '13px', resize: 'none', outline: 'none' }}
+                                />
+                            </div>
+
+                            {/* Template 3 */}
+                            <div className="card" style={{ padding: '20px', background: 'rgba(255,255,255,0.02)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
                                     <h4 style={{ margin: 0, fontSize: '15px', color: 'var(--text-primary)' }}>Invitación General</h4>
                                     <button className="btn btn-ghost" style={{ padding: '4px 8px' }} onClick={() => navigator.clipboard.writeText(`¡Hola! Te invito este finde a ${event.name} 🥂. Mandame tu lista o reserva tu mesa. ¡Te esperamos!`)}><Copy size={14} /></button>
                                 </div>
@@ -3040,7 +3629,7 @@ export default function EventoDetail() {
                                 />
                             </div>
                             
-                            {/* Template 2 */}
+                            {/* Template 4 */}
                             <div className="card" style={{ padding: '20px', background: 'rgba(255,255,255,0.02)' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
                                     <h4 style={{ margin: 0, fontSize: '15px', color: 'var(--text-primary)' }}>Recordatorio a Promotores</h4>
@@ -4486,11 +5075,14 @@ export default function EventoDetail() {
                                 <div className="form-group">
                                     <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, marginBottom: '6px' }}>Rol asignado</label>
                                     <select className="form-select" value={editingListGirl.role} onChange={e => setEditingListGirl({ ...editingListGirl, role: e.target.value })} style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)' }}>
+                                        <option value="Cena VIP & Cócteles">🍽️ Cena VIP & Cócteles</option>
+                                        <option value="Cena Maridaje">🍷 Cena Maridaje</option>
+                                        <option value="Cena + Mesa VIP">✨ Cena + Mesa VIP</option>
+                                        <option value="Mesa Anfitriona">💎 Mesa Anfitriona</option>
+                                        <option value="Contenido / Stories">📸 Contenido / Stories</option>
+                                        <option value="Animación & Shots VIP">🔥 Animación & Shots VIP</option>
+                                        <option value="Protocolo / Hostess">⭐ Protocolo / Hostess</option>
                                         <option value="Mesa">Mesa</option>
-                                        <option value="Contenido">Contenido</option>
-                                        <option value="Shots">Shots / Animación</option>
-                                        <option value="Hospedaje">Hospedaje</option>
-                                        <option value="Protocolo">Protocolo</option>
                                     </select>
                                 </div>
                                 <div className="form-group">

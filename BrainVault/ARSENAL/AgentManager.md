@@ -36,3 +36,8 @@ Modelo: gemini-2.5-pro | Estado: online
 Foco: Inteligencia
 Descripción: Datos -> Decisiones. Responde: qué está pasando realmente y qué hacer.
 
+## Agente: Pulse (WhatsApp & Community) (Community & WhatsApp Outreach Lead)
+Modelo: gemini-2.5-flash | Estado: online
+Foco: Difusión WhatsApp & Comunidades
+Descripción: Orquestador de difusión semanal de eventos. Redacta y envía mensajes a clientes VIP, gestiona la cartelera semanal para grupos y comunidades de WhatsApp, y programa publicaciones multi-canal.
+

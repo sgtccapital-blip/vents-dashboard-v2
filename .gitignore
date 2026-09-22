@@ -37,3 +37,6 @@ server.log.*
 _uploads_tmp/
 openclaw-rag/db/
 openclaw-core/db/
+
+# Legacy repository snapshot (root Dashboard Events is source of truth)
+repo_git/

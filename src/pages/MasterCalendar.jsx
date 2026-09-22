@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, CheckSquare, CalendarDays, Share2, ArrowLeft, ArrowRight, Plus } from 'lucide-react';
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, CheckSquare, CalendarDays, Share2, ArrowLeft, ArrowRight, Plus, MessageSquare } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useNavigate } from 'react-router-dom';
 import CalendarItemModal from '../components/CalendarItemModal';
@@ -164,35 +164,59 @@ export default function MasterCalendar() {
             });
         });
 
-        events.forEach(e => {
-            if (!e.date) {
-                if (e.instances) {
-                    e.instances.forEach(inst => {
+        (events || []).forEach(e => {
+            // 1. Map all instances of recurring events / venues
+            if (e.instances && Array.isArray(e.instances)) {
+                e.instances.forEach(inst => {
+                    if (inst.date) {
                         const evtDate = new Date(inst.date + 'T12:00:00'); 
                         items.push({
-                            id: `evt-inst-${inst.id}`,
+                            id: `evt-inst-${inst.id || Math.random()}`,
                             eventId: e.id,
                             type: 'event',
-                            title: `${e.name} ${inst.day || ''}`.trim(),
+                            title: `${e.icon || '🍸'} ${e.name}: ${inst.name || inst.day || ''}`.trim(),
                             dateObj: evtDate,
                             color: e.color || '#ef4444',
-                            fullItem: e
+                            fullItem: { ...e, activeInstance: inst }
                         });
-                    });
-                }
-                return;
+                    }
+                });
             }
 
-            const evtDate = new Date(e.date + 'T12:00:00');
-            items.push({
-                id: `evt-${e.id}`,
-                eventId: e.id,
-                type: 'event',
-                title: e.name,
-                dateObj: evtDate,
-                color: e.color || '#10b981',
-                fullItem: e
-            });
+            // 2. Map main event date if set and not already present as an instance
+            if (e.date) {
+                const hasInstanceOnDate = (e.instances || []).some(inst => inst.date === e.date);
+                if (!hasInstanceOnDate) {
+                    const evtDate = new Date(e.date + 'T12:00:00');
+                    items.push({
+                        id: `evt-${e.id}`,
+                        eventId: e.id,
+                        type: 'event',
+                        title: `${e.icon || '📅'} ${e.name}`,
+                        dateObj: evtDate,
+                        color: e.color || '#10b981',
+                        fullItem: e
+                    });
+                }
+            }
+
+            // 3. Map any scheduled agenda items that have dates
+            if (e.agenda && Array.isArray(e.agenda)) {
+                e.agenda.forEach(ag => {
+                    if (ag.date) {
+                        const agDate = new Date(ag.date + 'T12:00:00');
+                        items.push({
+                            id: `evt-ag-${ag.id || Math.random()}`,
+                            eventId: e.id,
+                            type: 'agenda',
+                            title: `⏱️ ${e.name}: ${ag.title || ag.name || 'Actividad'}`,
+                            dateObj: agDate,
+                            color: e.color || '#8b5cf6',
+                            fullItem: ag
+                        });
+                    }
+                });
+            }
         });
 
         contentEntries.forEach(c => {
@@ -393,11 +417,33 @@ export default function MasterCalendar() {
                 </div>
 
                 {/* Filters / Legend */}
-                <div className="calendar-legend-bar" style={{ padding: '8px 24px', background: 'var(--bg-canvas)', borderBottom: '1px solid var(--border-subtle)', display: 'flex', gap: '16px', fontSize: '11px', fontWeight: 600, flexShrink: 0 }}>
+                <div className="calendar-legend-bar" style={{ padding: '8px 24px', background: 'var(--bg-canvas)', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: '16px', fontSize: '11px', fontWeight: 600, flexShrink: 0 }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><CheckSquare size={14} color="var(--accent-primary)" /> Tareas</span>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><CalendarDays size={14} color="#10b981" /> Eventos</span>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Share2 size={14} color="#f59e0b" /> Redes Sociales</span>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><CalendarDays size={14} color="#4285f4" /> Google Calendar</span>
+                    
+                    <button
+                        className="btn btn-primary"
+                        style={{
+                            marginLeft: 'auto',
+                            background: 'linear-gradient(135deg, #25D366, #128C7E)',
+                            border: 'none',
+                            color: '#fff',
+                            fontSize: '11.5px',
+                            fontWeight: 700,
+                            padding: '4px 12px',
+                            borderRadius: '6px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            boxShadow: '0 2px 8px rgba(37, 211, 102, 0.25)',
+                            cursor: 'pointer'
+                        }}
+                        onClick={() => navigate('/whatsapp-agent')}
+                    >
+                        <MessageSquare size={13} /> ⚡ Difusión Semanal WhatsApp
+                    </button>
                 </div>
 
                 {/* Grid Container */}

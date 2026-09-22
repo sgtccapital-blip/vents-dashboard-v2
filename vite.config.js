@@ -9,7 +9,7 @@ export default defineConfig({
     host: true,
     proxy: {
       '/api': {
-        target: 'http://localhost:3002',
+        target: 'http://localhost:8090',
         changeOrigin: true,
       },
       '/proxy/bart': {
@@ -41,4 +41,17 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    outDir: 'dist',
+    chunkSizeWarningLimit: 1200,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-icons': ['lucide-react'],
+          'vendor-markdown': ['react-markdown', 'remark-gfm']
+        }
+      }
+    }
+  }
 })

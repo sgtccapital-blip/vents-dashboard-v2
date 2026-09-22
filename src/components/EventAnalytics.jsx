@@ -1,16 +1,17 @@
 import { Activity, Zap, ShieldAlert, BarChart3, Users } from 'lucide-react';
 
-export default function EventAnalytics({ tasks }) {
-    const totalTasks = tasks.length || 1;
-    const completedTasks = tasks.filter(t => t.done).length;
+export default function EventAnalytics({ tasks = [] }) {
+    const safeTasks = Array.isArray(tasks) ? tasks : [];
+    const totalTasks = safeTasks.length || 1;
+    const completedTasks = safeTasks.filter(t => t.done).length;
     const progress = Math.round((completedTasks / totalTasks) * 100);
 
-    const pendingTasks = tasks.filter(t => t.status === 'pending').length || 0;
-    const blockedTasks = tasks.filter(t => t.status === 'blocked_auth').length || 0; 
+    const pendingTasks = safeTasks.filter(t => t.status === 'pending').length || 0;
+    const blockedTasks = safeTasks.filter(t => t.status === 'blocked_auth').length || 0; 
 
     const statusDist = [
         { name: 'Done', tasks: completedTasks, color: 'var(--accent-green)' },
-        { name: 'In Progress', tasks: tasks.filter(t => t.status === 'in-progress' || t.status === 'working').length, color: 'var(--accent-primary)' },
+        { name: 'In Progress', tasks: safeTasks.filter(t => t.status === 'in-progress' || t.status === 'working').length, color: 'var(--accent-primary)' },
         { name: 'Pending', tasks: pendingTasks, color: 'var(--text-tertiary)' }
     ];
 

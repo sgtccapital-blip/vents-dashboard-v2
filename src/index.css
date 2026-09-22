@@ -165,12 +165,14 @@ a:hover {
   max-width: calc(100% - var(--sidebar-collapsed));
 }
 
-.page-content {
+.page-content,
+.page-container {
   flex: 1;
-  padding: var(--space-2xl);
-  margin-top: var(--topbar-height);
-  max-width: 1400px;
+  padding: 28px var(--space-2xl) 60px var(--space-2xl);
+  margin-top: var(--topbar-height) !important;
+  max-width: 1440px;
   width: 100%;
+  box-sizing: border-box;
 }
 
 /* ===== Sidebar ===== */

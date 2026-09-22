@@ -1,18 +1,20 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import {
     LayoutDashboard, FolderKanban, Brain, Server,
-    Lightbulb, User, ChevronLeft, ChevronRight, Zap, Share2, BrainCircuit, Sparkles, BookOpen, MessageSquare, Building2, DatabaseZap, LayoutTemplate, Network, MessageCircle, Monitor, Cpu, CalendarDays, Calendar
+    Lightbulb, User, ChevronLeft, ChevronRight, Zap, Share2, BrainCircuit, Sparkles, BookOpen, MessageSquare, Building2, DatabaseZap, LayoutTemplate, Network, MessageCircle, Monitor, Cpu, CalendarDays, Calendar, Briefcase
 } from 'lucide-react';
 import { useState } from 'react';
 
 const navItems = [
     { path: '/', icon: LayoutDashboard, label: 'Command Center', section: 'OPERATIONS' },
+    { path: '/portfolio', icon: Briefcase, label: 'Portfolio OS', section: 'STRATEGY' },
     { path: '/workspace', icon: LayoutTemplate, label: 'Workspace', section: 'OPERATIONS' },
     { path: '/calendar', icon: Calendar, label: 'Master Calendar', section: 'OPERATIONS' },
-    { path: '/eventos', icon: CalendarDays, label: 'Eventos', section: 'OPERATIONS' },
+    { path: '/eventos', icon: CalendarDays, label: 'Proyectos & Eventos', section: 'OPERATIONS' },
     { path: '/contactos', icon: User, label: 'Contactos', section: 'OPERATIONS' },
     { path: '/social', icon: Share2, label: 'Redes Sociales', section: 'OPERATIONS' },
-    { path: '/agent-brain', icon: BrainCircuit, label: 'IA & Cerebro RAG', section: 'INTELLIGENCE' },
+    { path: '/whatsapp-agent', icon: MessageSquare, label: 'Agente WhatsApp & Difusión', section: 'INTELLIGENCE' },
+    { path: '/agent-brain', icon: BrainCircuit, label: 'OpenClaw & Cerebro RAG', section: 'INTELLIGENCE' },
 ];
 
 export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }) {
