@@ -1,3 +1,2 @@
 # Redes Sociales
-Planificación, distribución de contenido e identidades.
-Info pendiente a ser rellenada por el ecosistema.
+Planificación, distribución de contenido e identidades multi-canal.

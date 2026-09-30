@@ -18,10 +18,12 @@ const statusConfig = {
 // ── Individual Card Component (to allow useState per-card) ──
 const ASSIGNEE_CONFIG = {
     'GG': { bg: 'rgba(129, 140, 248, 0.15)', border: '1px solid rgba(129, 140, 248, 0.3)', color: '#818cf8' },
+    'JOSHUA': { bg: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#10b981' },
     'MARIO': { bg: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.3)', color: '#38bdf8' },
     'ANDREA': { bg: 'rgba(244, 114, 182, 0.15)', border: '1px solid rgba(244, 114, 182, 0.3)', color: '#f472b6' },
-    'ANDY': { bg: 'rgba(52, 211, 153, 0.15)', border: '1px solid rgba(52, 211, 153, 0.3)', color: '#34d399' },
-    'MAMA': { bg: 'rgba(251, 146, 60, 0.15)', border: '1px solid rgba(251, 146, 60, 0.3)', color: '#fb923c' }
+    'FANNY': { bg: 'rgba(251, 191, 36, 0.15)', border: '1px solid rgba(251, 191, 36, 0.3)', color: '#fbbf24' },
+    'JEIKOB': { bg: 'rgba(168, 85, 247, 0.15)', border: '1px solid rgba(168, 85, 247, 0.3)', color: '#c084fc' },
+    'FIVVR': { bg: 'rgba(20, 184, 166, 0.15)', border: '1px solid rgba(20, 184, 166, 0.3)', color: '#2dd4bf' }
 };
 
 function KanbanCard({ t, colStatus, events, deleteTask, updateTaskStatus, updateTaskContext, updateTaskDate, updateTaskAssignee }) {
@@ -107,10 +109,12 @@ function KanbanCard({ t, colStatus, events, deleteTask, updateTaskStatus, update
                 >
                     <option value="">👤 Asignado...</option>
                     <option value="GG">👤 GG</option>
+                    <option value="JOSHUA">👤 JOSHUA</option>
                     <option value="MARIO">👤 MARIO</option>
                     <option value="ANDREA">👤 ANDREA</option>
-                    <option value="ANDY">👤 ANDY</option>
-                    <option value="MAMA">👤 MAMA</option>
+                    <option value="FANNY">👤 FANNY</option>
+                    <option value="JEIKOB">👤 JEIKOB</option>
+                    <option value="FIVVR">👤 FIVVR</option>
                 </select>
 
                 {/* Date Picker */}
@@ -157,6 +161,10 @@ export default function EventKanbanBoard({ events, filterEventId }) {
     const [newTaskDate, setNewTaskDate] = useState('');
     const [newTaskStatus, setNewTaskStatus] = useState('pending');
     const [newTaskAssignee, setNewTaskAssignee] = useState('');
+
+    const [selectedAssignee, setSelectedAssignee] = useState('all');
+    const [selectedVenue, setSelectedVenue] = useState('all');
+    const [searchQuery, setSearchQuery] = useState('');
 
     const updateTaskStatus = (id, newStatus) => {
         const isDone = newStatus === 'done';
@@ -254,9 +262,20 @@ export default function EventKanbanBoard({ events, filterEventId }) {
         'done': []
     };
 
-    const filteredTasks = filterEventId 
-        ? tasks.filter(t => t.eventId === filterEventId)
-        : tasks;
+    const filteredTasks = (tasks || []).filter(t => {
+        if (filterEventId && t.eventId !== filterEventId) return false;
+        if (selectedVenue !== 'all' && t.eventId !== selectedVenue) return false;
+        const taskAssignee = t.assignedTo || t.assignee || '';
+        if (selectedAssignee !== 'all' && taskAssignee.toUpperCase() !== selectedAssignee.toUpperCase()) return false;
+        if (searchQuery.trim()) {
+            const q = searchQuery.toLowerCase();
+            const matchText = (t.text || t.title || '').toLowerCase().includes(q);
+            const matchEvent = (t.eventName || '').toLowerCase().includes(q);
+            const matchAssignee = taskAssignee.toLowerCase().includes(q);
+            if (!matchText && !matchEvent && !matchAssignee) return false;
+        }
+        return true;
+    });
 
     filteredTasks.forEach(t => {
         const mappedStatus = statusMap[t.status || (t.done ? 'done' : 'active')] || 'pending';
@@ -267,10 +286,111 @@ export default function EventKanbanBoard({ events, filterEventId }) {
 
     return (
         <div className="card animate-in" style={{ marginTop: '0', marginBottom: '0', overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none', background: 'transparent', border: 'none', boxShadow: 'none', padding: '0', display: 'flex', flexDirection: 'column', flex: '1 1 0%', minHeight: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', flexShrink: 0 }}>
-                <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>📋 Kanban (Eventos)</div>
-                <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
-                    Manage task tracking across events. Send tasks direct to Agents.
+            {/* Header & Filter Bar */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '14px', flexShrink: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>📋 Kanban de Operaciones & Eventos</div>
+                        <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', background: 'var(--bg-surface)', padding: '2px 8px', borderRadius: '6px', border: '1px solid var(--border-subtle)' }}>
+                            {filteredTasks.length} de {tasks.length} tareas
+                        </span>
+                    </div>
+                </div>
+
+                {/* Filter Controls Row */}
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '10px',
+                    padding: '8px 14px',
+                    background: 'var(--bg-surface)',
+                    border: '1px solid var(--border-subtle)',
+                    borderRadius: '12px'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: '1 1 240px' }}>
+                        <input
+                            type="text"
+                            placeholder="Buscar en Kanban..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            style={{
+                                width: '100%',
+                                padding: '5px 10px',
+                                borderRadius: '6px',
+                                background: 'var(--bg-canvas)',
+                                border: '1px solid var(--border-subtle)',
+                                color: 'var(--text-primary)',
+                                fontSize: '12px',
+                                outline: 'none'
+                            }}
+                        />
+
+                        <select
+                            value={selectedVenue}
+                            onChange={(e) => setSelectedVenue(e.target.value)}
+                            style={{
+                                background: 'var(--bg-canvas)',
+                                border: '1px solid var(--border-subtle)',
+                                color: 'var(--text-primary)',
+                                borderRadius: '6px',
+                                padding: '5px 8px',
+                                fontSize: '11.5px',
+                                outline: 'none',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            <option value="all">📍 Todos los Venues</option>
+                            {(events || []).map(e => (
+                                <option key={e.id} value={e.id}>{e.icon || '🍸'} {e.name}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Assignee Pills */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '10.5px', color: 'var(--text-tertiary)', fontWeight: 600 }}>
+                            RESPONSABLE:
+                        </span>
+                        <button
+                            onClick={() => setSelectedAssignee('all')}
+                            style={{
+                                padding: '3px 8px',
+                                borderRadius: '5px',
+                                border: selectedAssignee === 'all' ? '1px solid var(--accent-primary)' : '1px solid var(--border-subtle)',
+                                background: selectedAssignee === 'all' ? 'rgba(99, 102, 241, 0.2)' : 'transparent',
+                                color: selectedAssignee === 'all' ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                                fontSize: '11px',
+                                fontWeight: 600,
+                                cursor: 'pointer'
+                            }}
+                        >
+                            Todos
+                        </button>
+                        {['GG', 'JOSHUA', 'MARIO', 'ANDREA', 'FANNY', 'JEIKOB', 'FIVVR'].map(name => {
+                            const active = selectedAssignee.toUpperCase() === name;
+                            const colors = ASSIGNEE_CONFIG[name] || { color: '#fff' };
+                            return (
+                                <button
+                                    key={name}
+                                    onClick={() => setSelectedAssignee(active ? 'all' : name)}
+                                    style={{
+                                        padding: '3px 8px',
+                                        borderRadius: '5px',
+                                        border: active ? `1px solid ${colors.color}` : '1px solid var(--border-subtle)',
+                                        background: active ? colors.bg : 'transparent',
+                                        color: colors.color,
+                                        fontSize: '11px',
+                                        fontWeight: 600,
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    {name}
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
             </div>
 
@@ -362,10 +482,12 @@ export default function EventKanbanBoard({ events, filterEventId }) {
                                     >
                                         <option value="">👤 Asignado...</option>
                                         <option value="GG">👤 GG</option>
+                                        <option value="JOSHUA">👤 JOSHUA</option>
                                         <option value="MARIO">👤 MARIO</option>
                                         <option value="ANDREA">👤 ANDREA</option>
-                                        <option value="ANDY">👤 ANDY</option>
-                                        <option value="MAMA">👤 MAMA</option>
+                                        <option value="FANNY">👤 FANNY</option>
+                                        <option value="JEIKOB">👤 JEIKOB</option>
+                                        <option value="FIVVR">👤 FIVVR</option>
                                     </select>
                                     {!filterEventId && (
                                         <select

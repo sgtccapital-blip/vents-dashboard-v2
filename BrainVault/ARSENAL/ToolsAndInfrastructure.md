@@ -1,2 +1,2 @@
 # Tools & Infrastructure
-Endpoints, APIs (Google Workspace, Make, etc.) y CLI de automatizaciones.
+Endpoints: /api/openclaw/action, /api/openclaw/chat, /api/brain/query y sincronización local/cloud.

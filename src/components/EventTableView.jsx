@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import { ChevronDown, Plus, Building2 } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { ChevronDown, Plus, Building2, Search, Filter, Users, MapPin, Share2, MessageCircle, Sparkles, CheckCircle2, User } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import WhatsAppExportModal from './WhatsAppExportModal';
 
 // Monday.com style status aesthetic
 const MONDAY_STATUS_COLORS = {
@@ -20,26 +21,65 @@ const MONDAY_PRIORITY_COLORS = {
 
 const MONDAY_ASSIGNEE_COLORS = {
     'GG': { bg: 'rgba(129, 140, 248, 0.15)', border: '1px solid rgba(129, 140, 248, 0.3)', text: '#818cf8' },
+    'JOSHUA': { bg: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', text: '#10b981' },
     'MARIO': { bg: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.3)', text: '#38bdf8' },
     'ANDREA': { bg: 'rgba(244, 114, 182, 0.15)', border: '1px solid rgba(244, 114, 182, 0.3)', text: '#f472b6' },
-    'ANDY': { bg: 'rgba(52, 211, 153, 0.15)', border: '1px solid rgba(52, 211, 153, 0.3)', text: '#34d399' },
-    'MAMA': { bg: 'rgba(251, 146, 60, 0.15)', border: '1px solid rgba(251, 146, 60, 0.3)', text: '#fb923c' }
+    'FANNY': { bg: 'rgba(251, 191, 36, 0.15)', border: '1px solid rgba(251, 191, 36, 0.3)', text: '#fbbf24' },
+    'JEIKOB': { bg: 'rgba(168, 85, 247, 0.15)', border: '1px solid rgba(168, 85, 247, 0.3)', text: '#c084fc' },
+    'FIVVR': { bg: 'rgba(20, 184, 166, 0.15)', border: '1px solid rgba(20, 184, 166, 0.3)', text: '#2dd4bf' }
 };
 
 export default function EventTableView({ events, filterEventId }) {
     const { tasks, updateTask: globalUpdateTask, addTask, addActivity, addEvent } = useApp();
 
-    const filteredTasks = filterEventId 
-        ? tasks.filter(t => t.eventId === filterEventId)
-        : tasks;
+    const [selectedAssignee, setSelectedAssignee] = useState('all');
+    const [selectedVenue, setSelectedVenue] = useState('all');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState('all');
+    const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
+    const [collapsedGroups, setCollapsedGroups] = useState({});
+
+    // Filter tasks based on all active criteria
+    const filteredTasks = useMemo(() => {
+        return (tasks || []).filter(t => {
+            // Event filter
+            if (filterEventId && t.eventId !== filterEventId) return false;
+            if (selectedVenue !== 'all' && t.eventId !== selectedVenue) return false;
+
+            // Assignee filter
+            const taskAssignee = t.assignedTo || t.assignee || '';
+            if (selectedAssignee !== 'all') {
+                if (taskAssignee.toUpperCase() !== selectedAssignee.toUpperCase()) return false;
+            }
+
+            // Status filter
+            if (statusFilter !== 'all') {
+                if (statusFilter === 'done' && !t.done && t.status !== 'done') return false;
+                if (statusFilter === 'working' && t.status !== 'working' && t.status !== 'in-progress') return false;
+                if (statusFilter === 'pending' && (t.done || t.status === 'done' || t.status === 'working' || t.status === 'in-progress')) return false;
+            }
+
+            // Search query filter
+            if (searchQuery.trim()) {
+                const q = searchQuery.toLowerCase();
+                const matchText = (t.text || t.title || '').toLowerCase().includes(q);
+                const matchEvent = (t.eventName || '').toLowerCase().includes(q);
+                const matchAssignee = taskAssignee.toLowerCase().includes(q);
+                if (!matchText && !matchEvent && !matchAssignee) return false;
+            }
+
+            return true;
+        });
+    }, [tasks, filterEventId, selectedVenue, selectedAssignee, statusFilter, searchQuery]);
 
     // Group tasks by event
     const grouped = {};
     
     // Create groups for each event that has tasks
     (events || []).forEach(e => {
+        if (selectedVenue !== 'all' && e.id !== selectedVenue) return;
         const eventTasks = filteredTasks.filter(t => t.eventId === e.id);
-        if (eventTasks.length > 0) {
+        if (eventTasks.length > 0 || selectedVenue === e.id) {
             grouped[e.id] = {
                 name: e.name,
                 icon: e.icon || '📅',
@@ -49,28 +89,18 @@ export default function EventTableView({ events, filterEventId }) {
         }
     });
 
-    // Gather unassigned tasks (no eventId)
-    const unassigned = filteredTasks.filter(t => !t.eventId || !events?.find(e => e.id === t.eventId));
-    if (unassigned.length > 0) {
-        grouped['_unassigned'] = {
-            name: 'Sin Evento Asignado',
-            icon: '📋',
-            color: '#64748b',
-            tasks: unassigned
-        };
+    // Gather unassigned tasks (no eventId) if not filtering for a specific venue
+    if (selectedVenue === 'all') {
+        const unassigned = filteredTasks.filter(t => !t.eventId || !events?.find(e => e.id === t.eventId));
+        if (unassigned.length > 0) {
+            grouped['_unassigned'] = {
+                name: 'Sin Evento Asignado',
+                icon: '📋',
+                color: '#64748b',
+                tasks: unassigned
+            };
+        }
     }
-
-    // If no tasks at all, show empty state
-    if (Object.keys(grouped).length === 0) {
-        grouped['_empty'] = {
-            name: 'Workspace',
-            icon: '📋',
-            color: '#6366f1',
-            tasks: []
-        };
-    }
-
-    const [collapsedGroups, setCollapsedGroups] = useState({});
 
     const toggleGroup = (groupKey) => {
         setCollapsedGroups(prev => ({ ...prev, [groupKey]: !prev[groupKey] }));
@@ -144,18 +174,205 @@ export default function EventTableView({ events, filterEventId }) {
     return (
         <div className="ws2-table-card" style={{ background: 'var(--bg-canvas)', borderRadius: 'var(--radius-xl)', minHeight: '100%', overflowX: 'auto', padding: '24px', border: '1px solid var(--border-subtle)' }}>
             
-            <div style={{ paddingBottom: '16px' }}>
-                <h2 style={{ fontSize: '20px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Building2 size={20} style={{ color: 'var(--accent-primary)' }} />
-                    Master Table — By Event
-                </h2>
-                <p style={{ color: 'var(--text-tertiary)', fontSize: '13px', marginTop: '4px' }}>
-                    Tasks organized by event. Click statuses to edit. Changes sync with Kanban.
-                </p>
+            <div style={{ paddingBottom: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                    <div>
+                        <h2 style={{ fontSize: '20px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                            <Building2 size={20} style={{ color: 'var(--accent-primary)' }} />
+                            Master Table — Operaciones por Evento
+                        </h2>
+                        <p style={{ color: 'var(--text-tertiary)', fontSize: '13px', marginTop: '4px', margin: 0 }}>
+                            Gestiona tareas, asignaciones de equipo y estados en tiempo real. Sincronizado con Kanban.
+                        </p>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <button
+                            onClick={() => setShowWhatsAppModal(true)}
+                            style={{
+                                background: 'linear-gradient(135deg, #10b981, #059669)',
+                                border: 'none',
+                                borderRadius: '10px',
+                                padding: '8px 16px',
+                                color: '#fff',
+                                fontSize: '13px',
+                                fontWeight: 600,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                cursor: 'pointer',
+                                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)',
+                                transition: 'all 0.2s'
+                            }}
+                        >
+                            <MessageCircle size={16} />
+                            📲 Exportar Cartelera WhatsApp
+                        </button>
+                    </div>
+                </div>
+
+                {/* Filter Toolbar */}
+                <div style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                    padding: '12px 16px',
+                    background: 'var(--bg-surface)',
+                    border: '1px solid var(--border-subtle)',
+                    borderRadius: '12px'
+                }}>
+                    {/* Search & Venue */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: '1 1 300px' }}>
+                        <div style={{ position: 'relative', flex: 1, minWidth: '180px' }}>
+                            <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
+                            <input
+                                type="text"
+                                placeholder="Buscar tareas, eventos..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                style={{
+                                    width: '100%',
+                                    padding: '6px 12px 6px 30px',
+                                    borderRadius: '8px',
+                                    background: 'var(--bg-canvas)',
+                                    border: '1px solid var(--border-subtle)',
+                                    color: 'var(--text-primary)',
+                                    fontSize: '12.5px',
+                                    outline: 'none'
+                                }}
+                            />
+                        </div>
+
+                        {/* Venue selector */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <MapPin size={14} style={{ color: 'var(--text-tertiary)' }} />
+                            <select
+                                value={selectedVenue}
+                                onChange={(e) => setSelectedVenue(e.target.value)}
+                                style={{
+                                    background: 'var(--bg-canvas)',
+                                    border: '1px solid var(--border-subtle)',
+                                    color: 'var(--text-primary)',
+                                    borderRadius: '8px',
+                                    padding: '6px 10px',
+                                    fontSize: '12.5px',
+                                    outline: 'none',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                <option value="all">📍 Todos los Venues / Eventos</option>
+                                {(events || []).map(e => (
+                                    <option key={e.id} value={e.id}>{e.icon || '🍸'} {e.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+
+                    {/* Assignee Pills */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontWeight: 600, marginRight: '2px' }}>
+                            RESPONSABLE:
+                        </span>
+                        <button
+                            onClick={() => setSelectedAssignee('all')}
+                            style={{
+                                padding: '4px 10px',
+                                borderRadius: '6px',
+                                border: selectedAssignee === 'all' ? '1px solid var(--accent-primary)' : '1px solid var(--border-subtle)',
+                                background: selectedAssignee === 'all' ? 'rgba(99, 102, 241, 0.2)' : 'transparent',
+                                color: selectedAssignee === 'all' ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                                fontSize: '11.5px',
+                                fontWeight: 600,
+                                cursor: 'pointer'
+                            }}
+                        >
+                            Todos
+                        </button>
+                        {['GG', 'JOSHUA', 'MARIO', 'ANDREA', 'FANNY', 'JEIKOB', 'FIVVR'].map(name => {
+                            const active = selectedAssignee.toUpperCase() === name;
+                            const colors = MONDAY_ASSIGNEE_COLORS[name] || { text: '#fff' };
+                            return (
+                                <button
+                                    key={name}
+                                    onClick={() => setSelectedAssignee(active ? 'all' : name)}
+                                    style={{
+                                        padding: '4px 10px',
+                                        borderRadius: '6px',
+                                        border: active ? `1px solid ${colors.text}` : '1px solid var(--border-subtle)',
+                                        background: active ? colors.bg : 'transparent',
+                                        color: colors.text,
+                                        fontSize: '11.5px',
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '4px'
+                                    }}
+                                >
+                                    <User size={11} />
+                                    {name}
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    {/* Status Filter */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <select
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                            style={{
+                                background: 'var(--bg-canvas)',
+                                border: '1px solid var(--border-subtle)',
+                                color: 'var(--text-primary)',
+                                borderRadius: '8px',
+                                padding: '6px 10px',
+                                fontSize: '12px',
+                                outline: 'none',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            <option value="all">⚡ Todos los Estados</option>
+                            <option value="working">En Progreso</option>
+                            <option value="pending">Pendientes</option>
+                            <option value="done">Completadas</option>
+                        </select>
+
+                        {(selectedAssignee !== 'all' || selectedVenue !== 'all' || statusFilter !== 'all' || searchQuery) && (
+                            <button
+                                onClick={() => {
+                                    setSelectedAssignee('all');
+                                    setSelectedVenue('all');
+                                    setStatusFilter('all');
+                                    setSearchQuery('');
+                                }}
+                                style={{
+                                    background: 'transparent',
+                                    border: '1px dashed var(--border-subtle)',
+                                    color: 'var(--text-tertiary)',
+                                    padding: '4px 8px',
+                                    borderRadius: '6px',
+                                    fontSize: '11px',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                Limpiar Filtros
+                            </button>
+                        )}
+                    </div>
+                </div>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-                {Object.entries(grouped).map(([groupKey, group], groupIndex) => {
+                {Object.keys(grouped).length === 0 ? (
+                    <div style={{ padding: '40px 20px', textAlign: 'center', background: 'var(--bg-surface)', borderRadius: '12px', border: '1px dashed var(--border-subtle)' }}>
+                        <Filter size={32} style={{ color: 'var(--text-tertiary)', marginBottom: '10px' }} />
+                        <h4 style={{ margin: 0, fontSize: '15px', color: 'var(--text-primary)' }}>No se encontraron tareas con los filtros seleccionados</h4>
+                        <p style={{ margin: '6px 0 0 0', fontSize: '12.5px', color: 'var(--text-tertiary)' }}>Prueba seleccionando otro responsable, venue o limpiando la búsqueda.</p>
+                    </div>
+                ) : Object.entries(grouped).map(([groupKey, group], groupIndex) => {
                     const isCollapsed = collapsedGroups[groupKey];
                     const gColor = group.color;
                     const doneCount = group.tasks.filter(t => t.status === 'done' || t.done).length;
@@ -307,10 +524,12 @@ export default function EventTableView({ events, filterEventId }) {
                                                     >
                                                         <option value="">— Sin Asignar —</option>
                                                         <option value="GG">👤 GG</option>
+                                                        <option value="JOSHUA">👤 JOSHUA</option>
                                                         <option value="MARIO">👤 MARIO</option>
                                                         <option value="ANDREA">👤 ANDREA</option>
-                                                        <option value="ANDY">👤 ANDY</option>
-                                                        <option value="MAMA">👤 MAMA</option>
+                                                        <option value="FANNY">👤 FANNY</option>
+                                                        <option value="JEIKOB">👤 JEIKOB</option>
+                                                        <option value="FIVVR">👤 FIVVR</option>
                                                     </select>
                                                     <span style={{ textShadow: '0 1px 2px rgba(0,0,0,0.1)' }}>
                                                         {task.assignee ? `👤 ${task.assignee}` : '—'}
@@ -439,6 +658,14 @@ export default function EventTableView({ events, filterEventId }) {
                     </div>
                 </div>
             )}
+
+            {/* WhatsApp Export Modal */}
+            <WhatsAppExportModal
+                events={events}
+                tasks={tasks}
+                isOpen={showWhatsAppModal}
+                onClose={() => setShowWhatsAppModal(false)}
+            />
         </div>
     );
 }

@@ -3,6 +3,7 @@ import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, CheckSquare, Calen
 import { useApp } from '../context/AppContext';
 import { useNavigate } from 'react-router-dom';
 import CalendarItemModal from '../components/CalendarItemModal';
+import WhatsAppExportModal from '../components/WhatsAppExportModal';
 
 // Utility to calculate exact dates for social media content based on weekOffset and dayIndex
 const getContentDate = (weekOffset, dayIndex) => {
@@ -62,6 +63,7 @@ export default function MasterCalendar() {
     
     const [contentEntries, setContentEntries] = useState([]);
     const [selectedItem, setSelectedItem] = useState(null);
+    const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
 
     useEffect(() => {
         const loadContent = () => {
@@ -423,27 +425,48 @@ export default function MasterCalendar() {
                     <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Share2 size={14} color="#f59e0b" /> Redes Sociales</span>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><CalendarDays size={14} color="#4285f4" /> Google Calendar</span>
                     
-                    <button
-                        className="btn btn-primary"
-                        style={{
-                            marginLeft: 'auto',
-                            background: 'linear-gradient(135deg, #25D366, #128C7E)',
-                            border: 'none',
-                            color: '#fff',
-                            fontSize: '11.5px',
-                            fontWeight: 700,
-                            padding: '4px 12px',
-                            borderRadius: '6px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            boxShadow: '0 2px 8px rgba(37, 211, 102, 0.25)',
-                            cursor: 'pointer'
-                        }}
-                        onClick={() => navigate('/whatsapp-agent')}
-                    >
-                        <MessageSquare size={13} /> ⚡ Difusión Semanal WhatsApp
-                    </button>
+                    <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <button
+                            className="btn"
+                            style={{
+                                background: 'rgba(37, 211, 102, 0.12)',
+                                border: '1px solid rgba(37, 211, 102, 0.3)',
+                                color: '#25D366',
+                                fontSize: '11.5px',
+                                fontWeight: 700,
+                                padding: '4px 12px',
+                                borderRadius: '6px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                cursor: 'pointer'
+                            }}
+                            onClick={() => setShowWhatsAppModal(true)}
+                            title="Ver y copiar cartelera en formato WhatsApp"
+                        >
+                            <Share2 size={13} /> 📋 Cartelera Copiable
+                        </button>
+                        <button
+                            className="btn btn-primary"
+                            style={{
+                                background: 'linear-gradient(135deg, #25D366, #128C7E)',
+                                border: 'none',
+                                color: '#fff',
+                                fontSize: '11.5px',
+                                fontWeight: 700,
+                                padding: '4px 12px',
+                                borderRadius: '6px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                boxShadow: '0 2px 8px rgba(37, 211, 102, 0.25)',
+                                cursor: 'pointer'
+                            }}
+                            onClick={() => navigate('/whatsapp-agent')}
+                        >
+                            <MessageSquare size={13} /> ⚡ Difusión Semanal
+                        </button>
+                    </div>
                 </div>
 
                 {/* Grid Container */}
@@ -621,6 +644,14 @@ export default function MasterCalendar() {
                     onClose={() => setSelectedItem(null)} 
                 />
             )}
+
+            {/* WhatsApp Export Modal */}
+            <WhatsAppExportModal
+                isOpen={showWhatsAppModal}
+                onClose={() => setShowWhatsAppModal(false)}
+                events={events}
+                tasks={tasks}
+            />
         </div>
     );
 }

@@ -1634,7 +1634,7 @@ ${ragContext || 'No se requirieron documentos adicionales para esta consulta.'}
 - Eventos Activos (${liveEvents.length}): ${JSON.stringify(liveEvents.slice(0, 10))}
 - Proyectos (${liveProjects.length}): ${JSON.stringify(liveProjects)}
 - Tareas Pendientes (${pendingTasks.length}): ${JSON.stringify(pendingTasks)}
-- Miembros del Equipo Asignables: GG, MARIO, ANDREA, ANDY, MAMA.
+- Miembros del Equipo Asignables: GG, JOSHUA, MARIO, ANDREA, FANNY, JEIKOB, FIVVR.
 
 ${systemRole || ''}`;
 
@@ -1669,7 +1669,7 @@ ${systemRole || ''}`;
                                 text: { type: "STRING", description: "Descripción clara de la tarea" },
                                 priority: { type: "STRING", enum: ["high", "medium", "low"], description: "Nivel de prioridad" },
                                 category: { type: "STRING", description: "Categoría o evento (ej: Terraplén, Furia, Piano Bar, General)" },
-                                assignee: { type: "STRING", enum: ["GG", "MARIO", "ANDREA", "ANDY", "MAMA"], description: "Usuario responsable de la tarea: GG, MARIO, ANDREA, ANDY, o MAMA" }
+                                assignee: { type: "STRING", enum: ["GG", "JOSHUA", "MARIO", "ANDREA", "FANNY", "JEIKOB", "FIVVR"], description: "Usuario responsable de la tarea: GG, JOSHUA, MARIO, ANDREA, FANNY, JEIKOB, o FIVVR" }
                             },
                             required: ["text"]
                         }

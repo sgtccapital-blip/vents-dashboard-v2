@@ -1,170 +1,45 @@
 # Proyectos y Tareas
 Lista de proyectos activos y sus tareas.
 
-## Proyecto: 212 club
-Prioridad: undefined | Estado: activo
-Tareas:
-
-
-## Proyecto: Terraplen Rooftop
-Prioridad: undefined | Estado: activo
-Tareas:
-
-
-## Proyecto: Furia
-Prioridad: undefined | Estado: activo
-Tareas:
-
-
-## Proyecto: Piano Bar
-Prioridad: undefined | Estado: activo
-Tareas:
-
-
-## Proyecto: Casco Peatonal
-Prioridad: undefined | Estado: planificacion
-Tareas:
-
-
-## Proyecto: The Room @Terraplen
-Prioridad: undefined | Estado: activo
-Tareas:
-
-
-## Proyecto: I⭐️GRAFITI TOUR
-Prioridad: undefined | Estado: borrador
-Tareas:
-
-
-## Proyecto: Urban Nights
-Prioridad: undefined | Estado: activo
-Tareas:
-
-
-## Proyecto: Arrive Models
-Prioridad: undefined | Estado: upcoming
-Tareas:
-
-
-## Proyecto: Guaya Fest 2026
-Prioridad: undefined | Estado: planificacion
-Tareas:
-
-
-## Proyecto: Music PTY
-Prioridad: undefined | Estado: planificacion
-Tareas:
-
-
-## Proyecto: Party en Pa’ Vacilar
-Prioridad: undefined | Estado: borrador
-Tareas:
-
-
-## Proyecto: Arrive Models
-Prioridad: undefined | Estado: borrador
-Tareas:
-
-
-## Proyecto: Activación Mundial
-Prioridad: undefined | Estado: borrador
-Tareas:
-
-
 ## Proyecto: Operaciones Venues: Terraplén, Furia & Piano Bar
 Prioridad: critical | Estado: active
+Descripción: Gestión semanal de los 3 venues estratégicos: convocatorias de cenas para chicas, acuerdos de barra libre, control de promotores, venta de mesas VIP y facturación recurrente.
 Tareas:
-
+- Sin tareas pendientes
 
 ## Proyecto: LicitIA
 Prioridad: high | Estado: active
+Descripción: Plataforma de inteligencia y automatización para licitaciones, análisis de pliegos y procurement.
 Tareas:
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
+- Sin tareas pendientes
 
 ## Proyecto: Marketing Agency
 Prioridad: medium | Estado: active
+Descripción: Agencia por desarrollar para branding, webs, marketing, automatización y activos comerciales.
 Tareas:
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
+- Sin tareas pendientes
 
 ## Proyecto: RecordAI
 Prioridad: medium | Estado: active
+Descripción: Desarrollo de plataforma AI.
 Tareas:
+- Sin tareas pendientes
 
+## Proyecto: Waller App
+Prioridad: low | Estado: active
+Descripción: Aplicación en diseño (Adobe XD).
+Tareas:
+- Sin tareas pendientes
 
 ## Proyecto: Hang Out
 Prioridad: critical | Estado: active
+Descripción: Plataforma para descubrir qué está pasando en Panamá, con foco en eventos, nightlife, lugares y experiencias.
 Tareas:
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
-- [ ] undefined (undefined)
+- Sin tareas pendientes
+
+## Proyecto: Eventos y Entretenimiento
+Prioridad: low | Estado: active
+Descripción: Fest, Livin, 360 MONA, Praia, Euphoria.
+Tareas:
+- Sin tareas pendientes
 

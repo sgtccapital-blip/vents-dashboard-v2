@@ -682,10 +682,12 @@ export default function PortfolioOS() {
                             style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-subtle)', color: 'white', padding: '9px 12px', borderRadius: '8px', fontSize: '13px' }}
                         >
                             <option value="GG">👤 GG</option>
+                            <option value="JOSHUA">👤 JOSHUA</option>
                             <option value="MARIO">👤 MARIO</option>
                             <option value="ANDREA">👤 ANDREA</option>
-                            <option value="ANDY">👤 ANDY</option>
-                            <option value="MAMA">👤 MAMA</option>
+                            <option value="FANNY">👤 FANNY</option>
+                            <option value="JEIKOB">👤 JEIKOB</option>
+                            <option value="FIVVR">👤 FIVVR</option>
                             <option value="OpenClaw">🤖 OpenClaw</option>
                         </select>
                         <button type="submit" className="btn btn-primary" style={{ padding: '9px 18px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>

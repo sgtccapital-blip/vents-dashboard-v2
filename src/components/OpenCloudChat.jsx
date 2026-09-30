@@ -177,6 +177,25 @@ export default function OpenCloudChat({ onClose }) {
                                         <audio controls src={msg.audio} style={{ height: '32px', width: '220px', outline: 'none' }} />
                                     </div>
                                 )}
+                                {msg.executedTools && msg.executedTools.length > 0 && (
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
+                                        {msg.executedTools.map((t, idx) => (
+                                            <span key={idx} style={{
+                                                fontSize: '11px',
+                                                padding: '2px 8px',
+                                                background: 'rgba(34, 197, 94, 0.15)',
+                                                border: '1px solid rgba(34, 197, 94, 0.3)',
+                                                color: '#4ade80',
+                                                borderRadius: '6px',
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '4px'
+                                            }}>
+                                                <CheckCircle2 size={11} /> Acción: {t.name}
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
                                 <div>{msg.text}</div>
                                 {msg.timestamp && (
                                     <div style={{ fontSize: '10px', opacity: 0.6, marginTop: '4px', textAlign: isUser ? 'right' : 'left' }}>
@@ -206,8 +225,36 @@ export default function OpenCloudChat({ onClose }) {
                 <div ref={messagesEndRef} />
             </div>
 
-            {/* Input Area */}
-            <div style={{ padding: '16px 20px', background: 'var(--bg-surface)', borderTop: '1px solid var(--border-subtle)' }}>
+            {/* Quick Action Chips & Input Area */}
+            <div style={{ padding: '12px 20px 16px 20px', background: 'var(--bg-surface)', borderTop: '1px solid var(--border-subtle)' }}>
+                {/* Quick Chips */}
+                <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '10px', scrollbarWidth: 'none' }}>
+                    {[
+                        { label: '🍸 Evento en Terraplén', prompt: 'Crea un evento llamado Noche Terraplén para este viernes en Terraplén Rooftop' },
+                        { label: '📋 Tarea para MARIO', prompt: 'Crea una tarea para MARIO: Confirmar lista de chicas para la cena VIP en Casco' },
+                        { label: '📊 Reporte de Operaciones', prompt: 'Dame un resumen del estado de los venues y eventos activos' },
+                        { label: '⚡ Tarea para GG', prompt: 'Crea una tarea urgente para GG: Revisar liquidación y barra libre del sábado' }
+                    ].map((chip, idx) => (
+                        <button
+                            key={idx}
+                            onClick={() => setInput(chip.prompt)}
+                            style={{
+                                fontSize: '11px',
+                                whiteSpace: 'nowrap',
+                                padding: '4px 10px',
+                                borderRadius: '8px',
+                                background: 'var(--bg-base)',
+                                border: '1px solid var(--border-subtle)',
+                                color: 'var(--text-secondary)',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s'
+                            }}
+                        >
+                            {chip.label}
+                        </button>
+                    ))}
+                </div>
+
                 <div style={{ 
                     display: 'flex', 
                     alignItems: 'center', 

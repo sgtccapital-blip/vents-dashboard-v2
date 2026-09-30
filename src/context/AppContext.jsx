@@ -564,8 +564,37 @@ export const AppProvider = ({ children }) => {
             // Si se ejecutaron herramientas desde el backend/Gemini
             if (res.executedTools && res.executedTools.length > 0) {
                 for (const tool of res.executedTools) {
-                    if (tool.name === 'add_task' && tool.args?.text) {
-                        await addTask({ text: tool.args.text, priority: tool.args.priority || 'medium', category: tool.args.category || 'general' });
+                    if (tool.name === 'add_task' && (tool.args?.text || tool.args?.name)) {
+                        await addTask({
+                            text: tool.args.text || tool.args.name,
+                            priority: tool.args.priority || 'medium',
+                            category: tool.args.category || 'general',
+                            assignee: tool.args.assignee || tool.args.assignedTo || null,
+                            assignedTo: tool.args.assignee || tool.args.assignedTo || null
+                        });
+                    } else if (tool.name === 'create_event' && (tool.args?.name || tool.result?.event)) {
+                        const ev = tool.result?.event || {
+                            id: `ev-${Date.now()}`,
+                            name: tool.args.name,
+                            date: tool.args.date || new Date().toISOString().split('T')[0],
+                            location: tool.args.location || 'Casco Antiguo',
+                            budget: tool.args.budget || '0',
+                            description: tool.args.description || '',
+                            status: 'planning',
+                            color: '#ec4899',
+                            icon: '🍸'
+                        };
+                        await addEvent(ev);
+                    } else if (tool.name === 'create_project' && (tool.args?.name || tool.result?.project)) {
+                        const pr = tool.result?.project || {
+                            id: `proj-${Date.now()}`,
+                            name: tool.args.name,
+                            description: tool.args.description || '',
+                            category: tool.args.category || 'business',
+                            priority: 'high',
+                            status: 'active'
+                        };
+                        await addProject(pr);
                     } else if (tool.name === 'complete_task' && tool.args?.text) {
                         const tMatch = (tasks || []).find(t => (t.text || t.title || '').toLowerCase().includes(tool.args.text.toLowerCase()));
                         if (tMatch) await toggleTask(tMatch.id);
