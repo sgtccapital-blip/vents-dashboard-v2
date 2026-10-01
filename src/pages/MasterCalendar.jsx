@@ -59,7 +59,8 @@ export default function MasterCalendar() {
     const today = new Date();
     
     const [currentDate, setCurrentDate] = useState(new Date());
-    const [viewMode, setViewMode] = useState('month'); // 'day', 'week', '2week', 'month'
+    // En el móvil arranca en vista de día: semana y mes no caben a lo ancho
+    const [viewMode, setViewMode] = useState(() => (window.innerWidth <= 768 ? 'day' : 'month')); // 'day', 'week', '2week', 'month'
     
     const [contentEntries, setContentEntries] = useState([]);
     const [selectedItem, setSelectedItem] = useState(null);
@@ -470,7 +471,7 @@ export default function MasterCalendar() {
                 </div>
 
                 {/* Grid Container */}
-                <div className="calendar-grid-wrapper" style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-canvas)', minHeight: 0, overflow: 'hidden' }}>
+                <div className={`calendar-grid-wrapper cal-view-${viewMode}`} style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-canvas)', minHeight: 0, overflow: 'hidden' }}>
                     
                     {/* Days of week Header */}
                     <div className="calendar-days-header" style={{ display: 'grid', gridTemplateColumns: viewMode === 'day' ? '1fr' : 'repeat(7, 1fr)', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-base)', flexShrink: 0 }}>
@@ -522,7 +523,8 @@ export default function MasterCalendar() {
                                         <div style={{ fontSize: '12px', fontWeight: 700, color: isToday ? '#fff' : 'var(--text-secondary)', width: '24px', height: '24px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: isToday ? 'var(--accent-primary)' : 'transparent' }}>
                                             {dayDate.getDate()}
                                         </div>
-                                        <button 
+                                        <span className="cal-cell-dow">{dayNames[dayDate.getDay()]}</span>
+                                        <button
                                             className="ws2-add-btn"
                                             onClick={(e) => {
                                                 e.stopPropagation();

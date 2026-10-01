@@ -35,7 +35,7 @@ function KanbanCard({ t, colStatus, events, projects, deleteTask, updateTaskStat
     const currentContext = t.projectId ? `project_${t.projectId}` : (t.agency === 'arrive' ? 'project_proj-arrive-agency' : (t.eventId ? `event_${t.eventId}` : ''));
 
     return (
-        <div key={t.id} draggable onDragStart={(e) => e.dataTransfer.setData('taskId', t.id)} style={{
+        <div key={t.id} className="kb-card" draggable onDragStart={(e) => e.dataTransfer.setData('taskId', t.id)} style={{
             background: 'var(--bg-card)',
             border: '1px solid var(--border-subtle)',
             borderRadius: 'var(--radius-md)',
@@ -61,9 +61,9 @@ function KanbanCard({ t, colStatus, events, projects, deleteTask, updateTaskStat
                         {t.text}
                     </div>
                 </div>
-                <button 
-                    className="btn-icon" 
-                    onClick={() => deleteTask(t.id)} 
+                <button
+                    className="btn-icon kb-delete"
+                    onClick={() => { if (window.confirm(`¿Eliminar la tarea "${t.text}"?`)) deleteTask(t.id); }}
                     style={{ color: 'var(--text-tertiary)', padding: '2px', width: '18px', height: '18px', flexShrink: 0, opacity: 0.7 }}
                     onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.opacity = 1; }}
                     onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-tertiary)'; e.currentTarget.style.opacity = 0.7; }}
@@ -73,7 +73,7 @@ function KanbanCard({ t, colStatus, events, projects, deleteTask, updateTaskStat
                 </button>
             </div>
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', alignItems: 'center', marginTop: '2px' }}>
+            <div className="kb-card-controls" style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', alignItems: 'center', marginTop: '2px' }}>
                 {/* Project or Event Context Selector */}
                 <select
                     value={currentContext}
@@ -161,6 +161,15 @@ function KanbanCard({ t, colStatus, events, projects, deleteTask, updateTaskStat
                     <option value="done">Done</option>
                 </select>
             </div>
+
+            {/* Móvil: avanzar la tarea con un solo toque durante la producción */}
+            <button
+                type="button"
+                className={`kb-next kb-next-${colStatus}`}
+                onClick={() => updateTaskStatus(t.id, colStatus === 'pending' ? 'in-progress' : colStatus === 'in-progress' ? 'done' : 'pending')}
+            >
+                {colStatus === 'pending' ? '▶ Empezar' : colStatus === 'in-progress' ? '✓ Marcar hecha' : '↩ Reabrir'}
+            </button>
         </div>
     );
 }
@@ -176,6 +185,8 @@ export default function EventKanbanBoard({ events, filterEventId }) {
     const [selectedAssignee, setSelectedAssignee] = useState('all');
     const [selectedVenue, setSelectedVenue] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
+    // En móvil se ve una columna a la vez (selector arriba del tablero)
+    const [mobileCol, setMobileCol] = useState('pending');
 
     // Ensure ARRIVE Agency is always first among projects
     const sortedProjects = useMemo(() => {
@@ -345,7 +356,7 @@ export default function EventKanbanBoard({ events, filterEventId }) {
     });
 
     return (
-        <div className="card animate-in" style={{ marginTop: '0', marginBottom: '0', overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none', background: 'transparent', border: 'none', boxShadow: 'none', padding: '0', display: 'flex', flexDirection: 'column', flex: '1 1 0%', minHeight: 0 }}>
+        <div className="card animate-in kb-root" style={{ marginTop: '0', marginBottom: '0', overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none', background: 'transparent', border: 'none', boxShadow: 'none', padding: '0', display: 'flex', flexDirection: 'column', flex: '1 1 0%', minHeight: 0 }}>
             {/* Header & Filter Bar */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '14px', flexShrink: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
@@ -358,7 +369,7 @@ export default function EventKanbanBoard({ events, filterEventId }) {
                 </div>
 
                 {/* Filter Controls Row */}
-                <div style={{
+                <div className="kb-filters" style={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
@@ -369,7 +380,7 @@ export default function EventKanbanBoard({ events, filterEventId }) {
                     border: '1px solid var(--border-subtle)',
                     borderRadius: '12px'
                 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: '1 1 240px' }}>
+                    <div className="kb-search-row" style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: '1 1 240px' }}>
                         <input
                             type="text"
                             placeholder="Buscar en Kanban..."
@@ -418,7 +429,7 @@ export default function EventKanbanBoard({ events, filterEventId }) {
                     </div>
 
                     {/* Assignee Pills */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
+                    <div className="kb-assignees" style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
                         <span style={{ fontSize: '10.5px', color: 'var(--text-tertiary)', fontWeight: 600 }}>
                             RESPONSABLE:
                         </span>
@@ -463,9 +474,25 @@ export default function EventKanbanBoard({ events, filterEventId }) {
                 </div>
             </div>
 
+            {/* Móvil: selector de columna en lugar de deslizar tres columnas */}
+            <div className="kb-mobile-switch" role="tablist" aria-label="Estado de las tareas">
+                {[['pending', 'Pendiente'], ['in-progress', 'En curso'], ['done', 'Hecho']].map(([col, label]) => (
+                    <button
+                        key={col}
+                        type="button"
+                        role="tab"
+                        aria-selected={mobileCol === col}
+                        className={`kb-switch-btn ${mobileCol === col ? 'active' : ''}`}
+                        onClick={() => setMobileCol(col)}
+                    >
+                        {label} <span className="kb-switch-count">{groupedTasks[col].length}</span>
+                    </button>
+                ))}
+            </div>
+
             <div className="drag-drop-context" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(300px, 1fr))', gap: '14px', paddingBottom: '8px', flex: '1 1 0%', minHeight: 0 }}>
                 {Object.entries(groupedTasks).map(([colStatus, colTasks]) => (
-                    <div key={colStatus} className="drag-drop-column" style={{
+                    <div key={colStatus} className={`drag-drop-column kb-col ${mobileCol === colStatus ? 'kb-col-current' : ''}`} style={{
                         background: colStatus === 'in-progress' ? 'linear-gradient(180deg, rgba(30,30,40,0.6) 0%, rgba(20,20,30,0.8) 100%)' : 'rgba(30, 30, 40, 0.4)',
                         backdropFilter: 'blur(20px)',
                         WebkitBackdropFilter: 'blur(20px)',
@@ -486,7 +513,7 @@ export default function EventKanbanBoard({ events, filterEventId }) {
                         const taskId = e.dataTransfer.getData('taskId');
                         if (taskId) updateTaskStatus(taskId, colStatus);
                     }}>
-                        <div style={{
+                        <div className="kb-col-header" style={{
                             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                             marginBottom: '4px', padding: '0 4px'
                         }}>
@@ -500,11 +527,11 @@ export default function EventKanbanBoard({ events, filterEventId }) {
                         </div>
 
                         {colStatus === 'pending' && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '8px' }}>
+                            <div className="kb-quickadd" style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '8px' }}>
                                 <div style={{ display: 'flex', gap: '6px' }}>
-                                    <input 
-                                        className="form-input" 
-                                        placeholder="Quick add task..." 
+                                    <input
+                                        className="form-input"
+                                        placeholder="Nueva tarea…"
                                         value={newTaskText}
                                         onChange={(e) => setNewTaskText(e.target.value)}
                                         onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
@@ -515,7 +542,7 @@ export default function EventKanbanBoard({ events, filterEventId }) {
                                     </button>
                                 </div>
                                 {/* Unified context selector for new task */}
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '2px' }}>
+                                <div className="kb-quickadd-meta" style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '2px' }}>
                                     <select
                                         value={newTaskStatus}
                                         onChange={e => setNewTaskStatus(e.target.value)}
@@ -610,8 +637,8 @@ export default function EventKanbanBoard({ events, filterEventId }) {
                         )}
 
                         {colTasks.length === 0 && (
-                            <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--text-tertiary)', fontSize: '13px', border: '1px dashed var(--border-subtle)', borderRadius: 'var(--radius-lg)', background: 'var(--bg-base)' }}>
-                                Drop zone empty
+                            <div className="kb-empty" style={{ textAlign: 'center', padding: '48px 0', color: 'var(--text-tertiary)', fontSize: '13px', border: '1px dashed var(--border-subtle)', borderRadius: 'var(--radius-lg)', background: 'var(--bg-base)' }}>
+                                Sin tareas aquí
                             </div>
                         )}
 

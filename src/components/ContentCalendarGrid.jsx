@@ -52,7 +52,7 @@ export default function ContentCalendarGrid({
 }) {
     const activeAccounts = (accounts && accounts.length > 0) ? accounts : (initialAccounts && initialAccounts.length > 0 ? initialAccounts : []);
     const activeCompanies = (companies && companies.length > 0) ? companies : (initialCompanies && initialCompanies.length > 0 ? initialCompanies : []);
-    const { addTask, tasks } = useApp ? useApp() : { addTask: () => {}, tasks: [] };
+    const { addTask, tasks } = useApp();
 
     const [entries, setEntries] = useState(() => {
         try {

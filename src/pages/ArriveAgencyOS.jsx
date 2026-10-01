@@ -9,12 +9,13 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import ArriveTasksBox from '../components/ArriveTasksBox';
+import ArriveClientManager from '../components/ArriveClientManager';
 import '../components/ArriveAgency.css';
 
 export default function ArriveAgencyOS() {
     const [searchParams, setSearchParams] = useSearchParams();
     const navigate = useNavigate();
-    const currentTab = searchParams.get('tab') || 'structure';
+    const currentTab = searchParams.get('tab') || 'clients';
 
     const { events, imageGirls, socialMedia, tasks, addTask, addActivity } = useApp();
 
@@ -211,7 +212,16 @@ export default function ArriveAgencyOS() {
                 <div className="arrive-metrics-strip">
                     <div className="arrive-metric-item">
                         <div className="arrive-metric-label">
-                            <GlassWater size={12} style={{ color: '#fbbf24' }} /> Cenas Chicas
+                            <Building2 size={12} style={{ color: '#fbbf24' }} /> Clientes & Marcas
+                        </div>
+                        <div className="arrive-metric-val">
+                            3 <span style={{ fontSize: '11.5px', color: '#94a3b8', fontWeight: 500 }}>Retainers Activos</span>
+                        </div>
+                    </div>
+
+                    <div className="arrive-metric-item">
+                        <div className="arrive-metric-label">
+                            <GlassWater size={12} style={{ color: '#f472b6' }} /> Cenas Chicas
                         </div>
                         <div className="arrive-metric-val">
                             {totalTalent} <span style={{ fontSize: '11.5px', color: '#94a3b8', fontWeight: 500 }}>invitadas</span>
@@ -235,20 +245,17 @@ export default function ArriveAgencyOS() {
                             3 <span style={{ fontSize: '11.5px', color: '#94a3b8', fontWeight: 500 }}>Terraplén · Furia · Piano</span>
                         </div>
                     </div>
-
-                    <div className="arrive-metric-item">
-                        <div className="arrive-metric-label">
-                            <Users size={12} style={{ color: '#f472b6' }} /> Roster Modelos
-                        </div>
-                        <div className="arrive-metric-val">
-                            {totalTalent} <span style={{ fontSize: '11.5px', color: '#94a3b8', fontWeight: 500 }}>perfiles</span>
-                        </div>
-                    </div>
                 </div>
             </div>
 
             {/* Segmented Navigation Tab Bar */}
             <div className="arrive-tab-nav">
+                <button 
+                    className={`arrive-tab-btn ${currentTab === 'clients' ? 'active' : ''}`}
+                    onClick={() => handleTabChange('clients')}
+                >
+                    <Building2 size={14} /> 👥 Clientes & Proyectos 360°
+                </button>
                 <button 
                     className={`arrive-tab-btn ${currentTab === 'structure' ? 'active' : ''}`}
                     onClick={() => handleTabChange('structure')}
@@ -282,6 +289,13 @@ export default function ArriveAgencyOS() {
             </div>
 
             {/* ═══════════════════════════════════════════════════════════════════
+               TAB CONTENT: CLIENTES & PROYECTOS 360° (MARCA, REDES, RAG, ETC.)
+               ═══════════════════════════════════════════════════════════════════ */}
+            {currentTab === 'clients' && (
+                <ArriveClientManager />
+            )}
+
+            {/* ═══════════════════════════════════════════════════════════════════
                TAB CONTENT: 1. STRUCTURE & 3 DIVISIONS
                ═══════════════════════════════════════════════════════════════════ */}
             {currentTab === 'structure' && (
@@ -291,7 +305,7 @@ export default function ArriveAgencyOS() {
                         {/* 01 ARRIVE SERVICES */}
                         <div 
                             className="arrive-division-card"
-                            onClick={() => handleTabChange('posts')}
+                            onClick={() => handleTabChange('clients')}
                         >
                             <div className="arrive-card-head">
                                 <span className="arrive-card-num card-num-services">01 / CREATIVE</span>

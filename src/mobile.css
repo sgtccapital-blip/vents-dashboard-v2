@@ -643,3 +643,776 @@
   }
 }
 
+
+/* ===================================================================
+   MODO PRODUCCIÓN EN MÓVIL
+   Navegación con el pulgar, botones grandes, nada tapado por el agente,
+   formularios sin zoom en iOS y respeto del notch / barra de inicio.
+   =================================================================== */
+
+.mobile-tabbar {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  :root {
+    --mobile-tabbar-h: 62px;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* ── Barra inferior ── */
+  .mobile-tabbar {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: calc(var(--mobile-tabbar-h) + var(--safe-bottom));
+    padding-bottom: var(--safe-bottom);
+    background: rgba(10, 10, 15, 0.92);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border-subtle);
+    z-index: 950;
+  }
+
+  .mobile-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    background: transparent;
+    border: none;
+    color: var(--text-tertiary);
+    text-decoration: none;
+    font-size: 10.5px;
+    font-weight: 600;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mobile-tab.active {
+    color: var(--accent-primary);
+  }
+
+  .mobile-tab:active {
+    transform: scale(0.94);
+  }
+
+  .mobile-tab-icon {
+    position: relative;
+    display: flex;
+  }
+
+  .mobile-tab-badge {
+    position: absolute;
+    top: -6px;
+    right: -12px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9px;
+    background: var(--accent-orange, #f59e0b);
+    color: #000;
+    font-size: 10.5px;
+    font-weight: 800;
+    line-height: 18px;
+    text-align: center;
+  }
+
+  /* El contenido no queda debajo de la barra inferior */
+  .page-content {
+    padding-bottom: calc(var(--mobile-tabbar-h) + var(--safe-bottom) + 24px) !important;
+  }
+
+  /* ── Barra superior: título visible y respeto del notch ── */
+  .topbar {
+    padding-top: env(safe-area-inset-top, 0px) !important;
+    height: calc(var(--topbar-height) + env(safe-area-inset-top, 0px)) !important;
+  }
+
+  .page-title {
+    display: block !important;
+    font-size: 16px !important;
+    max-width: 55vw;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ── Agente OpenClaw: botón redondo encima de la barra, ventana a pantalla completa ── */
+  .dashboard-copilot-container {
+    bottom: calc(var(--mobile-tabbar-h) + var(--safe-bottom) + 12px) !important;
+    right: 14px !important;
+    z-index: 940 !important;
+  }
+
+  .copilot-fab-button {
+    width: 52px !important;
+    height: 52px !important;
+    min-width: 52px !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    justify-content: center !important;
+    gap: 0 !important;
+  }
+
+  .copilot-fab-button > span {
+    display: none !important;
+  }
+
+  .copilot-window {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+    padding-top: env(safe-area-inset-top, 0px) !important;
+    padding-bottom: var(--safe-bottom) !important;
+    z-index: 1100 !important;
+  }
+
+  /* Con el menú lateral abierto no se muestran el agente ni la barra inferior */
+  .mobile-menu-open .dashboard-copilot-container,
+  .mobile-menu-open .mobile-tabbar {
+    display: none !important;
+  }
+
+  .sidebar {
+    padding-bottom: var(--safe-bottom);
+  }
+
+  .sidebar .nav-item {
+    min-height: 46px;
+  }
+
+  /* ── Botones y formularios cómodos con el dedo ── */
+  .btn {
+    min-height: 40px;
+  }
+
+  /* iOS hace zoom en cualquier campo con letra < 16px */
+  input,
+  select,
+  textarea,
+  .form-input,
+  .form-textarea,
+  .form-select {
+    font-size: 16px !important;
+  }
+
+  input[type="checkbox"],
+  input[type="radio"] {
+    width: 22px;
+    height: 22px;
+  }
+
+  /* ── Modales como hoja inferior, fáciles de cerrar y de llenar ── */
+  .modal-overlay {
+    align-items: flex-end !important;
+  }
+
+  .modal {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 92dvh !important;
+    border-radius: 18px 18px 0 0 !important;
+    padding-bottom: var(--safe-bottom);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .modal-header {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: inherit;
+  }
+
+  /* ── Ficha del evento ── */
+  .event-hero {
+    padding: 18px !important;
+    margin-bottom: 18px !important;
+  }
+
+  .event-hero-row {
+    flex-direction: column !important;
+    gap: 14px !important;
+  }
+
+  .event-hero-row > div:first-child {
+    width: 56px !important;
+    height: 56px !important;
+    font-size: 28px !important;
+    border-radius: 16px !important;
+  }
+
+  .event-hero h1 {
+    font-size: 22px !important;
+    line-height: 1.2;
+  }
+
+  .event-hero-actions {
+    position: static !important;
+    margin-top: 16px;
+    width: 100%;
+  }
+
+  .event-hero-actions > * {
+    flex: 1;
+    justify-content: center;
+    min-height: 42px;
+  }
+
+  .event-tabs {
+    width: 100% !important;
+    overflow-x: auto;
+    flex-wrap: nowrap !important;
+    scrollbar-width: none;
+    scroll-snap-type: x proximity;
+    margin-bottom: 18px !important;
+    position: sticky;
+    top: calc(var(--topbar-height) + env(safe-area-inset-top, 0px));
+    z-index: 20;
+  }
+
+  .event-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .event-tabs > .btn {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    scroll-snap-align: start;
+    min-height: 40px;
+  }
+
+  /* ── Tablas anchas: se desplazan dentro de su caja, no rompen la página ── */
+  table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (max-width: 768px) {
+  /* ── Workspace / Tareas: la página hace scroll y el tablero ocupa una pantalla completa ── */
+  .ws2-fullwidth {
+    height: auto !important;
+    max-height: none !important;
+    overflow-x: clip !important;
+    overflow-y: visible !important;
+  }
+
+  /* El brillo decorativo se salía por la derecha y la página se movía de lado */
+  .ws2-ambient {
+    display: none !important;
+  }
+
+  /* Banner compacto: métricas en una sola fila para que el tablero se vea de inmediato */
+  .ws2-command-banner {
+    padding: 12px !important;
+    gap: 10px !important;
+  }
+
+  .ws2-greeting-text {
+    font-size: 17px !important;
+  }
+
+  .ws2-greeting-sub {
+    display: none !important;
+  }
+
+  .ws2-banner-metrics {
+    grid-template-columns: auto 1fr 1fr 1fr !important;
+    gap: 6px !important;
+    align-items: stretch !important;
+  }
+
+  .ws2-banner-metric {
+    padding: 8px 10px !important;
+    gap: 0 !important;
+  }
+
+  .ws2-banner-metric-value {
+    font-size: 18px !important;
+  }
+
+  .ws2-banner-metrics > .btn {
+    grid-column: 1 / -1;
+    width: 100%;
+    min-height: 40px;
+  }
+
+  .ws2-body {
+    flex: none !important;
+    height: calc(100dvh - var(--topbar-height) - var(--mobile-tabbar-h) - var(--safe-bottom) - 80px) !important;
+    min-height: 420px;
+  }
+}
+
+/* ===================================================================
+   TAREAS EN MÓVIL (Kanban de producción)
+   Una columna a la vez con selector arriba, scroll normal de la página
+   (sin scroll dentro de scroll), controles de 40px y avance con un toque.
+   =================================================================== */
+
+.kb-mobile-switch,
+.kb-next {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  /* El tablero crece con su contenido; la página es la que hace scroll */
+  .ws2-body {
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
+  .ws2-main {
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  .kb-root {
+    overflow: visible !important;
+  }
+
+  /* Filtros: búsqueda y venue a lo ancho, responsables en una fila deslizable */
+  .kb-filters {
+    padding: 10px !important;
+    gap: 10px !important;
+  }
+
+  .kb-search-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    flex: 1 1 100% !important;
+    width: 100%;
+  }
+
+  .kb-search-row > input,
+  .kb-search-row > select {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 42px;
+    font-size: 16px !important;
+    padding: 8px 12px !important;
+    border-radius: 10px !important;
+  }
+
+  .kb-assignees {
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    width: 100%;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+
+  .kb-assignees::-webkit-scrollbar {
+    display: none;
+  }
+
+  .kb-assignees > span {
+    display: none;
+  }
+
+  .kb-assignees > button {
+    flex: 0 0 auto;
+    min-height: 36px;
+    padding: 6px 12px !important;
+    font-size: 13px !important;
+    border-radius: 18px !important;
+  }
+
+  /* Selector de columna fijo bajo la barra superior */
+  .kb-mobile-switch {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    padding: 4px;
+    margin-bottom: 12px;
+    border-radius: 14px;
+    background: var(--bg-surface, #15151d);
+    border: 1px solid var(--border-subtle);
+  }
+
+  .kb-switch-btn {
+    min-height: 42px;
+    border: none;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .kb-switch-btn.active {
+    background: var(--accent-primary);
+    color: #fff;
+  }
+
+  .kb-switch-count {
+    min-width: 22px;
+    padding: 1px 6px;
+    border-radius: 11px;
+    background: rgba(0, 0, 0, 0.25);
+    font-size: 12px;
+  }
+
+  /* Solo la columna elegida, a lo ancho y sin scroll propio */
+  .drag-drop-context {
+    display: block !important;
+    overflow: visible !important;
+    padding-bottom: 0 !important;
+  }
+
+  .drag-drop-column.kb-col {
+    display: none !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    overflow: visible !important;
+    padding: 12px !important;
+    gap: 12px !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .drag-drop-column.kb-col.kb-col-current {
+    display: flex !important;
+  }
+
+  .kb-col-header {
+    display: none !important; /* el selector ya dice qué columna es */
+  }
+
+  .kb-empty {
+    padding: 32px 0 !important;
+  }
+
+  /* Alta rápida: campo grande y opciones en 2 columnas */
+  .kb-quickadd input.form-input {
+    min-height: 46px;
+    font-size: 16px !important;
+    padding: 10px 14px !important;
+    border-radius: 12px !important;
+  }
+
+  .kb-quickadd .btn {
+    min-width: 46px;
+    border-radius: 12px !important;
+  }
+
+  .kb-quickadd-meta {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px !important;
+  }
+
+  .kb-quickadd-meta > select,
+  .kb-quickadd-meta > input {
+    height: 40px !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    font-size: 16px !important;
+    padding: 6px 10px !important;
+    border-radius: 10px !important;
+    border-color: var(--border-subtle) !important;
+  }
+
+  /* Tarjetas de tarea: texto legible y controles cómodos */
+  .kb-card {
+    padding: 14px !important;
+    gap: 12px !important;
+    cursor: default !important;
+    border-radius: 14px !important;
+  }
+
+  .kb-card > div:first-child > div > div {
+    font-size: 15px !important;
+    line-height: 1.4 !important;
+  }
+
+  .kb-delete {
+    width: 36px !important;
+    height: 36px !important;
+    margin: -8px -8px 0 0;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .kb-card-controls {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px !important;
+  }
+
+  .kb-card-controls > select,
+  .kb-card-controls > input {
+    height: 38px !important;
+    max-width: none !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    font-size: 16px !important;
+    padding: 4px 10px !important;
+    border-radius: 10px !important;
+  }
+
+  /* Contexto a todo el ancho; el estado se cambia con el botón grande o las pestañas */
+  .kb-card-controls > select:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .kb-card-controls > select:last-child {
+    display: none !important;
+  }
+
+  .kb-next {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 46px;
+    border-radius: 12px;
+    border: 1px solid rgba(124, 92, 252, 0.45);
+    background: rgba(124, 92, 252, 0.18);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  .kb-next-in-progress {
+    border-color: rgba(16, 185, 129, 0.5);
+    background: rgba(16, 185, 129, 0.2);
+  }
+
+  .kb-next-done {
+    border-color: var(--border-subtle);
+    background: transparent;
+    color: var(--text-secondary);
+  }
+}
+
+@media (max-width: 768px) {
+  /* ── Contactos como tarjetas: nombre, categoría y botones para llamar / WhatsApp a la vista ── */
+  .contacts-table,
+  .contacts-table tbody {
+    display: block !important;
+    overflow: visible !important;
+  }
+
+  .contacts-table thead {
+    display: none;
+  }
+
+  .contacts-table tr {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 6px 10px;
+    padding: 14px 4px;
+  }
+
+  .contacts-table td {
+    display: block;
+    padding: 0 !important;
+    text-align: left !important;
+  }
+
+  .contacts-table td:nth-child(1) {
+    grid-column: 1;
+  }
+
+  .contacts-table td:nth-child(2) {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: start;
+  }
+
+  .contacts-table td:nth-child(n+3) {
+    grid-column: 1 / -1;
+  }
+
+  .contacts-table td:last-child > div {
+    justify-content: flex-start !important;
+  }
+
+  .contacts-table td[colspan] {
+    grid-column: 1 / -1;
+    padding: 32px 0 !important;
+    text-align: center !important;
+  }
+
+  .contact-actions a {
+    min-height: 36px;
+  }
+
+  .contact-wa {
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(37, 211, 102, 0.35);
+    background: rgba(37, 211, 102, 0.1);
+  }
+}
+
+@media (max-width: 768px) {
+  /* ── Calendario: controles en varias filas para que la fecha no se corte ── */
+  .calendar-nav-controls {
+    flex-wrap: wrap !important;
+    gap: 10px !important;
+    width: 100%;
+  }
+
+  .calendar-nav-controls > * {
+    max-width: 100%;
+  }
+
+  .calendar-nav-controls h2,
+  .calendar-nav-controls h3 {
+    font-size: 20px !important;
+    white-space: normal !important;
+  }
+}
+
+/* ===================================================================
+   CALENDARIO EN MÓVIL
+   Semana / 2 semanas / día = agenda en lista (un día por fila).
+   Mes = cuadrícula de 7 columnas que cabe en la pantalla.
+   =================================================================== */
+
+.cal-cell-dow {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  /* La página hace scroll normal y no queda nada debajo de la barra inferior */
+  .page-content:has(.calendar-grid-wrapper) {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .page-content:has(.calendar-grid-wrapper) > .card,
+  .calendar-grid-wrapper {
+    overflow: visible !important;
+    flex: none !important;
+  }
+
+  .calendar-action-bar {
+    padding: 10px !important;
+  }
+
+  .calendar-view-options {
+    width: 100%;
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .calendar-view-options > button {
+    min-height: 40px;
+    padding: 6px 4px !important;
+    font-size: 13px !important;
+    line-height: 1.15;
+  }
+
+  .calendar-nav-controls,
+  .calendar-master-nav {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 8px !important;
+  }
+
+  .calendar-legend-bar {
+    padding: 8px 10px !important;
+    flex-wrap: wrap;
+    gap: 8px !important;
+  }
+
+  /* El "+" de cada día solo aparecía al pasar el mouse: en táctil siempre visible */
+  .calendar-day-cell .ws2-add-btn {
+    opacity: 1 !important;
+    min-width: 32px;
+    min-height: 32px;
+  }
+
+  /* Mes: 7 columnas que caben y celdas compactas */
+  .cal-view-month .calendar-days-header,
+  .cal-view-month .calendar-grid {
+    grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+  }
+
+  .cal-view-month .calendar-grid {
+    grid-template-rows: none !important;
+    grid-auto-rows: minmax(64px, auto);
+  }
+
+  .cal-view-month .calendar-days-header > div {
+    padding: 8px 0 !important;
+    font-size: 10px !important;
+    letter-spacing: 0 !important;
+  }
+
+  .cal-view-month .calendar-day-cell {
+    padding: 4px !important;
+    height: auto !important;
+  }
+
+  .cal-view-month .calendar-day-cell .ws2-add-btn {
+    display: none !important; /* en el mes se agrega desde la vista de semana o día */
+  }
+
+  /* Semana, 2 semanas y día: agenda en lista */
+  .cal-view-week .calendar-days-header,
+  .cal-view-2week .calendar-days-header {
+    display: none !important;
+  }
+
+  .cal-view-week .calendar-grid,
+  .cal-view-2week .calendar-grid,
+  .cal-view-day .calendar-grid {
+    display: flex !important;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .cal-view-week .calendar-day-cell,
+  .cal-view-2week .calendar-day-cell,
+  .cal-view-day .calendar-day-cell {
+    height: auto !important;
+    min-height: 64px !important;
+    overflow: visible !important;
+    padding: 12px !important;
+  }
+
+  .cal-view-week .cal-cell-dow,
+  .cal-view-2week .cal-cell-dow,
+  .cal-view-day .cal-cell-dow {
+    display: block;
+    flex: 1;
+    margin-left: 10px;
+    align-self: center;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: var(--text-tertiary);
+  }
+}
+
+@media (max-width: 768px) {
+  /* Con el chat del agente abierto, el chat ocupa toda la pantalla y la barra inferior se oculta */
+  .dashboard-copilot-container:has(.copilot-window) {
+    z-index: 1100 !important;
+  }
+
+  body:has(.copilot-window) .mobile-tabbar {
+    display: none !important;
+  }
+}

@@ -6,7 +6,7 @@ import {
     Bot, Send, Mic, MicOff, X, Sparkles, CheckCircle2, ChevronDown,
     Calendar, CheckSquare, Briefcase, Zap, Volume2, VolumeX, ArrowRight,
     Play, Pause, RotateCcw, AlertCircle, Database, Search, MessageSquare, ExternalLink,
-    Sliders, Settings, Key, Cpu, ShieldCheck
+    Sliders, Settings, Key, Cpu, ShieldCheck, Building2
 } from 'lucide-react';
 
 export default function DashboardCopilot() {
@@ -56,6 +56,21 @@ export default function DashboardCopilot() {
 
     // Slash Commands Menu
     const [showSlashMenu, setShowSlashMenu] = useState(false);
+
+    // Brand / Client Context State
+    const [selectedBrandContext, setSelectedBrandContext] = useState('all');
+
+    useEffect(() => {
+        const handleFocusBrand = (e) => {
+            if (e.detail?.brandId) {
+                setSelectedBrandContext(e.detail.brandId);
+                setIsOpen(true);
+                setIsMinimized(false);
+            }
+        };
+        window.addEventListener('openclaw:focus-brand', handleFocusBrand);
+        return () => window.removeEventListener('openclaw:focus-brand', handleFocusBrand);
+    }, []);
 
     // Shared Messages State (Synced with Workspace OpenClaw drawer & AppContext)
     const messages = openclawMessages;
@@ -362,13 +377,31 @@ export default function DashboardCopilot() {
         }
 
         try {
+            let targetNamespace = 'default';
+            let brandPrompt = '';
+            if (selectedBrandContext !== 'all') {
+                const foundBrand = (projects || []).find(p => p.id === selectedBrandContext) || 
+                                   (selectedBrandContext === 'client-terraplen' ? { name: 'Terraplén Rooftop', industry: 'Gastronomía & Rooftop' } :
+                                    selectedBrandContext === 'client-furia' ? { name: 'Furia Panamá', industry: 'Dinner Party & Nightclub' } :
+                                    selectedBrandContext === 'client-pianobar' ? { name: 'Piano Bar Casco', industry: 'Speakeasy & Coctelería' } : null);
+                if (foundBrand) {
+                    targetNamespace = selectedBrandContext;
+                    brandPrompt = `\n\n[MARCA SELECCIONADA EN FOCO: ${foundBrand.name.toUpperCase()}]:
+- Industria: ${foundBrand.industry || ''}
+- Tono: ${foundBrand.brand?.toneOfVoice || 'Elegante y persuasivo'}
+- Do's: ${foundBrand.brand?.dos || 'Cuidar la estética y fotos de calidad'}
+- Don'ts: ${foundBrand.brand?.donts || 'No usar lenguaje vulgar ni artes de baja resolución'}
+- Responde y propone acciones siempre con el tono y directrices de ${foundBrand.name}.`;
+                }
+            }
+
             // Call the unified OpenClaw Super Agent service (hits /api/openclaw/chat with Gemini 3.6 Flash)
             const result = await OpenClawBrainService.sendCommand(
                 rawQuery,
                 messages,
-                `Modo actual del agente: ${currentModeObj.name}.`,
-                'Actúa como OpenClaw Super Agent, orquestador autónomo maestro del Command Center.',
-                'default',
+                `Modo actual del agente: ${currentModeObj.name}.${brandPrompt}`,
+                'Actúa como OpenClaw Super Agent, orquestador autónomo maestro del Command Center y ARRIVE Agency.',
+                targetNamespace,
                 selectedMode,
                 { addTask, toggleTask }
             );
@@ -635,6 +668,51 @@ export default function DashboardCopilot() {
                                     <Sparkles size={12} />
                                     {geminiStatus.active ? 'Gemini Activo' : '+ Conectar Gemini'}
                                 </button>
+                            </div>
+
+                            {/* BRAND / CLIENT CONTEXT BAR */}
+                            <div style={{
+                                padding: '4px 12px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                background: 'rgba(15, 15, 25, 0.95)',
+                                borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+                                fontSize: '0.72rem'
+                            }}>
+                                <Building2 size={12} style={{ color: selectedBrandContext === 'all' ? '#94a3b8' : '#fbbf24' }} />
+                                <span style={{ color: '#94a3b8', fontWeight: 600 }}>Marca:</span>
+                                <select
+                                    value={selectedBrandContext}
+                                    onChange={(e) => setSelectedBrandContext(e.target.value)}
+                                    style={{
+                                        background: 'rgba(0,0,0,0.4)',
+                                        color: selectedBrandContext === 'all' ? '#cbd5e1' : '#fbbf24',
+                                        border: `1px solid ${selectedBrandContext === 'all' ? 'rgba(255,255,255,0.1)' : 'rgba(251,191,36,0.4)'}`,
+                                        borderRadius: 5,
+                                        padding: '2px 6px',
+                                        fontSize: '0.72rem',
+                                        fontWeight: 600,
+                                        outline: 'none',
+                                        cursor: 'pointer',
+                                        flex: 1
+                                    }}
+                                >
+                                    <option value="all">🌐 Todas las Marcas (Modo Global)</option>
+                                    <optgroup label="🌟 Clientes ARRIVE Agency">
+                                        <option value="client-terraplen">🍸 Terraplén Rooftop</option>
+                                        <option value="client-furia">🔥 Furia Panamá</option>
+                                        <option value="client-pianobar">🎹 Piano Bar Casco</option>
+                                        {(projects || []).filter(p => (p.isClient || p.agency === 'arrive') && !['client-terraplen','client-furia','client-pianobar','proj-arrive-agency'].includes(p.id)).map(p => (
+                                            <option key={p.id} value={p.id}>✨ {p.name}</option>
+                                        ))}
+                                    </optgroup>
+                                </select>
+                                {selectedBrandContext !== 'all' && (
+                                    <span style={{ fontSize: '0.65rem', background: 'rgba(251,191,36,0.15)', color: '#fbbf24', padding: '1px 5px', borderRadius: 4, fontWeight: 700 }}>
+                                        RAG Activo
+                                    </span>
+                                )}
                             </div>
 
                             {/* CHAT MESSAGES BODY */}

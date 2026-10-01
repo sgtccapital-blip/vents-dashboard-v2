@@ -76,6 +76,16 @@ export default function CloudSyncPanel({ isOpen, onClose }) {
         statusDesc = 'Conectado a Supabase pero la tabla "dashboard_state" no existe. Presiona "Inicializar Base de Datos" abajo.';
         statusClass = 'status-warning';
         statusIcon = <AlertTriangle size={24} style={{ color: 'var(--accent-orange)' }} />;
+    } else if (supabaseStatus?.status === 'conflict') {
+        statusText = 'Conflicto con la Nube';
+        statusDesc = supabaseStatus.error || 'Otra instancia cambió la copia en la nube.';
+        statusClass = 'status-warning';
+        statusIcon = <AlertTriangle size={24} style={{ color: 'var(--accent-orange)' }} />;
+    } else if (supabaseStatus?.ephemeralStorage) {
+        statusText = 'Datos temporales';
+        statusDesc = 'El servidor corre en Render sin Supabase ni disco persistente: todo se borrará en el próximo deploy o reinicio. Configura Supabase aquí abajo.';
+        statusClass = 'status-error';
+        statusIcon = <AlertCircle size={24} style={{ color: 'var(--accent-red)' }} />;
     } else if (supabaseStatus?.status === 'unauthorized' || supabaseStatus?.status === 'error') {
         statusText = 'Error de Conexión';
         statusDesc = `Credenciales incorrectas o problema de red: ${supabaseStatus.error || ''}`;

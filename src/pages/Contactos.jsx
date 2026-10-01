@@ -149,7 +149,7 @@ export default function Contactos() {
             {/* Data Table */}
             <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
                 <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                    <table className="contacts-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                         <thead>
                             <tr style={{ background: 'var(--bg-base)', borderBottom: '1px solid var(--border-subtle)' }}>
                                 <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>Contacto</th>
@@ -201,14 +201,19 @@ export default function Contactos() {
                                     <td style={{ padding: '16px 24px' }}>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                             {contact.phone && (
-                                                <div style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                    <Phone size={12} /> {contact.phone}
+                                                <div className="contact-actions" style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                                    <a href={`tel:${contact.phone.replace(/[^\d+]/g, '')}`} style={{ color: 'inherit', display: 'flex', alignItems: 'center', gap: '6px', textDecoration: 'none' }}>
+                                                        <Phone size={12} /> {contact.phone}
+                                                    </a>
+                                                    <a href={`https://wa.me/${contact.phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="contact-wa" style={{ color: '#25D366', fontSize: '12px', fontWeight: 600, textDecoration: 'none' }}>
+                                                        WhatsApp
+                                                    </a>
                                                 </div>
                                             )}
                                             {contact.email && (
-                                                <div style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                <a href={`mailto:${contact.email}`} style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px', textDecoration: 'none' }}>
                                                     <Mail size={12} /> {contact.email}
-                                                </div>
+                                                </a>
                                             )}
                                         </div>
                                     </td>

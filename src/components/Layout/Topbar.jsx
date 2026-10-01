@@ -98,9 +98,20 @@ export default function Topbar({ collapsed, searchQuery, onSearchChange, onMobil
         statusColor = 'var(--accent-orange)';
         statusLabel = 'Table Missing';
         dotColor = 'var(--accent-orange)';
+    } else if (supabaseStatus?.status === 'conflict') {
+        statusColor = 'var(--accent-orange)';
+        statusLabel = 'Conflicto Nube';
+        dotColor = 'var(--accent-orange)';
+        isLive = false;
     } else if (supabaseStatus?.status === 'unauthorized' || supabaseStatus?.status === 'error') {
         statusColor = 'var(--accent-red)';
         statusLabel = 'Sync Error';
+        dotColor = 'var(--accent-red)';
+        isLive = false;
+    } else if (supabaseStatus?.ephemeralStorage) {
+        // En Render sin Supabase ni disco: los datos se borran en el próximo deploy
+        statusColor = 'var(--accent-red)';
+        statusLabel = 'Datos temporales';
         dotColor = 'var(--accent-red)';
         isLive = false;
     }

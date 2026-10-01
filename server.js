@@ -57,6 +57,14 @@ function ensureDBFile() {
 }
 ensureDBFile();
 
+// En Render (plan free) el disco se borra en cada deploy/reinicio. Sin Supabase ni disco persistente
+// (DB_PATH apuntando a un disco montado), todo lo que se guarde se pierde.
+const EPHEMERAL_STORAGE = !!process.env.RENDER && !process.env.DB_PATH &&
+    !((process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL) && (process.env.SUPABASE_KEY || process.env.VITE_SUPABASE_KEY));
+if (EPHEMERAL_STORAGE) {
+    console.warn('🚨 ATENCIÓN: corriendo en Render sin Supabase ni disco persistente. db.json se borrará en el próximo deploy o reinicio.');
+}
+
 // Ensure vault directory exists
 if (!fs.existsSync(VAULT_PATH)) fs.mkdirSync(VAULT_PATH, { recursive: true });
 
@@ -94,7 +102,7 @@ const API_TOKEN = process.env.API_TOKEN || '';
 // Derivado de la contraseña: cambiarla invalida todas las sesiones abiertas.
 const SESSION_SECRET = process.env.SESSION_SECRET || crypto.createHash('sha256').update(`cc-session:${DASHBOARD_PASSWORD}`).digest('hex');
 const SESSION_COOKIE = 'cc_session';
-const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const SESSION_TTL_MS = 10 * 365 * 24 * 60 * 60 * 1000; // 10 years - persistent forever
 const PUBLIC_API_PREFIXES = ['/api/public/', '/api/auth/'];
 
 function safeEqual(a, b) {
@@ -132,7 +140,7 @@ function isAuthenticated(req) {
 
 function sessionCookie(req, value, maxAgeMs) {
     const secure = req.secure ? '; Secure' : '';
-    return `${SESSION_COOKIE}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${Math.floor(maxAgeMs / 1000)}${secure}`;
+    return `${SESSION_COOKIE}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${Math.floor(maxAgeMs / 1000)}${secure}`;
 }
 
 if (!DASHBOARD_PASSWORD) {
@@ -199,8 +207,18 @@ async function initSupabaseSync() {
         if (res.ok) {
             const rows = await res.json();
             if (rows && rows.length > 0 && rows[0].data) {
-                console.log('   ✅ Estado recuperado desde Supabase. Sincronizando db.json local...');
-                writeDBFile(rows[0].data);
+                const remote = rows[0].data;
+                let local = null;
+                try { local = readDB(); } catch { /* db local ilegible: la nube manda */ }
+                if (!hasContent(remote) && hasContent(local)) {
+                    console.warn('   ⚠️  La copia en Supabase está vacía y la local tiene datos: se conserva la local y se sube.');
+                    lastSyncedRev = remote._syncRev || null;
+                    await syncToSupabase(local);
+                } else {
+                    console.log('   ✅ Estado recuperado desde Supabase. Sincronizando db.json local...');
+                    writeDBFile(remote);
+                    lastSyncedRev = remote._syncRev || null;
+                }
             } else {
                 console.log('   ℹ️  Supabase inicializado pero sin datos en la tabla command_center_state. Subiendo base de datos local...');
                 const localData = readDB();
@@ -214,56 +232,75 @@ async function initSupabaseSync() {
     }
 }
 
-// Sincronización asíncrona hacia Supabase (Upsert sin bloquear las peticiones del frontend)
-async function syncToSupabase(data) {
-    if (!SUPABASE_URL || !SUPABASE_KEY || SUPABASE_URL.includes('tu-proyecto') || SUPABASE_KEY.includes('tu-anon')) return;
-    
+// Revisión (_syncRev) de la copia en la nube que este servidor leyó o escribió por última vez.
+// Si otra instancia (p. ej. tu Mac y Render apuntando al mismo Supabase) escribió después,
+// la revisión ya no coincide y NO se sobrescribe: se marca conflicto en vez de perder sus cambios.
+let lastSyncedRev = null;
+let supabaseConflict = null;
+
+function supabaseHeaders(extra = {}) {
+    return { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, ...extra };
+}
+
+// Sincronización hacia Supabase (escritura condicional por revisión)
+async function syncToSupabase(data, { force = false } = {}) {
+    if (!SUPABASE_URL || !SUPABASE_KEY || SUPABASE_URL.includes('tu-proyecto') || SUPABASE_KEY.includes('tu-anon')) return { ok: false, reason: 'unconfigured' };
+
+    const newRev = crypto.randomUUID();
+    const payload = { ...data, _syncRev: newRev };
+    const table = `${SUPABASE_URL}/rest/v1/command_center_state`;
+
     try {
-        // Verificar si existe la fila con id=1
-        const check = await fetch(`${SUPABASE_URL}/rest/v1/command_center_state?id=eq.1`, {
-            headers: {
-                'apikey': SUPABASE_KEY,
-                'Authorization': `Bearer ${SUPABASE_KEY}`
-            }
+        // PATCH solo si la nube sigue en la revisión que conocemos (comprobación atómica en PostgREST)
+        const revFilter = force ? '' : (lastSyncedRev ? `&data->>_syncRev=eq.${lastSyncedRev}` : '&data->>_syncRev=is.null');
+        const patch = await fetch(`${table}?id=eq.1${revFilter}`, {
+            method: 'PATCH',
+            headers: supabaseHeaders({ 'Content-Type': 'application/json', 'Prefer': 'return=representation' }),
+            body: JSON.stringify({ data: payload })
         });
-
-        let method = 'PATCH';
-        let body = JSON.stringify({ data: data });
-        let urlTarget = `${SUPABASE_URL}/rest/v1/command_center_state?id=eq.1`;
-
-        if (check.ok) {
-            const rows = await check.json();
-            if (!rows || rows.length === 0) {
-                method = 'POST';
-                body = JSON.stringify({ id: 1, data: data });
-                urlTarget = `${SUPABASE_URL}/rest/v1/command_center_state`;
-            }
-        } else {
-            // Si falla la fila pero la tabla existe (o para forzar creación)
-            method = 'POST';
-            body = JSON.stringify({ id: 1, data: data });
-            urlTarget = `${SUPABASE_URL}/rest/v1/command_center_state`;
+        if (!patch.ok) {
+            console.error(`   [Supabase Sync] Error al guardar (PATCH): ${patch.status} ${patch.statusText}`);
+            return { ok: false, reason: `http_${patch.status}` };
         }
-        
-        const res = await fetch(urlTarget, {
-            method: method,
-            headers: {
-                'apikey': SUPABASE_KEY,
-                'Authorization': `Bearer ${SUPABASE_KEY}`,
-                'Content-Type': 'application/json',
-                'Prefer': 'return=minimal'
-            },
-            body: body
-        });
-        
-        if (!res.ok) {
-            console.error(`   [Supabase Sync] Error al guardar datos (${method}): ${res.status} ${res.statusText}`);
-        } else {
-            console.log(`   [Supabase Sync] Sincronizado exitosamente con la nube (${method}).`);
+        const updated = await patch.json();
+        if (updated.length > 0) {
+            lastSyncedRev = newRev;
+            supabaseConflict = null;
+            console.log('   [Supabase Sync] Sincronizado con la nube.');
+            return { ok: true };
         }
+
+        // 0 filas actualizadas: o la fila no existe todavía, o alguien más escribió antes
+        const check = await fetch(`${table}?id=eq.1&select=id`, { headers: supabaseHeaders() });
+        const rows = check.ok ? await check.json() : [];
+        if (rows.length === 0) {
+            const post = await fetch(table, {
+                method: 'POST',
+                headers: supabaseHeaders({ 'Content-Type': 'application/json', 'Prefer': 'return=minimal' }),
+                body: JSON.stringify({ id: 1, data: payload })
+            });
+            if (!post.ok) return { ok: false, reason: `http_${post.status}` };
+            lastSyncedRev = newRev;
+            supabaseConflict = null;
+            console.log('   [Supabase Sync] Fila inicial creada en la nube.');
+            return { ok: true };
+        }
+
+        supabaseConflict = {
+            at: new Date().toISOString(),
+            message: 'La copia en la nube cambió desde otra instancia. No se sobrescribió. Usa "Pull" para traer la versión de la nube o "Push" para imponer la local.'
+        };
+        console.warn('   ⚠️  [Supabase Sync] Conflicto: otra instancia escribió en la nube. No se sobrescribe.');
+        return { ok: false, reason: 'conflict' };
     } catch (err) {
         console.error('   [Supabase Sync] Error de red durante la sincronización:', err.message);
+        return { ok: false, reason: 'network' };
     }
+}
+
+// ¿Tiene datos reales? Evita reemplazar una base llena por una copia vacía.
+function hasContent(data) {
+    return ['events', 'tasks', 'contacts', 'projects'].some(k => Array.isArray(data?.[k]) && data[k].length > 0);
 }
 
 function readDB() {
@@ -1654,6 +1691,56 @@ function executeOpenClawAction(actionName, data, db) {
             break;
         }
 
+        case 'create_client_post': {
+            const newPost = {
+                id: `post-${Date.now()}`,
+                project: data.clientName || 'ARRIVE Client',
+                format: data.format || 'Reel 9:16',
+                title: data.title || 'Nueva Publicación',
+                hook: data.hook || 'Producido por ARRIVE Agency',
+                caption: data.caption || '',
+                date: data.date || new Date().toISOString().split('T')[0],
+                status: 'Listo para Publicar'
+            };
+            if (!db.socialMedia) db.socialMedia = [];
+            db.socialMedia.unshift(newPost);
+            db.activityFeed.unshift({
+                id: `act-${Date.now()}`,
+                text: `🎬 Post/Reel programado por Agente para ${newPost.project}: "${newPost.title}"`,
+                color: '#fbbf24',
+                timestamp: new Date().toISOString()
+            });
+            result = { success: true, post: newPost };
+            break;
+        }
+
+        case 'update_client_rag': {
+            const ns = data.clientId || data.namespace || 'default';
+            if (!db.ragDocuments) db.ragDocuments = [];
+            const doc = {
+                id: `rag-doc-${Date.now()}`,
+                filename: data.title || `Intel de ${data.clientName || 'Cliente'}`,
+                title: data.title || `Intel de ${data.clientName || 'Cliente'}`,
+                content: data.content || '',
+                category: 'client_intel',
+                namespace: ns,
+                addedAt: new Date().toISOString()
+            };
+            db.ragDocuments.unshift(doc);
+            const RAGEngine = app.get('ragEngine') || EmbeddedRAGEngine;
+            if (RAGEngine) {
+                RAGEngine.indexCustomDocument(doc.id, doc.title, doc.content, 'client_intel', {}, ns).catch(() => null);
+            }
+            db.activityFeed.unshift({
+                id: `act-${Date.now()}`,
+                text: `🧠 Conocimiento RAG indexado para ${data.clientName || ns}: "${doc.title}"`,
+                color: '#c084fc',
+                timestamp: new Date().toISOString()
+            });
+            result = { success: true, document: doc };
+            break;
+        }
+
         case 'complete_task':
         case 'toggle_task': {
             const taskId = data.id || data.taskId;
@@ -1902,14 +1989,30 @@ async function handleOpenClawChat(req, res) {
     const liveEvents = (db.events || []).map(e => ({ id: e.id, name: e.name, date: e.date, status: e.status, location: e.location, budget: e.budget }));
     const pendingTasks = (db.tasks || []).filter(t => !t.done).slice(0, 20).map(t => ({ id: t.id, text: t.text || t.title, priority: t.priority }));
 
-    const systemMessageContent = `Eres OpenClaw Super Agent, el orquestador autónomo maestro y cerebro central del Command Center & Dashboard de Eventos.
-Tienes acceso total para gestionar eventos (Terraplén Rooftop, Furia, Piano Bar, etc.), proyectos, finanzas, tareas, promotores y modelos Image Girls.
+    // Inyectar Clientes y Marcas de ARRIVE Agency
+    const arriveClients = (db.projects || []).filter(p => p.agency === 'arrive' || p.isClient || p.id?.startsWith('client-')).map(c => ({
+        id: c.id,
+        name: c.name,
+        industry: c.industry || 'Marca',
+        slogan: c.slogan || '',
+        lead: c.lead || 'GG',
+        tone: c.brand?.toneOfVoice || '',
+        dos: c.brand?.dos || '',
+        donts: c.brand?.donts || ''
+    }));
+
+    const systemMessageContent = `Eres OpenClaw Super Agent, el orquestador autónomo maestro y cerebro central del Command Center & Dashboard de Eventos y ARRIVE Agency.
+Tienes acceso total para gestionar eventos (Terraplén Rooftop, Furia, Piano Bar, etc.), marcas clientes, proyectos, finanzas, tareas, redes sociales, promotores y modelos Image Girls.
 
 [SKILLS Y DIRECTIVAS]:
 ${skills || 'Actúa con precisión, proactividad y liderazgo. Responde en español estructurado y ejecuta acciones en el sistema siempre que el usuario lo solicite.'}
 
 [BASE DE CONOCIMIENTOS RAG DE OPENCLAW]:
 ${ragContext || 'No se requirieron documentos adicionales para esta consulta.'}
+
+[MARCAS Y CLIENTES ACTIVOS DE ARRIVE AGENCY]:
+${arriveClients.length > 0 ? JSON.stringify(arriveClients) : 'Terraplén Rooftop, Furia Panamá, Piano Bar Casco'}
+Tienes conocimiento de cada marca de ARRIVE Agency. Si el usuario te pide crear un post, Reel, o estrategia para una de estas marcas, adopta fielmente su tono de voz y sus reglas de comunicación (Do's y Don'ts).
 
 [ESTADO EN VIVO DEL DASHBOARD]:
 - Eventos Activos (${liveEvents.length}): ${JSON.stringify(liveEvents.slice(0, 10))}
@@ -1941,6 +2044,22 @@ ${systemRole || ''}`;
         const toolsDeclaration = [
             {
                 functionDeclarations: [
+                    {
+                        name: "create_client_post",
+                        description: "Programa o propone una publicación, Reel o carrusel para una marca o cliente de ARRIVE Agency",
+                        parameters: {
+                            type: "OBJECT",
+                            properties: {
+                                clientName: { type: "STRING", description: "Nombre de la marca o cliente (ej: Terraplén Rooftop, Furia Panamá, Piano Bar)" },
+                                title: { type: "STRING", description: "Título o concepto del post o reel" },
+                                format: { type: "STRING", enum: ["Reel 9:16", "Carrusel HD", "Story Seq", "TikTok / UGC"], description: "Formato de contenido" },
+                                hook: { type: "STRING", description: "Gancho viral de los primeros 3 segundos" },
+                                caption: { type: "STRING", description: "Texto o copy sugerido" },
+                                date: { type: "STRING", description: "Fecha de publicación (YYYY-MM-DD)" }
+                            },
+                            required: ["clientName", "title"]
+                        }
+                    },
                     {
                         name: "add_task",
                         description: "Crea una nueva tarea en el Dashboard de eventos y operaciones",
@@ -2171,7 +2290,8 @@ app.post('/api/hermes/chat', handleOpenClawChat);
 
 // ─── Orchestrator Engine (Auto-Delegation & Cron) ────────────────
 app.post('/api/orchestrator/delegate', (req, res) => {
-    const { task, description, priority } = req.body;
+    const { task, priority } = req.body;
+    let { description } = req.body;
     if (!task) return res.status(400).json({ error: 'Falta tarea' });
     
     // Triage Logic (Decision Tree)
@@ -2891,7 +3011,18 @@ app.get('/api/supabase/status', async (req, res) => {
             url: SUPABASE_URL || '',
             keyMasked: '',
             status: 'unconfigured',
-            tableExists: false
+            tableExists: false,
+            ephemeralStorage: EPHEMERAL_STORAGE
+        });
+    }
+    if (supabaseConflict) {
+        return res.json({
+            configured: true,
+            url: SUPABASE_URL,
+            keyMasked: 'Configurado',
+            status: 'conflict',
+            tableExists: true,
+            error: supabaseConflict.message
         });
     }
 
@@ -3031,50 +3162,12 @@ app.post('/api/supabase/sync', async (req, res) => {
 
     try {
         if (action === 'push') {
-            console.log('[Supabase Sync Manual] Iniciando PUSH manual...');
-            const data = readDB();
-            
-            // Check if row exists to use POST vs PATCH
-            const testRes = await fetch(`${SUPABASE_URL}/rest/v1/command_center_state?id=eq.1`, {
-                headers: {
-                    'apikey': SUPABASE_KEY,
-                    'Authorization': `Bearer ${SUPABASE_KEY}`
-                }
-            });
-
-            let method = 'PATCH';
-            let body = JSON.stringify({ data: data });
-            let urlTarget = `${SUPABASE_URL}/rest/v1/command_center_state?id=eq.1`;
-
-            if (testRes.ok) {
-                const rows = await testRes.json();
-                if (!rows || rows.length === 0) {
-                    method = 'POST';
-                    body = JSON.stringify({ id: 1, data: data });
-                    urlTarget = `${SUPABASE_URL}/rest/v1/command_center_state`;
-                }
-            } else {
-                method = 'POST';
-                body = JSON.stringify({ id: 1, data: data });
-                urlTarget = `${SUPABASE_URL}/rest/v1/command_center_state`;
-            }
-
-            const resSync = await fetch(urlTarget, {
-                method: method,
-                headers: {
-                    'apikey': SUPABASE_KEY,
-                    'Authorization': `Bearer ${SUPABASE_KEY}`,
-                    'Content-Type': 'application/json',
-                    'Prefer': 'return=minimal'
-                },
-                body: body
-            });
-
-            if (resSync.ok) {
+            console.log('[Supabase Sync Manual] Iniciando PUSH manual (impone la copia local)...');
+            const result = await syncToSupabase(readDB(), { force: true });
+            if (result.ok) {
                 return res.json({ success: true, message: 'Base de datos local guardada exitosamente en Supabase (Push).' });
-            } else {
-                return res.status(resSync.status).json({ error: `Error al subir a Supabase: ${resSync.statusText}` });
             }
+            return res.status(502).json({ error: `Error al subir a Supabase (${result.reason}).` });
         } else if (action === 'pull') {
             console.log('[Supabase Sync Manual] Iniciando PULL manual...');
             const resSync = await fetch(`${SUPABASE_URL}/rest/v1/command_center_state?id=eq.1`, {
@@ -3088,6 +3181,8 @@ app.post('/api/supabase/sync', async (req, res) => {
                 const rows = await resSync.json();
                 if (rows && rows.length > 0 && rows[0].data) {
                     writeDBFile(rows[0].data);
+                    lastSyncedRev = rows[0].data._syncRev || null;
+                    supabaseConflict = null;
                     return res.json({ success: true, message: 'Base de datos sincronizada con éxito desde la nube (Pull).' });
                 } else {
                     return res.status(404).json({ error: 'No se encontraron datos guardados en Supabase.' });
@@ -3431,11 +3526,6 @@ app.delete('/api/rag/:namespace/:id', (req, res) => {
         writeDB(db);
     }
     res.json({ success: true });
-});
-
-app.post('/api/rag/sync', async (req, res) => {
-    const result = await EmbeddedRAGEngine.indexAllData();
-    res.json(result);
 });
 
 // ─── Hermes Chat Sessions Persistence ─────────────────────────
@@ -4050,6 +4140,221 @@ app.post('/api/agent/whatsapp-campaign/log-dispatch', (req, res) => {
 app.get('/api/agent/whatsapp-campaign/logs', (req, res) => {
     const db = readDB();
     res.json(db.whatsappLogs || []);
+});
+
+// ─── WhatsApp Reference Library & Generator ─────────────────────
+
+const DEFAULT_WHATSAPP_REFERENCES = [
+    {
+        id: 'ref-mie-furia-sushi-chicas',
+        title: 'Miércoles Furia — 🍣 Cena Sushi & Drinks de Chicas',
+        venue: 'Furia',
+        day: 'Miércoles',
+        objective: 'chicas_sushi_drinks',
+        objectiveLabel: '🍣 Chicas Cena Sushi & Drinks',
+        copy: `🍣 *EXCLUSIVO CHICAS | SUSHI DINNER & DRINKS @ FURIA* 🥂✨\n\n¡Chicas! Este *miércoles* abrimos mesa especial de cena para ustedes en *Furia Panamá*.\n\n✨ *La experiencia incluye:*\n• Degustación de sushi rolls premium & bocados de autor\n• Welcome drinks & cócteles de cortesía durante la cena\n• Acceso VIP directo a la fiesta post-cena sin fila ni cover\n\n⏰ *Hora de cena:* 08:30 PM (Mesas limitadas por reserva)\n📍 *Ubicación:* Furia, Calle Uruguay / Obarrio\n\n¿Cuántas chicas van en tu grupo para confirmar su mesa? Responde *SUSHI CHICAS* 📲`
+    },
+    {
+        id: 'ref-jue-terraplen-drinks-chicas',
+        title: 'Jueves Terraplén — 🍸 Drinks Chicas (Llenar la Fiesta)',
+        venue: 'Terraplen',
+        day: 'Jueves',
+        objective: 'chicas_party_drinks',
+        objectiveLabel: '🍸 Drinks de Chicas (Fiesta de Mujeres)',
+        copy: `🍸 *THURSDAY ROOFTOP | DRINKS FOR THE GIRLS @ TERRAPLÉN* 🌇🔥\n\n¡Este *jueves* el mejor rooftop de Casco Antiguo se enciende para ustedes!\n\n🌸 *BENEFICIO EXCLUSIVO PARA CHICAS:*\n✅ *Open Bar de cócteles seleccionados* de 09:00 PM a 11:30 PM\n✅ *Entrada Free Pass* en lista VIP de chicas\n✅ La mejor vista panorámica, atardecer y DJs en vivo\n\n📍 *Terraplén Rooftop* (Casco Antiguo)\n\nResponde con tu nombre y apellido + número de amigas para anotarlas en la lista VIP 💃✨`
+    },
+    {
+        id: 'ref-vie-furia-hombres-mesas',
+        title: 'Viernes Furia — 🍾 Venta Sushi Party & Mesas VIP Hombres',
+        venue: 'Furia',
+        day: 'Viernes',
+        objective: 'hombres_sushi_party',
+        objectiveLabel: '🍾 Venta Sushi Party & Mesas Hombres',
+        copy: `🍾 *SUSHI PARTY & MESAS VIP | VIERNES EN FURIA* 🔥⚡\n\nBro, este *viernes* la fiesta principal se vive en *Furia*. Si vienes con tu corillo, no te quedes por fuera:\n\n💥 *PACK SUSHI PARTY VIP:*\n• Mesa VIP reservada en zona principal\n• Combo de Sushi rolls gigantes para el grupo\n• Bottle service & mixers ilimitados\n• Acceso preferencial para ti y tus invitados sin fila\n\nLas mesas de viernes se van rápido. Responde *MESA FURIA* para enviarte el plano y consumo mínimo. 🥂🚀`
+    },
+    {
+        id: 'ref-sab-varios-spam-tickets',
+        title: 'Sábado General — 🎟️ Spam Tickets & Accesos Semanales',
+        venue: 'Furia / Terraplén / Piano Bar',
+        day: 'Sábado',
+        objective: 'spam_tickets',
+        objectiveLabel: '🎟️ Spam Tickets & Entradas',
+        copy: `🚨 *SÁBADO DE FIESTA | TICKETS & ACCESOS DISPONIBLES* 💥\n\n¡La noche más caliente de la semana ya tiene cartelera lista!\n\n🔥 *¿A dónde vas este sábado?*\n1️⃣ *FURIA:* Noche de clubbing, techno & open format (Mesas & Tickets)\n2️⃣ *TERRAPLÉN ROOFTOP:* Sunset to late night en Casco Antiguo\n3️⃣ *PIANO BAR:* Música en vivo, cócteles clásicos y ambiente íntimo VIP\n\n🎟️ *Consigue tus tickets y preventas aquí:*\n👉 https://arriveservices.com/tickets\n\n¡Evita filas y asegura tu entrada antes de sold out! 🍾⚡`
+    },
+    {
+        id: 'ref-dom-terraplen-chicas-sunset',
+        title: 'Domingo Terraplén — 🌅 Sunset Chicas & Drinks',
+        venue: 'Terraplen',
+        day: 'Domingo',
+        objective: 'chicas_party_drinks',
+        objectiveLabel: '🍸 Drinks de Chicas (Fiesta de Mujeres)',
+        copy: `🌅 *SUNDAY SUNSET SESSION @ TERRAPLÉN ROOFTOP* 🍹✨\n\nDespide la semana en el rooftop más top de la ciudad.\n\n✨ *Plan de domingo para chicas:*\n• 2x1 en Sangrías & Gin Tonics hasta las 08:00 PM\n• Rolls de sushi y bocados frescos para compartir\n• Sunset beats con los mejores DJs locales\n\n📍 *Terraplén Rooftop* — Abrimos desde las 05:00 PM.\n¿Te anoto en lista con tus amigas? Escribe *DOMINGO* 🥂`
+    },
+    {
+        id: 'ref-sab-pianobar-mesas',
+        title: 'Sábado Piano Bar — 🎹 Noche Exclusiva & Live Sessions',
+        venue: 'Piano Bar',
+        day: 'Sábado',
+        objective: 'hombres_sushi_party',
+        objectiveLabel: '🍾 Venta Sushi Party & Mesas Hombres',
+        copy: `🎹 *SATURDAY LIVE SESSIONS @ PIANO BAR CASCO* 🍸✨\n\nUna noche diferente, exclusiva y con la mejor atmósfera musical de la ciudad.\n\n🥂 *PARA RESERVAS DE GRUPO & MESAS:*\n• Coctelería de autor premium\n• Pianistas y cantantes en vivo con los mejores clásicos\n• Espacios VIP íntimos para compartir con amigos o pareja\n\n📍 *Piano Bar* (Casco Antiguo)\nResponde *PIANO* para separar tu mesa con anticipación. Cupos estrictamente limitados. 🎶✨`
+    }
+];
+
+// GET reference messages
+app.get('/api/agent/whatsapp-references', (req, res) => {
+    const db = readDB();
+    if (!db.whatsappReferences || db.whatsappReferences.length === 0) {
+        db.whatsappReferences = DEFAULT_WHATSAPP_REFERENCES;
+        writeDB(db);
+    }
+    res.json(db.whatsappReferences);
+});
+
+// POST / PUT reference message
+app.post('/api/agent/whatsapp-references', (req, res) => {
+    const db = readDB();
+    if (!db.whatsappReferences) db.whatsappReferences = [...DEFAULT_WHATSAPP_REFERENCES];
+    
+    const { id, title, venue, day, objective, objectiveLabel, copy } = req.body;
+    if (!copy || !title) return res.status(400).json({ error: 'Título y texto del mensaje son obligatorios.' });
+
+    const existingIdx = db.whatsappReferences.findIndex(r => r.id === id);
+    if (existingIdx !== -1) {
+        db.whatsappReferences[existingIdx] = {
+            ...db.whatsappReferences[existingIdx],
+            title, venue, day, objective, objectiveLabel, copy,
+            updatedAt: new Date().toISOString()
+        };
+        writeDB(db);
+        return res.json({ success: true, reference: db.whatsappReferences[existingIdx] });
+    }
+
+    const newRef = {
+        id: id || `ref-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+        title,
+        venue: venue || 'Furia',
+        day: day || 'Miércoles',
+        objective: objective || 'chicas_sushi_drinks',
+        objectiveLabel: objectiveLabel || 'Mensaje de Difusión',
+        copy,
+        createdAt: new Date().toISOString()
+    };
+
+    db.whatsappReferences.unshift(newRef);
+    writeDB(db);
+    res.status(201).json({ success: true, reference: newRef });
+});
+
+// DELETE reference message
+app.delete('/api/agent/whatsapp-references/:id', (req, res) => {
+    const db = readDB();
+    if (db.whatsappReferences) {
+        db.whatsappReferences = db.whatsappReferences.filter(r => r.id !== req.params.id);
+        writeDB(db);
+    }
+    res.json({ success: true });
+});
+
+// GENERATE 3 VARIATIONS FROM REFERENCE WITH AI
+app.post('/api/agent/whatsapp-references/generate', async (req, res) => {
+    try {
+        const { venue = 'Furia', day = 'Miércoles', objective = 'chicas_sushi_drinks', referenceMessage = '', customNotes = '', eventName = '' } = req.body;
+        
+        let objectiveDesc = '';
+        if (objective === 'chicas_sushi_drinks') objectiveDesc = 'Invitar exclusivamente a grupos de chicas a cena de sushi + drinks de bienvenida de cortesía.';
+        else if (objective === 'chicas_party_drinks') objectiveDesc = 'Open bar / drinks gratis para chicas para que la fiesta se llene de mujeres desde temprano.';
+        else if (objective === 'hombres_sushi_party') objectiveDesc = 'Vender paquetes de Sushi Party, reservas de mesas VIP, botellas y consumo para hombres/grupos.';
+        else if (objective === 'spam_tickets') objectiveDesc = 'Difusión masiva directa para venta de tickets, preventas, enlaces de compra y accesos al evento.';
+
+        const apiKey = process.env.GEMINI_API_KEY || '';
+        if (apiKey) {
+            try {
+                const genAI = new GoogleGenerativeAI(apiKey);
+                const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+                
+                const prompt = `Eres el redactor maestro de WhatsApp y Community Manager de ARRIVE Agency para centros nocturnos y rooftops en Panamá (Furia, Terraplén Rooftop, Piano Bar).
+                
+OBJETIVO:
+Generar 3 variaciones de mensajes de WhatsApp de alta conversión adaptados al venue, día de la semana y objetivo estratégico, tomando como inspiración y estilo el mensaje de referencia proporcionado.
+
+PARÁMETROS:
+- Venue: ${venue}
+- Día de la semana: ${day}
+- Objetivo de campaña: ${objective} (${objectiveDesc})
+- Nombre del Evento o Fiesta: ${eventName || venue}
+- Notas adicionales / Promos de esta semana: ${customNotes || 'Ninguna'}
+
+MENSAJE DE REFERENCIA / EJEMPLO PROPORCIONADO:
+"""
+${referenceMessage || 'Usa el formato seductor, nocturno y VIP de ARRIVE Agency Panamá'}
+"""
+
+REGLAS DE FORMATO WHATSAPP:
+- Usa negritas (*texto*), cursivas (_texto_), listas con viñetas (• o ✅), emojis llamativos y un Call to Action final muy claro (ej: Responde *PALABRA* para confirmar).
+- Conserva el tono y estructura del mensaje de referencia, pero redacta 3 versiones con ángulos distintos:
+  * Variación 1: Enérgica & Directa
+  * Variación 2: Seductora & VIP Exclusiva
+  * Variación 3: Urgencia & FOMO (Últimos cupos / listas cerrando)
+
+Devuelve ÚNICAMENTE un objeto JSON estrictamente válido en este formato exacto:
+{
+  "variations": [
+    {
+      "id": "var-1",
+      "style": "🔥 Enérgica & Directa",
+      "copy": "Texto del mensaje 1..."
+    },
+    {
+      "id": "var-2",
+      "style": "🥂 Seductora & VIP Exclusiva",
+      "copy": "Texto del mensaje 2..."
+    },
+    {
+      "id": "var-3",
+      "style": "🚨 Urgencia & FOMO (Sold Out)",
+      "copy": "Texto del mensaje 3..."
+    }
+  ]
+}`;
+                
+                const aiRes = await model.generateContent(prompt);
+                const text = aiRes.response.text();
+                const match = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+                const parsed = JSON.parse(match ? match[1] : text);
+                if (parsed.variations && parsed.variations.length > 0) {
+                    return res.json({ success: true, variations: parsed.variations, source: 'gemini' });
+                }
+            } catch (err) {
+                console.warn('[WhatsAppReferences] Error en IA Gemini, usando fallback determinístico:', err.message);
+            }
+        }
+        
+        // High quality deterministic fallback variations
+        const cleanRef = referenceMessage.trim() || '';
+        const variations = [
+            {
+                id: 'var-1',
+                style: '🔥 Enérgica & Directa',
+                copy: cleanRef ? `${cleanRef}\n\n⚡ *DETALLES SEMANA ACTUAL:*\n${customNotes || 'Asegura tu grupo con tiempo respondiendo a este chat.'}` : `🔥 *${day.toUpperCase()} EN ${venue.toUpperCase()} | PLAN ACTIVADO* ⚡\n\n${objectiveDesc}\n\n${customNotes ? `📌 *Nota:* ${customNotes}\n\n` : ''}📍 *Spot:* ${venue}\n📲 *Responde con tu nombre para confirmar asistencia.*`
+            },
+            {
+                id: 'var-2',
+                style: '🥂 Seductora & VIP Exclusiva',
+                copy: `✨ *UNA EXPERIENCIA ÚNICA ESTE ${day.toUpperCase()} @ ${venue.toUpperCase()}* 🍾🍸\n\n${objectiveDesc}\n\nAtmósfera exclusiva, música en vivo, atención personalizada y la mejor gente de la ciudad.\n\n${customNotes ? `💎 *Beneficio especial:* ${customNotes}\n\n` : ''}Reservas estrictamente por lista. Escribe *CONFIRMAR* para anotarte. 🥂`
+            },
+            {
+                id: 'var-3',
+                style: '🚨 Urgencia & FOMO (Últimos Cupos)',
+                copy: `🚨 *ÚLTIMOS CUPOS DISPONIBLES | ${day.toUpperCase()} @ ${venue.toUpperCase()}* ⏳💥\n\nLas listas y mesas para este ${day.toLowerCase()} se están cerrando más rápido de lo esperado.\n\n${objectiveDesc}\n\n${customNotes ? `⚠️ *Importante:* ${customNotes}\n\n` : ''}¡No te quedes por fuera! Responde *YA* para asegurar tu espacio antes del sold out total. 📲`
+            }
+        ];
+        
+        res.json({ success: true, variations, source: 'deterministic' });
+    } catch (err) {
+        console.error('[WhatsAppReferences] Error general en generación:', err);
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // Cron Task para preparación automática cada Lunes a las 09:00 AM

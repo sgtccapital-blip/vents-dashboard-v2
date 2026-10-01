@@ -26,8 +26,8 @@ export default function EventoDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
     const {
-        events, updateEvent,
-        projects, updateProject,
+        events, updateEvent, deleteEvent,
+        projects, updateProject, deleteProject,
         tasks, updateTask, addTask,
         triggerOpenClawAction, openclawLogs,
         promoters, addPromoter, updatePromoter, deletePromoter,
@@ -36,6 +36,20 @@ export default function EventoDetail() {
         fetchGoogleCalendarEvents, syncEventToGoogleCalendar
     } = useApp();
     const event = (events || []).find(e => e.id === id) || (projects || []).find(p => p.id === id);
+
+    const handleDeleteThisEntity = async () => {
+        if (!event) return;
+        const isProj = isProjectEntity;
+        const confirmMsg = `¿Estás seguro de que deseas eliminar permanentemente ${isProj ? 'el proyecto' : 'el evento'} "${event.name}"? Esta acción limpiará este registro del dashboard.`;
+        if (!window.confirm(confirmMsg)) return;
+        
+        if (isProj) {
+            await deleteProject(event.id);
+        } else {
+            await deleteEvent(event.id);
+        }
+        navigate('/eventos');
+    };
 
     const zones = event ? (event.zones || Array.from(new Set((event.agenda || []).map(a => a.speaker).filter(Boolean)))) : [];
     
@@ -933,12 +947,12 @@ export default function EventoDetail() {
             </div>
 
             {/* ═══ HERO HEADER ═══ */}
-            <div style={{
+            <div className="event-hero" style={{
                 padding: '32px', borderRadius: '16px', marginBottom: '28px', position: 'relative',
                 background: `linear-gradient(135deg, ${color}18, ${color}06)`,
                 border: `1px solid ${color}25`,
             }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '20px' }}>
+                <div className="event-hero-row" style={{ display: 'flex', alignItems: 'flex-start', gap: '20px' }}>
                     <div style={{
                         width: '80px', height: '80px', borderRadius: '22px', flexShrink: 0,
                         background: `${color}20`, border: `2px solid ${color}40`,
@@ -1013,9 +1027,27 @@ export default function EventoDetail() {
                             </div>
                         )}
 
-                        <div style={{ position: 'absolute', top: '32px', right: '32px', display: 'flex', gap: '8px' }}>
+                        <div className="event-hero-actions" style={{ position: 'absolute', top: '32px', right: '32px', display: 'flex', gap: '8px' }}>
                             <button className="btn btn-secondary" style={{ fontSize: '12px', padding: '6px 14px' }} onClick={openEditModal}>
-                                <Edit3 size={13} /> Editar Evento
+                                <Edit3 size={13} /> Editar {isProjectEntity ? 'Proyecto' : 'Evento'}
+                            </button>
+                            <button 
+                                className="btn" 
+                                style={{ 
+                                    fontSize: '12px', 
+                                    padding: '6px 14px', 
+                                    background: 'rgba(239, 68, 68, 0.12)', 
+                                    color: '#ef4444', 
+                                    border: '1px solid rgba(239, 68, 68, 0.25)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    cursor: 'pointer'
+                                }} 
+                                onClick={handleDeleteThisEntity}
+                                title={`Eliminar este ${isProjectEntity ? 'proyecto' : 'evento'}`}
+                            >
+                                <Trash2 size={13} /> Eliminar
                             </button>
                         </div>
                     </div>
@@ -1023,7 +1055,7 @@ export default function EventoDetail() {
             </div>
 
             {/* ═══ TAB NAVIGATION ═══ */}
-            <div style={{
+            <div className="event-tabs" style={{
                 display: 'flex', background: 'var(--bg-surface)', padding: '4px',
                 borderRadius: 'var(--radius-md)', marginBottom: '28px', width: 'fit-content',
                 border: '1px solid var(--border-subtle)',

@@ -192,6 +192,154 @@ class WhatsAppAgentService {
         msg = msg.replace(/\{\{instagram\}\}/gi, contact.instagram || '');
         return msg;
     }
+    /**
+     * Obtiene la biblioteca de mensajes de referencia y ejemplos
+     */
+    static async getReferences() {
+        try {
+            const res = await fetch(`${API_BASE}/agent/whatsapp-references`, {
+                credentials: 'include'
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (Array.isArray(data) && data.length > 0) {
+                    localStorage.setItem('__whatsapp_references', JSON.stringify(data));
+                    return data;
+                }
+            }
+        } catch (e) {
+            console.warn('[WhatsAppAgentService] Error al obtener referencias de backend:', e);
+        }
+
+        const local = localStorage.getItem('__whatsapp_references');
+        return local ? JSON.parse(local) : [];
+    }
+
+    /**
+     * Guarda o actualiza un mensaje de referencia
+     */
+    static async saveReference(reference) {
+        try {
+            const res = await fetch(`${API_BASE}/agent/whatsapp-references`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify(reference)
+            });
+            if (res.ok) {
+                const data = await res.json();
+                return data;
+            }
+        } catch (e) {
+            console.warn('[WhatsAppAgentService] Error guardando referencia en backend:', e);
+        }
+
+        // Fallback local
+        const local = localStorage.getItem('__whatsapp_references');
+        let list = local ? JSON.parse(local) : [];
+        const idx = list.findIndex(r => r.id === reference.id);
+        const itemToSave = { ...reference, id: reference.id || `ref_${Date.now()}`, updatedAt: new Date().toISOString() };
+        if (idx >= 0) {
+            list[idx] = itemToSave;
+        } else {
+            list.unshift(itemToSave);
+        }
+        localStorage.setItem('__whatsapp_references', JSON.stringify(list));
+        return { success: true, reference: itemToSave };
+    }
+
+    /**
+     * Elimina un mensaje de referencia
+     */
+    static async deleteReference(id) {
+        try {
+            const res = await fetch(`${API_BASE}/agent/whatsapp-references/${id}`, {
+                method: 'DELETE',
+                credentials: 'include'
+            });
+            if (res.ok) return await res.json();
+        } catch (e) {
+            console.warn('[WhatsAppAgentService] Error eliminando referencia en backend:', e);
+        }
+
+        const local = localStorage.getItem('__whatsapp_references');
+        if (local) {
+            const list = JSON.parse(local).filter(r => r.id !== id);
+            localStorage.setItem('__whatsapp_references', JSON.stringify(list));
+        }
+        return { success: true };
+    }
+
+    /**
+     * Genera variaciones de difusión a partir de un mensaje de referencia y parámetros semanales
+     */
+    static async generateFromReference({ referenceId, referenceText, day, venue, objective, customNotes, tone = 'nightlife_vip' }) {
+        try {
+            // Map objective aliases for backend Gemini prompt
+            let backendObj = objective;
+            if (objective === 'chicas_sushi') backendObj = 'chicas_sushi_drinks';
+            if (objective === 'drinks_chicas') backendObj = 'chicas_party_drinks';
+            if (objective === 'hombres_sushi_mesas') backendObj = 'hombres_sushi_party';
+
+            const res = await fetch(`${API_BASE}/agent/whatsapp-references/generate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                    referenceId,
+                    referenceText: referenceText || '',
+                    referenceMessage: referenceText || '',
+                    copy: referenceText || '',
+                    day: day || 'Miércoles',
+                    venue: venue || 'Furia',
+                    objective: backendObj,
+                    customNotes: customNotes || '',
+                    tone
+                })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (data.variations && data.variations.length > 0) {
+                    const normalized = data.variations.map((v, idx) => ({
+                        id: v.id || `var-${idx}`,
+                        title: v.style || v.title || (idx === 0 ? '⚡ Opción A: Enérgica & Directa' : idx === 1 ? '🍾 Opción B: Seductora VIP' : '🚨 Opción C: FOMO & Cierre Rápido'),
+                        badge: v.badge || (idx === 0 ? '🔥 Mayor Conversión' : idx === 1 ? '💎 Premium Experience' : '⏳ Últimos Cupos'),
+                        text: v.copy || v.text || ''
+                    }));
+                    return { success: true, variations: normalized };
+                }
+            }
+        } catch (e) {
+            console.warn('[WhatsAppAgentService] Error generando desde referencia en backend:', e);
+        }
+
+        // Fallback deterministic generator
+        const dayLabel = day || 'Esta noche';
+        const venueLabel = venue || 'el club';
+        const notes = customNotes ? `\n\n📌 *Detalles:* ${customNotes}` : '';
+        const base = referenceText || `¡Hola {{nombre}}! No te pierdas ${dayLabel} en ${venueLabel}.`;
+
+        return {
+            success: true,
+            variations: [
+                {
+                    title: '⚡ Opción A: Directa & Alta Energía',
+                    badge: '🔥 Mayor Conversión',
+                    text: `${base}${notes}\n\n👉 Escríbeme directo para asegurar tu acceso o mesa VIP.`
+                },
+                {
+                    title: '🍾 Opción B: Exclusiva & Seductora VIP',
+                    badge: '💎 Premium Experience',
+                    text: `✨ *Plan exclusivo para este ${dayLabel} en ${venueLabel}* ✨\n\n${base}${notes}\n\n🥂 Cupos estrictamente limitados. Reserva al privado.`
+                },
+                {
+                    title: '🚨 Opción C: FOMO & Cierre Rápido',
+                    badge: '⏳ Últimos Cupos',
+                    text: `⚠️ *AVISO RÁPIDO:* Las listas para ${dayLabel} en ${venueLabel} están a punto de cerrar.\n\n${base}${notes}\n\n🎟️ Confírmame ahora antes de sold out.`
+                }
+            ]
+        };
+    }
 }
 
 export default WhatsAppAgentService;

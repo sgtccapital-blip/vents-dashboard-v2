@@ -7,8 +7,51 @@ import {
     Bot, CheckCircle2, Clock, Play, RefreshCw, Plus, Edit3, Trash2,
     ExternalLink, ChevronLeft, ChevronRight, Filter, Search, Zap,
     Smartphone, Bell, Flame, ShieldAlert, Award, ArrowUpRight, Info,
-    Eye, Sliders, CheckSquare, MessageCircle, AlertCircle
+    Eye, Sliders, CheckSquare, MessageCircle, AlertCircle, Bookmark, FileText, Target
 } from 'lucide-react';
+
+export const WEEKLY_FIXED_SCHEDULE = [
+    { id: 'wed_furia', day: 'Miércoles', venue: 'Furia', label: 'Miércoles Furia', color: '#ec4899', icon: '🔥', desc: 'Ladies Night, Sushi & VIP Party' },
+    { id: 'thu_terraplen', day: 'Jueves', venue: 'Terraplén', label: 'Jueves Terraplén', color: '#8b5cf6', icon: '🍸', desc: 'Rooftop, Open Bar & Vibe Casco' },
+    { id: 'fri_furia', day: 'Viernes', venue: 'Furia', label: 'Viernes Furia', color: '#ef4444', icon: '⚡', desc: 'La noche cumbre de la semana' },
+    { id: 'sat_varies', day: 'Sábado', venue: 'Furia / Terraplén / Piano Bar', venues: ['Furia', 'Terraplén', 'Piano Bar'], label: 'Sábado Rotativo', color: '#f59e0b', icon: '✨', desc: 'Varía: Furia, Terraplén o Piano Bar' },
+    { id: 'sun_terraplen', day: 'Domingo', venue: 'Terraplén', label: 'Domingo Terraplén', color: '#10b981', icon: '🌅', desc: 'Sunset Chill, Drinks & After Party' }
+];
+
+export const BROADCAST_OBJECTIVES = [
+    { 
+        id: 'chicas_sushi', 
+        label: '🍣 Chicas Cena Sushi & Drinks', 
+        short: 'Cena Sushi Chicas',
+        badge: 'Ladies Sushi Dinner',
+        color: '#ec4899',
+        desc: 'Invitación a mesa/cena de cortesía de sushi + welcome drinks para grupos de chicas.' 
+    },
+    { 
+        id: 'drinks_chicas', 
+        label: '🍸 Drinks Chicas (Llenar Fiesta)', 
+        short: 'Drinks Chicas (Llenar)',
+        badge: 'Open Bar & Free Drinks',
+        color: '#a855f7',
+        desc: 'Open bar / free drinks para chicas temprano para encender la fiesta de chicas.' 
+    },
+    { 
+        id: 'hombres_sushi_mesas', 
+        label: '🍾 Venta Sushi Party & Mesas (Hombres)', 
+        short: 'Venta Hombres & Mesas VIP',
+        badge: 'Mesas VIP & Sushi Pack',
+        color: '#3b82f6',
+        desc: 'Venta de paquetes de sushi party, botellas, consumos y reservas de mesas para hombres.' 
+    },
+    { 
+        id: 'spam_tickets', 
+        label: '🎟️ Spam Tickets / Cover Preventa', 
+        short: 'Spam Tickets & Cover',
+        badge: 'Tickets & Preventa',
+        color: '#10b981',
+        desc: 'Enlaces directos de compra de tickets, preventas de cover y accesos prioritarios.' 
+    }
+];
 
 export default function WhatsAppAgent() {
     const { events, contacts, addActivity } = useApp();
@@ -28,7 +71,35 @@ export default function WhatsAppAgent() {
     const [campaignSource, setCampaignSource] = useState(null);
 
     // ─── Active Tab State ───────────────────────────────────────
-    const [activeTab, setActiveTab] = useState('schedule'); // 'schedule' | 'vip_outreach' | 'groups' | 'simulator' | 'logs'
+    const [activeTab, setActiveTab] = useState('schedule'); // 'schedule' | 'references' | 'vip_outreach' | 'groups' | 'simulator' | 'logs'
+
+    // ─── Reference Messages & Generator State ───────────────────
+    const [references, setReferences] = useState([]);
+    const [loadingReferences, setLoadingReferences] = useState(false);
+    const [selectedRefFilterSchedule, setSelectedRefFilterSchedule] = useState('all');
+    const [selectedRefFilterObjective, setSelectedRefFilterObjective] = useState('all');
+    const [refSearch, setRefSearch] = useState('');
+
+    // Active in Generator Studio
+    const [activeReference, setActiveReference] = useState(null);
+    const [genDay, setGenDay] = useState('Miércoles');
+    const [genVenue, setGenVenue] = useState('Furia');
+    const [genObjective, setGenObjective] = useState('chicas_sushi');
+    const [customRefNotes, setCustomRefNotes] = useState('');
+    const [isGeneratingFromRef, setIsGeneratingFromRef] = useState(false);
+    const [generatedRefVariations, setGeneratedRefVariations] = useState([]);
+
+    // Modal Add/Edit Reference
+    const [showRefModal, setShowRefModal] = useState(false);
+    const [editingRef, setEditingRef] = useState(null);
+    const [refForm, setRefForm] = useState({
+        title: '',
+        venue: 'Furia',
+        day: 'Miércoles',
+        objective: 'chicas_sushi',
+        content: '',
+        author: 'Marketing Team'
+    });
 
     // ─── Groups & Outreach State ────────────────────────────────
     const [groups, setGroups] = useState([]);
@@ -106,13 +177,6 @@ export default function WhatsAppAgent() {
         return all.filter(isActiveEvent).slice(0, 5);
     }, [events, weekRange]);
 
-    // ─── Load Initial Data ──────────────────────────────────────
-    useEffect(() => {
-        loadCampaign();
-        loadGroups();
-        loadLogs();
-    }, [weekOffset]);
-
     const loadCampaign = async () => {
         try {
             const camp = await WhatsAppAgentService.getCurrentCampaign();
@@ -143,6 +207,169 @@ export default function WhatsAppAgent() {
         } catch (e) {
             console.error('Error loading logs:', e);
         }
+    };
+
+    const loadReferences = async () => {
+        setLoadingReferences(true);
+        try {
+            const data = await WhatsAppAgentService.getReferences();
+            if (Array.isArray(data)) {
+                setReferences(data);
+                if (data.length > 0 && !activeReference) {
+                    setActiveReference(data[0]);
+                    setGenDay(data[0].day || 'Miércoles');
+                    setGenVenue(data[0].venue || 'Furia');
+                    setGenObjective(data[0].objective || 'chicas_sushi');
+                }
+            }
+        } catch (e) {
+            console.error('Error loading references:', e);
+        } finally {
+            setLoadingReferences(false);
+        }
+    };
+
+    // ─── Load Initial Data ──────────────────────────────────────
+    useEffect(() => {
+        loadCampaign();
+        loadGroups();
+        loadLogs();
+        loadReferences();
+    }, [weekOffset]);
+
+    // ─── Reference Messages Handlers ────────────────────────────
+    const handleSelectReferenceForStudio = (ref) => {
+        setActiveReference(ref);
+        if (ref.day) setGenDay(ref.day);
+        if (ref.venue) setGenVenue(ref.venue);
+        if (ref.objective) setGenObjective(ref.objective);
+    };
+
+    const handleGenerateFromReference = async () => {
+        setIsGeneratingFromRef(true);
+        try {
+            const refText = activeReference?.content || activeReference?.copy || '';
+            const result = await WhatsAppAgentService.generateFromReference({
+                referenceId: activeReference?.id,
+                referenceText: refText,
+                day: genDay,
+                venue: genVenue,
+                objective: genObjective,
+                customNotes: customRefNotes,
+                tone: selectedTone
+            });
+            if (result?.variations?.length > 0) {
+                setGeneratedRefVariations(result.variations);
+                if (addActivity) {
+                    addActivity(`✨ Generadas 3 difusiones optimizadas para ${genDay} (${genVenue})`);
+                }
+            }
+        } catch (e) {
+            console.error('Error generating from reference:', e);
+        } finally {
+            setIsGeneratingFromRef(false);
+        }
+    };
+
+    const openRefModal = (ref = null) => {
+        if (ref) {
+            setEditingRef(ref);
+            setRefForm({
+                title: ref.title || '',
+                venue: ref.venue || 'Furia',
+                day: ref.day || 'Miércoles',
+                objective: ref.objective || 'chicas_sushi',
+                content: ref.content || ref.copy || '',
+                author: ref.author || 'Marketing Team'
+            });
+        } else {
+            setEditingRef(null);
+            setRefForm({
+                title: '',
+                venue: genVenue || 'Furia',
+                day: genDay || 'Miércoles',
+                objective: genObjective || 'chicas_sushi',
+                content: '',
+                author: 'Marketing Team'
+            });
+        }
+        setShowRefModal(true);
+    };
+
+    const handleSaveReference = async () => {
+        if (!refForm.title.trim() || !refForm.content.trim()) {
+            alert('Por favor completa el título y el mensaje de referencia.');
+            return;
+        }
+        const toSave = {
+            ...refForm,
+            copy: refForm.content,
+            content: refForm.content,
+            id: editingRef?.id || undefined
+        };
+        await WhatsAppAgentService.saveReference(toSave);
+        await loadReferences();
+        setShowRefModal(false);
+        if (addActivity) {
+            addActivity(`💾 Mensaje de referencia guardado: "${refForm.title}"`);
+        }
+    };
+
+    const handleDeleteReference = async (id) => {
+        if (confirm('¿Eliminar este mensaje de referencia de la biblioteca?')) {
+            await WhatsAppAgentService.deleteReference(id);
+            if (activeReference?.id === id) {
+                setActiveReference(null);
+            }
+            await loadReferences();
+        }
+    };
+
+    const handleAddVariationToSchedule = async (variation) => {
+        let currentCamp = campaign;
+        if (!currentCamp) {
+            currentCamp = {
+                id: `camp_${Date.now()}`,
+                weekLabel: weekRange.label,
+                createdAt: new Date().toISOString(),
+                summary: 'Campaña semanal de eventos',
+                weeklySchedule: []
+            };
+        }
+        const schedule = currentCamp.weeklySchedule || [];
+        const existingIdx = schedule.findIndex(s => s.day?.toLowerCase() === genDay?.toLowerCase());
+
+        let newSchedule;
+        if (existingIdx >= 0) {
+            newSchedule = schedule.map((s, idx) => idx === existingIdx ? {
+                ...s,
+                title: `${genDay} ${genVenue} - ${variation.title || 'Difusión'}`,
+                venue: genVenue,
+                whatsappCopy: variation.text,
+                status: 'ready'
+            } : s);
+        } else {
+            newSchedule = [
+                ...schedule,
+                {
+                    id: `sched_${Date.now()}`,
+                    day: genDay,
+                    date: weekRange.startIso,
+                    title: `${genDay} ${genVenue} - ${variation.title || 'Difusión'}`,
+                    venue: genVenue,
+                    whatsappCopy: variation.text,
+                    status: 'ready'
+                }
+            ];
+        }
+
+        const updatedCamp = { ...currentCamp, weeklySchedule: newSchedule };
+        setCampaign(updatedCamp);
+        await WhatsAppAgentService.saveCampaign(updatedCamp);
+        if (addActivity) {
+            addActivity(`📅 Mensaje añadido a la Parrilla Semanal para ${genDay} (${genVenue})`);
+        }
+        alert(`✅ ¡Mensaje añadido a la Parrilla Semanal para ${genDay} (${genVenue})!`);
     };
 
     // ─── Handle Generate Campaign ───────────────────────────────
@@ -289,6 +516,47 @@ export default function WhatsAppAgent() {
             return matchesSearch && matchesRole;
         });
     }, [contacts, contactSearch, selectedAudienceFilter]);
+
+    // ─── Filtered Reference Messages ────────────────────────────
+    const normalizeObjKey = (obj) => {
+        if (!obj) return '';
+        const lower = obj.toLowerCase();
+        if (lower.includes('sushi') && (lower.includes('chica') || lower.includes('ladies') || lower.includes('women'))) return 'chicas_sushi';
+        if (lower.includes('drink') && lower.includes('chica') || lower.includes('party_drinks')) return 'drinks_chicas';
+        if (lower.includes('hombre') || lower.includes('hombres_sushi') || lower.includes('mesas')) return 'hombres_sushi_mesas';
+        if (lower.includes('ticket') || lower.includes('cover') || lower.includes('spam')) return 'spam_tickets';
+        return lower;
+    };
+
+    const filteredReferences = useMemo(() => {
+        return (references || []).filter(ref => {
+            const copyText = (ref.content || ref.copy || '').toLowerCase();
+            const matchesSearch = !refSearch || 
+                (ref.title || '').toLowerCase().includes(refSearch.toLowerCase()) ||
+                copyText.includes(refSearch.toLowerCase()) ||
+                (ref.venue || '').toLowerCase().includes(refSearch.toLowerCase()) ||
+                (ref.day || '').toLowerCase().includes(refSearch.toLowerCase());
+            
+            // Filter by schedule card
+            let matchesSchedule = true;
+            if (selectedRefFilterSchedule !== 'all') {
+                const sched = WEEKLY_FIXED_SCHEDULE.find(s => s.id === selectedRefFilterSchedule);
+                if (sched) {
+                    const schedDayMatch = (ref.day || '').toLowerCase().includes(sched.day.toLowerCase());
+                    const schedVenueMatch = sched.venues 
+                        ? sched.venues.some(v => (ref.venue || '').toLowerCase().includes(v.toLowerCase()))
+                        : (ref.venue || '').toLowerCase().includes(sched.venue.toLowerCase());
+                    matchesSchedule = schedDayMatch || schedVenueMatch;
+                }
+            }
+
+            // Filter by objective
+            const matchesObjective = selectedRefFilterObjective === 'all' || 
+                normalizeObjKey(ref.objective) === normalizeObjKey(selectedRefFilterObjective);
+
+            return matchesSearch && matchesSchedule && matchesObjective;
+        });
+    }, [references, refSearch, selectedRefFilterSchedule, selectedRefFilterObjective]);
 
     // Active Simulated Text for Phone Preview
     const currentSimulatedText = useMemo(() => {
@@ -568,6 +836,27 @@ export default function WhatsAppAgent() {
                 </button>
 
                 <button
+                    onClick={() => setActiveTab('references')}
+                    style={{
+                        padding: '12px 20px',
+                        background: activeTab === 'references' ? 'rgba(236, 72, 153, 0.15)' : 'transparent',
+                        color: activeTab === 'references' ? '#ec4899' : 'var(--text-secondary)',
+                        border: 'none',
+                        borderBottom: activeTab === 'references' ? '2px solid #ec4899' : '2px solid transparent',
+                        fontWeight: 600,
+                        fontSize: '14px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        whiteSpace: 'nowrap'
+                    }}
+                >
+                    <Bookmark size={17} /> 🎯 Mensajes de Referencia & Generador ({references.length})
+                </button>
+
+                <button
                     onClick={() => setActiveTab('vip_outreach')}
                     style={{
                         padding: '12px 20px',
@@ -824,6 +1113,740 @@ export default function WhatsAppAgent() {
                                 </div>
                             );
                         })}
+                    </div>
+                </div>
+            )}
+
+            {/* ═══════════════════════════════════════════════════════════ */}
+            {/* TAB: MENSAJES DE REFERENCIA & GENERADOR SEMANAL              */}
+            {/* ═══════════════════════════════════════════════════════════ */}
+            {activeTab === 'references' && (
+                <div>
+                    {/* Header Banner */}
+                    <div className="card" style={{
+                        padding: '24px',
+                        marginBottom: '24px',
+                        background: 'linear-gradient(135deg, rgba(236, 72, 153, 0.1), rgba(124, 92, 252, 0.08) 50%, rgba(37, 211, 102, 0.05))',
+                        border: '1px solid rgba(236, 72, 153, 0.25)',
+                        borderRadius: '16px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                        gap: '20px'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', maxWidth: '800px' }}>
+                            <div style={{
+                                width: '52px',
+                                height: '52px',
+                                borderRadius: '14px',
+                                background: 'linear-gradient(135deg, #ec4899, #be185d)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: '#fff',
+                                boxShadow: '0 8px 20px rgba(236, 72, 153, 0.3)',
+                                flexShrink: 0
+                            }}>
+                                <Bookmark size={26} />
+                            </div>
+                            <div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                                    <h2 style={{ fontSize: '20px', fontWeight: 800, margin: 0, color: '#fff' }}>
+                                        🎯 Biblioteca de Mensajes de Referencia & Generador Semanal
+                                    </h2>
+                                    <span style={{
+                                        padding: '3px 10px',
+                                        borderRadius: '12px',
+                                        background: 'rgba(236, 72, 153, 0.2)',
+                                        color: '#ec4899',
+                                        fontSize: '11.5px',
+                                        fontWeight: 700,
+                                        border: '1px solid rgba(236, 72, 153, 0.35)'
+                                    }}>
+                                        {references.length} Copys en Biblioteca
+                                    </span>
+                                </div>
+                                <p style={{ margin: '6px 0 0 0', color: 'var(--text-secondary)', fontSize: '13.5px', lineHeight: '1.5' }}>
+                                    Guarda copys probados de alta conversión y úsalos como <strong>anclas estilísticas</strong> para que la Inteligencia Artificial redacte difusiones adaptadas a la programación fija semanal (Miércoles Furia, Jueves Terraplén, Viernes Furia, Sábado Furia/Terraplén/Piano Bar, Domingo Terraplén) y los 4 objetivos comerciales.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                            <button
+                                className="btn btn-secondary"
+                                onClick={loadReferences}
+                                disabled={loadingReferences}
+                                style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '10px 16px', fontSize: '13px' }}
+                            >
+                                <RefreshCw size={15} className={loadingReferences ? 'spin' : ''} />
+                                Recargar
+                            </button>
+                            <button
+                                className="btn btn-primary"
+                                onClick={() => openRefModal()}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    padding: '10px 18px',
+                                    fontSize: '13.5px',
+                                    fontWeight: 700,
+                                    background: 'linear-gradient(135deg, #ec4899, #be185d)',
+                                    border: 'none',
+                                    boxShadow: '0 4px 16px rgba(236, 72, 153, 0.35)'
+                                }}
+                            >
+                                <Plus size={16} /> Nueva Referencia
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* 1. Schedule Ribbon (5 Fixed Days) */}
+                    <div style={{ marginBottom: '20px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                            <span style={{ fontSize: '13px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <Calendar size={14} /> 1. Agenda Fija Semanal (Filtra y Precarga el Generador)
+                            </span>
+                            {selectedRefFilterSchedule !== 'all' && (
+                                <button
+                                    onClick={() => setSelectedRefFilterSchedule('all')}
+                                    style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontSize: '12px', cursor: 'pointer', fontWeight: 600 }}
+                                >
+                                    Ver todas las fechas ✕
+                                </button>
+                            )}
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '12px' }}>
+                            {WEEKLY_FIXED_SCHEDULE.map(sched => {
+                                const isSelected = selectedRefFilterSchedule === sched.id;
+                                return (
+                                    <div
+                                        key={sched.id}
+                                        onClick={() => {
+                                            if (isSelected) {
+                                                setSelectedRefFilterSchedule('all');
+                                            } else {
+                                                setSelectedRefFilterSchedule(sched.id);
+                                                setGenDay(sched.day);
+                                                setGenVenue(sched.venue.includes('/') ? 'Furia' : sched.venue);
+                                            }
+                                        }}
+                                        style={{
+                                            padding: '14px 16px',
+                                            borderRadius: '12px',
+                                            background: isSelected ? 'rgba(236, 72, 153, 0.16)' : 'var(--bg-card)',
+                                            border: isSelected ? `2px solid ${sched.color || '#ec4899'}` : '1px solid var(--border-subtle)',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s ease',
+                                            boxShadow: isSelected ? `0 4px 16px ${sched.color}30` : 'none',
+                                            position: 'relative',
+                                            overflow: 'hidden'
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <span style={{ fontSize: '18px' }}>{sched.icon}</span>
+                                                <span style={{ fontSize: '14px', fontWeight: 800, color: '#fff' }}>
+                                                    {sched.label}
+                                                </span>
+                                            </div>
+                                            {isSelected && (
+                                                <span style={{
+                                                    width: '8px',
+                                                    height: '8px',
+                                                    borderRadius: '50%',
+                                                    background: sched.color || '#ec4899',
+                                                    boxShadow: `0 0 8px ${sched.color}`
+                                                }}></span>
+                                            )}
+                                        </div>
+                                        <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                                            {sched.desc}
+                                        </p>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {/* 2. Strategic Objectives Ribbon */}
+                    <div style={{ marginBottom: '28px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                            <span style={{ fontSize: '13px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <Target size={14} /> 2. Objetivo Estratégico de la Difusión
+                            </span>
+                            {selectedRefFilterObjective !== 'all' && (
+                                <button
+                                    onClick={() => setSelectedRefFilterObjective('all')}
+                                    style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontSize: '12px', cursor: 'pointer', fontWeight: 600 }}
+                                >
+                                    Ver todos los objetivos ✕
+                                </button>
+                            )}
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px' }}>
+                            {BROADCAST_OBJECTIVES.map(obj => {
+                                const isSelected = selectedRefFilterObjective === obj.id;
+                                return (
+                                    <div
+                                        key={obj.id}
+                                        onClick={() => {
+                                            if (isSelected) {
+                                                setSelectedRefFilterObjective('all');
+                                            } else {
+                                                setSelectedRefFilterObjective(obj.id);
+                                                setGenObjective(obj.id);
+                                            }
+                                        }}
+                                        style={{
+                                            padding: '14px 16px',
+                                            borderRadius: '12px',
+                                            background: isSelected ? `${obj.color}20` : 'var(--bg-card)',
+                                            border: isSelected ? `2px solid ${obj.color}` : '1px solid var(--border-subtle)',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s ease',
+                                            boxShadow: isSelected ? `0 4px 16px ${obj.color}30` : 'none'
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                                            <span style={{ fontSize: '13.5px', fontWeight: 800, color: '#fff' }}>
+                                                {obj.label}
+                                            </span>
+                                            {isSelected && (
+                                                <span style={{
+                                                    fontSize: '10.5px',
+                                                    fontWeight: 700,
+                                                    padding: '2px 8px',
+                                                    borderRadius: '10px',
+                                                    background: obj.color,
+                                                    color: '#fff'
+                                                }}>
+                                                    Activo
+                                                </span>
+                                            )}
+                                        </div>
+                                        <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                                            {obj.desc}
+                                        </p>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {/* 3. Split Studio: AI Generator & References Library */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(380px, 1fr) minmax(440px, 1.25fr)', gap: '24px', alignItems: 'start' }}>
+                        
+                        {/* ─── LEFT: AI GENERATOR STUDIO ─── */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                            <div className="card" style={{ padding: '22px', background: 'var(--bg-card)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                                    <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <Sparkles size={18} color="#ec4899" /> Estudio Generador con IA
+                                    </h3>
+                                    <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
+                                        Few-shot learning asistido
+                                    </span>
+                                </div>
+
+                                {/* Active Reference Anchor */}
+                                <div style={{
+                                    padding: '14px',
+                                    borderRadius: '12px',
+                                    background: 'rgba(0,0,0,0.35)',
+                                    border: activeReference ? '1px solid rgba(236, 72, 153, 0.3)' : '1px dashed var(--border-subtle)',
+                                    marginBottom: '18px'
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                        <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#ec4899', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                            <Bookmark size={12} /> Mensaje Ancla Seleccionado:
+                                        </span>
+                                        {activeReference && (
+                                            <button
+                                                className="btn-icon"
+                                                onClick={() => handleCopy('anchor-copy', activeReference.content || activeReference.copy)}
+                                                style={{ padding: '3px 8px', fontSize: '11px', height: 'auto', gap: '4px' }}
+                                                title="Copiar texto de referencia"
+                                            >
+                                                {copiedId === 'anchor-copy' ? <Check size={12} color="#25D366" /> : <Copy size={12} />}
+                                                <span>{copiedId === 'anchor-copy' ? 'Copiado' : 'Copiar'}</span>
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {activeReference ? (
+                                        <div>
+                                            <div style={{ fontWeight: 700, fontSize: '13.5px', color: '#fff', marginBottom: '4px' }}>
+                                                {activeReference.title}
+                                            </div>
+                                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                                                <span style={{ padding: '2px 8px', borderRadius: '6px', background: 'rgba(255,255,255,0.08)', fontSize: '11px', color: 'var(--text-secondary)' }}>
+                                                    📅 {activeReference.day}
+                                                </span>
+                                                <span style={{ padding: '2px 8px', borderRadius: '6px', background: 'rgba(255,255,255,0.08)', fontSize: '11px', color: 'var(--text-secondary)' }}>
+                                                    📍 {activeReference.venue}
+                                                </span>
+                                                <span style={{ padding: '2px 8px', borderRadius: '6px', background: 'rgba(236, 72, 153, 0.15)', fontSize: '11px', color: '#ec4899' }}>
+                                                    🎯 {BROADCAST_OBJECTIVES.find(o => o.id === activeReference.objective || normalizeObjKey(o.id) === normalizeObjKey(activeReference.objective))?.short || activeReference.objective}
+                                                </span>
+                                            </div>
+                                            <div style={{
+                                                fontSize: '12px',
+                                                color: 'rgba(255,255,255,0.85)',
+                                                whiteSpace: 'pre-wrap',
+                                                maxHeight: '90px',
+                                                overflowY: 'auto',
+                                                background: 'rgba(0,0,0,0.2)',
+                                                padding: '8px 10px',
+                                                borderRadius: '8px',
+                                                borderLeft: '3px solid #ec4899'
+                                            }}>
+                                                {activeReference.content || activeReference.copy}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div style={{ textAlign: 'center', padding: '12px 0', color: 'var(--text-secondary)', fontSize: '12.5px' }}>
+                                            Selecciona un copy de la biblioteca de la derecha haciendo click en <strong>"⚡ Usar en Generador"</strong>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Generator Controls */}
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+                                    <div>
+                                        <label className="form-label" style={{ fontSize: '12px' }}>Día del Evento</label>
+                                        <select
+                                            className="form-input"
+                                            value={genDay}
+                                            onChange={(e) => setGenDay(e.target.value)}
+                                            style={{ padding: '8px 12px', fontSize: '13px' }}
+                                        >
+                                            <option value="Miércoles">Miércoles (Furia)</option>
+                                            <option value="Jueves">Jueves (Terraplén)</option>
+                                            <option value="Viernes">Viernes (Furia)</option>
+                                            <option value="Sábado">Sábado (Furia/Terraplén/Piano Bar)</option>
+                                            <option value="Domingo">Domingo (Terraplén)</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="form-label" style={{ fontSize: '12px' }}>Venue / Local</label>
+                                        <select
+                                            className="form-input"
+                                            value={genVenue}
+                                            onChange={(e) => setGenVenue(e.target.value)}
+                                            style={{ padding: '8px 12px', fontSize: '13px' }}
+                                        >
+                                            <option value="Furia">Furia</option>
+                                            <option value="Terraplén">Terraplén</option>
+                                            <option value="Piano Bar">Piano Bar</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+                                    <div>
+                                        <label className="form-label" style={{ fontSize: '12px' }}>Objetivo Comercial</label>
+                                        <select
+                                            className="form-input"
+                                            value={genObjective}
+                                            onChange={(e) => setGenObjective(e.target.value)}
+                                            style={{ padding: '8px 12px', fontSize: '13px' }}
+                                        >
+                                            <option value="chicas_sushi">🍣 Chicas Cena Sushi & Drinks</option>
+                                            <option value="drinks_chicas">🍸 Drinks Chicas (Llenar)</option>
+                                            <option value="hombres_sushi_mesas">🍾 Venta Hombres Mesas VIP</option>
+                                            <option value="spam_tickets">🎟️ Spam Tickets / Preventas</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="form-label" style={{ fontSize: '12px' }}>Tono de Voz</label>
+                                        <select
+                                            className="form-input"
+                                            value={selectedTone}
+                                            onChange={(e) => setSelectedTone(e.target.value)}
+                                            style={{ padding: '8px 12px', fontSize: '13px' }}
+                                        >
+                                            {CAMPAIGN_TONES.map(t => (
+                                                <option key={t.id} value={t.id}>{t.label}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div style={{ marginBottom: '18px' }}>
+                                    <label className="form-label" style={{ fontSize: '12px' }}>
+                                        Detalles Específicos de esta Semana (Opcional)
+                                        <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginLeft: '6px' }}>
+                                            DJs, horario límite, enlaces o menús
+                                        </span>
+                                    </label>
+                                    <textarea
+                                        className="form-input"
+                                        rows={3}
+                                        placeholder="ej: DJ invitado Alex S. Sushi libre de 8pm a 10pm para grupos de chicas con reserva. Link tickets: passline.com/furia. Solo 10 mesas disponibles."
+                                        value={customRefNotes}
+                                        onChange={(e) => setCustomRefNotes(e.target.value)}
+                                        style={{ fontSize: '13px', resize: 'vertical' }}
+                                    />
+                                </div>
+
+                                <button
+                                    className="btn btn-primary"
+                                    onClick={handleGenerateFromReference}
+                                    disabled={isGeneratingFromRef}
+                                    style={{
+                                        width: '100%',
+                                        padding: '13px 20px',
+                                        background: 'linear-gradient(135deg, #ec4899, #be185d)',
+                                        border: 'none',
+                                        borderRadius: '12px',
+                                        fontWeight: 800,
+                                        fontSize: '14.5px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '10px',
+                                        boxShadow: '0 6px 20px rgba(236, 72, 153, 0.4)',
+                                        cursor: isGeneratingFromRef ? 'not-allowed' : 'pointer'
+                                    }}
+                                >
+                                    {isGeneratingFromRef ? (
+                                        <>
+                                            <RefreshCw size={18} className="spin" />
+                                            <span>Generando 3 Difusiones con IA...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Sparkles size={18} />
+                                            <span>Generar 3 Variaciones Optimizadas con IA</span>
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+
+                            {/* Generated Output Variations */}
+                            {generatedRefVariations.length > 0 && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                        <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <CheckCircle2 size={18} color="#25D366" /> 3 Variaciones Listas para Despacho
+                                        </h3>
+                                        <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
+                                            {genDay} • {genVenue}
+                                        </span>
+                                    </div>
+
+                                    {generatedRefVariations.map((variation, vIdx) => {
+                                        const copyId = `gen-var-${vIdx}`;
+                                        return (
+                                            <div
+                                                key={vIdx}
+                                                className="card"
+                                                style={{
+                                                    padding: '18px',
+                                                    background: 'var(--bg-card)',
+                                                    border: '1px solid rgba(37, 211, 102, 0.25)',
+                                                    borderRadius: '14px',
+                                                    boxShadow: '0 4px 18px rgba(0,0,0,0.3)'
+                                                }}
+                                            >
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                                                    <div>
+                                                        <span style={{ fontSize: '13.5px', fontWeight: 800, color: '#fff' }}>
+                                                            {variation.title}
+                                                        </span>
+                                                        {variation.badge && (
+                                                            <span style={{
+                                                                marginLeft: '8px',
+                                                                padding: '2px 8px',
+                                                                borderRadius: '8px',
+                                                                background: 'rgba(37, 211, 102, 0.15)',
+                                                                color: '#25D366',
+                                                                fontSize: '11px',
+                                                                fontWeight: 700
+                                                            }}>
+                                                                {variation.badge}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                {/* WhatsApp Preview Bubble */}
+                                                <div style={{
+                                                    background: '#0b141a',
+                                                    border: '1px solid rgba(37, 211, 102, 0.2)',
+                                                    borderRadius: '10px',
+                                                    padding: '14px',
+                                                    marginBottom: '14px',
+                                                    color: '#e9edef',
+                                                    fontSize: '13px',
+                                                    lineHeight: '1.55',
+                                                    whiteSpace: 'pre-wrap',
+                                                    fontFamily: 'system-ui, -apple-system, sans-serif'
+                                                }}>
+                                                    {variation.text}
+                                                </div>
+
+                                                {/* Actions */}
+                                                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                                    <button
+                                                        className="btn btn-secondary"
+                                                        onClick={() => handleCopy(copyId, variation.text)}
+                                                        style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', padding: '8px 14px' }}
+                                                    >
+                                                        {copiedId === copyId ? <Check size={14} color="#25D366" /> : <Copy size={14} />}
+                                                        <span>{copiedId === copyId ? '¡Copiado!' : 'Copiar'}</span>
+                                                    </button>
+
+                                                    <button
+                                                        className="btn btn-secondary"
+                                                        onClick={() => {
+                                                            const url = WhatsAppAgentService.buildWhatsAppLink('', variation.text);
+                                                            window.open(url, '_blank');
+                                                        }}
+                                                        style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', padding: '8px 14px', color: '#25D366', borderColor: 'rgba(37, 211, 102, 0.3)' }}
+                                                    >
+                                                        <ExternalLink size={14} />
+                                                        <span>Abrir en WhatsApp</span>
+                                                    </button>
+
+                                                    <button
+                                                        className="btn btn-primary"
+                                                        onClick={() => handleAddVariationToSchedule(variation)}
+                                                        style={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '6px',
+                                                            fontSize: '12.5px',
+                                                            padding: '8px 14px',
+                                                            background: 'linear-gradient(135deg, #10b981, #059669)',
+                                                            border: 'none',
+                                                            marginLeft: 'auto'
+                                                        }}
+                                                    >
+                                                        <Calendar size={14} />
+                                                        <span>Añadir a Parrilla Semanal</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* ─── RIGHT: SAVED REFERENCES LIBRARY ─── */}
+                        <div className="card" style={{ padding: '22px', background: 'var(--bg-card)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
+                                <div>
+                                    <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <FileText size={18} color="var(--accent-primary)" /> Biblioteca de Copies de Referencia ({filteredReferences.length})
+                                    </h3>
+                                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                        Selecciona un copy para anclarlo al generador o edítalo
+                                    </span>
+                                </div>
+
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <div style={{ position: 'relative', width: '220px' }}>
+                                        <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
+                                        <input
+                                            type="text"
+                                            className="form-input"
+                                            placeholder="Buscar referencia..."
+                                            value={refSearch}
+                                            onChange={(e) => setRefSearch(e.target.value)}
+                                            style={{ paddingLeft: '32px', paddingRight: '10px', height: '34px', fontSize: '12.5px' }}
+                                        />
+                                    </div>
+                                    <button
+                                        className="btn btn-secondary"
+                                        onClick={() => openRefModal()}
+                                        style={{ height: '34px', padding: '0 12px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                                    >
+                                        <Plus size={14} /> Añadir
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Reference Cards List */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', maxHeight: '720px', overflowY: 'auto', paddingRight: '4px' }}>
+                                {filteredReferences.length === 0 ? (
+                                    <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-secondary)' }}>
+                                        <Bookmark size={32} style={{ opacity: 0.3, marginBottom: '8px' }} />
+                                        <p style={{ margin: 0, fontSize: '14px' }}>No hay referencias que coincidan con los filtros seleccionados.</p>
+                                        <button
+                                            className="btn btn-secondary"
+                                            onClick={() => {
+                                                setSelectedRefFilterSchedule('all');
+                                                setSelectedRefFilterObjective('all');
+                                                setRefSearch('');
+                                            }}
+                                            style={{ marginTop: '12px', fontSize: '12.5px' }}
+                                        >
+                                            Restablecer filtros
+                                        </button>
+                                    </div>
+                                ) : (
+                                    filteredReferences.map(ref => {
+                                        const isSelectedInStudio = activeReference?.id === ref.id;
+                                        const objMeta = BROADCAST_OBJECTIVES.find(o => o.id === ref.objective);
+                                        const cardCopyId = `ref-copy-${ref.id}`;
+
+                                        return (
+                                            <div
+                                                key={ref.id}
+                                                style={{
+                                                    background: isSelectedInStudio ? 'rgba(236, 72, 153, 0.08)' : 'rgba(0,0,0,0.25)',
+                                                    border: isSelectedInStudio ? '2px solid #ec4899' : '1px solid var(--border-subtle)',
+                                                    borderRadius: '14px',
+                                                    padding: '16px',
+                                                    transition: 'all 0.2s ease',
+                                                    position: 'relative'
+                                                }}
+                                            >
+                                                {/* Card Header */}
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px', marginBottom: '8px' }}>
+                                                    <div>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
+                                                            <span style={{ fontSize: '14px', fontWeight: 800, color: '#fff' }}>
+                                                                {ref.title}
+                                                            </span>
+                                                            {isSelectedInStudio && (
+                                                                <span style={{
+                                                                    fontSize: '10px',
+                                                                    fontWeight: 700,
+                                                                    padding: '2px 8px',
+                                                                    borderRadius: '8px',
+                                                                    background: '#ec4899',
+                                                                    color: '#fff'
+                                                                }}>
+                                                                    ⚡ Ancla Activa
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                                            <span style={{
+                                                                padding: '2px 8px',
+                                                                borderRadius: '6px',
+                                                                background: 'rgba(124, 92, 252, 0.15)',
+                                                                color: 'var(--accent-primary)',
+                                                                fontSize: '11px',
+                                                                fontWeight: 600
+                                                            }}>
+                                                                📅 {ref.day}
+                                                            </span>
+                                                            <span style={{
+                                                                padding: '2px 8px',
+                                                                borderRadius: '6px',
+                                                                background: 'rgba(59, 130, 246, 0.15)',
+                                                                color: '#3b82f6',
+                                                                fontSize: '11px',
+                                                                fontWeight: 600
+                                                            }}>
+                                                                📍 {ref.venue}
+                                                            </span>
+                                                            <span style={{
+                                                                padding: '2px 8px',
+                                                                borderRadius: '6px',
+                                                                background: `${objMeta?.color || '#ec4899'}20`,
+                                                                color: objMeta?.color || '#ec4899',
+                                                                fontSize: '11px',
+                                                                fontWeight: 600
+                                                            }}>
+                                                                {objMeta?.short || ref.objective}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+
+                                                    <div style={{ display: 'flex', gap: '4px' }}>
+                                                        <button
+                                                            className="btn-icon"
+                                                            onClick={() => openRefModal(ref)}
+                                                            title="Editar referencia"
+                                                            style={{ padding: '6px' }}
+                                                        >
+                                                            <Edit3 size={14} />
+                                                        </button>
+                                                        <button
+                                                            className="btn-icon"
+                                                            onClick={() => handleDeleteReference(ref.id)}
+                                                            title="Eliminar de biblioteca"
+                                                            style={{ padding: '6px', color: 'var(--danger)' }}
+                                                        >
+                                                            <Trash2 size={14} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                {/* Message Body Box */}
+                                                <div style={{
+                                                    background: '#0b141a',
+                                                    border: '1px solid rgba(255,255,255,0.06)',
+                                                    borderRadius: '10px',
+                                                    padding: '12px 14px',
+                                                    color: '#e9edef',
+                                                    fontSize: '12.5px',
+                                                    lineHeight: '1.5',
+                                                    whiteSpace: 'pre-wrap',
+                                                    fontFamily: 'system-ui, -apple-system, sans-serif',
+                                                    marginBottom: '12px',
+                                                    maxHeight: '160px',
+                                                    overflowY: 'auto'
+                                                }}>
+                                                    {ref.content || ref.copy}
+                                                </div>
+
+                                                {/* Bottom Toolbar */}
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                    <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
+                                                        Por: {ref.author || 'Equipo'}
+                                                    </span>
+
+                                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                                        <button
+                                                            className="btn btn-secondary"
+                                                            onClick={() => handleCopy(cardCopyId, ref.content || ref.copy)}
+                                                            style={{ padding: '6px 12px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '5px' }}
+                                                        >
+                                                            {copiedId === cardCopyId ? <Check size={13} color="#25D366" /> : <Copy size={13} />}
+                                                            <span>{copiedId === cardCopyId ? 'Copiado' : 'Copiar'}</span>
+                                                        </button>
+
+                                                        <button
+                                                            className="btn btn-primary"
+                                                            onClick={() => handleSelectReferenceForStudio(ref)}
+                                                            style={{
+                                                                padding: '6px 14px',
+                                                                fontSize: '12px',
+                                                                fontWeight: 700,
+                                                                background: isSelectedInStudio
+                                                                    ? 'linear-gradient(135deg, #10b981, #059669)'
+                                                                    : 'linear-gradient(135deg, #ec4899, #be185d)',
+                                                                border: 'none',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: '6px'
+                                                            }}
+                                                        >
+                                                            <Sparkles size={13} />
+                                                            <span>{isSelectedInStudio ? '✓ Ancla Seleccionada' : '⚡ Usar en Generador'}</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })
+                                )}
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             )}
@@ -1527,6 +2550,132 @@ export default function WhatsAppAgent() {
                         <div className="modal-footer">
                             <button className="btn btn-secondary" onClick={() => setShowGroupModal(false)}>Cancelar</button>
                             <button className="btn btn-primary" onClick={handleSaveGroup}>Guardar Grupo</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ═══ MODAL ADD / EDIT REFERENCE MESSAGE ═══ */}
+            {showRefModal && (
+                <div className="modal-overlay" onClick={() => setShowRefModal(false)}>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '640px' }}>
+                        <div className="modal-header">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <div style={{
+                                    width: '36px',
+                                    height: '36px',
+                                    borderRadius: '10px',
+                                    background: 'rgba(236, 72, 153, 0.15)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: '#ec4899'
+                                }}>
+                                    <Bookmark size={20} />
+                                </div>
+                                <div>
+                                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700 }}>
+                                        {editingRef ? 'Editar Mensaje de Referencia' : 'Añadir Nuevo Mensaje de Referencia'}
+                                    </h3>
+                                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                        Este copy servirá de base y estilo para que la IA genere difusiones similares
+                                    </span>
+                                </div>
+                            </div>
+                            <button className="btn-icon" onClick={() => setShowRefModal(false)}>✕</button>
+                        </div>
+                        <div className="modal-body">
+                            <label className="form-label">Título Descriptivo *</label>
+                            <input 
+                                type="text"
+                                className="form-input"
+                                placeholder="ej: Ladies Night Sushi & Welcome Drinks Miércoles"
+                                value={refForm.title}
+                                onChange={(e) => setRefForm({ ...refForm, title: e.target.value })}
+                                style={{ marginBottom: '14px' }}
+                            />
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+                                <div>
+                                    <label className="form-label">Día de la Semana</label>
+                                    <select
+                                        className="form-input"
+                                        value={refForm.day}
+                                        onChange={(e) => setRefForm({ ...refForm, day: e.target.value })}
+                                    >
+                                        <option value="Miércoles">Miércoles</option>
+                                        <option value="Jueves">Jueves</option>
+                                        <option value="Viernes">Viernes</option>
+                                        <option value="Sábado">Sábado</option>
+                                        <option value="Domingo">Domingo</option>
+                                        <option value="General">General / Cualquier Día</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="form-label">Venue / Local</label>
+                                    <select
+                                        className="form-input"
+                                        value={refForm.venue}
+                                        onChange={(e) => setRefForm({ ...refForm, venue: e.target.value })}
+                                    >
+                                        <option value="Furia">Furia</option>
+                                        <option value="Terraplén">Terraplén</option>
+                                        <option value="Piano Bar">Piano Bar</option>
+                                        <option value="General">General / Multi-Venue</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="form-label">Autor / Creador</label>
+                                    <input 
+                                        type="text"
+                                        className="form-input"
+                                        placeholder="ej: Marketing Team"
+                                        value={refForm.author}
+                                        onChange={(e) => setRefForm({ ...refForm, author: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+
+                            <label className="form-label">Objetivo Estratégico *</label>
+                            <select
+                                className="form-input"
+                                value={refForm.objective}
+                                onChange={(e) => setRefForm({ ...refForm, objective: e.target.value })}
+                                style={{ marginBottom: '14px' }}
+                            >
+                                <option value="chicas_sushi">🍣 Chicas Cena Sushi & Drinks (Cortesía)</option>
+                                <option value="drinks_chicas">🍸 Drinks de las Chicas (Llenar la fiesta)</option>
+                                <option value="hombres_sushi_mesas">🍾 Venta Sushi Party & Mesas VIP (Hombres)</option>
+                                <option value="spam_tickets">🎟️ Spam de Tickets / Cover de cada Evento</option>
+                                <option value="general">⚡ Difusión General / Cartelera</option>
+                            </select>
+
+                            <label className="form-label">
+                                Texto del Mensaje Modelo (Copy Completo) *
+                                <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginLeft: '8px' }}>
+                                    (Puedes usar emojis y variables como &#123;&#123;nombre&#125;&#125;)
+                                </span>
+                            </label>
+                            <textarea 
+                                className="form-input"
+                                rows={8}
+                                placeholder="Pega aquí el copy de WhatsApp que mejor te haya funcionado..."
+                                value={refForm.content}
+                                onChange={(e) => setRefForm({ ...refForm, content: e.target.value })}
+                                style={{ fontFamily: 'monospace', fontSize: '13px', lineHeight: '1.5' }}
+                            />
+                        </div>
+                        <div className="modal-footer">
+                            <button className="btn btn-secondary" onClick={() => setShowRefModal(false)}>Cancelar</button>
+                            <button 
+                                className="btn btn-primary" 
+                                onClick={handleSaveReference}
+                                style={{ background: 'linear-gradient(135deg, #ec4899, #be185d)' }}
+                            >
+                                Guardar en Biblioteca
+                            </button>
                         </div>
                     </div>
                 </div>

@@ -32,6 +32,8 @@ export const useApp = () => {
 
 export const AppProvider = ({ children }) => {
     // ─── Fallback: localStorage when API is unreachable ───────────
+    // Lo guardado en este navegador manda; el seed solo se usa la primera vez.
+    // (Antes se volvían a mezclar los registros del seed y los borrados reaparecían.)
     const initializeState = (key, defaultData) => {
         try {
             const savedItem = localStorage.getItem(key);
@@ -106,14 +108,7 @@ export const AppProvider = ({ children }) => {
 
     const [ideas, setIdeas] = useState(() => initializeState('os_live_ideas', seedIdeas));
 
-    const [socialMedia, setSocialMedia] = useState(() => {
-        const local = initializeState('os_live_socialMedia', seedSocialMedia);
-        const merged = [...local];
-        seedSocialMedia.forEach(seed => {
-            if (!merged.find(a => a.id === seed.id)) merged.push(seed);
-        });
-        return merged;
-    });
+    const [socialMedia, setSocialMedia] = useState(() => initializeState('os_live_socialMedia', seedSocialMedia));
     const [contentTasks, setContentTasks] = useState(() => {
         const saved = initializeState('os_live_contentTasks', seedContentTasks);
         return Array.isArray(saved) ? saved : [];
@@ -125,14 +120,7 @@ export const AppProvider = ({ children }) => {
     const [contacts, setContacts] = useState(() => initializeState('os_live_contacts', seedContacts));
     const [agents, setAgents] = useState(() => initializeState('os_live_agents', []));
 
-    const [projects, setProjects] = useState(() => {
-        const local = initializeState('os_live_projects', seedProjects);
-        const merged = [...(local || [])];
-        seedProjects.forEach(seed => {
-            if (!merged.find(p => p.id === seed.id)) merged.push(seed);
-        });
-        return merged;
-    });
+    const [projects, setProjects] = useState(() => initializeState('os_live_projects', seedProjects));
     const [openclawLogs, setOpenclawLogs] = useState(() => initializeState('os_live_openclaw_logs', initializeState('os_live_hermes_logs', [])));
     const hermesLogs = openclawLogs;
 
@@ -152,53 +140,16 @@ export const AppProvider = ({ children }) => {
     const [isOpenclawThinking, setIsOpenclawThinking] = useState(false);
     const [openclawMode, setOpenclawMode] = useState('ejecutivo');
 
-    const [events, setEvents] = useState(() => {
-        const local = initializeState('os_live_events', seedEvents);
-        const merged = [...(local || [])];
-        seedEvents.forEach(seed => {
-            if (!merged.find(e => e.id === seed.id)) {
-                merged.push(seed);
-            }
-        });
-        return merged;
-    });
-    const [promoters, setPromoters] = useState(() => {
-        const local = initializeState('os_live_promoters', seedPromoters);
-        const merged = [...local];
-        seedPromoters.forEach(seed => {
-            if (!merged.find(e => e.id === seed.id)) merged.push(seed);
-        });
-        return merged;
-    });
-    const [imageGirls, setImageGirls] = useState(() => {
-        const local = initializeState('os_live_image_girls', seedImageGirls);
-        const merged = [...local];
-        seedImageGirls.forEach(seed => {
-            if (!merged.find(e => e.id === seed.id)) merged.push(seed);
-        });
-        return merged;
-    });
+    const [events, setEvents] = useState(() => initializeState('os_live_events', seedEvents));
+    const [promoters, setPromoters] = useState(() => initializeState('os_live_promoters', seedPromoters));
+    const [imageGirls, setImageGirls] = useState(() => initializeState('os_live_image_girls', seedImageGirls));
     const [orders, setOrders] = useState(() => initializeState('os_live_orders', []));
     const [sops, setSops] = useState(() => initializeState('os_live_sops', []));
     
     // Portfolio OS states
-    const [decisionLog, setDecisionLog] = useState(() => {
-        const local = initializeState('os_live_decision_log', seedDecisionLog);
-        const merged = [...local];
-        seedDecisionLog.forEach(seed => {
-            if (!merged.find(d => d.id === seed.id)) merged.push(seed);
-        });
-        return merged;
-    });
+    const [decisionLog, setDecisionLog] = useState(() => initializeState('os_live_decision_log', seedDecisionLog));
 
-    const [portfolioRoadmap, setPortfolioRoadmap] = useState(() => {
-        const local = initializeState('os_live_portfolio_roadmap', seedPortfolioRoadmap);
-        const merged = [...local];
-        seedPortfolioRoadmap.forEach(seed => {
-            if (!merged.find(r => r.id === seed.id)) merged.push(seed);
-        });
-        return merged;
-    });
+    const [portfolioRoadmap, setPortfolioRoadmap] = useState(() => initializeState('os_live_portfolio_roadmap', seedPortfolioRoadmap));
 
     // Google Calendar integration states
     const [gcalToken, setGcalToken] = useState(() => localStorage.getItem('gcal_token') || '');
@@ -218,6 +169,7 @@ export const AppProvider = ({ children }) => {
         try {
             const res = await fetch(`${API_BASE}${endpoint}`, {
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 ...options,
                 body: options.body ? JSON.stringify(options.body) : undefined
             });
@@ -253,7 +205,7 @@ export const AppProvider = ({ children }) => {
         let payload;
         try {
             const since = stateVersionRef.current ? `?since=${encodeURIComponent(stateVersionRef.current)}` : '';
-            const res = await fetch(`${API_BASE}/state${since}`);
+            const res = await fetch(`${API_BASE}/state${since}`, { credentials: 'include' });
             if (res.status === 401) { window.dispatchEvent(new Event('auth:required')); return; }
             if (!res.ok) { setApiOnline(false); return; }
             setApiOnline(true);
@@ -269,24 +221,78 @@ export const AppProvider = ({ children }) => {
         stateVersionRef.current = payload.version;
 
         const d = payload.data || {};
-        if (Array.isArray(d.events)) setEvents(d.events);
-        if (Array.isArray(d.projects)) setProjects(d.projects);
-        if (Array.isArray(d.tasks)) setTasks(d.tasks);
-        if (Array.isArray(d.notes)) setNotes(d.notes);
-        if (Array.isArray(d.ideas)) setIdeas(d.ideas);
-        if (Array.isArray(d.subscriptions)) setSubscriptions(d.subscriptions);
-        if (Array.isArray(d.activity)) setActivityFeed(d.activity);
-        if (Array.isArray(d.orders)) setOrders(d.orders);
-        if (Array.isArray(d.sops)) setSops(d.sops);
-        if (Array.isArray(d.socialMedia)) setSocialMedia(d.socialMedia);
-        if (Array.isArray(d.contentTasks)) setContentTasks(d.contentTasks);
-        if (Array.isArray(d.contacts)) setContacts(d.contacts);
-        if (Array.isArray(d.openclawLogs)) setOpenclawLogs(d.openclawLogs);
-        if (Array.isArray(d.decisionLog) && d.decisionLog.length > 0) setDecisionLog(d.decisionLog);
-        if (Array.isArray(d.portfolioRoadmap) && d.portfolioRoadmap.length > 0) setPortfolioRoadmap(d.portfolioRoadmap);
-        if (Array.isArray(d.promoters)) setPromoters(d.promoters);
-        if (Array.isArray(d.imageGirls)) setImageGirls(d.imageGirls);
-        if (Array.isArray(d.agents)) setAgents(d.agents);
+        if (Array.isArray(d.events)) {
+            setEvents(d.events);
+            safeSetLocal('os_live_events', d.events);
+        }
+        if (Array.isArray(d.projects)) {
+            setProjects(d.projects);
+            safeSetLocal('os_live_projects', d.projects);
+        }
+        if (Array.isArray(d.tasks)) {
+            setTasks(d.tasks);
+            safeSetLocal('os_live_tasks', d.tasks);
+        }
+        if (Array.isArray(d.notes)) {
+            setNotes(d.notes);
+            safeSetLocal('os_live_notes', d.notes);
+        }
+        if (Array.isArray(d.ideas)) {
+            setIdeas(d.ideas);
+            safeSetLocal('os_live_ideas', d.ideas);
+        }
+        if (Array.isArray(d.subscriptions)) {
+            setSubscriptions(d.subscriptions);
+            safeSetLocal('os_live_subscriptions', d.subscriptions);
+        }
+        if (Array.isArray(d.activity)) {
+            setActivityFeed(d.activity);
+            safeSetLocal('os_live_activityFeed', d.activity);
+        }
+        if (Array.isArray(d.orders)) {
+            setOrders(d.orders);
+            safeSetLocal('os_live_orders', d.orders);
+        }
+        if (Array.isArray(d.sops)) {
+            setSops(d.sops);
+            safeSetLocal('os_live_sops', d.sops);
+        }
+        if (Array.isArray(d.socialMedia)) {
+            setSocialMedia(d.socialMedia);
+            safeSetLocal('os_live_socialMedia', d.socialMedia);
+        }
+        if (Array.isArray(d.contentTasks)) {
+            setContentTasks(d.contentTasks);
+            safeSetLocal('os_live_contentTasks', d.contentTasks);
+        }
+        if (Array.isArray(d.contacts)) {
+            setContacts(d.contacts);
+            safeSetLocal('os_live_contacts', d.contacts);
+        }
+        if (Array.isArray(d.openclawLogs)) {
+            setOpenclawLogs(d.openclawLogs);
+            safeSetLocal('os_live_openclaw_logs', d.openclawLogs);
+        }
+        if (Array.isArray(d.decisionLog) && d.decisionLog.length > 0) {
+            setDecisionLog(d.decisionLog);
+            safeSetLocal('os_live_decision_log', d.decisionLog);
+        }
+        if (Array.isArray(d.portfolioRoadmap) && d.portfolioRoadmap.length > 0) {
+            setPortfolioRoadmap(d.portfolioRoadmap);
+            safeSetLocal('os_live_portfolio_roadmap', d.portfolioRoadmap);
+        }
+        if (Array.isArray(d.promoters)) {
+            setPromoters(d.promoters);
+            safeSetLocal('os_live_promoters', d.promoters);
+        }
+        if (Array.isArray(d.imageGirls)) {
+            setImageGirls(d.imageGirls);
+            safeSetLocal('os_live_image_girls', d.imageGirls);
+        }
+        if (Array.isArray(d.agents)) {
+            setAgents(d.agents);
+            safeSetLocal('os_live_agents', d.agents);
+        }
 
         checkSupabaseStatus().catch(() => null);
     }, [checkSupabaseStatus]);

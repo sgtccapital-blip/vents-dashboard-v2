@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'db.json');
-const VAULT_DIR = path.join(__dirname, 'BrainVault');
+const VAULT_DIR = process.env.BRAIN_VAULT_DIR || path.join(__dirname, 'BrainVault');
 
 let db = {};
 try {

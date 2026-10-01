@@ -19,12 +19,6 @@ Descripción: Plataforma de inteligencia y automatización para licitaciones, an
 Tareas:
 - Sin tareas pendientes
 
-## Proyecto: Marketing Agency
-Prioridad: medium | Estado: active
-Descripción: Agencia por desarrollar para branding, webs, marketing, automatización y activos comerciales.
-Tareas:
-- Sin tareas pendientes
-
 ## Proyecto: RecordAI
 Prioridad: medium | Estado: active
 Descripción: Desarrollo de plataforma AI.
@@ -40,12 +34,6 @@ Tareas:
 ## Proyecto: Hang Out
 Prioridad: critical | Estado: active
 Descripción: Plataforma para descubrir qué está pasando en Panamá, con foco en eventos, nightlife, lugares y experiencias.
-Tareas:
-- Sin tareas pendientes
-
-## Proyecto: Eventos y Entretenimiento
-Prioridad: low | Estado: active
-Descripción: Fest, Livin, 360 MONA, Praia, Euphoria.
 Tareas:
 - Sin tareas pendientes
 

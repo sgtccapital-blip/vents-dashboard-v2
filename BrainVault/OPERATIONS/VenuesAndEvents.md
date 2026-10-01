@@ -50,16 +50,10 @@ Presupuesto: $0
 Descripción: Detalles del evento
 
 ## Guaya Fest 2026
-Fecha: 2026-10-16 | Estado: planificacion
+Fecha: 2027-04-16 | Estado: planificacion
 Ubicación/Venue: Explanada Amador, Panamá
 Presupuesto: $150000
 Descripción: El festival de música urbana y cultura del año. Múltiples escenarios, áreas de comida, activaciones de marca y zonas VIP con boxes exclusivos.
-
-## 212 club
-Fecha: 2026-06-11 | Estado: activo
-Ubicación/Venue: Calle 8va, Casco Antiguo, Panamá
-Presupuesto: $12000
-Descripción: Lounge bar premium en el Casco Antiguo. Gestión diaria de reservas de boxes VIP, inventario de barra y asistencia de personal.
 
 ## Music PTY
 Fecha: 2026-08-05 | Estado: planificacion
@@ -67,33 +61,9 @@ Ubicación/Venue: Estudio Principal, Panama City
 Presupuesto: $0
 Descripción: Programa de televisión musical con segmentos en vivo, entrevistas a artistas, sesiones acústicas y cobertura de la escena musical panameña. Transmisión semanal con gestión integral de redes sociales y contenido multiplataforma.
 
-## Party en Pa’ Vacilar
-Fecha: Por definir | Estado: borrador
-Ubicación/Venue: Casco Antiguo
-Presupuesto: $0
-Descripción: El party definitivo en Pa’ Vacilar.
-
 ## The Room
 Fecha: Por definir | Estado: borrador
 Ubicación/Venue: Casco Antiguo
 Presupuesto: $0
 Descripción: Evento The Room.
-
-## Arrive Models
-Fecha: Por definir | Estado: borrador
-Ubicación/Venue: Casco Antiguo
-Presupuesto: $0
-Descripción: Evento exclusivo con agencias y modelos de Arrive Models.
-
-## Activación Mundial
-Fecha: Por definir | Estado: borrador
-Ubicación/Venue: Casco Antiguo
-Presupuesto: $0
-Descripción: Activación global de marca con experiencias interactivas.
-
-## Vale Bash @Terraplen
-Fecha: Por definir | Estado: borrador
-Ubicación/Venue: Casco Antiguo
-Presupuesto: $0
-Descripción: Fiesta especial Vale Bash en locación Terraplen.
 
