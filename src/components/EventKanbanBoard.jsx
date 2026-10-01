@@ -1,10 +1,12 @@
 import { AlertCircle, Clock, Send, CheckCircle2, Plus, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
+import { taskStatus } from '../lib/status';
 
+// Columna del tablero para cada estado canónico (las bloqueadas esperan en Pending).
 const statusMap = {
     'pending': 'pending',
-    'active': 'in-progress',
+    'blocked': 'pending',
     'in-progress': 'in-progress',
     'done': 'done'
 };
@@ -26,16 +28,18 @@ const ASSIGNEE_CONFIG = {
     'FIVVR': { bg: 'rgba(20, 184, 166, 0.15)', border: '1px solid rgba(20, 184, 166, 0.3)', color: '#2dd4bf' }
 };
 
-function KanbanCard({ t, colStatus, events, deleteTask, updateTaskStatus, updateTaskContext, updateTaskDate, updateTaskAssignee }) {
+function KanbanCard({ t, colStatus, events, projects, deleteTask, updateTaskStatus, updateTaskContext, updateTaskDate, updateTaskAssignee }) {
     const taskEvent = events?.find(e => e.id === t.eventId);
-    const eventColor = taskEvent?.color || null;
+    const taskProject = (projects || []).find(p => p.id === t.projectId) || (t.projectId === 'proj-arrive-agency' || t.agency === 'arrive' ? { id: 'proj-arrive-agency', name: 'ARRIVE AGENCY', color: '#fbbf24' } : null);
+    const leftColor = (t.projectId === 'proj-arrive-agency' || t.agency === 'arrive') ? '#fbbf24' : (taskProject?.color || taskEvent?.color || null);
+    const currentContext = t.projectId ? `project_${t.projectId}` : (t.agency === 'arrive' ? 'project_proj-arrive-agency' : (t.eventId ? `event_${t.eventId}` : ''));
 
     return (
         <div key={t.id} draggable onDragStart={(e) => e.dataTransfer.setData('taskId', t.id)} style={{
             background: 'var(--bg-card)',
             border: '1px solid var(--border-subtle)',
             borderRadius: 'var(--radius-md)',
-            borderLeft: eventColor ? `3px solid ${eventColor}` : '1px solid var(--border-subtle)',
+            borderLeft: leftColor ? `3px solid ${leftColor}` : '1px solid var(--border-subtle)',
             padding: '10px 12px',
             display: 'flex', flexDirection: 'column', gap: '8px',
             transition: 'transform 0.15s ease, box-shadow 0.15s ease',
@@ -70,26 +74,33 @@ function KanbanCard({ t, colStatus, events, deleteTask, updateTaskStatus, update
             </div>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', alignItems: 'center', marginTop: '2px' }}>
-                {/* Event Selector */}
+                {/* Project or Event Context Selector */}
                 <select
-                    value={t.eventId ? `event_${t.eventId}` : ''}
+                    value={currentContext}
                     onChange={(e) => updateTaskContext(t.id, e.target.value)}
                     style={{
-                        padding: '1px 4px', fontSize: '9.5px', height: '20px',
-                        width: 'auto', maxWidth: '120px',
-                        background: eventColor ? `${eventColor}15` : 'rgba(255,255,255,0.02)',
-                        color: eventColor || 'var(--text-tertiary)',
-                        border: eventColor ? `1px solid ${eventColor}25` : '1px solid rgba(255,255,255,0.04)',
+                        padding: '1px 5px', fontSize: '9.5px', height: '20px',
+                        width: 'auto', maxWidth: '135px',
+                        background: leftColor ? `${leftColor}18` : 'rgba(255,255,255,0.02)',
+                        color: leftColor || 'var(--text-tertiary)',
+                        border: leftColor ? `1px solid ${leftColor}35` : '1px solid rgba(255,255,255,0.04)',
                         borderRadius: '6px', fontWeight: 600,
                         outline: 'none', cursor: 'pointer'
                     }}
                 >
-                    <option value="">📅 Evento...</option>
-                    <optgroup label="Eventos">
-                        {(events || []).map(ev => (
-                            <option key={`e-${ev.id}`} value={`event_${ev.id}`}>{ev.icon || '📅'} {ev.name}</option>
+                    <option value="">🎯 Asignar...</option>
+                    <optgroup label="🌟 Agencia & Proyectos">
+                        {(projects || []).map(p => (
+                            <option key={`card-p-${p.id}`} value={`project_${p.id}`}>
+                                {p.id === 'proj-arrive-agency' ? '🌟 ARRIVE AGENCY' : `🚀 ${p.name}`}
+                            </option>
                         ))}
-                        <option value="create_event" style={{ fontWeight: 'bold', color: 'var(--accent-primary)' }}>➕ Crear...</option>
+                    </optgroup>
+                    <optgroup label="🎪 Eventos & Venues">
+                        {(events || []).map(ev => (
+                            <option key={`card-e-${ev.id}`} value={`event_${ev.id}`}>{ev.icon || '📅'} {ev.name}</option>
+                        ))}
+                        <option value="create_event" style={{ fontWeight: 'bold', color: 'var(--accent-primary)' }}>➕ Crear Evento...</option>
                     </optgroup>
                 </select>
 
@@ -155,7 +166,7 @@ function KanbanCard({ t, colStatus, events, deleteTask, updateTaskStatus, update
 }
 
 export default function EventKanbanBoard({ events, filterEventId }) {
-    const { tasks, addTask, updateTask, deleteTask: contextDeleteTask, addActivity, addEvent } = useApp();
+    const { tasks, projects, addTask, updateTask, deleteTask: contextDeleteTask, addActivity, addEvent } = useApp();
     const [newTaskText, setNewTaskText] = useState('');
     const [newTaskContext, setNewTaskContext] = useState(filterEventId ? `event_${filterEventId}` : '');
     const [newTaskDate, setNewTaskDate] = useState('');
@@ -165,6 +176,19 @@ export default function EventKanbanBoard({ events, filterEventId }) {
     const [selectedAssignee, setSelectedAssignee] = useState('all');
     const [selectedVenue, setSelectedVenue] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
+
+    // Ensure ARRIVE Agency is always first among projects
+    const sortedProjects = useMemo(() => {
+        const list = [...(projects || [])];
+        if (!list.find(p => p.id === 'proj-arrive-agency')) {
+            list.unshift({
+                id: 'proj-arrive-agency',
+                name: 'ARRIVE AGENCY — Creative, Talent & Experiences',
+                color: '#fbbf24'
+            });
+        }
+        return list.sort((a, b) => (a.id === 'proj-arrive-agency' ? -1 : b.id === 'proj-arrive-agency' ? 1 : 0));
+    }, [projects]);
 
     const updateTaskStatus = (id, newStatus) => {
         const isDone = newStatus === 'done';
@@ -189,7 +213,7 @@ export default function EventKanbanBoard({ events, filterEventId }) {
 
     const updateTaskContext = (id, contextValue) => {
         if (!contextValue) {
-            updateTask(id, { eventId: null, eventName: '' });
+            updateTask(id, { eventId: null, eventName: '', projectId: null, projectName: '', project: '' });
             return;
         }
 
@@ -198,8 +222,23 @@ export default function EventKanbanBoard({ events, filterEventId }) {
             if (name) {
                 const newId = `ev-${Date.now()}`;
                 addEvent({ id: newId, name, status: 'planeacion', color: '#ec4899', icon: '📅' });
-                updateTask(id, { eventId: newId, eventName: name });
+                updateTask(id, { eventId: newId, eventName: name, projectId: null, projectName: '', project: '' });
             }
+            return;
+        }
+
+        if (contextValue.startsWith('project_')) {
+            const projectId = contextValue.replace('project_', '');
+            const proj = sortedProjects.find(p => p.id === projectId);
+            const projName = proj?.name || (projectId === 'proj-arrive-agency' ? 'ARRIVE AGENCY' : projectId);
+            updateTask(id, {
+                projectId,
+                projectName: projName,
+                project: projName,
+                agency: projectId === 'proj-arrive-agency' ? 'arrive' : undefined,
+                eventId: null,
+                eventName: ''
+            });
             return;
         }
 
@@ -207,16 +246,24 @@ export default function EventKanbanBoard({ events, filterEventId }) {
             const eventId = contextValue.replace('event_', '');
             const event = events.find(e => e.id === eventId);
             updateTask(id, { 
-                eventId, eventName: event?.name || ''
+                eventId, 
+                eventName: event?.name || '',
+                projectId: null,
+                projectName: '',
+                project: ''
             });
         }
     };
 
     const handleAddTask = () => {
         if (!newTaskText.trim()) return;
-        let eventId = '', eventName = '';
+        let eventId = '', eventName = '', projectId = '', projectName = '';
 
-        if (newTaskContext.startsWith('event_')) {
+        if (newTaskContext.startsWith('project_')) {
+            projectId = newTaskContext.replace('project_', '');
+            const proj = sortedProjects.find(p => p.id === projectId);
+            projectName = proj?.name || (projectId === 'proj-arrive-agency' ? 'ARRIVE AGENCY' : projectId);
+        } else if (newTaskContext.startsWith('event_')) {
             eventId = newTaskContext.replace('event_', '');
             const event = events.find(e => e.id === eventId);
             eventName = event?.name || '';
@@ -234,8 +281,12 @@ export default function EventKanbanBoard({ events, filterEventId }) {
             text: newTaskText,
             status: newTaskStatus,
             done: newTaskStatus === 'done',
-            eventId,
-            eventName,
+            eventId: eventId || null,
+            eventName: eventName || '',
+            projectId: projectId || null,
+            projectName: projectName || '',
+            project: projectName || '',
+            agency: projectId === 'proj-arrive-agency' ? 'arrive' : undefined,
             priority: 'medium',
             due: newTaskDate,
             assignee: newTaskAssignee || null,
@@ -248,7 +299,7 @@ export default function EventKanbanBoard({ events, filterEventId }) {
         if (!filterEventId) {
             setNewTaskContext('');
         }
-        addActivity(`Added new task to backlog: "${newTaskText}"`, 'var(--accent-primary)', 'global');
+        addActivity(`Added new task to backlog: "${newTaskText}"`, 'var(--accent-primary)', projectId || 'global');
     };
 
     const deleteTask = (id) => {
@@ -264,21 +315,30 @@ export default function EventKanbanBoard({ events, filterEventId }) {
 
     const filteredTasks = (tasks || []).filter(t => {
         if (filterEventId && t.eventId !== filterEventId) return false;
-        if (selectedVenue !== 'all' && t.eventId !== selectedVenue) return false;
+        if (selectedVenue !== 'all') {
+            if (selectedVenue.startsWith('project_')) {
+                const pId = selectedVenue.replace('project_', '');
+                const isArrive = pId === 'proj-arrive-agency' && (t.agency === 'arrive' || t.projectId === 'proj-arrive-agency' || t.id?.startsWith('arr-'));
+                if (t.projectId !== pId && !isArrive) return false;
+            } else {
+                if (t.eventId !== selectedVenue) return false;
+            }
+        }
         const taskAssignee = t.assignedTo || t.assignee || '';
         if (selectedAssignee !== 'all' && taskAssignee.toUpperCase() !== selectedAssignee.toUpperCase()) return false;
         if (searchQuery.trim()) {
             const q = searchQuery.toLowerCase();
             const matchText = (t.text || t.title || '').toLowerCase().includes(q);
             const matchEvent = (t.eventName || '').toLowerCase().includes(q);
+            const matchProject = (t.projectName || t.project || '').toLowerCase().includes(q);
             const matchAssignee = taskAssignee.toLowerCase().includes(q);
-            if (!matchText && !matchEvent && !matchAssignee) return false;
+            if (!matchText && !matchEvent && !matchProject && !matchAssignee) return false;
         }
         return true;
     });
 
     filteredTasks.forEach(t => {
-        const mappedStatus = statusMap[t.status || (t.done ? 'done' : 'active')] || 'pending';
+        const mappedStatus = statusMap[taskStatus(t)] || 'pending';
         if (groupedTasks[mappedStatus]) {
             groupedTasks[mappedStatus].push(t);
         }
@@ -290,7 +350,7 @@ export default function EventKanbanBoard({ events, filterEventId }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '14px', flexShrink: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>📋 Kanban de Operaciones & Eventos</div>
+                        <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>📋 Kanban de Operaciones, Agencia & Eventos</div>
                         <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', background: 'var(--bg-surface)', padding: '2px 8px', borderRadius: '6px', border: '1px solid var(--border-subtle)' }}>
                             {filteredTasks.length} de {tasks.length} tareas
                         </span>
@@ -341,10 +401,19 @@ export default function EventKanbanBoard({ events, filterEventId }) {
                                 cursor: 'pointer'
                             }}
                         >
-                            <option value="all">📍 Todos los Venues</option>
-                            {(events || []).map(e => (
-                                <option key={e.id} value={e.id}>{e.icon || '🍸'} {e.name}</option>
-                            ))}
+                            <option value="all">📍 Todos los Venues & Proyectos</option>
+                            <optgroup label="🌟 Agencia & Proyectos">
+                                {sortedProjects.map(p => (
+                                    <option key={`flt-p-${p.id}`} value={`project_${p.id}`}>
+                                        {p.id === 'proj-arrive-agency' ? '🌟 ARRIVE AGENCY' : `🚀 ${p.name}`}
+                                    </option>
+                                ))}
+                            </optgroup>
+                            <optgroup label="🎪 Eventos & Venues">
+                                {(events || []).map(e => (
+                                    <option key={e.id} value={e.id}>{e.icon || '🍸'} {e.name}</option>
+                                ))}
+                            </optgroup>
                         </select>
                     </div>
 
@@ -504,10 +573,17 @@ export default function EventKanbanBoard({ events, filterEventId }) {
                                                 outline: 'none', cursor: 'pointer'
                                             }}
                                         >
-                                            <option value="">📅 Evento...</option>
-                                            <optgroup label="Eventos">
+                                            <option value="">🎯 Asignar a...</option>
+                                            <optgroup label="🌟 Agencia & Proyectos">
+                                                {sortedProjects.map(p => (
+                                                    <option key={`new-p-${p.id}`} value={`project_${p.id}`}>
+                                                        {p.id === 'proj-arrive-agency' ? '🌟 ARRIVE AGENCY' : `🚀 ${p.name}`}
+                                                    </option>
+                                                ))}
+                                            </optgroup>
+                                            <optgroup label="🎪 Eventos & Venues">
                                                 {(events || []).map(ev => (
-                                                    <option key={`e-${ev.id}`} value={`event_${ev.id}`}>{ev.icon || '📅'} {ev.name}</option>
+                                                    <option key={`new-e-${ev.id}`} value={`event_${ev.id}`}>{ev.icon || '📅'} {ev.name}</option>
                                                 ))}
                                                 <option value="create_event" style={{ fontWeight: 'bold', color: 'var(--accent-primary)' }}>➕ Crear Evento...</option>
                                             </optgroup>
@@ -541,9 +617,11 @@ export default function EventKanbanBoard({ events, filterEventId }) {
 
                         {colTasks.map(t => (
                                 <KanbanCard 
+                                    key={t.id}
                                     t={t} 
                                     colStatus={colStatus} 
                                     events={events}
+                                    projects={sortedProjects}
                                     deleteTask={deleteTask}
                                     updateTaskStatus={updateTaskStatus}
                                     updateTaskContext={updateTaskContext}

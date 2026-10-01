@@ -208,7 +208,7 @@ export default function EventCalendar() {
                                                     text,
                                                     status: 'pending',
                                                     done: false,
-                                                    eventId: events?.[0]?.id || '',
+                                                    eventId: '', // sin evento: no se asigna a ninguno por defecto
                                                     due: dateStr,
                                                     priority: 'medium',
                                                     createdAt: new Date().toISOString()

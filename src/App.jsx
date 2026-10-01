@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider, useApp } from './context/AppContext';
+import AuthGate from './components/AuthGate';
 import Sidebar from './components/Layout/Sidebar';
 import Topbar from './components/Layout/Topbar';
 import CloudSyncPanel from './components/CloudSyncPanel';
@@ -16,6 +17,7 @@ import AgentBrain from './pages/AgentBrain';
 import Contactos from './pages/Contactos';
 import PortfolioOS from './pages/PortfolioOS';
 import WhatsAppAgent from './pages/WhatsAppAgent';
+import ArriveAgencyOS from './pages/ArriveAgencyOS';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -73,6 +75,7 @@ function AppLayout() {
         <ErrorBoundary>
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/arrive" element={<ArriveAgencyOS />} />
             <Route path="/portfolio" element={<PortfolioOS />} />
             <Route path="/workspace" element={<Workspace />} />
             <Route path="/calendar" element={<MasterCalendar />} />
@@ -98,12 +101,14 @@ function AppLayout() {
 
 export default function App() {
   return (
-    <AppProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="*" element={<AppLayout />} />
-        </Routes>
-      </BrowserRouter>
-    </AppProvider>
+    <AuthGate>
+      <AppProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="*" element={<AppLayout />} />
+          </Routes>
+        </BrowserRouter>
+      </AppProvider>
+    </AuthGate>
   );
 }

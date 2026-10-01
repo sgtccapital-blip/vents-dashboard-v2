@@ -6,6 +6,8 @@ import {
     Instagram, Users, CalendarDays, MapPin, Timer, ArrowRight, ChevronRight
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import ArriveAgencyBox from '../components/ArriveAgencyBox';
+import ArriveTasksBox from '../components/ArriveTasksBox';
 
 export default function Home() {
     const { events, socialMedia, tasks, toggleTask, notes, addNote: cxAddNote, activityFeed, addActivity, subscriptions } = useApp();
@@ -153,6 +155,9 @@ export default function Home() {
                 </div>
             )}
 
+            {/* ══════ ARRIVE AGENCY EXECUTIVE HUB ══════ */}
+            <ArriveAgencyBox />
+
             {/* ══════ METRICS BANNER ══════ */}
             <div className="cc-metrics-banner">
                 <div className="cc-metric-card">
@@ -206,44 +211,12 @@ export default function Home() {
                     </div>
                 ))}
             </div>
+            
+            {/* ══════ ARRIVE AGENCY CUSTOM TASKS & OPERATIONS BOX ══════ */}
+            <ArriveTasksBox />
 
             {/* ══════ MAIN GRID ══════ */}
             <div className="dashboard-grid">
-
-                {/* Tasks Widget */}
-                <div className="widget widget-md">
-                    <div className="widget-header">
-                        <div className="widget-title"><CheckSquare size={16} /> Tareas Activas</div>
-                        <span className="tag tag-active">{todaysTasks.length} pendientes</span>
-                    </div>
-                    <div className="widget-body">
-                        {todaysTasks.length === 0 && (
-                            <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '13px' }}>No hay tareas pendientes 🎉</div>
-                        )}
-                        {todaysTasks.map(task => (
-                            <div key={task.id} className={`task-item ${task.done ? 'done' : ''}`}>
-                                <label className="checkbox">
-                                    <input type="checkbox" checked={task.done} onChange={() => handleToggleTask(task)} />
-                                </label>
-                                <span className="task-text">{task.text}</span>
-                                <span className={`tag tag-${task.priority === 'high' ? 'active' : task.priority === 'medium' ? 'paused' : 'idea'}`} style={{ fontSize: '10px' }}>
-                                    {task.priority}
-                                </span>
-                            </div>
-                        ))}
-                        {completedTasks.length > 0 && (
-                            <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-subtle)' }}>
-                                <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginBottom: '8px' }}>✓ {completedTasks.length} completadas</p>
-                                {completedTasks.map(task => (
-                                    <div key={task.id} className="task-item done">
-                                        <label className="checkbox"><input type="checkbox" checked={true} onChange={() => handleToggleTask(task)} /></label>
-                                        <span className="task-text">{task.text}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                </div>
 
                 {/* Active Events Widget */}
                 <div className="widget widget-md">

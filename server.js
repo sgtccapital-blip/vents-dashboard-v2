@@ -18,12 +18,14 @@ import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import multer from 'multer';
 import { createRequire } from 'module';
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
+import crypto from 'crypto';
 import cron from 'node-cron';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 const require = createRequire(import.meta.url);
 const pdf = require('pdf-parse');
 import openCloudEngine from './src/services/openCloudEngine.js';
+import { normalizeTaskStatus, normalizeEventStatus, TASK_STATUSES, EVENT_STATUSES } from './src/lib/status.js';
 
 dotenv.config();
 
@@ -47,7 +49,7 @@ function ensureDBFile() {
                 console.warn('No se pudo copiar db.seed.json:', e.message);
             }
         } else {
-            const initial = { agents: [], projects: [], companies: [], events: [], tasks: [], agentTasks: [], agentMemory: [], agentKPIs: [], circuitBreakers: [], notes: [], ideas: [], subscriptions: [], socialMedia: [], contentTasks: {}, activityFeed: [], orders: [], ragStore: [], contacts: [] };
+            const initial = { agents: [], projects: [], companies: [], events: [], tasks: [], agentTasks: [], agentMemory: [], agentKPIs: [], circuitBreakers: [], notes: [], ideas: [], subscriptions: [], socialMedia: [], contentTasks: [], activityFeed: [], orders: [], ragStore: [], contacts: [] };
             fs.writeFileSync(DB_PATH, JSON.stringify(initial, null, 2), 'utf-8');
             console.log('📦 Auto-creado db.json inicial por defecto');
         }
@@ -75,8 +77,103 @@ const upload = multer({
 });
 
 // Middleware
-app.use(cors());
+app.set('trust proxy', 1);
+
+// CORS: solo los orígenes listados en ALLOWED_ORIGINS (separados por coma).
+// El frontend se sirve desde el mismo origen, así que por defecto no se permite ninguno externo.
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '').split(',').map(o => o.trim()).filter(Boolean);
+app.use(cors({ origin: ALLOWED_ORIGINS.length ? ALLOWED_ORIGINS : false, credentials: true }));
 app.use(express.json({ limit: '10mb' }));
+
+// ─── Auth ─────────────────────────────────────────────────────
+// El navegador inicia sesión con DASHBOARD_PASSWORD y recibe una cookie HttpOnly firmada.
+// Agentes y scripts externos usan la cabecera `Authorization: Bearer <API_TOKEN>`.
+
+const DASHBOARD_PASSWORD = process.env.DASHBOARD_PASSWORD || '';
+const API_TOKEN = process.env.API_TOKEN || '';
+// Derivado de la contraseña: cambiarla invalida todas las sesiones abiertas.
+const SESSION_SECRET = process.env.SESSION_SECRET || crypto.createHash('sha256').update(`cc-session:${DASHBOARD_PASSWORD}`).digest('hex');
+const SESSION_COOKIE = 'cc_session';
+const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const PUBLIC_API_PREFIXES = ['/api/public/', '/api/auth/'];
+
+function safeEqual(a, b) {
+    const ha = crypto.createHash('sha256').update(String(a)).digest();
+    const hb = crypto.createHash('sha256').update(String(b)).digest();
+    return crypto.timingSafeEqual(ha, hb);
+}
+
+function signSession(expiresAt) {
+    const sig = crypto.createHmac('sha256', SESSION_SECRET).update(String(expiresAt)).digest('hex');
+    return `${expiresAt}.${sig}`;
+}
+
+function isValidSession(token) {
+    if (!token || !DASHBOARD_PASSWORD) return false;
+    const [expiresAt] = token.split('.');
+    if (!/^\d+$/.test(expiresAt) || Number(expiresAt) < Date.now()) return false;
+    return safeEqual(token, signSession(expiresAt));
+}
+
+function readCookie(req, name) {
+    const header = req.headers.cookie || '';
+    for (const part of header.split(';')) {
+        const [k, ...v] = part.trim().split('=');
+        if (k === name) return decodeURIComponent(v.join('='));
+    }
+    return null;
+}
+
+function isAuthenticated(req) {
+    const bearer = (req.headers.authorization || '').match(/^Bearer\s+(.+)$/i)?.[1];
+    if (bearer && API_TOKEN && safeEqual(bearer, API_TOKEN)) return true;
+    return isValidSession(readCookie(req, SESSION_COOKIE));
+}
+
+function sessionCookie(req, value, maxAgeMs) {
+    const secure = req.secure ? '; Secure' : '';
+    return `${SESSION_COOKIE}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${Math.floor(maxAgeMs / 1000)}${secure}`;
+}
+
+if (!DASHBOARD_PASSWORD) {
+    console.warn('⚠️  DASHBOARD_PASSWORD no está definido: la API rechazará todas las peticiones privadas hasta que lo configures en .env');
+}
+
+// Límite simple de intentos de login por IP (10 cada 15 minutos)
+const loginAttempts = new Map();
+function tooManyAttempts(ip) {
+    const now = Date.now();
+    const recent = (loginAttempts.get(ip) || []).filter(t => now - t < 15 * 60 * 1000);
+    loginAttempts.set(ip, recent);
+    return recent.length >= 10;
+}
+
+app.post('/api/auth/login', (req, res) => {
+    if (!DASHBOARD_PASSWORD) return res.status(503).json({ error: 'El servidor no tiene DASHBOARD_PASSWORD configurado.' });
+    if (tooManyAttempts(req.ip)) return res.status(429).json({ error: 'Demasiados intentos. Espera unos minutos.' });
+    if (!safeEqual(req.body?.password || '', DASHBOARD_PASSWORD)) {
+        loginAttempts.get(req.ip).push(Date.now());
+        return res.status(401).json({ error: 'Contraseña incorrecta' });
+    }
+    loginAttempts.delete(req.ip);
+    res.setHeader('Set-Cookie', sessionCookie(req, signSession(Date.now() + SESSION_TTL_MS), SESSION_TTL_MS));
+    res.json({ authenticated: true });
+});
+
+app.post('/api/auth/logout', (req, res) => {
+    res.setHeader('Set-Cookie', sessionCookie(req, '', 0));
+    res.json({ authenticated: false });
+});
+
+app.get('/api/auth/session', (req, res) => {
+    res.json({ authenticated: isAuthenticated(req), configured: !!DASHBOARD_PASSWORD });
+});
+
+app.use('/api', (req, res, next) => {
+    if (PUBLIC_API_PREFIXES.some(p => req.originalUrl.startsWith(p))) return next();
+    if (isAuthenticated(req)) return next();
+    res.status(401).json({ error: 'No autenticado' });
+});
 
 // ─── Data Layer ───────────────────────────────────────────────
 
@@ -103,7 +200,7 @@ async function initSupabaseSync() {
             const rows = await res.json();
             if (rows && rows.length > 0 && rows[0].data) {
                 console.log('   ✅ Estado recuperado desde Supabase. Sincronizando db.json local...');
-                fs.writeFileSync(DB_PATH, JSON.stringify(rows[0].data, null, 2), 'utf-8');
+                writeDBFile(rows[0].data);
             } else {
                 console.log('   ℹ️  Supabase inicializado pero sin datos en la tabla command_center_state. Subiendo base de datos local...');
                 const localData = readDB();
@@ -170,37 +267,156 @@ async function syncToSupabase(data) {
 }
 
 function readDB() {
+    if (!fs.existsSync(DB_PATH)) {
+        ensureDBFile();
+    }
+    const raw = fs.readFileSync(DB_PATH, 'utf-8');
+    let data;
     try {
-        if (!fs.existsSync(DB_PATH)) {
-            ensureDBFile();
-        }
-        const raw = fs.readFileSync(DB_PATH, 'utf-8');
-        return JSON.parse(raw);
+        data = JSON.parse(raw);
     } catch (err) {
-        console.error('Error reading db.json:', err.message);
-        return { agents: [], projects: [], companies: [], events: [], tasks: [], agentTasks: [], agentMemory: [], agentKPIs: [], circuitBreakers: [], notes: [], ideas: [], subscriptions: [], socialMedia: [], contentTasks: {}, activityFeed: [], orders: [], ragStore: [], contacts: [] };
+        // Nunca devolver una base vacía: la siguiente escritura la guardaría encima de los datos reales.
+        console.error(`❌ db.json no se puede leer (${err.message}). Se bloquean las escrituras hasta repararlo; hay copias en /backups.`);
+        throw new Error('La base de datos no se puede leer. Revisa db.json o restaura una copia de /backups.');
+    }
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+        throw new Error('db.json no contiene un objeto válido.');
+    }
+    return data;
+}
+
+const BACKUP_DIR = path.join(path.dirname(DB_PATH), 'backups');
+const BACKUP_INTERVAL_MS = 10 * 60 * 1000;
+const BACKUPS_TO_KEEP = 50;
+let lastBackupAt = 0;
+
+function backupDBFile() {
+    if (Date.now() - lastBackupAt < BACKUP_INTERVAL_MS || !fs.existsSync(DB_PATH)) return;
+    try {
+        fs.mkdirSync(BACKUP_DIR, { recursive: true });
+        const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+        fs.copyFileSync(DB_PATH, path.join(BACKUP_DIR, `db.${stamp}.json`));
+        lastBackupAt = Date.now();
+        const old = fs.readdirSync(BACKUP_DIR).filter(f => /^db\..+\.json$/.test(f)).sort().slice(0, -BACKUPS_TO_KEEP);
+        old.forEach(f => fs.unlinkSync(path.join(BACKUP_DIR, f)));
+    } catch (err) {
+        console.error('[Backup] No se pudo copiar db.json:', err.message);
     }
 }
 
-function writeDB(data) {
-    fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2), 'utf-8');
-    
-    // Sincronizar con Supabase en background de forma asíncrona
-    if (SUPABASE_URL && SUPABASE_KEY && !SUPABASE_URL.includes('tu-proyecto') && !SUPABASE_KEY.includes('tu-anon')) {
-        syncToSupabase(data).catch(err => console.error('[Supabase Sync Catch] Error:', err.message));
+// Escritura atómica: se escribe en un archivo temporal y luego se reemplaza el original,
+// así un corte a mitad de escritura nunca deja db.json a medias.
+function writeDBFile(data) {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+        throw new Error('writeDB: se intentó guardar algo que no es un objeto de base de datos.');
     }
-    
-    // Asynchronous non-blocking spawn to auto-reflect changes into BrainVault markdown files
-    exec('node generate_brain_vault.cjs', { cwd: __dirname }, (error, stdout, stderr) => {
-        if (error) {
-            console.error(`[BrainVault Sync] Error sincronizando markdown: ${error.message}`);
-        } else {
-            console.log(`[BrainVault Sync] Markdown sincronizado correctamente.`);
-        }
+    backupDBFile();
+    const tmpPath = `${DB_PATH}.${process.pid}.tmp`;
+    const fd = fs.openSync(tmpPath, 'w');
+    try {
+        fs.writeSync(fd, JSON.stringify(data, null, 2));
+        fs.fsyncSync(fd);
+    } finally {
+        fs.closeSync(fd);
+    }
+    fs.renameSync(tmpPath, DB_PATH);
+}
+
+// Tareas en segundo plano agrupadas: muchas escrituras seguidas producen una sola ejecución.
+function debounce(fn, ms) {
+    let timer = null;
+    return () => {
+        clearTimeout(timer);
+        timer = setTimeout(fn, ms);
+    };
+}
+
+const scheduleSupabaseSync = debounce(() => {
+    let data;
+    try { data = readDB(); } catch { return; }
+    syncToSupabase(data).catch(err => console.error('[Supabase Sync Catch] Error:', err.message));
+}, 2000);
+
+let vaultRunning = false;
+let vaultPending = false;
+function runBrainVault() {
+    if (vaultRunning) { vaultPending = true; return; }
+    vaultRunning = true;
+    execFile(process.execPath, ['generate_brain_vault.cjs'], { cwd: __dirname }, (error) => {
+        if (error) console.error(`[BrainVault Sync] Error sincronizando markdown: ${error.message}`);
+        vaultRunning = false;
+        if (vaultPending) { vaultPending = false; runBrainVault(); }
     });
+}
+const scheduleBrainVault = debounce(runBrainVault, 5000);
+
+function writeDB(data) {
+    writeDBFile(data);
+
+    if (SUPABASE_URL && SUPABASE_KEY && !SUPABASE_URL.includes('tu-proyecto') && !SUPABASE_KEY.includes('tu-anon')) {
+        scheduleSupabaseSync();
+    }
+    scheduleBrainVault();
 }
 
 // ─── Generic CRUD Factory ─────────────────────────────────────
+
+class ValidationError extends Error {
+    constructor(message, status = 400) {
+        super(message);
+        this.status = status;
+    }
+}
+
+function newId(entityName) {
+    return `${entityName.slice(0, 4)}-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
+}
+
+// Normaliza y valida un registro antes de guardarlo. `prev` es la versión guardada (en updates).
+function validateEntity(entityName, item, prev = null) {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+        throw new ValidationError('El cuerpo debe ser un objeto JSON.');
+    }
+
+    if (entityName === 'tasks') {
+        if ('done' in item && typeof item.done !== 'boolean') {
+            throw new ValidationError('`done` debe ser true o false.');
+        }
+        if ('status' in item) {
+            const status = normalizeTaskStatus(item.status);
+            if (!status) throw new ValidationError(`Estado de tarea no válido: "${item.status}". Usa: ${TASK_STATUSES.join(', ')}.`);
+            // `status` manda; `done` se deriva para que nunca se contradigan.
+            item.status = status;
+            item.done = status === 'done';
+        } else if ('done' in item) {
+            const prevStatus = normalizeTaskStatus(prev?.status);
+            item.status = item.done ? 'done' : (prevStatus && prevStatus !== 'done' ? prevStatus : 'pending');
+        } else if (!prev) {
+            item.status = 'pending';
+            item.done = false;
+        }
+    }
+
+    if (entityName === 'events' || entityName === 'projects') {
+        if ('status' in item && item.status !== '' && item.status != null) {
+            const status = normalizeEventStatus(item.status);
+            if (!status && entityName === 'events') {
+                throw new ValidationError(`Estado de evento no válido: "${item.status}". Usa: ${EVENT_STATUSES.join(', ')}.`);
+            }
+            if (status && entityName === 'events') item.status = status;
+        }
+    }
+
+    return item;
+}
+
+function getCollection(db, entityName) {
+    if (db[entityName] === undefined) db[entityName] = [];
+    if (!Array.isArray(db[entityName])) {
+        throw new ValidationError(`La colección ${entityName} no es una lista en db.json.`, 500);
+    }
+    return db[entityName];
+}
 
 function createCRUDRoutes(entityName) {
     const router = express.Router();
@@ -213,13 +429,23 @@ function createCRUDRoutes(entityName) {
 
     // PUT bulk reorder / update all
     router.put('/', (req, res) => {
+        if (!Array.isArray(req.body)) return res.status(400).json({ error: 'Body must be an array' });
         const db = readDB();
-        if (Array.isArray(req.body)) {
-            db[entityName] = req.body;
-            writeDB(db);
-            return res.json(db[entityName]);
+        const current = getCollection(db, entityName);
+        // Vaciar una colección con datos exige confirmación explícita para evitar borrados accidentales.
+        if (req.body.length === 0 && current.length > 0 && req.get('X-Confirm-Clear') !== 'true') {
+            return res.status(409).json({ error: `Esto borraría los ${current.length} registros de ${entityName}. Repite con la cabecera X-Confirm-Clear: true si es intencional.` });
         }
-        res.status(400).json({ error: 'Body must be an array' });
+        const ids = new Set();
+        for (const item of req.body) {
+            if (!item || typeof item !== 'object' || !item.id) return res.status(400).json({ error: 'Cada elemento debe ser un objeto con id.' });
+            if (ids.has(item.id)) return res.status(400).json({ error: `id duplicado: ${item.id}` });
+            ids.add(item.id);
+            validateEntity(entityName, item, current.find(c => c.id === item.id));
+        }
+        db[entityName] = req.body;
+        writeDB(db);
+        res.json(db[entityName]);
     });
 
     // GET by ID
@@ -233,9 +459,12 @@ function createCRUDRoutes(entityName) {
     // POST (create)
     router.post('/', (req, res) => {
         const db = readDB();
-        const newItem = { id: `${entityName.slice(0, 4)}-${Date.now()}`, ...req.body };
-        if (!db[entityName]) db[entityName] = [];
-        db[entityName].push(newItem);
+        const list = getCollection(db, entityName);
+        const newItem = validateEntity(entityName, { ...req.body, id: req.body?.id || newId(entityName) });
+        if (list.some(i => i.id === newItem.id)) {
+            return res.status(409).json({ error: `Ya existe un registro con id ${newItem.id}` });
+        }
+        list.push(newItem);
         writeDB(db);
 
         // Auto-Upsert
@@ -248,16 +477,18 @@ function createCRUDRoutes(entityName) {
     // PUT (update by ID)
     router.put('/:id', (req, res) => {
         const db = readDB();
-        const idx = (db[entityName] || []).findIndex(i => i.id === req.params.id);
+        const list = getCollection(db, entityName);
+        const idx = list.findIndex(i => i.id === req.params.id);
         if (idx === -1) return res.status(404).json({ error: `${entityName} not found` });
-        db[entityName][idx] = { ...db[entityName][idx], ...req.body };
+        const changes = validateEntity(entityName, { ...req.body }, list[idx]);
+        list[idx] = { ...list[idx], ...changes, id: list[idx].id };
         writeDB(db);
 
         // Auto-Upsert
         const RAGEngine = req.app.get('ragEngine');
-        if (RAGEngine) RAGEngine.upsertEntity(entityName, db[entityName][idx]).catch(e => console.error('[RAG] Upsert API error', e.message));
+        if (RAGEngine) RAGEngine.upsertEntity(entityName, list[idx]).catch(e => console.error('[RAG] Upsert API error', e.message));
 
-        res.json(db[entityName][idx]);
+        res.json(list[idx]);
     });
 
     // DELETE by ID
@@ -629,31 +860,75 @@ app.get('/api/agent-intel', (req, res) => {
 
 const AGENTS_WORKSPACE_PATH = path.join(process.env.HOME || '/Users/gg', '.openclaw/workspace/agents');
 
+function readSops() {
+    if (!fs.existsSync(AGENTS_WORKSPACE_PATH)) return [];
+    const files = fs.readdirSync(AGENTS_WORKSPACE_PATH).filter(f => f.endsWith('.md'));
+    const sops = files.map(filename => {
+        const content = fs.readFileSync(path.join(AGENTS_WORKSPACE_PATH, filename), 'utf-8');
+        const stats = fs.statSync(path.join(AGENTS_WORKSPACE_PATH, filename));
+        return {
+            id: filename,
+            filename,
+            date: stats.mtime.toISOString(),
+            content
+        };
+    });
+    // Sort alphabetically by filename
+    sops.sort((a, b) => a.filename.localeCompare(b.filename));
+    return sops;
+}
+
 app.get('/api/sops', (req, res) => {
     try {
-        if (!fs.existsSync(AGENTS_WORKSPACE_PATH)) {
-            return res.json([]);
-        }
-        const files = fs.readdirSync(AGENTS_WORKSPACE_PATH).filter(f => f.endsWith('.md'));
-        const sops = files.map(filename => {
-            const content = fs.readFileSync(path.join(AGENTS_WORKSPACE_PATH, filename), 'utf-8');
-            const stats = fs.statSync(path.join(AGENTS_WORKSPACE_PATH, filename));
-            
-            return {
-                id: filename,
-                filename,
-                date: stats.mtime.toISOString(),
-                content
-            };
-        });
-        
-        // Sort alphabetically by filename
-        sops.sort((a, b) => a.filename.localeCompare(b.filename));
-        res.json(sops);
+        res.json(readSops());
     } catch (err) {
         console.error('Error reading SOPs:', err);
         res.status(500).json({ error: err.message });
     }
+});
+
+// Versión del estado: cambia cuando cambia db.json o algún SOP. Barato de calcular (solo stat).
+function currentStateVersion() {
+    let sig = String(fs.statSync(DB_PATH).mtimeMs);
+    if (fs.existsSync(AGENTS_WORKSPACE_PATH)) {
+        for (const f of fs.readdirSync(AGENTS_WORKSPACE_PATH).filter(f => f.endsWith('.md'))) {
+            sig += `|${f}:${fs.statSync(path.join(AGENTS_WORKSPACE_PATH, f)).mtimeMs}`;
+        }
+    }
+    return crypto.createHash('sha1').update(sig).digest('hex').slice(0, 16);
+}
+
+// Estado completo en una sola petición. Con ?since=<version> solo descarga si algo cambió.
+app.get('/api/state', (req, res) => {
+    const version = currentStateVersion();
+    if (req.query.since && req.query.since === version) {
+        return res.json({ version, changed: false });
+    }
+    const db = readDB();
+    res.json({
+        version,
+        changed: true,
+        data: {
+            events: db.events || [],
+            projects: db.projects || [],
+            tasks: db.tasks || [],
+            notes: db.notes || [],
+            ideas: db.ideas || [],
+            subscriptions: db.subscriptions || [],
+            activity: db.activityFeed || [],
+            orders: db.orders || [],
+            sops: readSops(),
+            socialMedia: db.socialMedia || [],
+            contentTasks: Array.isArray(db.contentTasks) ? db.contentTasks : [],
+            contacts: db.contacts || [],
+            openclawLogs: db.openclawLogs || db.hermesLogs || [],
+            decisionLog: db.decisionLog || [],
+            portfolioRoadmap: db.portfolioRoadmap || [],
+            promoters: db.promoters || [],
+            imageGirls: db.imageGirls || [],
+            agents: db.agents || [],
+        }
+    });
 });
 
 app.put('/api/sops/:filename', (req, res) => {
@@ -1510,14 +1785,20 @@ app.get('/api/openclaw/config', (req, res) => {
         model: 'gemini-3.6-flash',
         apiKey: ''
     };
-    res.json(config);
+    res.json(publicConfig(config));
 });
+
+// Nunca devolver claves guardadas al navegador; solo si existen.
+function publicConfig(config = {}) {
+    const { geminiApiKey, apiKey, ...rest } = config;
+    return { ...rest, hasGeminiApiKey: !!geminiApiKey, hasApiKey: !!apiKey };
+}
 
 app.post('/api/openclaw/config', (req, res) => {
     const db = readDB();
     db.openclawConfig = { ...(db.openclawConfig || {}), ...req.body };
     writeDB(db);
-    res.json({ success: true, config: db.openclawConfig });
+    res.json({ success: true, config: publicConfig(db.openclawConfig) });
 });
 
 // Gemini Specific Config Endpoints
@@ -1550,14 +1831,14 @@ app.get('/api/openclaw/gemini/status', (req, res) => {
 // Backward compatibility alias for Hermes config
 app.get('/api/hermes/config', (req, res) => {
     const db = readDB();
-    res.json(db.openclawConfig || db.hermesConfig || {});
+    res.json(publicConfig(db.openclawConfig || db.hermesConfig || {}));
 });
 app.post('/api/hermes/config', (req, res) => {
     const db = readDB();
     db.openclawConfig = { ...(db.openclawConfig || {}), ...req.body };
     db.hermesConfig = db.openclawConfig;
     writeDB(db);
-    res.json({ success: true, config: db.openclawConfig });
+    res.json({ success: true, config: publicConfig(db.openclawConfig) });
 });
 
 // 6. OpenClaw Health Check Endpoint
@@ -2561,6 +2842,9 @@ app.get('/api/health', async (req, res) => {
 
 // Helper to write database credentials to .env file
 function updateEnvFile(url, key) {
+    // Un salto de línea en el valor permitiría inyectar otras variables en .env
+    url = String(url || '').replace(/[\r\n]/g, '');
+    key = String(key || '').replace(/[\r\n]/g, '');
     try {
         const envPath = path.join(__dirname, '.env');
         let envContent = '';
@@ -2803,7 +3087,7 @@ app.post('/api/supabase/sync', async (req, res) => {
             if (resSync.ok) {
                 const rows = await resSync.json();
                 if (rows && rows.length > 0 && rows[0].data) {
-                    fs.writeFileSync(DB_PATH, JSON.stringify(rows[0].data, null, 2), 'utf-8');
+                    writeDBFile(rows[0].data);
                     return res.json({ success: true, message: 'Base de datos sincronizada con éxito desde la nube (Pull).' });
                 } else {
                     return res.status(404).json({ error: 'No se encontraron datos guardados en Supabase.' });
@@ -3804,9 +4088,35 @@ try {
 // ─── Static Frontend Serving ──────────────────────────────────
 app.use(express.static(path.join(__dirname, 'dist')));
 
+app.use('/api', (req, res) => {
+    res.status(404).json({ error: `Ruta no encontrada: ${req.method} ${req.originalUrl}` });
+});
+
 app.use((req, res) => {
     res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
+
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+    const status = err.status || err.statusCode || 500;
+    if (status >= 500) console.error(`[API] ${req.method} ${req.originalUrl}:`, err.message);
+    res.status(status).json({ error: err.message || 'Error interno' });
+});
+
+// Migraciones de forma de datos al arrancar
+(function migrateDB() {
+    try {
+        const db = readDB();
+        if (db.contentTasks !== undefined && !Array.isArray(db.contentTasks)) {
+            // Antes se guardaba como { ideas: [], production: [], ... }; el frontend lo usa como lista.
+            db.contentTasks = Object.values(db.contentTasks).filter(Array.isArray).flat();
+            writeDBFile(db);
+            console.log('🔧 contentTasks convertido a lista.');
+        }
+    } catch (err) {
+        console.error('❌ No se pudo revisar db.json al arrancar:', err.message);
+    }
+})();
 
 // ─── Start ────────────────────────────────────────────────────
 

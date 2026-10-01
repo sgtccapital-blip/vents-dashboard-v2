@@ -19,3 +19,7 @@ services:
         sync: false
       - key: SUPABASE_KEY
         sync: false
+      - key: DASHBOARD_PASSWORD
+        sync: false
+      - key: API_TOKEN
+        sync: false

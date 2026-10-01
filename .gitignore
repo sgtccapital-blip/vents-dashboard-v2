@@ -40,3 +40,4 @@ openclaw-core/db/
 
 # Legacy repository snapshot (root Dashboard Events is source of truth)
 repo_git/
+backups/

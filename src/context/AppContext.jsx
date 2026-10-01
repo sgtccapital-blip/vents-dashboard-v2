@@ -15,6 +15,7 @@ import {
     seedPortfolioRoadmap
 } from '../lib/seedData';
 import OpenClawBrainService from '../services/OpenClawBrainService';
+import { isDone } from '../lib/status';
 
 const AppContext = createContext();
 
@@ -113,7 +114,10 @@ export const AppProvider = ({ children }) => {
         });
         return merged;
     });
-    const [contentTasks, setContentTasks] = useState(() => initializeState('os_live_contentTasks', seedContentTasks));
+    const [contentTasks, setContentTasks] = useState(() => {
+        const saved = initializeState('os_live_contentTasks', seedContentTasks);
+        return Array.isArray(saved) ? saved : [];
+    });
     const [tasks, setTasks] = useState(() => initializeState('os_live_tasks', seedTasks));
     const [notes, setNotes] = useState(() => initializeState('os_live_notes', seedNotes));
     const [activityFeed, setActivityFeed] = useState(() => initializeState('os_live_activityFeed', []));
@@ -140,7 +144,7 @@ export const AppProvider = ({ children }) => {
             {
                 id: 'welcome',
                 role: 'copilot',
-                text: '⚡ **OpenClaw Super Agent activo**.\n\nSoy el cerebro y orquestador autónomo maestro del Command Center & Dashboard Events. Tengo sincronizados en vivo tus **17 eventos** (Terraplén Rooftop, Furia, Piano Bar, etc.), **8 proyectos**, tareas y base RAG.\n\n✨ *Potenciado por Gemini 3.6 Flash, dictado por voz y notas de audio en tiempo real.*',
+                text: '⚡ **OpenClaw Super Agent activo**.\n\nSoy el cerebro y orquestador autónomo maestro del Command Center & Dashboard Events. Tengo sincronizados en vivo tus eventos, proyectos, tareas y base RAG.\n\n✨ *Potenciado por Gemini 3.6 Flash, dictado por voz y notas de audio en tiempo real.*',
                 timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             }
         ];
@@ -203,85 +207,96 @@ export const AppProvider = ({ children }) => {
 
     // ─── API Helper ───────────────────────────────────────────────
 
+    // Escrituras en curso: mientras haya alguna (o justo después), el polling no pisa la pantalla.
+    const pendingWritesRef = useRef(0);
+    const lastWriteAtRef = useRef(0);
+    const stateVersionRef = useRef(null);
+
     const apiFetch = useCallback(async (endpoint, options = {}) => {
+        const isWrite = options.method && options.method !== 'GET';
+        if (isWrite) pendingWritesRef.current++;
         try {
             const res = await fetch(`${API_BASE}${endpoint}`, {
                 headers: { 'Content-Type': 'application/json' },
                 ...options,
                 body: options.body ? JSON.stringify(options.body) : undefined
             });
-            if (!res.ok) throw new Error(`API ${res.status}`);
+            if (res.status === 401) window.dispatchEvent(new Event('auth:required'));
+            if (!res.ok) {
+                const detail = await res.json().catch(() => ({}));
+                throw new Error(detail.error || `API ${res.status}`);
+            }
             setApiOnline(true);
             return await res.json();
         } catch (err) {
-            console.warn(`API unreachable (${endpoint}):`, err.message);
-            setApiOnline(false);
+            console.warn(`API error (${endpoint}):`, err.message);
+            if (isWrite) {
+                // La pantalla ya mostraba el cambio; forzamos recarga desde el servidor para no quedar desincronizados.
+                stateVersionRef.current = null;
+            } else {
+                setApiOnline(false);
+            }
             return null;
+        } finally {
+            if (isWrite) {
+                pendingWritesRef.current--;
+                lastWriteAtRef.current = Date.now();
+            }
         }
     }, []);
 
-    // ─── Polling: Sync from API every N seconds ───────────────────
+    // ─── Polling: una sola petición con versión; solo descarga si algo cambió ───
 
     const poll = useCallback(async () => {
+        if (pendingWritesRef.current > 0 || Date.now() - lastWriteAtRef.current < 1500) return;
+
+        let payload;
         try {
-            const res = await fetch(`${API_BASE}/health`);
+            const since = stateVersionRef.current ? `?since=${encodeURIComponent(stateVersionRef.current)}` : '';
+            const res = await fetch(`${API_BASE}/state${since}`);
+            if (res.status === 401) { window.dispatchEvent(new Event('auth:required')); return; }
             if (!res.ok) { setApiOnline(false); return; }
             setApiOnline(true);
+            payload = await res.json();
         } catch {
             setApiOnline(false);
             return;
         }
 
-        try {
-            const [apiEvents, apiProjects, apiTasks, apiNotes, apiIdeas, apiSubs, apiActivity, apiOrders, apiSops, apiSocial, apiContacts, apiHermesLogs, apiDecisionLog, apiPortfolioRoadmap, apiPromoters, apiImageGirls, apiAgents] = await Promise.all([
-                fetch(`${API_BASE}/events`).then(r => r.json()).catch(() => null),
-                fetch(`${API_BASE}/projects`).then(r => r.json()).catch(() => null),
-                fetch(`${API_BASE}/tasks`).then(r => r.json()).catch(() => null),
-                fetch(`${API_BASE}/notes`).then(r => r.json()).catch(() => null),
-                fetch(`${API_BASE}/ideas`).then(r => r.json()).catch(() => null),
-                fetch(`${API_BASE}/subscriptions`).then(r => r.json()).catch(() => null),
-                fetch(`${API_BASE}/activity`).then(r => r.json()).catch(() => null),
-                fetch(`${API_BASE}/orders`).then(r => r.json()).catch(() => null),
-                fetch(`${API_BASE}/sops`).then(r => r.json()).catch(() => null),
-                fetch(`${API_BASE}/socialMedia`).then(r => r.json()).catch(() => null),
-                fetch(`${API_BASE}/contacts`).then(r => r.json()).catch(() => null),
-                fetch(`${API_BASE}/openclaw/logs`).then(r => r.json()).catch(() => fetch(`${API_BASE}/hermes/logs`).then(r => r.json()).catch(() => null)),
-                fetch(`${API_BASE}/decisionLog`).then(r => r.json()).catch(() => null),
-                fetch(`${API_BASE}/portfolioRoadmap`).then(r => r.json()).catch(() => null),
-                fetch(`${API_BASE}/promoters`).then(r => r.json()).catch(() => null),
-                fetch(`${API_BASE}/imageGirls`).then(r => r.json()).catch(() => null),
-                fetch(`${API_BASE}/agents`).then(r => r.json()).catch(() => null),
-            ]);
+        // Si el usuario empezó a editar mientras llegaba la respuesta, descartamos este ciclo.
+        if (pendingWritesRef.current > 0 || Date.now() - lastWriteAtRef.current < 1500) return;
+        if (!payload?.changed) return;
+        stateVersionRef.current = payload.version;
 
-            checkSupabaseStatus().catch(() => null);
+        const d = payload.data || {};
+        if (Array.isArray(d.events)) setEvents(d.events);
+        if (Array.isArray(d.projects)) setProjects(d.projects);
+        if (Array.isArray(d.tasks)) setTasks(d.tasks);
+        if (Array.isArray(d.notes)) setNotes(d.notes);
+        if (Array.isArray(d.ideas)) setIdeas(d.ideas);
+        if (Array.isArray(d.subscriptions)) setSubscriptions(d.subscriptions);
+        if (Array.isArray(d.activity)) setActivityFeed(d.activity);
+        if (Array.isArray(d.orders)) setOrders(d.orders);
+        if (Array.isArray(d.sops)) setSops(d.sops);
+        if (Array.isArray(d.socialMedia)) setSocialMedia(d.socialMedia);
+        if (Array.isArray(d.contentTasks)) setContentTasks(d.contentTasks);
+        if (Array.isArray(d.contacts)) setContacts(d.contacts);
+        if (Array.isArray(d.openclawLogs)) setOpenclawLogs(d.openclawLogs);
+        if (Array.isArray(d.decisionLog) && d.decisionLog.length > 0) setDecisionLog(d.decisionLog);
+        if (Array.isArray(d.portfolioRoadmap) && d.portfolioRoadmap.length > 0) setPortfolioRoadmap(d.portfolioRoadmap);
+        if (Array.isArray(d.promoters)) setPromoters(d.promoters);
+        if (Array.isArray(d.imageGirls)) setImageGirls(d.imageGirls);
+        if (Array.isArray(d.agents)) setAgents(d.agents);
 
-            if (apiEvents && Array.isArray(apiEvents)) setEvents(apiEvents);
-            if (apiProjects && Array.isArray(apiProjects)) setProjects(apiProjects);
-            if (apiTasks) setTasks(apiTasks);
-            if (apiNotes) setNotes(apiNotes);
-            if (apiIdeas) setIdeas(apiIdeas);
-            if (apiSubs) setSubscriptions(apiSubs);
-            if (apiActivity) setActivityFeed(apiActivity);
-            if (apiOrders) setOrders(apiOrders);
-            if (apiSops) setSops(apiSops);
-            if (apiSocial) setSocialMedia(apiSocial);
-            if (apiContacts) setContacts(apiContacts);
-            if (apiHermesLogs) setOpenclawLogs(apiHermesLogs);
-            if (apiDecisionLog && Array.isArray(apiDecisionLog) && apiDecisionLog.length > 0) setDecisionLog(apiDecisionLog);
-            if (apiPortfolioRoadmap && Array.isArray(apiPortfolioRoadmap) && apiPortfolioRoadmap.length > 0) setPortfolioRoadmap(apiPortfolioRoadmap);
-            if (apiPromoters && Array.isArray(apiPromoters)) setPromoters(apiPromoters);
-            if (apiImageGirls && Array.isArray(apiImageGirls)) setImageGirls(apiImageGirls);
-            if (apiAgents && Array.isArray(apiAgents)) setAgents(apiAgents);
-        } catch (err) {
-            console.warn('Polling sync error:', err.message);
-        }
+        checkSupabaseStatus().catch(() => null);
     }, [checkSupabaseStatus]);
 
     useEffect(() => {
         const interval = setInterval(poll, POLL_INTERVAL);
         poll(); // initial sync
+        checkSupabaseStatus().catch(() => null);
         return () => clearInterval(interval);
-    }, [poll]);
+    }, [poll, checkSupabaseStatus]);
 
     // ─── Save to localStorage (always, as backup) ─────────────────
 
@@ -376,13 +391,14 @@ export const AppProvider = ({ children }) => {
         let updatedTask = null;
         setTasks(prev => prev.map(t => {
             if (t.id === taskId) {
-                updatedTask = { ...t, done: !t.done };
+                const status = isDone(t) ? 'pending' : 'done';
+                updatedTask = { ...t, status, done: status === 'done' };
                 return updatedTask;
             }
             return t;
         }));
         if (updatedTask) {
-            await apiFetch(`/tasks/${taskId}`, { method: 'PUT', body: { done: updatedTask.done } });
+            await apiFetch(`/tasks/${taskId}`, { method: 'PUT', body: { status: updatedTask.status } });
         }
     };
 

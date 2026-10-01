@@ -1,18 +1,22 @@
 import { Activity, Zap, ShieldAlert, BarChart3, Users } from 'lucide-react';
+import { taskStats } from '../lib/status';
 
 export default function EventAnalytics({ tasks = [] }) {
-    const safeTasks = Array.isArray(tasks) ? tasks : [];
-    const totalTasks = safeTasks.length || 1;
-    const completedTasks = safeTasks.filter(t => t.done).length;
-    const progress = Math.round((completedTasks / totalTasks) * 100);
+    const stats = taskStats(tasks);
+    const totalTasks = stats.total || 1;
+    const completedTasks = stats.done;
+    const progress = stats.completionRate;
 
-    const pendingTasks = safeTasks.filter(t => t.status === 'pending').length || 0;
-    const blockedTasks = safeTasks.filter(t => t.status === 'blocked_auth').length || 0; 
+    // Mismo número de pendientes que la barra superior y Mission Control (todo lo que no está hecho).
+    const pendingTasks = stats.pending;
+    const blockedTasks = stats.blocked;
+    // En la distribución, "Pending" = sin empezar, para que las tres barras sumen el total.
+    const notStartedTasks = stats.pending - stats.inProgress - stats.blocked;
 
     const statusDist = [
         { name: 'Done', tasks: completedTasks, color: 'var(--accent-green)' },
-        { name: 'In Progress', tasks: safeTasks.filter(t => t.status === 'in-progress' || t.status === 'working').length, color: 'var(--accent-primary)' },
-        { name: 'Pending', tasks: pendingTasks, color: 'var(--text-tertiary)' }
+        { name: 'In Progress', tasks: stats.inProgress, color: 'var(--accent-primary)' },
+        { name: 'Pending', tasks: notStartedTasks, color: 'var(--text-tertiary)' }
     ];
 
     return (

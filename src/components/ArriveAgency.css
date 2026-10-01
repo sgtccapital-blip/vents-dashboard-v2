@@ -1,0 +1,933 @@
+/* ═══════════════════════════════════════════════════════════════════
+   ARRIVE AGENCY & SERVICES — LUXURY STYLING SYSTEM
+   Inspired by arriveservices.com: Creative, Talent & Experiences
+   ═══════════════════════════════════════════════════════════════════ */
+
+:root {
+  --arrive-gold: #d4af37;
+  --arrive-gold-bright: #fbbf24;
+  --arrive-gold-glow: rgba(212, 175, 55, 0.25);
+  --arrive-gold-bg: rgba(212, 175, 55, 0.08);
+  --arrive-silver: #e2e8f0;
+  --arrive-silver-glow: rgba(226, 232, 240, 0.2);
+  --arrive-nightlife: #a855f7;
+  --arrive-nightlife-bright: #c084fc;
+  --arrive-nightlife-glow: rgba(168, 85, 247, 0.25);
+  --arrive-nightlife-bg: rgba(168, 85, 247, 0.08);
+  --arrive-pink: #ec4899;
+  --arrive-obsidian: #09090b;
+  --arrive-card-bg: rgba(15, 15, 22, 0.8);
+  --arrive-card-border: rgba(212, 175, 55, 0.2);
+  --arrive-card-border-subtle: rgba(255, 255, 255, 0.08);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   PAGE CONTAINER & LAYOUT MARGINS
+   ═══════════════════════════════════════════════════════════════════ */
+.arrive-page-container {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 1440px;
+  padding: 24px 28px 80px 28px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   ARRIVE MASTER HERO BANNER (Unified & Balanced)
+   ═══════════════════════════════════════════════════════════════════ */
+.arrive-hero-header {
+  position: relative;
+  background: radial-gradient(circle at 10% 0%, rgba(212, 175, 55, 0.14) 0%, transparent 50%),
+              radial-gradient(circle at 90% 100%, rgba(168, 85, 247, 0.12) 0%, transparent 60%),
+              linear-gradient(145deg, #11111a 0%, #0a0a0f 100%);
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  border-radius: 16px;
+  padding: 22px 26px;
+  margin-bottom: 22px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.arrive-hero-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #fbbf24 35%, #ec4899 65%, #a855f7 85%, transparent);
+}
+
+.arrive-hero-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.arrive-hero-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.arrive-hero-logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #1e1b12 0%, #0d0d12 100%);
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 900;
+  font-size: 22px;
+  color: #fbbf24;
+  text-shadow: 0 0 12px rgba(251, 191, 36, 0.6);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  flex-shrink: 0;
+}
+
+.arrive-hero-titles h1 {
+  font-family: 'Outfit', sans-serif;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  color: #ffffff;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1.2;
+}
+
+.arrive-hero-titles .gold-highlight {
+  color: #fbbf24;
+  background: linear-gradient(135deg, #fbbf24, #d4af37, #f59e0b);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.arrive-hero-sub {
+  font-size: 13px;
+  color: #94a3b8;
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+.arrive-hero-sub span {
+  color: #e2e8f0;
+  font-weight: 600;
+}
+
+.arrive-hero-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.arrive-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.arrive-pill-gold {
+  background: rgba(212, 175, 55, 0.12);
+  color: #fbbf24;
+  border: 1px solid rgba(212, 175, 55, 0.35);
+}
+
+.arrive-pill-live {
+  background: rgba(16, 185, 129, 0.12);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.arrive-pill-live .dot-pulse {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+  animation: pulse-glow 2s infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   INTEGRATED METRICS STRIP
+   ═══════════════════════════════════════════════════════════════════ */
+.arrive-metrics-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 12px 16px;
+}
+
+.arrive-metric-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.arrive-metric-val {
+  font-family: 'Outfit', sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+  color: #ffffff;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.arrive-metric-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   MODERN SEGMENTED TAB BAR
+   ═══════════════════════════════════════════════════════════════════ */
+.arrive-tab-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(16, 16, 24, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
+  padding: 5px;
+  margin-bottom: 22px;
+  overflow-x: auto;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.arrive-tab-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: #94a3b8;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 9px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.arrive-tab-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.arrive-tab-btn.active {
+  color: #fbbf24;
+  background: rgba(212, 175, 55, 0.14);
+  border-color: rgba(212, 175, 55, 0.35);
+  font-weight: 700;
+  box-shadow: 0 2px 10px rgba(212, 175, 55, 0.12);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   3 DIVISIONS & STUDIO CARDS GRID
+   ═══════════════════════════════════════════════════════════════════ */
+.arrive-divisions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.arrive-division-card {
+  position: relative;
+  background: rgba(18, 18, 26, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 14px;
+  padding: 18px;
+  cursor: pointer;
+  transition: all 0.22s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 180px;
+}
+
+.arrive-division-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(212, 175, 55, 0.35);
+  background: rgba(24, 24, 36, 0.9);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.arrive-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.arrive-card-num {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.card-num-services { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+.card-num-models { background: rgba(236, 72, 153, 0.15); color: #f472b6; border: 1px solid rgba(236, 72, 153, 0.3); }
+.card-num-nightlife { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+.card-num-studio { background: rgba(20, 184, 166, 0.15); color: #2dd4bf; border: 1px solid rgba(20, 184, 166, 0.3); }
+
+.arrive-card-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.arrive-card-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 5px 0;
+}
+
+.arrive-card-sub {
+  font-size: 12px;
+  color: #94a3b8;
+  line-height: 1.45;
+  margin: 0 0 14px 0;
+}
+
+.arrive-card-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: auto;
+}
+
+.arrive-card-tag {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #cbd5e1;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   EXECUTIVE HUB BOX (Home Dashboard)
+   ═══════════════════════════════════════════════════════════════════ */
+.arrive-hub-card {
+  position: relative;
+  background: radial-gradient(circle at 10% 0%, rgba(212, 175, 55, 0.12) 0%, transparent 45%),
+              radial-gradient(circle at 90% 100%, rgba(168, 85, 247, 0.1) 0%, transparent 50%),
+              linear-gradient(145deg, #11111a 0%, #09090d 100%);
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  border-radius: 16px;
+  padding: 22px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  margin-bottom: 22px;
+  transition: all 0.3s ease;
+}
+
+.arrive-hub-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #fbbf24 35%, #ec4899 65%, #a855f7 85%, transparent);
+}
+
+.arrive-hub-topbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.arrive-brand-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.arrive-logo-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #1e1b12 0%, #0d0d12 100%);
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 900;
+  font-size: 22px;
+  color: #fbbf24;
+  text-shadow: 0 0 12px rgba(251, 191, 36, 0.6);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  flex-shrink: 0;
+}
+
+.arrive-brand-text h2 {
+  font-family: 'Outfit', sans-serif;
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #ffffff;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.arrive-brand-text h2 .gold-highlight {
+  color: #fbbf24;
+  background: linear-gradient(135deg, #fbbf24, #d4af37, #f59e0b);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.arrive-motto {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: 3px;
+  letter-spacing: 0.02em;
+  font-weight: 500;
+}
+
+.arrive-motto span {
+  color: #e2e8f0;
+  font-weight: 600;
+}
+
+.arrive-hub-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.arrive-hub-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.btn-arrive-gold {
+  background: linear-gradient(135deg, #d4af37, #b89628);
+  color: #000000;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
+  transition: all 0.2s ease;
+}
+
+.btn-arrive-gold:hover {
+  background: linear-gradient(135deg, #fbbf24, #d4af37);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(212, 175, 55, 0.4);
+}
+
+.btn-arrive-ghost {
+  background: rgba(255, 255, 255, 0.04);
+  color: #e2e8f0;
+  font-weight: 600;
+  font-size: 12px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.btn-arrive-ghost:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(212, 175, 55, 0.3);
+  color: #ffffff;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   ARRIVE TASKS & OPERATIONS BOX
+   ═══════════════════════════════════════════════════════════════════ */
+.arrive-tasks-widget {
+  background: linear-gradient(145deg, #11111a 0%, #0d0d14 100%);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 16px;
+  padding: 22px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+  margin-bottom: 22px;
+}
+
+.arrive-tasks-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.arrive-tasks-title-area {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.arrive-tasks-icon-wrap {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(212, 175, 55, 0.12);
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fbbf24;
+}
+
+.arrive-tasks-heading {
+  font-family: 'Outfit', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+}
+
+.arrive-tasks-sub {
+  font-size: 12px;
+  color: #94a3b8;
+  margin: 2px 0 0 0;
+}
+
+/* Filter pills */
+.arrive-filter-bar {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  margin-bottom: 14px;
+}
+
+.arrive-filter-pill {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  color: #94a3b8;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 9999px;
+  cursor: pointer;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.arrive-filter-pill:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.arrive-filter-pill.active {
+  background: rgba(212, 175, 55, 0.16);
+  border-color: rgba(212, 175, 55, 0.4);
+  color: #fbbf24;
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.15);
+}
+
+/* Quick Add Task Bar */
+.arrive-quickadd-bar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin-bottom: 16px;
+}
+
+.arrive-quickadd-input {
+  flex: 1;
+  min-width: 200px;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #ffffff;
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.arrive-quickadd-input::placeholder {
+  color: #64748b;
+}
+
+.arrive-quickadd-select {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #cbd5e1;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  outline: none;
+  cursor: pointer;
+}
+
+.arrive-quickadd-btn {
+  background: #fbbf24;
+  color: #000;
+  font-weight: 700;
+  font-size: 11.5px;
+  border: none;
+  border-radius: 7px;
+  padding: 5px 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s ease;
+}
+
+.arrive-quickadd-btn:hover {
+  background: #f59e0b;
+}
+
+/* Task Item */
+.arrive-task-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  margin-bottom: 6px;
+  transition: all 0.2s ease;
+}
+
+.arrive-task-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.arrive-task-item.is-done {
+  opacity: 0.55;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.arrive-task-item.is-done .arrive-task-title {
+  text-decoration: line-through;
+  color: #64748b;
+}
+
+.arrive-task-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.arrive-custom-checkbox {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  border: 1.5px solid rgba(212, 175, 55, 0.4);
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.arrive-custom-checkbox:hover {
+  border-color: #fbbf24;
+  background: rgba(251, 191, 36, 0.1);
+}
+
+.arrive-custom-checkbox.checked {
+  background: #fbbf24;
+  border-color: #fbbf24;
+  color: #000;
+}
+
+.arrive-task-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.arrive-task-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #f1f5f9;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.arrive-task-details {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 10.5px;
+  color: #64748b;
+}
+
+.arrive-division-badge {
+  font-size: 8.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 1px 5px;
+  border-radius: 4px;
+  letter-spacing: 0.04em;
+}
+
+.badge-div-services { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.25); }
+.badge-div-models { background: rgba(236, 72, 153, 0.15); color: #f472b6; border: 1px solid rgba(236, 72, 153, 0.25); }
+.badge-div-nightlife { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.25); }
+.badge-div-studio { background: rgba(20, 184, 166, 0.15); color: #2dd4bf; border: 1px solid rgba(20, 184, 166, 0.25); }
+
+.arrive-venue-badge {
+  color: #fbbf24;
+  background: rgba(212, 175, 55, 0.1);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 9.5px;
+  font-weight: 600;
+}
+
+.arrive-task-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.arrive-delete-btn {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.arrive-delete-btn:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   DINNERS & RESTAURANT GUESTLIST
+   ═══════════════════════════════════════════════════════════════════ */
+.arrive-dinner-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.arrive-dinner-card {
+  background: rgba(18, 18, 26, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 14px;
+  padding: 18px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  transition: all 0.2s ease;
+}
+
+.arrive-dinner-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(212, 175, 55, 0.3);
+}
+
+.arrive-dinner-card.active-night {
+  border-color: rgba(212, 175, 55, 0.45);
+  background: radial-gradient(circle at 100% 0%, rgba(212, 175, 55, 0.1) 0%, transparent 60%), rgba(20, 20, 30, 0.95);
+  box-shadow: 0 6px 24px rgba(212, 175, 55, 0.15);
+}
+
+.dinner-card-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 5px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.arrive-table-custom {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.arrive-table-custom th {
+  text-align: left;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #64748b;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.arrive-table-custom td {
+  padding: 10px;
+  font-size: 12.5px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  color: #e2e8f0;
+}
+
+.arrive-table-custom tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   CONTENT POSTS PIPELINE
+   ═══════════════════════════════════════════════════════════════════ */
+.arrive-posts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.arrive-post-card {
+  background: rgba(20, 20, 30, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.arrive-post-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(212, 175, 55, 0.3);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+}
+
+.arrive-post-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.arrive-post-project {
+  font-size: 11px;
+  font-weight: 700;
+  color: #fbbf24;
+}
+
+.arrive-post-format {
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #e2e8f0;
+}
+
+.arrive-post-copy {
+  font-size: 12px;
+  color: #94a3b8;
+  line-height: 1.4;
+  margin: 0;
+  font-style: italic;
+}
+
+.arrive-post-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 10.5px;
+  color: #64748b;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   RESPONSIVE DESIGN TWEAKS
+   ═══════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .arrive-page-container {
+    padding: 16px 14px 60px 14px;
+  }
+  .arrive-hero-header {
+    padding: 16px;
+  }
+  .arrive-divisions-grid {
+    grid-template-columns: 1fr;
+  }
+  .arrive-metrics-strip {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .arrive-quickadd-bar {
+    flex-direction: column;
+  }
+}

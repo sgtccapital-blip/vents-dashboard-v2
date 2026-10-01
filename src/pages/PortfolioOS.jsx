@@ -10,6 +10,30 @@ import {
 
 const CORE_PROJECTS_META = [
     {
+        id: 'proj-arrive-agency',
+        name: 'ARRIVE AGENCY',
+        tagline: 'Creative, Talent, UGC & Nightlife Experiences (arriveservices.com)',
+        icon: '🌟',
+        color: '#fbbf24',
+        gradient: 'linear-gradient(135deg, rgba(251, 191, 36, 0.18), rgba(251, 191, 36, 0.03))',
+        border: 'rgba(251, 191, 36, 0.4)',
+        priority: 'critical',
+        status: 'active',
+        statusLabel: 'Agencia Matriz / Activa (2026)',
+        objective: 'Agencia de marketing matriz (https://arriveservices.com): 3 divisiones operativas — ARRIVE Services (marketing & creative), ARRIVE Models (UGC, creadoras y convocatorias de cenas VIP de chicas en restaurantes de Panamá) y ARRIVE Nightlife (producción semanal en Terraplén Rooftop, Furia y Piano Bar) + ARRIVE Studio.',
+        nextAction: 'Coordinar con hostess de relaciones públicas las convocatorias semanales de cenas y entrega de contenido para marcas.',
+        blockers: 'Sincronizar el pipeline de aprobación de invitaciones vía WhatsApp para cenas.',
+        lead: 'ARRIVE Master Director & OpenClaw',
+        kpi: '25 modelos activas + 3 cenas semanales con asistencia 100% confirmada',
+        progress: 88,
+        defaultTasks: [
+            { id: 't-arr-1', text: 'Estandarizar invitaciones 1 a 1 de chicas a cenas VIP en Terraplén y Furia', block: 'operacion', priority: 'critical', owner: 'PR Hostess', done: true, due: '2026-10-05' },
+            { id: 't-arr-2', text: 'Pipeline de Reels, Carruseles y TikToks para marcas aliadas (ARRIVE Services)', block: 'marketing', priority: 'high', owner: 'Social Content', done: false, due: '2026-10-15' },
+            { id: 't-arr-3', text: 'Lanzar Studio Day mensual de producción con modelos y fotógrafos', block: 'producto', priority: 'high', owner: 'Studio Director', done: false, due: '2026-10-25' },
+            { id: 't-arr-4', text: 'Cobertura de eventos nocturnos y activaciones de marcas en Casco Antiguo', block: 'comercial', priority: 'critical', owner: 'Nightlife Ops', done: true, due: '2026-10-10' }
+        ]
+    },
+    {
         id: 'portfolio-hangout',
         name: 'Hang Out App',
         tagline: 'Nightlife Tech, VIP Tables & Social Discovery (Panamá)',
@@ -140,12 +164,46 @@ export default function PortfolioOS() {
     // Active sub-tab in Portfolio OS
     const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'tasks' | 'decisions' | 'roadmap' | 'openclaw'
 
+    // Unified list of all available projects (Core Metadata + AppContext dynamic projects)
+    const allAvailableProjects = useMemo(() => {
+        const map = new Map();
+        // 1. Add core metadata projects
+        CORE_PROJECTS_META.forEach(p => map.set(p.id, p));
+        // 2. Add projects from AppContext
+        (projects || []).forEach(p => {
+            if (!map.has(p.id)) {
+                map.set(p.id, {
+                    id: p.id,
+                    name: p.name,
+                    tagline: p.description || p.category || 'Proyecto Activo',
+                    icon: p.category === 'agency' || p.id === 'proj-arrive-agency' ? '🌟' : '🚀',
+                    color: p.color || '#3b82f6',
+                    gradient: 'linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(59, 130, 246, 0.03))',
+                    border: 'rgba(59, 130, 246, 0.3)',
+                    priority: p.priority || 'high',
+                    status: p.status || 'active',
+                    statusLabel: p.status || 'Activo',
+                    objective: p.description || '',
+                    nextAction: 'Continuar ejecución de hitos y tareas asignadas.',
+                    lead: p.leadAgent || 'OpenClaw Team',
+                    kpi: `${(p.milestones || []).filter(m => m.done).length}/${Math.max((p.milestones || []).length, 1)} Hitos`,
+                    progress: Math.round(((p.milestones || []).filter(m => m.done).length / Math.max((p.milestones || []).length, 1)) * 100) || 50,
+                    defaultTasks: []
+                });
+            }
+        });
+        // Make sure ARRIVE Agency is always first
+        const arrive = map.get('proj-arrive-agency');
+        const others = Array.from(map.values()).filter(p => p.id !== 'proj-arrive-agency');
+        return arrive ? [arrive, ...others] : Array.from(map.values());
+    }, [projects]);
+
     // Task Plans Filters
     const [taskProjectFilter, setTaskProjectFilter] = useState('all');
     const [taskBlockFilter, setTaskBlockFilter] = useState('all');
     const [taskSearch, setTaskSearch] = useState('');
     const [newTaskText, setNewTaskText] = useState('');
-    const [newTaskProject, setNewTaskProject] = useState('portfolio-hangout');
+    const [newTaskProject, setNewTaskProject] = useState('proj-arrive-agency');
     const [newTaskBlock, setNewTaskBlock] = useState('estrategia');
     const [newTaskPriority, setNewTaskPriority] = useState('high');
     const [newTaskOwner, setNewTaskOwner] = useState('GG');
@@ -153,23 +211,23 @@ export default function PortfolioOS() {
     // Decision Log Modal
     const [showDecisionModal, setShowDecisionModal] = useState(false);
     const [newDecision, setNewDecision] = useState({
-        project: 'Hang Out',
-        projectId: 'portfolio-hangout',
+        project: 'ARRIVE AGENCY',
+        projectId: 'proj-arrive-agency',
         decision: '',
         motivo: '',
-        impacto: 'Alto / Estratégico',
-        decisor: 'GG & OpenClaw'
+        impacto: 'Crítico / Estratégico',
+        decisor: 'ARRIVE Director & OpenClaw'
     });
 
     // Roadmap Modal
     const [showRoadmapModal, setShowRoadmapModal] = useState(false);
     const [newRoadmap, setNewRoadmap] = useState({
         title: '',
-        project: 'Hang Out',
-        projectId: 'portfolio-hangout',
+        project: 'ARRIVE AGENCY',
+        projectId: 'proj-arrive-agency',
         column: 'now',
         priority: 'high',
-        block: 'producto',
+        block: 'marketing',
         deadline: '',
         desc: ''
     });
@@ -179,8 +237,8 @@ export default function PortfolioOS() {
 
     // Merge default core tasks with global tasks
     const allPortfolioTasks = useMemo(() => {
-        // Collect default tasks from CORE_PROJECTS_META
-        const defaults = CORE_PROJECTS_META.flatMap(p => p.defaultTasks.map(t => ({
+        // Collect default tasks from allAvailableProjects
+        const defaults = allAvailableProjects.flatMap(p => (p.defaultTasks || []).map(t => ({
             ...t,
             projectId: p.id,
             projectName: p.name,
@@ -189,17 +247,23 @@ export default function PortfolioOS() {
 
         // Collect matching tasks from AppContext
         const live = (tasks || []).map(t => {
-            const matchedProj = CORE_PROJECTS_META.find(p => p.id === t.projectId || p.name.toLowerCase() === (t.project || '').toLowerCase());
+            const matchedProj = allAvailableProjects.find(p => 
+                p.id === t.projectId || 
+                (t.projectId === 'proj-arrive-agency' && p.id === 'proj-arrive-agency') ||
+                (t.agency === 'arrive' && p.id === 'proj-arrive-agency') ||
+                (t.id?.startsWith('arr-') && p.id === 'proj-arrive-agency') ||
+                p.name.toLowerCase() === (t.project || t.projectName || '').toLowerCase()
+            );
             return {
                 id: t.id,
                 text: t.text || t.name,
-                block: t.block || 'operacion',
+                block: t.block || (t.division === 'models' ? 'operacion' : t.division === 'services' ? 'marketing' : 'operacion'),
                 priority: t.priority || 'medium',
-                owner: t.assignedTo || t.owner || 'OpenClaw',
+                owner: t.assignedTo || t.owner || (t.division === 'models' ? 'PR Hostess' : 'GG'),
                 done: !!t.done,
                 due: t.due || '',
-                projectId: matchedProj ? matchedProj.id : (t.projectId || 'portfolio-hangout'),
-                projectName: matchedProj ? matchedProj.name : (t.project || 'General'),
+                projectId: matchedProj ? matchedProj.id : (t.projectId || 'proj-arrive-agency'),
+                projectName: matchedProj ? matchedProj.name : (t.project || t.projectName || 'ARRIVE AGENCY'),
                 source: 'live'
             };
         });
@@ -215,7 +279,7 @@ export default function PortfolioOS() {
             }
         });
         return combined;
-    }, [tasks]);
+    }, [tasks, allAvailableProjects]);
 
     // Filtered tasks
     const filteredTasks = useMemo(() => {
@@ -231,15 +295,18 @@ export default function PortfolioOS() {
     const handleCreateTask = async (e) => {
         e.preventDefault();
         if (!newTaskText.trim()) return;
-        const matchedProj = CORE_PROJECTS_META.find(p => p.id === newTaskProject);
+        const matchedProj = allAvailableProjects.find(p => p.id === newTaskProject);
+        const projName = matchedProj ? matchedProj.name : 'ARRIVE AGENCY';
         const taskPayload = {
             id: `t-pf-${Date.now()}`,
             text: newTaskText.trim(),
             projectId: newTaskProject,
-            project: matchedProj ? matchedProj.name : 'Hang Out',
+            project: projName,
+            projectName: projName,
             block: newTaskBlock,
             priority: newTaskPriority,
             assignedTo: newTaskOwner,
+            agency: newTaskProject === 'proj-arrive-agency' ? 'arrive' : undefined,
             done: false,
             createdAt: new Date().toISOString()
         };
@@ -254,12 +321,12 @@ export default function PortfolioOS() {
         await addDecision(newDecision);
         setShowDecisionModal(false);
         setNewDecision({
-            project: 'Hang Out',
-            projectId: 'portfolio-hangout',
+            project: 'ARRIVE AGENCY',
+            projectId: 'proj-arrive-agency',
             decision: '',
             motivo: '',
-            impacto: 'Alto / Estratégico',
-            decisor: 'GG & OpenClaw'
+            impacto: 'Crítico / Estratégico',
+            decisor: 'ARRIVE Director & OpenClaw'
         });
     };
 
@@ -271,11 +338,11 @@ export default function PortfolioOS() {
         setShowRoadmapModal(false);
         setNewRoadmap({
             title: '',
-            project: 'Hang Out',
-            projectId: 'portfolio-hangout',
+            project: 'ARRIVE AGENCY',
+            projectId: 'proj-arrive-agency',
             column: 'now',
             priority: 'high',
-            block: 'producto',
+            block: 'marketing',
             deadline: '',
             desc: ''
         });
@@ -387,9 +454,9 @@ export default function PortfolioOS() {
                 marginBottom: '24px'
             }}>
                 <div className="card" style={{ padding: '18px 20px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-subtle)' }}>
-                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Proyectos en Incubación</div>
-                    <div style={{ fontSize: '24px', fontWeight: 800, color: 'white', marginTop: '4px' }}>4 Futuros</div>
-                    <div style={{ fontSize: '11.5px', color: '#4ade80', marginTop: '2px' }}>Hang Out · LicitIA · RecordAI · Waller</div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Proyectos en Incubación & Agencia</div>
+                    <div style={{ fontSize: '24px', fontWeight: 800, color: 'white', marginTop: '4px' }}>{allAvailableProjects.length} Proyectos</div>
+                    <div style={{ fontSize: '11.5px', color: '#fbbf24', marginTop: '2px' }}>🌟 ARRIVE Agency · Hang Out · LicitIA · RecordAI · Waller</div>
                 </div>
                 <div className="card" style={{ padding: '18px 20px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-subtle)' }}>
                     <div style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Decisiones Estratégicas</div>
@@ -449,7 +516,7 @@ export default function PortfolioOS() {
             {/* ═════════════════════════════════════════════════════════════════ */}
             {activeTab === 'overview' && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '20px' }}>
-                    {CORE_PROJECTS_META.map(proj => {
+                    {allAvailableProjects.map(proj => {
                         const projTasks = allPortfolioTasks.filter(t => t.projectId === proj.id);
                         const completedCount = projTasks.filter(t => t.done).length;
                         const totalCount = projTasks.length || 1;
@@ -592,11 +659,12 @@ export default function PortfolioOS() {
                                     onChange={e => setTaskProjectFilter(e.target.value)}
                                     style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-subtle)', color: 'white', padding: '6px 12px', borderRadius: '8px', fontSize: '13px' }}
                                 >
-                                    <option value="all">Todos los Proyectos Futuros (4)</option>
-                                    <option value="portfolio-hangout">🍸 Hang Out App</option>
-                                    <option value="portfolio-licitia">⚖️ LicitIA</option>
-                                    <option value="portfolio-recordai">🎙️ RecordAI</option>
-                                    <option value="portfolio-waller">💳 Waller App</option>
+                                    <option value="all">Todos los Proyectos ({allAvailableProjects.length})</option>
+                                    {allAvailableProjects.map(p => (
+                                        <option key={`flt-p-${p.id}`} value={p.id}>
+                                            {p.id === 'proj-arrive-agency' ? '🌟 ARRIVE AGENCY' : `${p.icon || '🚀'} ${p.name}`}
+                                        </option>
+                                    ))}
                                 </select>
                             </div>
 
@@ -650,10 +718,11 @@ export default function PortfolioOS() {
                             onChange={e => setNewTaskProject(e.target.value)}
                             style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-subtle)', color: 'white', padding: '9px 12px', borderRadius: '8px', fontSize: '13px' }}
                         >
-                            <option value="portfolio-hangout">🍸 Hang Out App</option>
-                            <option value="portfolio-licitia">⚖️ LicitIA</option>
-                            <option value="portfolio-recordai">🎙️ RecordAI</option>
-                            <option value="portfolio-waller">💳 Waller App</option>
+                            {allAvailableProjects.map(p => (
+                                <option key={`new-p-${p.id}`} value={p.id}>
+                                    {p.id === 'proj-arrive-agency' ? '🌟 ARRIVE AGENCY' : `${p.icon || '🚀'} ${p.name}`}
+                                </option>
+                            ))}
                         </select>
                         <select
                             value={newTaskBlock}
@@ -1103,14 +1172,22 @@ export default function PortfolioOS() {
                                     <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px' }}>Proyecto</label>
                                     <select
                                         className="form-control"
-                                        value={newDecision.project}
-                                        onChange={e => setNewDecision({ ...newDecision, project: e.target.value })}
+                                        value={newDecision.projectId || 'proj-arrive-agency'}
+                                        onChange={e => {
+                                            const found = allAvailableProjects.find(p => p.id === e.target.value);
+                                            setNewDecision({
+                                                ...newDecision,
+                                                projectId: e.target.value,
+                                                project: found ? found.name : e.target.value
+                                            });
+                                        }}
                                         style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-subtle)', color: 'white', padding: '8px', borderRadius: '8px', width: '100%' }}
                                     >
-                                        <option value="Hang Out App">Hang Out App</option>
-                                        <option value="LicitIA">LicitIA</option>
-                                        <option value="RecordAI">RecordAI</option>
-                                        <option value="Waller App">Waller App</option>
+                                        {allAvailableProjects.map(p => (
+                                            <option key={`dec-p-${p.id}`} value={p.id}>
+                                                {p.id === 'proj-arrive-agency' ? '🌟 ARRIVE AGENCY' : `${p.icon || '🚀'} ${p.name}`}
+                                            </option>
+                                        ))}
                                     </select>
                                 </div>
 
@@ -1180,14 +1257,22 @@ export default function PortfolioOS() {
                                     <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px' }}>Proyecto</label>
                                     <select
                                         className="form-control"
-                                        value={newRoadmap.project}
-                                        onChange={e => setNewRoadmap({ ...newRoadmap, project: e.target.value })}
+                                        value={newRoadmap.projectId || 'proj-arrive-agency'}
+                                        onChange={e => {
+                                            const found = allAvailableProjects.find(p => p.id === e.target.value);
+                                            setNewRoadmap({
+                                                ...newRoadmap,
+                                                projectId: e.target.value,
+                                                project: found ? found.name : e.target.value
+                                            });
+                                        }}
                                         style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-subtle)', color: 'white', padding: '8px', borderRadius: '8px', width: '100%' }}
                                     >
-                                        <option value="Hang Out App">Hang Out App</option>
-                                        <option value="LicitIA">LicitIA</option>
-                                        <option value="RecordAI">RecordAI</option>
-                                        <option value="Waller App">Waller App</option>
+                                        {allAvailableProjects.map(p => (
+                                            <option key={`rdm-p-${p.id}`} value={p.id}>
+                                                {p.id === 'proj-arrive-agency' ? '🌟 ARRIVE AGENCY' : `${p.icon || '🚀'} ${p.name}`}
+                                            </option>
+                                        ))}
                                     </select>
                                 </div>
 

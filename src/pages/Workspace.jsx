@@ -8,6 +8,7 @@ import {
     ListChecks, Flame, ArrowRight, MessageSquare
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { isDone, isActiveEvent } from '../lib/status';
 
 import EventKanbanBoard from '../components/EventKanbanBoard';
 import EventCanvas from '../components/EventCanvas';
@@ -85,7 +86,7 @@ function ProgressRing({ percent, size = 52, stroke = 4, color = 'var(--accent-pr
 // ─── WORKSPACE 2.0 ───────────────────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════════════
 export default function Workspace() {
-    const { events, activityFeed, addActivity, tasks, toggleTask, addTask, notes, addNote } = useApp();
+    const { events, projects, activityFeed, addActivity, tasks, toggleTask, addTask, notes, addNote } = useApp();
 
     // ─── State ─────────────────────────────────────────────
     const [boardView, setBoardView] = useState(() => {
@@ -98,21 +99,22 @@ export default function Workspace() {
         catch { return true; }
     });
     const [quickInput, setQuickInput] = useState('');
+    const [quickContext, setQuickContext] = useState('project_proj-arrive-agency');
     const [quickStatus, setQuickStatus] = useState('pending');
     const [quickDate, setQuickDate] = useState('');
 
     const quickInputRef = useRef(null);
 
     const safeTasks = Array.isArray(tasks) ? tasks : [];
-    const pendingTasks = safeTasks.filter(t => !t.done);
-    const completedTasks = safeTasks.filter(t => t.done);
+    const pendingTasks = safeTasks.filter(t => !isDone(t));
+    const completedTasks = safeTasks.filter(isDone);
     const pendingCount = pendingTasks.length;
     const completedCount = completedTasks.length;
     const totalTasks = safeTasks.length;
     const completionPercent = totalTasks > 0 ? (completedCount / totalTasks) * 100 : 0;
     const highPriorityTasks = pendingTasks.filter(t => t.priority === 'high').slice(0, 5);
     const focusTasks = pendingTasks.slice(0, 5);
-    const activeEvents = (events || []).filter(e => ['planeacion', 'planificacion', 'ejecucion', 'activo', 'upcoming', 'ongoing'].includes(e.status));
+    const activeEvents = (events || []).filter(isActiveEvent);
 
     // ─── Save last view ────────────────────────────────────
     useEffect(() => {
@@ -165,12 +167,36 @@ export default function Workspace() {
         } else {
             const text = val.startsWith('t:') || val.startsWith('T:') ? val.slice(2).trim() : val;
             if (text) {
+                let pId = null, pName = '', eId = null, eName = '';
+                if (quickContext.startsWith('project_')) {
+                    pId = quickContext.replace('project_', '');
+                    const proj = (projects || []).find(p => p.id === pId);
+                    pName = proj?.name || (pId === 'proj-arrive-agency' ? 'ARRIVE AGENCY' : pId);
+                } else if (quickContext.startsWith('event_')) {
+                    eId = quickContext.replace('event_', '');
+                    const ev = (events || []).find(e => e.id === eId);
+                    eName = ev?.name || '';
+                } else {
+                    pId = 'proj-arrive-agency';
+                    pName = 'ARRIVE AGENCY';
+                }
+
                 addTask({
-                    id: `qt-${Date.now()}`, text, status: quickStatus, done: quickStatus === 'done',
-                    eventId: events[0]?.id || '', priority: 'medium',
-                    due: quickDate, createdAt: new Date().toISOString()
+                    id: `qt-${Date.now()}`,
+                    text,
+                    status: quickStatus,
+                    done: quickStatus === 'done',
+                    projectId: pId,
+                    projectName: pName,
+                    project: pName,
+                    agency: pId === 'proj-arrive-agency' ? 'arrive' : undefined,
+                    eventId: eId || '',
+                    eventName: eName || '',
+                    priority: 'medium',
+                    due: quickDate,
+                    createdAt: new Date().toISOString()
                 });
-                addActivity(`⚡ Quick task: "${text.substring(0, 30)}..."`, 'var(--accent-primary)', 'global');
+                addActivity(`⚡ Quick task (${pName || eName}): "${text.substring(0, 30)}..."`, 'var(--accent-primary)', 'global');
             }
         }
         setQuickInput('');
@@ -280,6 +306,31 @@ export default function Workspace() {
                     style={{ flex: 1 }}
                 />
                 
+                {/* Context: Agency / Project / Event */}
+                <select
+                    className="form-select"
+                    value={quickContext}
+                    onChange={e => setQuickContext(e.target.value)}
+                    style={{
+                        padding: '6px 10px', fontSize: '12px', background: 'var(--bg-base)',
+                        border: 'none', borderRadius: 'var(--radius-md)', outline: 'none',
+                        color: quickContext.includes('arrive') ? '#fbbf24' : 'var(--text-primary)',
+                        fontWeight: 600, maxWidth: '160px', cursor: 'pointer'
+                    }}
+                >
+                    <optgroup label="🌟 Agencia & Proyectos">
+                        <option value="project_proj-arrive-agency">🌟 ARRIVE AGENCY</option>
+                        {(projects || []).filter(p => p.id !== 'proj-arrive-agency').map(p => (
+                            <option key={`ws-p-${p.id}`} value={`project_${p.id}`}>🚀 {p.name}</option>
+                        ))}
+                    </optgroup>
+                    <optgroup label="🎪 Eventos & Venues">
+                        {(events || []).map(e => (
+                            <option key={`ws-e-${e.id}`} value={`event_${e.id}`}>{e.icon || '🍸'} {e.name}</option>
+                        ))}
+                    </optgroup>
+                </select>
+
                 {/* Status menu next to the Quick Add (nwxt week / new task) */}
                 <select
                     className="form-select"

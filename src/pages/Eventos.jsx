@@ -913,6 +913,7 @@ export default function Eventos() {
 {`// Ejemplo de llamada desde OpenClaw Super Agent:
 POST http://localhost:8090/api/openclaw/action
 Content-Type: application/json
+Authorization: Bearer <API_TOKEN del archivo .env>
 
 {
   "action": "create_project",

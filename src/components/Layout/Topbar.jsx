@@ -1,6 +1,7 @@
 import { Search, Menu, Database } from 'lucide-react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
+import { taskStats, eventStats } from '../../lib/status';
 
 const ProgressRing = ({ percent, size = 36, stroke = 3 }) => {
     const radius = (size - stroke) / 2;
@@ -34,6 +35,7 @@ const ProgressRing = ({ percent, size = 36, stroke = 3 }) => {
 
 const pageTitles = {
     '/': 'Command Center',
+    '/arrive': 'ARRIVE Agency OS — Creative, Talent & Experiences',
     '/workspace': 'Workspace 2.0',
     '/calendar': 'Master Calendar',
     '/eventos': 'Eventos',
@@ -43,7 +45,25 @@ const pageTitles = {
 
 export default function Topbar({ collapsed, searchQuery, onSearchChange, onMobileMenuToggle, onCloudSyncToggle }) {
     const location = useLocation();
-    const { tasks, events, supabaseStatus } = useApp();
+    const navigate = useNavigate();
+    const { tasks, events, contacts, supabaseStatus } = useApp();
+
+    // Resultados del buscador: eventos, tareas y contactos que contienen el texto
+    const searchResults = (() => {
+        const q = (searchQuery || '').trim().toLowerCase();
+        if (q.length < 2) return [];
+        const has = (...fields) => fields.some(f => typeof f === 'string' && f.toLowerCase().includes(q));
+        return [
+            ...(events || []).filter(e => has(e.name, e.venue, e.location)).map(e => ({ key: `e-${e.id}`, kind: 'Evento', label: e.name, to: `/eventos/${e.id}` })),
+            ...(tasks || []).filter(t => has(t.text, t.title, t.eventName, t.projectName)).map(t => ({ key: `t-${t.id}`, kind: 'Tarea', label: t.text || t.title, to: '/workspace' })),
+            ...(contacts || []).filter(c => has(c.name, c.company, c.role, c.phone, c.email)).map(c => ({ key: `c-${c.id}`, kind: 'Contacto', label: c.name, to: '/contactos' })),
+        ].slice(0, 8);
+    })();
+
+    const openResult = (result) => {
+        onSearchChange('');
+        navigate(result.to);
+    };
 
     const titleKey = Object.keys(pageTitles).find(key => {
         if (key === '/') return location.pathname === '/';
@@ -51,13 +71,10 @@ export default function Topbar({ collapsed, searchQuery, onSearchChange, onMobil
     });
     const title = titleKey !== undefined ? pageTitles[titleKey] : 'Command Center';
 
-    const pendingTasks = (tasks || []).filter(t => t.status !== 'done' && t.status !== 'completed').length;
-    const completedTasks = (tasks || []).filter(t => t.status === 'done' || t.status === 'completed').length;
-    const totalTasks = pendingTasks + completedTasks;
-    const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-    
+    const { pending: pendingTasks, done: completedTasks, completionRate } = taskStats(tasks);
+
     // Quick Metrics
-    const eventCount = (events || []).filter(p => p.status === 'active').length;
+    const eventCount = eventStats(events).active;
 
     const getGreeting = () => {
         const hour = new Date().getHours();
@@ -139,15 +156,31 @@ export default function Topbar({ collapsed, searchQuery, onSearchChange, onMobil
                     }} />
                 </div>
 
-                <div className="search-bar desktop-only">
+                <div className="search-bar desktop-only" style={{ position: 'relative' }}>
                     <Search size={16} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
                     <input
                         type="text"
-                        placeholder="Search everything..."
+                        placeholder="Buscar eventos, tareas, contactos..."
                         value={searchQuery}
                         onChange={(e) => onSearchChange(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' && searchResults[0]) openResult(searchResults[0]);
+                            if (e.key === 'Escape') onSearchChange('');
+                        }}
                     />
-                    <span className="search-kbd">⌘K</span>
+                    {searchQuery.trim().length >= 2 && (
+                        <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, zIndex: 50, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.35)', overflow: 'hidden' }}>
+                            {searchResults.length === 0 ? (
+                                <div style={{ padding: '10px 12px', fontSize: '12.5px', color: 'var(--text-tertiary)' }}>Sin resultados</div>
+                            ) : searchResults.map(r => (
+                                <button key={r.key} onMouseDown={(e) => { e.preventDefault(); openResult(r); }}
+                                    style={{ display: 'flex', gap: '8px', alignItems: 'center', width: '100%', padding: '8px 12px', background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', textAlign: 'left', fontSize: '12.5px' }}>
+                                    <span style={{ fontSize: '10.5px', color: 'var(--text-tertiary)', minWidth: '58px' }}>{r.kind}</span>
+                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.label}</span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </div>
         </header>

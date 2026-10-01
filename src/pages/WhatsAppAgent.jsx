@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
+import { isActiveEvent } from '../lib/status';
 import WhatsAppAgentService, { CAMPAIGN_TONES, AUDIENCE_TAGS } from '../services/WhatsAppAgentService';
 import {
     MessageSquare, Send, Sparkles, Calendar, Users, Share2, Copy, Check,
@@ -102,7 +103,7 @@ export default function WhatsAppAgent() {
 
         if (filtered.length > 0) return filtered;
         // If no events match exact date, return upcoming active events as context
-        return all.filter(e => e.status === 'activo' || e.status === 'planificacion' || e.status === 'upcoming').slice(0, 5);
+        return all.filter(isActiveEvent).slice(0, 5);
     }, [events, weekRange]);
 
     // ─── Load Initial Data ──────────────────────────────────────

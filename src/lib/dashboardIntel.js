@@ -1,10 +1,12 @@
 
 
+import { eventStatus, isDone, isStaleEvent, isActiveEvent } from './status';
+
 export const getEventPressure = (event = {}) => {
   const priorityWeight = { critical: 4, high: 3, medium: 2, low: 1 };
-  const statusWeight = { ejecucion: 2, planeacion: 3, completado: 0, archivado: 0 };
+  const statusWeight = { activo: 2, planificacion: 3, completado: 0, cancelado: 0 };
   const priority = priorityWeight[event.priority] || 1;
-  const status = statusWeight[event.status] || 1;
+  const status = statusWeight[eventStatus(event)] ?? 1;
   const deadline = event.date ? new Date(event.date) : null;
   const today = new Date();
   const daysLeft = deadline ? Math.ceil((deadline - today) / 86400000) : null;
@@ -17,7 +19,7 @@ export const buildDecisionInbox = ({ events = [], tasks = [] }) => {
 
   events.forEach(event => {
     const pressure = getEventPressure(event);
-    if (event.status === 'pausado' && ['critical', 'high'].includes(event.priority)) {
+    if (eventStatus(event) === 'pausado' && ['critical', 'high'].includes(event.priority)) {
       decisions.push({
         id: `event-paused-${event.id}`,
         type: 'decide',
@@ -32,7 +34,7 @@ export const buildDecisionInbox = ({ events = [], tasks = [] }) => {
 
     if (event.date) {
       const daysLeft = Math.ceil((new Date(event.date) - new Date()) / 86400000);
-      if (daysLeft <= 7 && event.status !== 'completado') {
+      if (daysLeft <= 7 && !['completado', 'cancelado', 'borrador'].includes(eventStatus(event))) {
         decisions.push({
           id: `event-deadline-${event.id}`,
           type: 'approve',
@@ -49,7 +51,7 @@ export const buildDecisionInbox = ({ events = [], tasks = [] }) => {
     }
   });
 
-  tasks.filter(t => !t.done).forEach(task => {
+  tasks.filter(t => !isDone(t)).forEach(task => {
     if (task.priority === 'high' || task.priority === 'critical') {
       decisions.push({
         id: `task-owner-${task.id}`,
@@ -71,22 +73,22 @@ export const buildDecisionInbox = ({ events = [], tasks = [] }) => {
 
 export const buildDailyPriorityPanel = ({ events = [], tasks = [] }) => {
   const activeEvents = [...events]
-    .filter(e => e.status === 'ejecucion' || e.status === 'planeacion' || (e.status === 'pausado' && ['critical', 'high'].includes(e.priority)))
+    .filter(e => isActiveEvent(e) && (eventStatus(e) !== 'pausado' || ['critical', 'high'].includes(e.priority)))
     .sort((a, b) => getEventPressure(b) - getEventPressure(a));
 
   const topPriorities = activeEvents.slice(0, 3).map(event => ({
     id: event.id,
     title: event.name,
-    subtitle: `${event.priority || 'medium'} • ${event.status}`,
+    subtitle: `${event.priority || 'medium'} • ${eventStatus(event)}`,
     pressure: getEventPressure(event),
   }));
 
   const topRisks = [];
   events.forEach(event => {
-    if (event.status === 'pausado' && ['critical', 'high'].includes(event.priority)) {
+    if (eventStatus(event) === 'pausado' && ['critical', 'high'].includes(event.priority)) {
       topRisks.push({ id: `risk-${event.id}`, title: `${event.name} pausado`, subtitle: 'Riesgo de oportunidad estancada' });
     }
-    if (event.date && new Date(event.date) < new Date() && event.status !== 'completado') {
+    if (isStaleEvent(event)) {
       topRisks.push({ id: `risk-overdue-${event.id}`, title: `${event.name} vencido`, subtitle: 'Fecha rebasada' });
     }
   });
@@ -101,7 +103,7 @@ export const buildDailyPriorityPanel = ({ events = [], tasks = [] }) => {
     }));
 
   const overdue = [
-    ...tasks.filter(t => !t.done && t.due && new Date(t.due) < new Date()).map(t => ({ id: t.id, title: t.text, subtitle: `Task vencida • ${t.due}` }))
+    ...tasks.filter(t => !isDone(t) && t.due && !Number.isNaN(new Date(t.due).getTime()) && new Date(t.due) < new Date()).map(t => ({ id: t.id, title: t.text, subtitle: `Task vencida • ${t.due}` }))
   ].slice(0, 5);
 
   return { topPriorities, topRisks: topRisks.slice(0, 3), topOpportunities, overdue };

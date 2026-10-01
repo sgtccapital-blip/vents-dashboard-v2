@@ -30,7 +30,7 @@ const MONDAY_ASSIGNEE_COLORS = {
 };
 
 export default function EventTableView({ events, filterEventId }) {
-    const { tasks, updateTask: globalUpdateTask, addTask, addActivity, addEvent } = useApp();
+    const { tasks, projects, updateTask: globalUpdateTask, addTask, addActivity, addEvent } = useApp();
 
     const [selectedAssignee, setSelectedAssignee] = useState('all');
     const [selectedVenue, setSelectedVenue] = useState('all');
@@ -39,12 +39,33 @@ export default function EventTableView({ events, filterEventId }) {
     const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
     const [collapsedGroups, setCollapsedGroups] = useState({});
 
+    // Ensure ARRIVE Agency is always first among projects
+    const sortedProjects = useMemo(() => {
+        const list = [...(projects || [])];
+        if (!list.find(p => p.id === 'proj-arrive-agency')) {
+            list.unshift({
+                id: 'proj-arrive-agency',
+                name: 'ARRIVE AGENCY — Creative, Talent & Experiences',
+                color: '#fbbf24'
+            });
+        }
+        return list.sort((a, b) => (a.id === 'proj-arrive-agency' ? -1 : b.id === 'proj-arrive-agency' ? 1 : 0));
+    }, [projects]);
+
     // Filter tasks based on all active criteria
     const filteredTasks = useMemo(() => {
         return (tasks || []).filter(t => {
-            // Event filter
+            // Venue / Project filter
             if (filterEventId && t.eventId !== filterEventId) return false;
-            if (selectedVenue !== 'all' && t.eventId !== selectedVenue) return false;
+            if (selectedVenue !== 'all') {
+                if (selectedVenue.startsWith('project_')) {
+                    const pId = selectedVenue.replace('project_', '');
+                    const isArrive = pId === 'proj-arrive-agency' && (t.agency === 'arrive' || t.projectId === 'proj-arrive-agency' || t.id?.startsWith('arr-'));
+                    if (t.projectId !== pId && !isArrive) return false;
+                } else {
+                    if (t.eventId !== selectedVenue) return false;
+                }
+            }
 
             // Assignee filter
             const taskAssignee = t.assignedTo || t.assignee || '';
@@ -64,20 +85,40 @@ export default function EventTableView({ events, filterEventId }) {
                 const q = searchQuery.toLowerCase();
                 const matchText = (t.text || t.title || '').toLowerCase().includes(q);
                 const matchEvent = (t.eventName || '').toLowerCase().includes(q);
+                const matchProject = (t.projectName || t.project || '').toLowerCase().includes(q);
                 const matchAssignee = taskAssignee.toLowerCase().includes(q);
-                if (!matchText && !matchEvent && !matchAssignee) return false;
+                if (!matchText && !matchEvent && !matchProject && !matchAssignee) return false;
             }
 
             return true;
         });
     }, [tasks, filterEventId, selectedVenue, selectedAssignee, statusFilter, searchQuery]);
 
-    // Group tasks by event
+    // Group tasks by project or event
     const grouped = {};
     
-    // Create groups for each event that has tasks
+    // 1. Create groups for each project that has tasks
+    sortedProjects.forEach(p => {
+        if (selectedVenue !== 'all' && selectedVenue !== `project_${p.id}`) return;
+        const projTasks = filteredTasks.filter(t => 
+            t.projectId === p.id || 
+            (p.id === 'proj-arrive-agency' && (t.agency === 'arrive' || t.projectId === 'proj-arrive-agency' || t.id?.startsWith('arr-')))
+        );
+        if (projTasks.length > 0 || selectedVenue === `project_${p.id}`) {
+            grouped[`project_${p.id}`] = {
+                name: p.id === 'proj-arrive-agency' ? '🌟 ARRIVE AGENCY — Creative, Talent & Operaciones' : `🚀 ${p.name}`,
+                icon: p.id === 'proj-arrive-agency' ? '🌟' : '🚀',
+                color: p.id === 'proj-arrive-agency' ? '#fbbf24' : (p.color || '#3b82f6'),
+                tasks: projTasks,
+                isProject: true,
+                projectId: p.id
+            };
+        }
+    });
+
+    // 2. Create groups for each event that has tasks
     (events || []).forEach(e => {
-        if (selectedVenue !== 'all' && e.id !== selectedVenue) return;
+        if (selectedVenue !== 'all' && selectedVenue !== e.id) return;
         const eventTasks = filteredTasks.filter(t => t.eventId === e.id);
         if (eventTasks.length > 0 || selectedVenue === e.id) {
             grouped[e.id] = {
@@ -89,12 +130,16 @@ export default function EventTableView({ events, filterEventId }) {
         }
     });
 
-    // Gather unassigned tasks (no eventId) if not filtering for a specific venue
+    // 3. Gather unassigned tasks (no eventId and no recognized project) if not filtering for a specific venue
     if (selectedVenue === 'all') {
-        const unassigned = filteredTasks.filter(t => !t.eventId || !events?.find(e => e.id === t.eventId));
+        const unassigned = filteredTasks.filter(t => {
+            const hasEvent = t.eventId && events?.some(e => e.id === t.eventId);
+            const hasProj = (t.projectId && sortedProjects?.some(p => p.id === t.projectId)) || (t.agency === 'arrive' || t.id?.startsWith('arr-'));
+            return !hasEvent && !hasProj;
+        });
         if (unassigned.length > 0) {
             grouped['_unassigned'] = {
-                name: 'Sin Evento Asignado',
+                name: 'Sin Asignar (General)',
                 icon: '📋',
                 color: '#64748b',
                 tasks: unassigned
@@ -120,7 +165,7 @@ export default function EventTableView({ events, filterEventId }) {
 
     const updateTaskContextLocal = (taskId, contextValue) => {
         if (!contextValue) {
-            globalUpdateTask(taskId, { eventId: null, eventName: '' });
+            globalUpdateTask(taskId, { eventId: null, eventName: '', projectId: null, projectName: '', project: '' });
             return;
         }
 
@@ -129,8 +174,23 @@ export default function EventTableView({ events, filterEventId }) {
             if (name) {
                 const newId = `ev-${Date.now()}`;
                 addEvent({ id: newId, name, status: 'planeacion', color: '#ec4899', icon: '📅' });
-                globalUpdateTask(taskId, { eventId: newId, eventName: name });
+                globalUpdateTask(taskId, { eventId: newId, eventName: name, projectId: null, projectName: '', project: '' });
             }
+            return;
+        }
+
+        if (contextValue.startsWith('project_')) {
+            const pId = contextValue.replace('project_', '');
+            const proj = sortedProjects.find(p => p.id === pId);
+            const pName = proj?.name || (pId === 'proj-arrive-agency' ? 'ARRIVE AGENCY' : pId);
+            globalUpdateTask(taskId, { 
+                projectId: pId, 
+                projectName: pName,
+                project: pName,
+                agency: pId === 'proj-arrive-agency' ? 'arrive' : undefined,
+                eventId: null,
+                eventName: ''
+            });
             return;
         }
 
@@ -139,7 +199,10 @@ export default function EventTableView({ events, filterEventId }) {
             const ev = events?.find(e => e.id === eId);
             globalUpdateTask(taskId, { 
                 eventId: eId, 
-                eventName: ev?.name || ''
+                eventName: ev?.name || '',
+                projectId: null,
+                projectName: '',
+                project: ''
             });
         }
     };
@@ -156,19 +219,34 @@ export default function EventTableView({ events, filterEventId }) {
     };
 
     const handleAddTask = (groupKey) => {
-        const event = events?.find(e => e.id === groupKey) || (filterEventId ? events?.find(e => e.id === filterEventId) : null);
+        let pId = null, pName = '', eId = null, eName = '';
+        if (groupKey && groupKey.startsWith('project_')) {
+            pId = groupKey.replace('project_', '');
+            const p = sortedProjects.find(x => x.id === pId);
+            pName = p?.name || (pId === 'proj-arrive-agency' ? 'ARRIVE AGENCY' : pId);
+        } else if (groupKey && groupKey !== '_unassigned') {
+            const ev = events?.find(e => e.id === groupKey);
+            if (ev) {
+                eId = ev.id;
+                eName = ev.name;
+            }
+        }
         addTask({
             id: `k-${Date.now()}`,
-            text: 'New Task...',
+            text: 'Nueva tarea...',
             status: 'pending',
             done: false,
-            eventId: event ? event.id : '',
-            eventName: event ? event.name : '',
+            projectId: pId,
+            projectName: pName,
+            project: pName,
+            agency: pId === 'proj-arrive-agency' ? 'arrive' : undefined,
+            eventId: eId || '',
+            eventName: eName || '',
             priority: 'medium',
             due: '',
             createdAt: new Date().toISOString()
         });
-        addActivity(`Added new task to ${group?.name || 'workspace'}`, 'var(--accent-primary)', 'global');
+        addActivity(`Added new task to ${pName || eName || 'workspace'}`, 'var(--accent-primary)', 'global');
     };
 
     return (
@@ -262,10 +340,19 @@ export default function EventTableView({ events, filterEventId }) {
                                     cursor: 'pointer'
                                 }}
                             >
-                                <option value="all">📍 Todos los Venues / Eventos</option>
-                                {(events || []).map(e => (
-                                    <option key={e.id} value={e.id}>{e.icon || '🍸'} {e.name}</option>
-                                ))}
+                                <option value="all">📍 Todos los Venues & Proyectos</option>
+                                <optgroup label="🌟 Agencia & Proyectos">
+                                    {sortedProjects.map(p => (
+                                        <option key={`flt-tbl-p-${p.id}`} value={`project_${p.id}`}>
+                                            {p.id === 'proj-arrive-agency' ? '🌟 ARRIVE AGENCY' : `🚀 ${p.name}`}
+                                        </option>
+                                    ))}
+                                </optgroup>
+                                <optgroup label="🎪 Eventos & Venues">
+                                    {(events || []).map(e => (
+                                        <option key={e.id} value={e.id}>{e.icon || '🍸'} {e.name}</option>
+                                    ))}
+                                </optgroup>
                             </select>
                         </div>
                     </div>
@@ -437,7 +524,7 @@ export default function EventTableView({ events, filterEventId }) {
                                         position: 'sticky', top: 0, background: 'var(--bg-canvas)', zIndex: 10,
                                     }}>
                                         <div style={{ paddingLeft: '24px' }}>Item Name</div>
-                                        <div style={{ textAlign: 'center' }}>Evento</div>
+                                        <div style={{ textAlign: 'center' }}>Proyecto / Evento</div>
                                         <div style={{ textAlign: 'center' }}>Asignado</div>
                                         <div style={{ textAlign: 'center' }}>Status</div>
                                         <div style={{ textAlign: 'center' }}>Priority</div>
@@ -450,6 +537,10 @@ export default function EventTableView({ events, filterEventId }) {
                                         const sColorInfo = MONDAY_STATUS_COLORS[statusKey] || MONDAY_STATUS_COLORS['pending'];
                                         const pColorInfo = MONDAY_PRIORITY_COLORS[task.priority] || MONDAY_PRIORITY_COLORS['default'];
                                         const taskEvent = events?.find(e => e.id === task.eventId);
+                                        const isArriveTask = task.projectId === 'proj-arrive-agency' || task.agency === 'arrive';
+                                        const taskProj = sortedProjects.find(p => p.id === task.projectId);
+                                        const cellColor = isArriveTask ? '#fbbf24' : (taskProj ? taskProj.color || '#3b82f6' : (taskEvent ? taskEvent.color : 'var(--text-tertiary)'));
+                                        const currentVal = task.projectId ? `project_${task.projectId}` : (task.agency === 'arrive' ? 'project_proj-arrive-agency' : (task.eventId ? `event_${task.eventId}` : ''));
 
                                         return (
                                             <div key={task.id} style={{ 
@@ -478,23 +569,30 @@ export default function EventTableView({ events, filterEventId }) {
                                                     />
                                                 </div>
 
-                                                {/* EVENTO */}
+                                                {/* PROYECTO / EVENTO */}
                                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', borderLeft: '1px solid var(--border-subtle)', padding: '4px' }}>
                                                     <select 
-                                                        value={task.eventId ? `event_${task.eventId}` : ''} 
+                                                        value={currentVal} 
                                                         onChange={(e) => updateTaskContextLocal(task.id, e.target.value)}
                                                         style={{ 
                                                             appearance: 'none', border: '1px solid transparent', background: 'transparent',
-                                                            color: taskEvent ? taskEvent.color : 'var(--text-tertiary)',
+                                                            color: cellColor,
                                                             fontSize: '11px', textAlign: 'center', cursor: 'pointer', outline: 'none',
                                                             padding: '4px 6px', borderRadius: '4px', transition: 'all 0.2s', width: '100%',
-                                                            fontWeight: taskEvent ? 600 : 400,
+                                                            fontWeight: 600,
                                                         }}
                                                         onMouseEnter={(e) => Object.assign(e.currentTarget.style, { border: '1px solid var(--border-subtle)', background: 'var(--bg-base)' })}
                                                         onMouseLeave={(e) => Object.assign(e.currentTarget.style, { border: '1px solid transparent', background: 'transparent' })}
                                                     >
-                                                        <option value="">— None —</option>
-                                                        <optgroup label="Eventos">
+                                                        <option value="">— Sin Asignar —</option>
+                                                        <optgroup label="🌟 Agencia & Proyectos">
+                                                            {sortedProjects.map(p => (
+                                                                <option key={`tbl-p-${p.id}`} value={`project_${p.id}`}>
+                                                                    {p.id === 'proj-arrive-agency' ? '🌟 ARRIVE AGENCY' : `🚀 ${p.name}`}
+                                                                </option>
+                                                            ))}
+                                                        </optgroup>
+                                                        <optgroup label="🎪 Eventos & Venues">
                                                             {(events || []).map(ev => <option key={`e-${ev.id}`} value={`event_${ev.id}`}>{ev.icon || '📅'} {ev.name}</option>)}
                                                             <option value="create_event" style={{ fontWeight: 'bold', color: 'var(--accent-primary)' }}>➕ Crear Evento...</option>
                                                         </optgroup>

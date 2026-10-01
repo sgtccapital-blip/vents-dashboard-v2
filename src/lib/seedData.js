@@ -2,6 +2,51 @@
 
 export const seedProjects = [
   {
+    "id": "proj-arrive-agency",
+    "name": "ARRIVE AGENCY — Creative, Talent & Experiences",
+    "description": "Agencia de marketing y experiencias con base en Panamá (https://arriveservices.com). Manejo integral de las 3 divisiones: ARRIVE Services (Creative & Marketing), ARRIVE Models (Modelos, Creadores UGC y convocatorias de cenas VIP para chicas en restaurantes) y ARRIVE Nightlife (Eventos semanales en Terraplén Rooftop, Furia y Piano Bar) más ARRIVE Studio (Content Days mensuales).",
+    "category": "agency",
+    "type": "agency",
+    "templateKey": "project_business",
+    "status": "active",
+    "priority": "critical",
+    "deadline": "2026-12-31",
+    "budget": "45000",
+    "estimatedBudget": "45000",
+    "website": "https://arriveservices.com",
+    "leadAgent": "ARRIVE Master Director",
+    "tags": [
+      "Arrive Agency",
+      "Creative & Marketing",
+      "Cenas Chicas",
+      "Arrive Models",
+      "Nightlife Panama",
+      "Content Day"
+    ],
+    "milestones": [
+      {
+        "id": "m-arr-1",
+        "title": "Estandarización de cenas VIP para chicas en Terraplén, Furia y Piano Bar",
+        "done": true
+      },
+      {
+        "id": "m-arr-2",
+        "title": "Sistema automatizado de WhatsApp para confirmar invitaciones 1 a 1",
+        "done": true
+      },
+      {
+        "id": "m-arr-3",
+        "title": "Entrega de contenidos semanales y Reels de proyectos y marcas aliadas",
+        "done": true
+      },
+      {
+        "id": "m-arr-4",
+        "title": "Escalar roster de Arrive Models a 25 creadoras y embajadoras",
+        "done": false
+      }
+    ]
+  },
+  {
     "id": "proj-venues-panama",
     "name": "Operaciones Venues: Terraplén, Furia & Piano Bar",
     "description": "Gestión semanal de los 3 venues estratégicos: convocatorias de cenas para chicas, acuerdos de barra libre, control de promotores, venta de mesas VIP y facturación recurrente.",
@@ -693,9 +738,107 @@ export const seedSubscriptions = [
   {"id":"sub-autocad-1","name":"Autocad Panel 3000 Accounts","type":"Dev Tool","provider":"Autodesk","cost":0,"cycle":"Monthly","nextPayment":"2026-05-01","status":"Active","url":"https://manage.autodesk.com","account":"Sgtccapital@gmail.com"}
 ];
 export const seedIdeas = [];
-export const seedTasks = [];
+export const seedTasks = [
+  {
+    "id": "arr-task-1",
+    "text": "Convocatoria y selección de 8 chicas para Cena VIP en Terraplén Rooftop",
+    "division": "models",
+    "tag": "#CenaChicas",
+    "venue": "Terraplén Rooftop",
+    "due": "Jueves 8:30 PM",
+    "priority": "high",
+    "assignedTo": "Pulse (PR Hostess)",
+    "agency": "arrive",
+    "done": false
+  },
+  {
+    "id": "arr-task-2",
+    "text": "Confirmación 1 a 1 por WhatsApp con menú degustación y cortesías en Furia",
+    "division": "models",
+    "tag": "#CenaChicas",
+    "venue": "Furia",
+    "due": "Viernes 9:00 PM",
+    "priority": "high",
+    "assignedTo": "Booker ARRIVE",
+    "agency": "arrive",
+    "done": false
+  },
+  {
+    "id": "arr-task-3",
+    "text": "Editar y publicar Reel recap cinematográfico del fin de semana con audio en tendencia en @arriveagency",
+    "division": "services",
+    "tag": "#Reels",
+    "venue": "Arrive Services",
+    "due": "Lunes",
+    "priority": "medium",
+    "assignedTo": "Creative Editor",
+    "agency": "arrive",
+    "done": false
+  },
+  {
+    "id": "arr-task-4",
+    "text": "Programar carrusel showcase de servicios creativos y casos de branding en Instagram",
+    "division": "services",
+    "tag": "#SocialMedia",
+    "venue": "Proyectos Digitales",
+    "due": "Martes",
+    "priority": "medium",
+    "assignedTo": "Social Media Manager",
+    "agency": "arrive",
+    "done": true
+  },
+  {
+    "id": "arr-task-5",
+    "text": "Coordinar line-up de DJ residente y cobertura audiovisual en Terraplén Rooftop",
+    "division": "nightlife",
+    "tag": "#EventosSemanales",
+    "venue": "Terraplén Rooftop",
+    "due": "Jueves",
+    "priority": "high",
+    "assignedTo": "Nightlife Lead",
+    "agency": "arrive",
+    "done": false
+  },
+  {
+    "id": "arr-task-6",
+    "text": "Confirmar lista de mesas VIP y consumo mínimo para noche temática de viernes en Furia",
+    "division": "nightlife",
+    "tag": "#VIP",
+    "venue": "Furia",
+    "due": "Viernes",
+    "priority": "high",
+    "assignedTo": "VIP Hostess",
+    "agency": "arrive",
+    "done": false
+  },
+  {
+    "id": "arr-task-7",
+    "text": "Briefing de producción y selección de outfits para próximo Content Day en Studio",
+    "division": "studio",
+    "tag": "#ContentDay",
+    "venue": "ARRIVE Studio",
+    "due": "Próxima semana",
+    "priority": "medium",
+    "assignedTo": "Studio Director",
+    "agency": "arrive",
+    "done": false
+  },
+  {
+    "id": "arr-task-8",
+    "text": "Reserva de mesa principal y welcome drinks para grupo chicas en Piano Bar Casco",
+    "division": "nightlife",
+    "tag": "#CenaChicas",
+    "venue": "Piano Bar",
+    "due": "Sábado 9:30 PM",
+    "priority": "medium",
+    "assignedTo": "PR Coordinator",
+    "agency": "arrive",
+    "done": false
+  }
+];
 export const seedLinks = [];
 export const seedSocialMedia = [
+    { id: 'social-arrive-agency', platform: 'Instagram', handler: '@arriveagency', type: 'Agencia Matriz', url: 'https://instagram.com/arriveagency', followers: '18.4K', description: 'Creative, Talent & Experiences · Panamá', metrics: { growth: '+850', engagement: '6.5%', clicks: '1.2K', views: '45K' } },
     { id: 'social-elemento-techno', platform: 'Instagram', handler: '@Elemento.techno', type: 'Electronica Internacional', url: 'https://instagram.com/Elemento.techno', followers: '12.8K', description: 'Electrónica Internacional', metrics: { growth: '+450', engagement: '5.2%', clicks: '850', views: '28K' } },
     { id: 'social-arrive-models', platform: 'Instagram', handler: '@Arrive.models', type: 'Models & Viral', url: 'https://instagram.com/Arrive.models', followers: '5.9K', description: 'Models & Viral', metrics: { growth: '+120', engagement: '6.8%', clicks: '540', views: '14K' } },
     { id: 'social-5amclub-new', platform: 'Instagram', handler: '@_5amclub', type: 'Finanzas', url: 'https://instagram.com/_5amclub', followers: '3.9K', description: 'Finanzas y Productividad', metrics: { growth: '+80', engagement: '4.1%', clicks: '310', views: '9K' } },
@@ -707,12 +850,7 @@ export const seedSocialMedia = [
     { id: 'social-igniteclub', platform: 'Instagram', handler: '@IGNITECLUB', type: 'Party', url: 'https://instagram.com/IGNITECLUB', followers: '686', description: 'Party & Nightlife', metrics: { growth: '+45', engagement: '6.1%', clicks: '190', views: '2.5K' } },
     { id: 'social-music-pty', platform: 'Instagram', handler: '@Music.pty', type: 'Music Viral & booking artistas', url: 'https://instagram.com/Music.pty', followers: '99K', description: 'Music Viral & booking de artistas', metrics: { growth: '+1.2K', engagement: '8.4%', clicks: '3.5K', views: '150K' } }
 ];
-export const seedContentTasks = {
-    ideas: [],
-    production: [],
-    ready: [],
-    published: []
-};
+export const seedContentTasks = [];
 export const seedNotes = [];
 export const seedCompanies = [];
 export const seedPromoters = [

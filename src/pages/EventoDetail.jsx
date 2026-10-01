@@ -20,6 +20,7 @@ import EventDmSpam from '../components/EventDmSpam';
 import EventAnalytics from '../components/EventAnalytics';
 import EventCanvas from '../components/EventCanvas';
 import { useApp } from '../context/AppContext';
+import { EVENT_STATUSES, EVENT_STATUS_LABELS, eventStatus, isStaleEvent } from '../lib/status';
 
 export default function EventoDetail() {
     const { id } = useParams();
@@ -946,9 +947,12 @@ export default function EventoDetail() {
                     <div style={{ flex: 1 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                             <h1 style={{ fontSize: '28px', fontWeight: '700', margin: 0 }}>{event.name}</h1>
-                            <span className={`tag tag-${event.status === 'planificacion' || event.status === 'upcoming' ? 'pending' : event.status === 'ejecucion' || event.status === 'ongoing' || event.status === 'activo' ? 'active' : event.status === 'finalizado' || event.status === 'completed' ? 'done' : 'paused'}`}>
-                                {event.status === 'planificacion' ? 'En Planificación' : event.status === 'upcoming' ? 'Próximo' : event.status === 'ejecucion' ? 'En Ejecución' : event.status === 'ongoing' ? 'En Curso' : event.status === 'activo' ? 'Activo' : event.status === 'finalizado' || event.status === 'completed' ? 'Finalizado' : event.status === 'pausado' ? 'Pausado' : event.status === 'cancelado' || event.status === 'cancelled' ? 'Cancelado' : event.status}
+                            <span className={`tag tag-${{ planificacion: 'pending', activo: 'active', completado: 'done' }[eventStatus(event)] || 'paused'}`}>
+                                {EVENT_STATUS_LABELS[eventStatus(event)]}
                             </span>
+                            {isStaleEvent(event) && (
+                                <span className="tag tag-paused" title="La fecha ya pasó: márcalo como completado o cámbiale la fecha">Fecha vencida</span>
+                            )}
                             <span style={{ fontSize: '12px', padding: '4px 10px', borderRadius: '8px', background: 'rgba(255,255,255,0.1)' }}>
                                 {event.type ? event.type.charAt(0).toUpperCase() + event.type.slice(1) : 'Sin tipo'}
                             </span>
@@ -4446,16 +4450,8 @@ export default function EventoDetail() {
                                 </div>
                                 <div className="form-group">
                                     <label>Estado</label>
-                                    <select className="form-select" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
-                                        <option value="planificacion">En Planificación</option>
-                                        <option value="ejecucion">En Ejecución</option>
-                                        <option value="activo">Activo</option>
-                                        <option value="upcoming">Próximo</option>
-                                        <option value="ongoing">En Curso</option>
-                                        <option value="finalizado">Finalizado</option>
-                                        <option value="completed">Completado</option>
-                                        <option value="pausado">Pausado</option>
-                                        <option value="cancelado">Cancelado</option>
+                                    <select className="form-select" value={eventStatus(form)} onChange={e => setForm({ ...form, status: e.target.value })}>
+                                        {EVENT_STATUSES.map(st => <option key={st} value={st}>{EVENT_STATUS_LABELS[st]}</option>)}
                                     </select>
                                 </div>
                             </div>

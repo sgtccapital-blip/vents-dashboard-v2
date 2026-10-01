@@ -65,9 +65,8 @@ class OpenClawBrainService {
      * Obtiene la API Key de Gemini desde almacenamiento local o entorno
      */
     static getGeminiApiKey() {
-        return localStorage.getItem('__gemini_api_key') || 
-               import.meta.env.VITE_GEMINI_API_KEY || 
-               '';
+        // La clave del servidor (GEMINI_API_KEY) nunca se expone al navegador.
+        return localStorage.getItem('__gemini_api_key') || '';
     }
 
     /**
