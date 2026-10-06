@@ -1,5 +1,5 @@
 /* URBAN NIGHTS — tokens de marca. Generado por scripts/build-brands.mjs desde brands/urban-nights/brand.json. No editar a mano. */
-@import url('https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@800;900&family=Barlow:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@800;900&family=Russo+One:wght@400&family=Barlow:wght@400;500;600;700&display=swap');
 
 :root {
   /* Paleta */
@@ -21,11 +21,14 @@
 
   /* Tipografía */
   --font-display: 'Big Shoulders Display', sans-serif;
+  --font-logo: 'Russo One', sans-serif;
   --font-secondary: 'Barlow', sans-serif;
   --font-body: 'Barlow', sans-serif;
   --tracking-display: 0;
+  --tracking-logo: 0;
   --tracking-secondary: 0.18em;
   --tracking-body: 0;
+  --stretch-display: 100%;
   --text-display-xl: 6rem;
   --text-display-l: 4rem;
   --text-h1: 3rem;

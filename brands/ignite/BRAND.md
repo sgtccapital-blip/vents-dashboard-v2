@@ -1,6 +1,6 @@
 # IGNITE CLUB — Línea gráfica
 
-> Latin · Reggaeton · Electronic · @theigniteclubb
+> Latin · Reggaeton · Electronic · @theigniteclubb · 608 seguidores
 > **Light it up.**
 
 Fuente de verdad: `brands/ignite/brand.json`. Tokens para web: `brands/ignite/tokens.css`.
@@ -22,9 +22,11 @@ La fiesta de mayor energía de Panamá: producción LED y láser, latin, reggaet
 
 ## Logo
 
-- **Wordmark:** IGNITE / CLUB — descriptor "🌶️"
+Archivos vectoriales (redibujados del avatar de Instagram): `brands/ignite/logo/primary.svg`, `brands/ignite/logo/inverse.svg`, `brands/ignite/logo/on-accent.svg`, `brands/ignite/logo/symbol.svg`, `brands/ignite/logo/avatar.svg`.
+Los SVG usan las fuentes de la marca vía Google Fonts; para impresión, convertir textos a contornos.
+
 - **Símbolo:** El wordmark apilado es el logo. Símbolo secundario: chispa/chile estilizado de 4 puntas para avatar y stickers.
-- **Construcción:** IGNITE sobre CLUB en Archivo Black, mayúsculas, interletrado −1%, interlineado 0.85. CLUB alineado a la derecha bajo IGNITE.
+- **Construcción:** IGNITE sobre CLUB en Archivo Black expandido (125%), mayúsculas, interlineado 0.9. CLUB alineado a la derecha bajo IGNITE. Rojo #E3262B sobre negro.
 - **Área de respeto:** Altura de la 'C' alrededor.
 - **Tamaño mínimo:** 60 px de ancho.
 
@@ -39,6 +41,12 @@ La fiesta de mayor energía de Panamá: producción LED y láser, latin, reggaet
 - No poner el logo en amarillo (es de Hang Out)
 - No separar IGNITE y CLUB en líneas desalineadas
 - No usar el glow en impresos
+
+## Instagram
+
+- **Bio:** Ignite Club 🌶️ / BEST PARTIES IN TOWN 🌌 / 🎧 LATIN · REGGAETON · ELECTRONIC
+- **Highlights:** Next, Lineup, Recaps, Mesas
+- **Grilla:** Bloques de rojo intenso alternando con fotos de escenario azul. Siempre un elemento rojo por post.
 
 ## Color
 
@@ -61,11 +69,11 @@ La fiesta de mayor energía de Panamá: producción LED y láser, latin, reggaet
 
 | Rol | Familia | Pesos | Estilo | Uso |
 |---|---|---|---|---|
-| display | Archivo Black | 400 | MAYÚSCULAS · tracking -0.01em | Logo, titulares, nombres de DJ, fechas grandes. |
+| display | Archivo (ancho 125%) | 800, 900 | MAYÚSCULAS · tracking -0.01em | Logo, titulares, nombres de DJ, fechas grandes (Archivo expandido al 125%). |
 | secondary | Archivo Narrow | 500, 700 | MAYÚSCULAS · tracking 0.12em | Datos: venue, hora, géneros. |
 | body | Archivo | 400, 600 | normal · tracking 0 | Texto web y captions. |
 
-Cargar: `https://fonts.googleapis.com/css2?family=Archivo+Black:wght@400&family=Archivo+Narrow:wght@500;700&family=Archivo:wght@400;600&display=swap`
+Cargar: `https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100,400;100,600;125,800;125,900&family=Archivo+Narrow:wght@500;700&display=swap`
 
 **Escala web (px):** Display XL 96 · Display L 64 · H1 48 · H2 32 · H3 / editorial 24 · Body L 18 · Body 16 · Label 12
 
@@ -117,8 +125,6 @@ Landing de eventos de alta energía con venta de entradas y galería de video.
 - **Animación firma:** IGNITE se enciende como un tubo LED parpadeando antes de quedar fijo.
 
 ## Redes sociales
-
-**Grilla:** Bloques de rojo intenso alternando con fotos de escenario azul. Siempre un elemento rojo por post.
 
 | Plantilla | Formato | Especificación |
 |---|---|---|

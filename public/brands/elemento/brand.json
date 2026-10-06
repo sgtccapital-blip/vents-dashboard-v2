@@ -2,6 +2,21 @@
   "slug": "elemento",
   "accountId": "social-elemento-techno",
   "handler": "@Elemento.techno",
+  "ig": {
+    "bio": [
+      "Elemento Techno",
+      "D.A.N.C.E.",
+      "Where movement becomes sound",
+      "Electronic · Techno · House 🎧"
+    ],
+    "highlights": [
+      "Spotify",
+      "SoundCloud",
+      "YouTube",
+      "Demos"
+    ],
+    "followers": "14.8K"
+  },
   "name": "ELEMENTO",
   "descriptor": "Techno · House · Electronic",
   "tagline": "Where movement becomes sound.",
@@ -27,7 +42,7 @@
     ],
     "descriptorLine": "D.A.N.C.E.",
     "symbol": "La 'E' cromada en itálica con destello azul (símbolo actual). Funciona sola como avatar, sello de video y favicon.",
-    "construction": "Símbolo 'E' + wordmark ELEMENTO en Unbounded SemiBold, tracking +18%. Lockup horizontal: símbolo a la izquierda a 1.4× la altura del texto.",
+    "construction": "E itálica (≈24°) de tres barras con la esquina superior izquierda redondeada y terminaciones en ángulo; acabado cromado (degradado plata con quiebre oscuro al centro) y destello azul en la punta de la barra superior. Lockup: E + ELEMENTO en Unbounded SemiBold.",
     "clearspace": "Medio ancho de la 'E' alrededor.",
     "minSize": "Símbolo 24 px · lockup 120 px.",
     "versions": [

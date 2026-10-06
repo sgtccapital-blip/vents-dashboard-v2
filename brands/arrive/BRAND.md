@@ -1,6 +1,6 @@
 # ARRIVE — Línea gráfica
 
-> Talent & Experiences Agency · @Arrive.models
+> Talent & Experiences Agency · @Arrive.models · 6.5K seguidores
 > **We make it happen.**
 
 Fuente de verdad: `brands/arrive/brand.json`. Tokens para web: `brands/arrive/tokens.css`.
@@ -22,9 +22,11 @@ La agencia de talento y experiencias más profesional de Panamá: representa mod
 
 ## Logo
 
-- **Wordmark:** ARRIVE — descriptor "TALENT & EXPERIENCES"
+Archivos vectoriales (redibujados del avatar de Instagram): `brands/arrive/logo/primary.svg`, `brands/arrive/logo/inverse.svg`, `brands/arrive/logo/on-accent.svg`, `brands/arrive/logo/symbol.svg`, `brands/arrive/logo/avatar.svg`.
+Los SVG usan las fuentes de la marca vía Google Fonts; para impresión, convertir textos a contornos.
+
 - **Símbolo:** Wordmark tipográfico. Monograma secundario: la 'A' de ARRIVE dentro de un círculo fino para avatares y favicons.
-- **Construcción:** ARRIVE en Montserrat SemiBold, mayúsculas, tracking +12%. Descriptor en Montserrat Medium al 22% del alto de la palabra, tracking +40%, centrado debajo con una línea fina de separación.
+- **Construcción:** ARRIVE en Montserrat SemiBold, mayúsculas. Debajo "MODEL MANAGEMENT" en Montserrat Regular con tracking amplio, del mismo ancho que ARRIVE. Evolución propuesta para la agencia completa: "TALENT & EXPERIENCES" con la misma construcción.
 - **Área de respeto:** Altura de la letra 'A' en los cuatro lados.
 - **Tamaño mínimo:** Digital 80 px de ancho · impreso 25 mm.
 
@@ -39,6 +41,12 @@ La agencia de talento y experiencias más profesional de Panamá: representa mod
 - No aplicar degradados, sombras ni contornos
 - No usar el champagne sobre blanco (pierde contraste)
 - No deformar ni cambiar el tracking del wordmark
+
+## Instagram
+
+- **Bio:** ARRIVE MODELS / 🔸 Models & coming up influencers mngmt / ⚡️ Strategy’s marketing impact / 🔝 Events · Locals · Brands · Photos · Content
+- **Highlights:** Talento, Eventos, Marcas, Casting
+- **Grilla:** Alternar foto de talento (marfil/cálida) con pieza tipográfica negra cada 3 posts. Portadas de reels con nombre en Cormorant.
 
 ## Color
 
@@ -114,8 +122,6 @@ Web de agencia de talento: portafolio filtrable de talento + casos de marca + fo
 - **Animación firma:** El wordmark aparece con tracking que se cierra de 0.4em a 0.12em.
 
 ## Redes sociales
-
-**Grilla:** Alternar foto de talento (marfil/cálida) con pieza tipográfica negra cada 3 posts. Portadas de reels con nombre en Cormorant.
 
 | Plantilla | Formato | Especificación |
 |---|---|---|

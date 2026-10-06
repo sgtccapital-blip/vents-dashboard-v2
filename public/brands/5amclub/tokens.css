@@ -1,11 +1,11 @@
 /* 5AM CLUB — tokens de marca. Generado por scripts/build-brands.mjs desde brands/5amclub/brand.json. No editar a mano. */
-@import url('https://fonts.googleapis.com/css2?family=Anton:wght@400&family=Inter:wght@400;500;600;800&family=Roboto+Mono:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Anton:wght@400&family=Krona+One:wght@400&family=Inter:wght@400;500;600;800&family=Roboto+Mono:wght@400;500;700&display=swap');
 
 :root {
   /* Paleta */
   --brand-black: #0A0A0A; /* Terminal Black · Primario */
   --brand-white: #FFFFFF; /* White · Primario */
-  --brand-dawn: #F5B700; /* Dawn · Acento de marca */
+  --brand-violet: #6F52FF; /* Globe Violet · Acento de marca */
   --brand-navy: #0B3D91; /* Wire Navy · Secundario */
   --brand-bull: #00C853; /* Bull Green · Señal */
   --brand-bear: #E53935; /* Bear Red · Señal */
@@ -16,19 +16,22 @@
   --brand-surface: #1C2230;
   --brand-fg: #FFFFFF;
   --brand-muted: #9AA3B2;
-  --brand-accent: #F5B700;
-  --brand-on-accent: #0A0A0A;
+  --brand-accent: #6F52FF;
+  --brand-on-accent: #FFFFFF;
   --brand-line: #2A3142;
 
   /* Tipografía */
   --font-display: 'Anton', sans-serif;
+  --font-logo: 'Krona One', sans-serif;
   --font-secondary: 'Inter', sans-serif;
   --font-body: 'Inter', sans-serif;
   --font-mono: 'Roboto Mono', monospace;
   --tracking-display: 0.01em;
+  --tracking-logo: 0.02em;
   --tracking-secondary: 0.08em;
   --tracking-body: 0;
   --tracking-mono: 0;
+  --stretch-display: 100%;
   --text-display-xl: 6rem;
   --text-display-l: 4rem;
   --text-h1: 3rem;
@@ -49,5 +52,5 @@
   --space-12: 3rem;
   --space-16: 4rem;
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
-  --mood: linear-gradient(170deg, #0B3D91 0%, #0A0A0A 55%, #3A0A0A 100%);
+  --mood: linear-gradient(170deg, #2A1F6B 0%, #0A0A0A 55%, #1A0A1A 100%);
 }

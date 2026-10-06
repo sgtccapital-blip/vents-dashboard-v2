@@ -2,6 +2,20 @@
   "slug": "hangout",
   "accountId": "social-hangout-panama",
   "handler": "@hangout.panama",
+  "ig": {
+    "bio": [
+      "Hang Out Panama ®",
+      "Reggaeton | Hits 🍌",
+      "BEST PARTIES IN TOWN 🌃 🇵🇦"
+    ],
+    "highlights": [
+      "Búscate",
+      "Fechas",
+      "Guest list",
+      "Vibes"
+    ],
+    "followers": "2.4K"
+  },
   "name": "HANG OUT",
   "descriptor": "Reggaeton & Hits · Panamá",
   "tagline": "Tú sabes con quién vienes.",
@@ -248,7 +262,7 @@
   ],
   "sample": {
     "kicker": "ESTE SÁBADO",
-    "headline": "HANG OUT",
+    "headline": "VOL. 14",
     "sub": "REGGAETON | HITS 🍌",
     "cta": "Guest list",
     "meta": "BEST PARTIES IN TOWN"

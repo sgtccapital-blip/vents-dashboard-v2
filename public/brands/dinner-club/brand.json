@@ -2,6 +2,22 @@
   "slug": "dinner-club",
   "accountId": "social-dinnerclub-pa",
   "handler": "@dinnerclub_pa",
+  "ig": {
+    "bio": [
+      "Dinner Club Panama",
+      "Reggaeton • Latin • Electronic",
+      "BEST PARTIES IN TOWN 🌃",
+      "📍 Panama City",
+      "📩 Reservations & Guest List DM"
+    ],
+    "highlights": [
+      "Menú",
+      "Noches",
+      "Reservas",
+      "Cumples"
+    ],
+    "followers": "450"
+  },
   "name": "DINNER CLUB",
   "descriptor": "Dinner · Drinks · Party",
   "tagline": "Reserva para cenar. Quédate para la fiesta.",
@@ -27,7 +43,7 @@
     ],
     "descriptorLine": "CLUB",
     "symbol": "Wordmark DINNER con CLUB pequeño espaciado debajo, dentro de un círculo (como el avatar actual). Monograma secundario 'DC' para servilletas, platos y sellos.",
-    "construction": "DINNER en Outfit ExtraBold mayúsculas, tracking +2%. CLUB en Outfit Medium al 28% del alto, tracking +60%, centrado.",
+    "construction": "Círculo blanco; DINNER en Source Sans 3 Bold mayúsculas centrado; CLUB en Source Sans 3 Regular al 35% del alto con tracking +45%, centrado debajo. Todo en Ink.",
     "clearspace": "Altura de la 'D' alrededor.",
     "minSize": "64 px de ancho.",
     "versions": [
@@ -97,15 +113,15 @@
   },
   "typography": {
     "display": {
-      "family": "Outfit",
+      "family": "Source Sans 3",
       "weights": [
-        500,
+        600,
         700,
         800
       ],
       "case": "uppercase",
-      "tracking": "0.02em",
-      "usage": "Logo, titulares, navegación."
+      "tracking": "0.01em",
+      "usage": "Logo (DINNER en 700), titulares, navegación."
     },
     "secondary": {
       "family": "Playfair Display",
@@ -119,7 +135,7 @@
       "usage": "Frases de hospitalidad, nombres de platos y cócteles."
     },
     "body": {
-      "family": "Outfit",
+      "family": "Source Sans 3",
       "weights": [
         300,
         400
@@ -244,7 +260,7 @@
   ],
   "sample": {
     "kicker": "VIERNES",
-    "headline": "DINNER CLUB",
+    "headline": "MESA PARA 8",
     "sub": "Reserva para cenar. Quédate para la fiesta.",
     "cta": "Reservar mesa",
     "meta": "REGGAETON · LATIN · ELECTRONIC"

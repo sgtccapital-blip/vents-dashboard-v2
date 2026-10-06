@@ -2,6 +2,21 @@
   "slug": "5amclub",
   "accountId": "social-5amclub-new",
   "handler": "@__5amclub",
+  "ig": {
+    "bio": [
+      "5am Club",
+      "Finances & more 🏦",
+      "📍 Panama",
+      "5amclubagency.com"
+    ],
+    "highlights": [
+      "Mercados",
+      "Cripto",
+      "Macro",
+      "Agencia"
+    ],
+    "followers": "3.8K"
+  },
   "name": "5AM CLUB",
   "descriptor": "Finances & Markets",
   "tagline": "Before the market opens.",
@@ -26,14 +41,14 @@
       "5AM CLUB"
     ],
     "descriptorLine": "FINANCES & MARKETS",
-    "symbol": "Globo terráqueo de línea dentro de una corona de 12 estrellas (símbolo actual). Representa mercados globales y comunidad.",
-    "construction": "Símbolo arriba, wordmark '5AM CLUB' en Anton debajo con '©' pequeño. Versión horizontal para banners: símbolo a la izquierda.",
+    "symbol": "Globo terráqueo de malla en violeta dentro de una corona de 16 cruces blancas (símbolo actual). Mercados globales + la hora en que empieza el día.",
+    "construction": "Símbolo arriba; debajo \"5AM CLUB ©\" en Krona One (sans ancha y pesada), blanco. El ancho del wordmark ≈ ancho de la corona. Versión horizontal: símbolo a la izquierda.",
     "clearspace": "Altura de una estrella alrededor del lockup ×2.",
     "minSize": "Símbolo 28 px · lockup 96 px.",
     "versions": [
       "Blanco sobre Black (principal)",
       "Black sobre blanco",
-      "Símbolo solo en Dawn (sello de esquina)",
+      "Símbolo solo en violeta (sello de esquina)",
       "Horizontal para lower-thirds"
     ],
     "misuse": [
@@ -59,11 +74,11 @@
       "usage": "Titulares y texto."
     },
     {
-      "token": "dawn",
-      "name": "Dawn",
-      "hex": "#F5B700",
+      "token": "violet",
+      "name": "Globe Violet",
+      "hex": "#6F52FF",
       "role": "Acento de marca",
-      "usage": "Color propio de 5AM (amanecer): palabra clave del titular, sello, CTA. No es señal de mercado."
+      "usage": "Color del globo del logo: palabra clave del titular, sello, CTA, enlaces. No es señal de mercado."
     },
     {
       "token": "navy",
@@ -99,7 +114,7 @@
     "surface": "slate",
     "fg": "white",
     "muted": "#9AA3B2",
-    "accent": "dawn",
+    "accent": "violet",
     "line": "#2A3142"
   },
   "typography": {
@@ -111,6 +126,15 @@
       "case": "uppercase",
       "tracking": "0.01em",
       "usage": "Titulares breaking news, cifras gigantes."
+    },
+    "logo": {
+      "family": "Krona One",
+      "weights": [
+        400
+      ],
+      "case": "uppercase",
+      "tracking": "0.02em",
+      "usage": "Solo wordmark 5AM CLUB y sellos."
     },
     "secondary": {
       "family": "Inter",
@@ -147,7 +171,7 @@
   },
   "ui": {
     "radius": "4px",
-    "buttonStyle": "Sólido Dawn con texto negro Inter 800 mayúsculas; secundario borde blanco. Etiquetas de % en píldoras verde/rojo.",
+    "buttonStyle": "Sólido violeta con texto blanco Inter 800 mayúsculas; secundario borde blanco. Etiquetas de % en píldoras verde/rojo.",
     "grid": "12 columnas, 1200 px, densidad de periódico digital.",
     "spacingBase": 4,
     "shadow": "Sutil: 0 2px 8px rgba(0,0,0,0.4) en tarjetas."
@@ -159,7 +183,7 @@
   },
   "graphicElements": [
     "Ticker inferior en mono que corre",
-    "Caja de titular negra con palabra clave en Dawn",
+    "Caja de titular negra con palabra clave en violeta",
     "Píldoras +2.4% / −1.8% en verde/rojo",
     "Lower-third azul estilo TV",
     "Sello del símbolo en esquina superior"
@@ -173,15 +197,15 @@
     ],
     "easing": "cubic-bezier(0.2, 0.8, 0.2, 1)",
     "durations": "150 ms UI · 400 ms entradas de titular",
-    "signature": "Barra Dawn que se dibuja bajo el titular como el sol saliendo."
+    "signature": "El globo violeta gira un cuarto de vuelta y las cruces de la corona aparecen una a una, como un reloj marcando las 5."
   },
   "social": {
-    "grid": "Alternar breaking (negro + Dawn) con explicador (navy). Cada post lleva fecha visible.",
+    "grid": "Alternar breaking (negro + violeta) con explicador (navy). Cada post lleva fecha visible.",
     "templates": [
       {
         "name": "Breaking",
         "format": "4:5 · 1080×1350",
-        "spec": "Imagen de escena arriba, caja negra abajo con kicker BREAKING en Bear Red, titular Anton 96 px con palabra clave en Dawn, cifra en mono y fecha."
+        "spec": "Imagen de escena arriba, caja negra abajo con kicker BREAKING en Bear Red, titular Anton 96 px con palabra clave en violeta, cifra en mono y fecha."
       },
       {
         "name": "Explicador",
@@ -213,7 +237,7 @@
       "Sobre nosotros",
       "Contacto"
     ],
-    "hero": "Ticker en vivo arriba, titular principal en Anton con imagen, y suscripción 'Recíbelo a las 5am' en Dawn.",
+    "hero": "Ticker en vivo arriba, titular principal en Anton con imagen, y suscripción 'Recíbelo a las 5am' en violeta.",
     "sections": [
       "Breaking en grid",
       "Explicadores destacados",
@@ -253,7 +277,7 @@
   "dos": [
     "Fecha y fuente en cada pieza",
     "Verde = sube, rojo = baja, siempre",
-    "Dawn como color de marca",
+    "Violeta (color del globo) como color de marca",
     "Disclaimer en explicadores"
   ],
   "donts": [
@@ -269,5 +293,5 @@
     "cta": "Leer explicador",
     "meta": "LUN 05.10.2026 · 05:00 EST"
   },
-  "mood": "linear-gradient(170deg, #0B3D91 0%, #0A0A0A 55%, #3A0A0A 100%)"
+  "mood": "linear-gradient(170deg, #2A1F6B 0%, #0A0A0A 55%, #1A0A1A 100%)"
 }

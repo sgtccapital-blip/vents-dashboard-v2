@@ -1,6 +1,6 @@
 # ELEMENTO — Línea gráfica
 
-> Techno · House · Electronic · @Elemento.techno
+> Techno · House · Electronic · @Elemento.techno · 14.8K seguidores
 > **Where movement becomes sound.**
 
 Fuente de verdad: `brands/elemento/brand.json`. Tokens para web: `brands/elemento/tokens.css`.
@@ -22,9 +22,11 @@ Plataforma de música electrónica desde Panamá: curaduría de momentos y artis
 
 ## Logo
 
-- **Wordmark:** ELEMENTO — descriptor "D.A.N.C.E."
+Archivos vectoriales (redibujados del avatar de Instagram): `brands/elemento/logo/primary.svg`, `brands/elemento/logo/inverse.svg`, `brands/elemento/logo/on-accent.svg`, `brands/elemento/logo/symbol.svg`, `brands/elemento/logo/avatar.svg`.
+Los SVG usan las fuentes de la marca vía Google Fonts; para impresión, convertir textos a contornos.
+
 - **Símbolo:** La 'E' cromada en itálica con destello azul (símbolo actual). Funciona sola como avatar, sello de video y favicon.
-- **Construcción:** Símbolo 'E' + wordmark ELEMENTO en Unbounded SemiBold, tracking +18%. Lockup horizontal: símbolo a la izquierda a 1.4× la altura del texto.
+- **Construcción:** E itálica (≈24°) de tres barras con la esquina superior izquierda redondeada y terminaciones en ángulo; acabado cromado (degradado plata con quiebre oscuro al centro) y destello azul en la punta de la barra superior. Lockup: E + ELEMENTO en Unbounded SemiBold.
 - **Área de respeto:** Medio ancho de la 'E' alrededor.
 - **Tamaño mínimo:** Símbolo 24 px · lockup 120 px.
 
@@ -39,6 +41,12 @@ Plataforma de música electrónica desde Panamá: curaduría de momentos y artis
 - No cambiar la inclinación de la E
 - No combinar con colores cálidos
 - No usar el glow azul en texto corrido
+
+## Instagram
+
+- **Bio:** Elemento Techno / D.A.N.C.E. / Where movement becomes sound / Electronic · Techno · House 🎧
+- **Highlights:** Spotify, SoundCloud, YouTube, Demos
+- **Grilla:** Feed oscuro uniforme: todas las portadas en Void con un punto de luz azul. Lineups como carruseles con portada tipográfica.
 
 ## Color
 
@@ -118,8 +126,6 @@ Web inmersiva de sello/plataforma: eventos, artistas, música y archivo de momen
 - **Animación firma:** La E aparece con un destello de luz azul que cruza el cromado.
 
 ## Redes sociales
-
-**Grilla:** Feed oscuro uniforme: todas las portadas en Void con un punto de luz azul. Lineups como carruseles con portada tipográfica.
 
 | Plantilla | Formato | Especificación |
 |---|---|---|

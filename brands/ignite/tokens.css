@@ -1,5 +1,5 @@
 /* IGNITE CLUB — tokens de marca. Generado por scripts/build-brands.mjs desde brands/ignite/brand.json. No editar a mano. */
-@import url('https://fonts.googleapis.com/css2?family=Archivo+Black:wght@400&family=Archivo+Narrow:wght@500;700&family=Archivo:wght@400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100,400;100,600;125,800;125,900&family=Archivo+Narrow:wght@500;700&display=swap');
 
 :root {
   /* Paleta */
@@ -20,12 +20,13 @@
   --brand-line: #26263A;
 
   /* Tipografía */
-  --font-display: 'Archivo Black', sans-serif;
+  --font-display: 'Archivo', sans-serif;
   --font-secondary: 'Archivo Narrow', sans-serif;
   --font-body: 'Archivo', sans-serif;
   --tracking-display: -0.01em;
   --tracking-secondary: 0.12em;
   --tracking-body: 0;
+  --stretch-display: 125%;
   --text-display-xl: 6rem;
   --text-display-l: 4rem;
   --text-h1: 3rem;

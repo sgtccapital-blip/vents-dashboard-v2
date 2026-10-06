@@ -27,6 +27,7 @@
   --tracking-display: -0.01em;
   --tracking-secondary: 0.3em;
   --tracking-body: 0;
+  --stretch-display: 100%;
   --text-display-xl: 6rem;
   --text-display-l: 4rem;
   --text-h1: 3rem;
@@ -47,5 +48,5 @@
   --space-12: 6rem;
   --space-16: 8rem;
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
-  --mood: linear-gradient(180deg, #8C8C8C 0%, #3A3A3A 55%, #0A0A0A 100%);
+  --mood: radial-gradient(ellipse at 50% 110%, rgba(200,155,60,.45) 0%, transparent 55%), linear-gradient(180deg, #3C3C3C 0%, #161616 55%, #0A0A0A 100%);
 }

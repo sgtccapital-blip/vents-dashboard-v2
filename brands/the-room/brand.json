@@ -2,6 +2,21 @@
   "slug": "the-room",
   "accountId": "social-theroom-social",
   "handler": "@theroom.social",
+  "ig": {
+    "bio": [
+      "The Room Social Club ®",
+      "Most exclusive party 🍸",
+      "Reggaeton & Hits",
+      "⬇️ TICKETS ⬇️"
+    ],
+    "highlights": [
+      "Ediciones",
+      "Tickets",
+      "VIP",
+      "Partners"
+    ],
+    "followers": "454"
+  },
   "name": "THE ROOM",
   "descriptor": "Social Club",
   "tagline": "Members of the night.",
@@ -27,8 +42,8 @@
       "ROOM"
     ],
     "descriptorLine": "Social Club",
-    "symbol": "El búho con sombrero de copa y monóculo: el anfitrión de la noche. Va entre THE y ROOM, o solo como sello.",
-    "construction": "THE · búho · ROOM en Bodoni Moda Regular, mayúsculas, tracking +4%. 'Social Club' en Josefin Sans Light centrado debajo a 30% del alto.",
+    "symbol": "Búho de línea fina con sombrero de copa y monóculo con cadena. Va de pie entre THE y ROOM, con las patas sobre la línea base y el sombrero por encima de la altura de mayúsculas. Solo, funciona como sello.",
+    "construction": "THE y ROOM en didona condensada de alto contraste (Bodoni Moda comprimida al ~78%), mayúsculas. El búho ocupa el espacio entre ambas palabras. \"Social Club\" en sans geométrica regular, centrado debajo a ~25% del alto de las mayúsculas.",
     "clearspace": "Altura del sombrero del búho alrededor.",
     "minSize": "Lockup 140 px · búho solo 24 px.",
     "versions": [
@@ -256,7 +271,7 @@
   ],
   "sample": {
     "kicker": "VIERNES 04 SEP",
-    "headline": "THE ROOM",
+    "headline": "EDICIÓN Nº 07",
     "sub": "LATIN · CROSSOVER · ELECTRONIC · POP",
     "cta": "Request access",
     "meta": "TERRAPLÉN PISO 002 · 10PM TILL LATE"

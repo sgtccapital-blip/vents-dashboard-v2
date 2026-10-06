@@ -2,6 +2,20 @@
   "slug": "ignite",
   "accountId": "social-igniteclub",
   "handler": "@theigniteclubb",
+  "ig": {
+    "bio": [
+      "Ignite Club 🌶️",
+      "BEST PARTIES IN TOWN 🌌",
+      "🎧 LATIN · REGGAETON · ELECTRONIC"
+    ],
+    "highlights": [
+      "Next",
+      "Lineup",
+      "Recaps",
+      "Mesas"
+    ],
+    "followers": "608"
+  },
   "name": "IGNITE CLUB",
   "descriptor": "Latin · Reggaeton · Electronic",
   "tagline": "Light it up.",
@@ -28,7 +42,7 @@
     ],
     "descriptorLine": "🌶️",
     "symbol": "El wordmark apilado es el logo. Símbolo secundario: chispa/chile estilizado de 4 puntas para avatar y stickers.",
-    "construction": "IGNITE sobre CLUB en Archivo Black, mayúsculas, interletrado −1%, interlineado 0.85. CLUB alineado a la derecha bajo IGNITE.",
+    "construction": "IGNITE sobre CLUB en Archivo Black expandido (125%), mayúsculas, interlineado 0.9. CLUB alineado a la derecha bajo IGNITE. Rojo #E3262B sobre negro.",
     "clearspace": "Altura de la 'C' alrededor.",
     "minSize": "60 px de ancho.",
     "versions": [
@@ -108,13 +122,15 @@
   ],
   "typography": {
     "display": {
-      "family": "Archivo Black",
+      "family": "Archivo",
       "weights": [
-        400
+        800,
+        900
       ],
+      "stretch": 125,
       "case": "uppercase",
       "tracking": "-0.01em",
-      "usage": "Logo, titulares, nombres de DJ, fechas grandes."
+      "usage": "Logo, titulares, nombres de DJ, fechas grandes (Archivo expandido al 125%)."
     },
     "secondary": {
       "family": "Archivo Narrow",

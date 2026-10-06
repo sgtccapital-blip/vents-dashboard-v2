@@ -2,6 +2,20 @@
   "slug": "urban-nights",
   "accountId": "social-urbannights-pa",
   "handler": "@Urbannights.pa",
+  "ig": {
+    "bio": [
+      "Urban Nights ®",
+      "🇵🇦 LOS MEJORES ARTISTAS URBANOS",
+      "COMING SOON 🔜"
+    ],
+    "highlights": [
+      "Artistas",
+      "Shows",
+      "Tickets",
+      "VIP"
+    ],
+    "followers": "178"
+  },
   "name": "URBAN NIGHTS",
   "descriptor": "Live Urban Shows · Panamá",
   "tagline": "Los mejores artistas urbanos. En vivo.",
@@ -27,8 +41,8 @@
       "NIGHTS"
     ],
     "descriptorLine": "®",
-    "symbol": "Wordmark apilado dentro de una caja con borde (como el avatar actual). Versión flyer: letras rojas con textura cromada.",
-    "construction": "URBAN sobre NIGHTS en Big Shoulders Display Black, mayúsculas, interlineado 0.82, dentro de un rectángulo con borde de 6% del alto.",
+    "symbol": "Wordmark de bloque cortado por una franja horizontal a media altura (efecto stencil). URBAN va dentro de un rectángulo de contorno; NIGHTS debajo, sin caja.",
+    "construction": "URBAN / NIGHTS en Russo One con una franja del color de fondo que corta cada línea a media altura (≈8% del alto). Caja de contorno solo alrededor de URBAN, grosor igual a la franja.",
     "clearspace": "Grosor del borde ×2 alrededor.",
     "minSize": "56 px de ancho.",
     "versions": [
@@ -116,6 +130,15 @@
       "case": "uppercase",
       "tracking": "0",
       "usage": "Logo, nombre del artista, fecha."
+    },
+    "logo": {
+      "family": "Russo One",
+      "weights": [
+        400
+      ],
+      "case": "uppercase",
+      "tracking": "0",
+      "usage": "Solo wordmark URBAN NIGHTS."
     },
     "secondary": {
       "family": "Barlow",

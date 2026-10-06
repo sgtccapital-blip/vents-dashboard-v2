@@ -1,6 +1,6 @@
 # HANG OUT — Línea gráfica
 
-> Reggaeton & Hits · Panamá · @hangout.panama
+> Reggaeton & Hits · Panamá · @hangout.panama · 2.4K seguidores
 > **Tú sabes con quién vienes.**
 
 Fuente de verdad: `brands/hangout/brand.json`. Tokens para web: `brands/hangout/tokens.css`.
@@ -22,7 +22,9 @@ La fiesta de reggaetón y hits más social de Panamá: grupos de amigos, risas, 
 
 ## Logo
 
-- **Wordmark:** HANG OUT — descriptor "PANAMÁ ®"
+Archivos vectoriales (redibujados del avatar de Instagram): `brands/hangout/logo/primary.svg`, `brands/hangout/logo/inverse.svg`, `brands/hangout/logo/on-accent.svg`, `brands/hangout/logo/symbol.svg`, `brands/hangout/logo/avatar.svg`.
+Los SVG usan las fuentes de la marca vía Google Fonts; para impresión, convertir textos a contornos.
+
 - **Símbolo:** La banana en línea neón dorada (símbolo actual). Es el icono de la marca: avatar, sticker, pulsera, letrero neón del venue.
 - **Construcción:** Banana neón + HANG OUT en Rubik ExtraBold redondeada, tracking 0. Lockup horizontal con la banana inclinada 20° a la izquierda.
 - **Área de respeto:** Grosor de la banana ×3 alrededor.
@@ -39,6 +41,12 @@ La fiesta de reggaetón y hits más social de Panamá: grupos de amigos, risas, 
 - No usar rojo (Ignite) ni crema/bordó (The Room)
 - No convertir la banana en contenido vulgar
 - No usar serif de lujo en el logo
+
+## Instagram
+
+- **Bio:** Hang Out Panama ® / Reggaeton | Hits 🍌 / BEST PARTIES IN TOWN 🌃 🇵🇦
+- **Highlights:** Búscate, Fechas, Guest list, Vibes
+- **Grilla:** Fotos de gente con flash (70%) + piezas negras con banana (30%). Repost de etiquetas en stories.
 
 ## Color
 
@@ -116,8 +124,6 @@ Web divertida de comunidad: próxima fiesta, fotos para buscarte y guest list pa
 - **Animación firma:** La banana neón se enciende con un zumbido y guiña (parpadeo).
 
 ## Redes sociales
-
-**Grilla:** Fotos de gente con flash (70%) + piezas negras con banana (30%). Repost de etiquetas en stories.
 
 | Plantilla | Formato | Especificación |
 |---|---|---|

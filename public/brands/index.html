@@ -2,89 +2,164 @@
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Marcas — Líneas gráficas</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton:wght@400&family=Inter:wght@400;500;600;800&family=Roboto+Mono:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton:wght@400&family=Krona+One:wght@400&family=Inter:wght@400;500;600;800&family=Roboto+Mono:wght@400;500;700&display=swap">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Inter:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700;800&family=Playfair+Display:ital,wght@0,400;0,500;1,400;1,500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;1,400;1,500&display=swap">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;600;800&family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@700;800;900&family=DM+Serif+Display:wght@400&family=DM+Sans:wght@400;500;700&display=swap">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black:wght@400&family=Archivo+Narrow:wght@500;700&family=Archivo:wght@400;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100,400;100,600;125,800;125,900&family=Archivo+Narrow:wght@500;700&display=swap">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:wght@400;500;700&family=Josefin+Sans:wght@300;400;600&display=swap">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800;900&family=Inter:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@800;900&family=Barlow:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@800;900&family=Russo+One:wght@400&family=Barlow:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:#0B0B0D;color:#F2F2F2;font-family:Inter,system-ui,sans-serif;padding:48px 32px}
-header{max-width:1240px;margin:0 auto 32px}
-h1{font-size:14px;letter-spacing:.24em;text-transform:uppercase;color:#9A9AA3;font-weight:600}
-h2{font-size:clamp(28px,4vw,44px);margin-top:8px;font-weight:700}
-p.lead{color:#9A9AA3;margin-top:8px;max-width:60ch}
-.grid{max-width:1240px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
-.card{position:relative;display:block;min-height:300px;overflow:hidden;border-radius:12px;background:var(--bg);color:var(--fg);text-decoration:none;border:1px solid rgba(255,255,255,.08);transition:transform .3s cubic-bezier(.22,1,.36,1)}
-.card:hover{transform:translateY(-4px)}
-.mood{position:absolute;inset:0 0 45% 0;background:var(--mood);opacity:.9}
-.mood::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 30%,var(--bg))}
-.in{position:relative;padding:24px;display:flex;flex-direction:column;min-height:300px;justify-content:flex-end}
-.name{font-size:38px;font-weight:800;text-transform:uppercase;line-height:.95}
-.desc{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ac);margin-top:10px}
-.tag{font-size:14px;opacity:.85;margin-top:6px}
-.dots{display:flex;gap:6px;margin-top:16px}.dots i{width:18px;height:18px;border-radius:50%;border:1px solid rgba(127,127,127,.4)}
-.handle{position:absolute;top:16px;right:18px;font-size:12px;opacity:.8}
-@media (max-width:600px){body{padding:32px 16px}.grid{grid-template-columns:1fr}}
+body{background:#09090B;color:#F2F2F2;font-family:Inter,system-ui,sans-serif;padding:56px 32px 80px}
+header{max-width:1280px;margin:0 auto 40px;display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap}
+h1{font-size:12px;letter-spacing:.28em;text-transform:uppercase;color:#8A8A93;font-weight:600}
+h2{font-size:clamp(34px,5vw,60px);margin-top:10px;font-weight:800;letter-spacing:-.02em;line-height:1}
+p.lead{color:#8A8A93;max-width:52ch;font-size:15px}
+.grid{max-width:1280px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:18px}
+.card{position:relative;display:flex;flex-direction:column;min-height:400px;overflow:hidden;border-radius:18px;background:var(--bg);color:var(--fg);text-decoration:none;border:1px solid rgba(255,255,255,.08);transition:transform .45s cubic-bezier(.22,1,.36,1),box-shadow .45s;isolation:isolate}
+.card:hover{transform:translateY(-6px);box-shadow:0 30px 60px rgba(0,0,0,.5)}
+.mood{position:absolute;inset:0 0 38% 0;background:var(--mood);z-index:-2;transition:transform .8s cubic-bezier(.22,1,.36,1)}
+.card:hover .mood{transform:scale(1.06)}
+.mood::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 35%,var(--bg))}
+.grain{position:absolute;inset:0;z-index:-1;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");opacity:.14;mix-blend-mode:overlay}
+.avatar{position:absolute;top:18px;right:18px;width:52px;height:52px;border-radius:50%;overflow:hidden;box-shadow:0 0 0 2px rgba(255,255,255,.25)}
+.avatar svg{width:100%;height:100%}
+.logo{flex:1;display:grid;place-items:center;padding:56px 18% 8px}
+.logo svg{width:100%;max-height:150px;overflow:visible}
+.in{padding:0 24px 22px}
+.desc{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ac);font-weight:600}
+.tag{font-size:15px;opacity:.85;margin-top:6px}
+.row{display:flex;justify-content:space-between;align-items:center;margin-top:18px;gap:12px}
+.dots{display:flex;gap:6px}.dots i{width:16px;height:16px;border-radius:50%;border:1px solid rgba(127,127,127,.4)}
+.handle{font-size:12px;opacity:.7}
+@media (max-width:600px){body{padding:36px 16px}.grid{grid-template-columns:1fr}}
 </style></head>
 <body>
-<header><h1>Command Center · Marcas</h1><h2>Líneas gráficas</h2><p class="lead">Sistema de marca de cada cuenta: logo, color, tipografía, interfaz, plantillas de redes, estructura web, imagen, motion y voz.</p></header>
-<div class="grid"><a class="card" href="./5amclub/" style="--bg:#0A0A0A;--fg:#FFFFFF;--ac:#F5B700;--mood:linear-gradient(170deg, #0B3D91 0%, #0A0A0A 55%, #3A0A0A 100%)">
-  <div class="mood"></div>
-  <div class="in"><div class="name" style="font-family:'Anton', sans-serif;letter-spacing:0.01em">5AM CLUB</div>
-  <div class="desc">Finances &amp; Markets</div><div class="tag">Before the market opens.</div>
-  <div class="dots"><i style="background:#0A0A0A"></i><i style="background:#FFFFFF"></i><i style="background:#F5B700"></i><i style="background:#0B3D91"></i><i style="background:#00C853"></i><i style="background:#E53935"></i></div>
-  <div class="handle">@__5amclub</div></div></a>
+<header><div><h1>Command Center · Marcas</h1><h2>Líneas gráficas</h2></div><p class="lead">Logos vectoriales redibujados de cada Instagram, paleta, tipografía, interfaz, plantillas, aplicaciones, estructura web, motion y voz de cada cuenta.</p></header>
+<div class="grid"><a class="card" href="./5amclub/" style="--bg:#0A0A0A;--fg:#FFFFFF;--ac:#6F52FF;--mood:linear-gradient(170deg, #2A1F6B 0%, #0A0A0A 55%, #1A0A1A 100%)">
+  <div class="mood"></div><div class="grain"></div>
+  <div class="avatar"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" role="img" aria-label="avatar" class="logo-svg"><defs><clipPath id="clip69"><circle cx="160" cy="160" r="160"/></clipPath></defs><g clip-path="url(#clip69)"><rect width="320" height="320" fill="#000000"/><g transform="translate(40 18) scale(.8)"><g transform="translate(40 0)"><g fill="none" stroke="#6F52FF" stroke-width="2.6"><circle cx="110" cy="110" r="60" stroke-width="3.4"/><ellipse cx="110" cy="110" rx="46.8" ry="60"/><ellipse cx="110" cy="110" rx="30.0" ry="60"/><ellipse cx="110" cy="110" rx="12.0" ry="60"/><line x1="110" y1="50" x2="110" y2="170"/><line x1="71.5" y1="64" x2="148.5" y2="64"/><line x1="58.6" y1="79" x2="161.4" y2="79"/><line x1="52.0" y1="94.5" x2="168.0" y2="94.5"/><line x1="50.0" y1="110" x2="170.0" y2="110"/><line x1="52.0" y1="125.5" x2="168.0" y2="125.5"/><line x1="58.6" y1="141" x2="161.4" y2="141"/><line x1="71.5" y1="156" x2="148.5" y2="156"/></g><g stroke="#FFFFFF" stroke-width="4.6" stroke-linecap="round"><path d="M104.0 14.0L116.0 26.0M116.0 14.0L104.0 26.0"/><path d="M138.4 20.9L150.4 32.9M150.4 20.9L138.4 32.9"/><path d="M167.6 40.4L179.6 52.4M179.6 40.4L167.6 52.4"/><path d="M187.1 69.6L199.1 81.6M199.1 69.6L187.1 81.6"/><path d="M194.0 104.0L206.0 116.0M206.0 104.0L194.0 116.0"/><path d="M187.1 138.4L199.1 150.4M199.1 138.4L187.1 150.4"/><path d="M167.6 167.6L179.6 179.6M179.6 167.6L167.6 179.6"/><path d="M138.4 187.1L150.4 199.1M150.4 187.1L138.4 199.1"/><path d="M104.0 194.0L116.0 206.0M116.0 194.0L104.0 206.0"/><path d="M69.6 187.1L81.6 199.1M81.6 187.1L69.6 199.1"/><path d="M40.4 167.6L52.4 179.6M52.4 167.6L40.4 179.6"/><path d="M20.9 138.4L32.9 150.4M32.9 138.4L20.9 150.4"/><path d="M14.0 104.0L26.0 116.0M26.0 104.0L14.0 116.0"/><path d="M20.9 69.6L32.9 81.6M32.9 69.6L20.9 81.6"/><path d="M40.4 40.4L52.4 52.4M52.4 40.4L40.4 52.4"/><path d="M69.6 20.9L81.6 32.9M81.6 20.9L69.6 32.9"/></g></g><text x="150" y="270" text-anchor="middle" font-family="'Krona One', sans-serif" font-weight="400" font-size="30" fill="#FFFFFF" textLength="236" lengthAdjust="spacingAndGlyphs">5AM CLUB ©</text></g></g></svg></div>
+  <div class="logo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 290" role="img" aria-label="5AM Club" class="logo-svg"><g transform="translate(40 0)"><g fill="none" stroke="#6F52FF" stroke-width="2.6"><circle cx="110" cy="110" r="60" stroke-width="3.4"/><ellipse cx="110" cy="110" rx="46.8" ry="60"/><ellipse cx="110" cy="110" rx="30.0" ry="60"/><ellipse cx="110" cy="110" rx="12.0" ry="60"/><line x1="110" y1="50" x2="110" y2="170"/><line x1="71.5" y1="64" x2="148.5" y2="64"/><line x1="58.6" y1="79" x2="161.4" y2="79"/><line x1="52.0" y1="94.5" x2="168.0" y2="94.5"/><line x1="50.0" y1="110" x2="170.0" y2="110"/><line x1="52.0" y1="125.5" x2="168.0" y2="125.5"/><line x1="58.6" y1="141" x2="161.4" y2="141"/><line x1="71.5" y1="156" x2="148.5" y2="156"/></g><g stroke="#FFFFFF" stroke-width="4.6" stroke-linecap="round"><path d="M104.0 14.0L116.0 26.0M116.0 14.0L104.0 26.0"/><path d="M138.4 20.9L150.4 32.9M150.4 20.9L138.4 32.9"/><path d="M167.6 40.4L179.6 52.4M179.6 40.4L167.6 52.4"/><path d="M187.1 69.6L199.1 81.6M199.1 69.6L187.1 81.6"/><path d="M194.0 104.0L206.0 116.0M206.0 104.0L194.0 116.0"/><path d="M187.1 138.4L199.1 150.4M199.1 138.4L187.1 150.4"/><path d="M167.6 167.6L179.6 179.6M179.6 167.6L167.6 179.6"/><path d="M138.4 187.1L150.4 199.1M150.4 187.1L138.4 199.1"/><path d="M104.0 194.0L116.0 206.0M116.0 194.0L104.0 206.0"/><path d="M69.6 187.1L81.6 199.1M81.6 187.1L69.6 199.1"/><path d="M40.4 167.6L52.4 179.6M52.4 167.6L40.4 179.6"/><path d="M20.9 138.4L32.9 150.4M32.9 138.4L20.9 150.4"/><path d="M14.0 104.0L26.0 116.0M26.0 104.0L14.0 116.0"/><path d="M20.9 69.6L32.9 81.6M32.9 69.6L20.9 81.6"/><path d="M40.4 40.4L52.4 52.4M52.4 40.4L40.4 52.4"/><path d="M69.6 20.9L81.6 32.9M81.6 20.9L69.6 32.9"/></g></g><text x="150" y="270" text-anchor="middle" font-family="'Krona One', sans-serif" font-weight="400" font-size="30" fill="#FFFFFF" textLength="236" lengthAdjust="spacingAndGlyphs">5AM CLUB ©</text></svg></div>
+  <div class="in"><div class="desc">Finances &amp; Markets</div><div class="tag">Before the market opens.</div>
+  <div class="row"><div class="dots"><i style="background:#0A0A0A"></i><i style="background:#FFFFFF"></i><i style="background:#6F52FF"></i><i style="background:#0B3D91"></i><i style="background:#00C853"></i><i style="background:#E53935"></i></div><span class="handle">@__5amclub · 3.8K</span></div></div></a>
 <a class="card" href="./arrive/" style="--bg:#FFFFFF;--fg:#0A0A0A;--ac:#C8A96A;--mood:linear-gradient(160deg, #E9DFCF 0%, #C8A96A 45%, #3B3328 100%)">
-  <div class="mood"></div>
-  <div class="in"><div class="name" style="font-family:'Montserrat', sans-serif;letter-spacing:0.12em">ARRIVE</div>
-  <div class="desc">Talent &amp; Experiences Agency</div><div class="tag">We make it happen.</div>
-  <div class="dots"><i style="background:#0A0A0A"></i><i style="background:#FFFFFF"></i><i style="background:#F5F1EA"></i><i style="background:#C8A96A"></i><i style="background:#8A857C"></i><i style="background:#E7E2D9"></i></div>
-  <div class="handle">@Arrive.models</div></div></a>
+  <div class="mood"></div><div class="grain"></div>
+  <div class="avatar"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" role="img" aria-label="avatar" class="logo-svg"><defs><clipPath id="clip70"><circle cx="160" cy="160" r="160"/></clipPath></defs><g clip-path="url(#clip70)"><rect width="320" height="320" fill="#FFFFFF"/><g transform="translate(34 110) scale(.6)"><text x="210" y="96" text-anchor="middle" font-family="'Montserrat', sans-serif" font-weight="600" font-size="100" fill="#0A0A0A" textLength="356" lengthAdjust="spacingAndGlyphs">ARRIVE</text><text x="210" y="134" text-anchor="middle" font-family="'Montserrat', sans-serif" font-weight="400" font-size="18" fill="#0A0A0A" textLength="356" lengthAdjust="spacing">MODEL MANAGEMENT</text></g></g></svg></div>
+  <div class="logo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 150" role="img" aria-label="ARRIVE Model Management" class="logo-svg"><text x="210" y="96" text-anchor="middle" font-family="'Montserrat', sans-serif" font-weight="600" font-size="100" fill="#0A0A0A" textLength="356" lengthAdjust="spacingAndGlyphs">ARRIVE</text><text x="210" y="134" text-anchor="middle" font-family="'Montserrat', sans-serif" font-weight="400" font-size="18" fill="#0A0A0A" textLength="356" lengthAdjust="spacing">MODEL MANAGEMENT</text></svg></div>
+  <div class="in"><div class="desc">Talent &amp; Experiences Agency</div><div class="tag">We make it happen.</div>
+  <div class="row"><div class="dots"><i style="background:#0A0A0A"></i><i style="background:#FFFFFF"></i><i style="background:#F5F1EA"></i><i style="background:#C8A96A"></i><i style="background:#8A857C"></i><i style="background:#E7E2D9"></i></div><span class="handle">@Arrive.models · 6.5K</span></div></div></a>
 <a class="card" href="./dinner-club/" style="--bg:#F4EFE6;--fg:#0B0B0B;--ac:#8C6A43;--mood:linear-gradient(90deg, #E9B872 0%, #8C6A43 48%, #0B0B0B 52%, #1E1A2E 100%)">
-  <div class="mood"></div>
-  <div class="in"><div class="name" style="font-family:'Outfit', sans-serif;letter-spacing:0.02em">DINNER CLUB</div>
-  <div class="desc">Dinner · Drinks · Party</div><div class="tag">Reserva para cenar. Quédate para la fiesta.</div>
-  <div class="dots"><i style="background:#0B0B0B"></i><i style="background:#FFFFFF"></i><i style="background:#F4EFE6"></i><i style="background:#8C6A43"></i><i style="background:#E9B872"></i><i style="background:#4B4F3A"></i></div>
-  <div class="handle">@dinnerclub_pa</div></div></a>
+  <div class="mood"></div><div class="grain"></div>
+  <div class="avatar"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" role="img" aria-label="avatar" class="logo-svg"><defs><clipPath id="clip71"><circle cx="160" cy="160" r="160"/></clipPath></defs><g clip-path="url(#clip71)"><rect width="320" height="320" fill="#000000"/><circle cx="160" cy="160" r="160" fill="#FFFFFF"/><g transform="translate(10 10)"><text x="150" y="160" text-anchor="middle" font-family="'Source Sans 3', sans-serif" font-weight="700" font-size="66" fill="#0B0B0B" textLength="206" lengthAdjust="spacingAndGlyphs">DINNER</text><text x="150" y="202" text-anchor="middle" font-family="'Source Sans 3', sans-serif" font-weight="400" font-size="22" fill="#0B0B0B" textLength="84" lengthAdjust="spacing">CLUB</text></g></g></svg></div>
+  <div class="logo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" role="img" aria-label="Dinner Club" class="logo-svg"><circle cx="150" cy="150" r="150" fill="#FFFFFF"/><text x="150" y="160" text-anchor="middle" font-family="'Source Sans 3', sans-serif" font-weight="700" font-size="66" fill="#0B0B0B" textLength="206" lengthAdjust="spacingAndGlyphs">DINNER</text><text x="150" y="202" text-anchor="middle" font-family="'Source Sans 3', sans-serif" font-weight="400" font-size="22" fill="#0B0B0B" textLength="84" lengthAdjust="spacing">CLUB</text></svg></div>
+  <div class="in"><div class="desc">Dinner · Drinks · Party</div><div class="tag">Reserva para cenar. Quédate para la fiesta.</div>
+  <div class="row"><div class="dots"><i style="background:#0B0B0B"></i><i style="background:#FFFFFF"></i><i style="background:#F4EFE6"></i><i style="background:#8C6A43"></i><i style="background:#E9B872"></i><i style="background:#4B4F3A"></i></div><span class="handle">@dinnerclub_pa · 450</span></div></div></a>
 <a class="card" href="./elemento/" style="--bg:#05070F;--fg:#FFFFFF;--ac:#2F6BFF;--mood:radial-gradient(ellipse at 50% 30%, #2F6BFF 0%, #0B1A3A 40%, #05070F 75%)">
-  <div class="mood"></div>
-  <div class="in"><div class="name" style="font-family:'Unbounded', sans-serif;letter-spacing:0.06em">ELEMENTO</div>
-  <div class="desc">Techno · House · Electronic</div><div class="tag">Where movement becomes sound.</div>
-  <div class="dots"><i style="background:#05070F"></i><i style="background:#0B1A3A"></i><i style="background:#2F6BFF"></i><i style="background:#C9D3E0"></i><i style="background:#FFFFFF"></i><i style="background:#8FB3FF"></i></div>
-  <div class="handle">@Elemento.techno</div></div></a>
+  <div class="mood"></div><div class="grain"></div>
+  <div class="avatar"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" role="img" aria-label="avatar" class="logo-svg"><defs><clipPath id="clip91"><circle cx="160" cy="160" r="160"/></clipPath></defs><g clip-path="url(#clip91)"><rect width="320" height="320" fill="#05070F"/><defs><radialGradient id="deep87" cx=".5" cy=".55" r=".6"><stop offset="0" stop-color="#14306B"/><stop offset="1" stop-color="#05070F"/></radialGradient></defs><rect width="320" height="320" fill="url(#deep87)"/><g transform="translate(39 83) scale(1.1)"><defs>
+      <linearGradient id="chrome88" x1="0" y1="20" x2="0" y2="120" gradientUnits="userSpaceOnUse">
+        <stop offset="0" stop-color="#FFFFFF"/><stop offset=".42" stop-color="#D7E0EC"/><stop offset=".5" stop-color="#6A7990"/>
+        <stop offset=".6" stop-color="#B4C0D1"/><stop offset="1" stop-color="#F2F6FB"/></linearGradient>
+      <radialGradient id="flare89"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".25" stop-color="#8FB3FF"/><stop offset="1" stop-color="#2F6BFF" stop-opacity="0"/></radialGradient>
+      <filter id="glow90" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2"/></filter>
+    </defs>
+    <g transform="translate(46 20) skewX(-24)">
+      <path fill="url(#chrome88)" d="M24 0H168L150 24H26V40H120L106 60H26V76H140L122 100H0V24C0 10.7 10.7 0 24 0Z"/>
+      <path fill="#FFFFFF" opacity=".55" d="M24 2H165L163 5H24C12 5 4 12 3 22H2C2 10 11 2 24 2Z"/>
+    </g>
+    <ellipse cx="214" cy="21" rx="26" ry="16" fill="url(#flare89)" opacity=".9"/><rect x="170" y="20" width="96" height="1.6" fill="#CFE0FF" filter="url(#glow90)"/><rect x="186" y="20.3" width="60" height="1" fill="#FFFFFF"/></g></g></svg></div>
+  <div class="logo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 150" role="img" aria-label="Elemento" class="logo-svg"><g transform="translate(0 4) scale(1)"><defs>
+      <linearGradient id="chrome72" x1="0" y1="20" x2="0" y2="120" gradientUnits="userSpaceOnUse">
+        <stop offset="0" stop-color="#FFFFFF"/><stop offset=".42" stop-color="#D7E0EC"/><stop offset=".5" stop-color="#6A7990"/>
+        <stop offset=".6" stop-color="#B4C0D1"/><stop offset="1" stop-color="#F2F6FB"/></linearGradient>
+      <radialGradient id="flare73"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".25" stop-color="#8FB3FF"/><stop offset="1" stop-color="#2F6BFF" stop-opacity="0"/></radialGradient>
+      <filter id="glow74" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2"/></filter>
+    </defs>
+    <g transform="translate(46 20) skewX(-24)">
+      <path fill="url(#chrome72)" d="M24 0H168L150 24H26V40H120L106 60H26V76H140L122 100H0V24C0 10.7 10.7 0 24 0Z"/>
+      <path fill="#FFFFFF" opacity=".55" d="M24 2H165L163 5H24C12 5 4 12 3 22H2C2 10 11 2 24 2Z"/>
+    </g>
+    <ellipse cx="214" cy="21" rx="26" ry="16" fill="url(#flare73)" opacity=".9"/><rect x="170" y="20" width="96" height="1.6" fill="#CFE0FF" filter="url(#glow74)"/><rect x="186" y="20.3" width="60" height="1" fill="#FFFFFF"/></g><text x="300" y="92" text-anchor="start" font-family="'Unbounded', sans-serif" font-weight="600" font-size="70" fill="#FFFFFF" textLength="500" lengthAdjust="spacingAndGlyphs">ELEMENTO</text><text x="302" y="128" text-anchor="start" font-family="'Space Grotesk', sans-serif" font-weight="500" font-size="15" fill="#2F6BFF" textLength="496" lengthAdjust="spacing">D.A.N.C.E. — WHERE MOVEMENT BECOMES SOUND</text></svg></div>
+  <div class="in"><div class="desc">Techno · House · Electronic</div><div class="tag">Where movement becomes sound.</div>
+  <div class="row"><div class="dots"><i style="background:#05070F"></i><i style="background:#0B1A3A"></i><i style="background:#2F6BFF"></i><i style="background:#C9D3E0"></i><i style="background:#FFFFFF"></i><i style="background:#8FB3FF"></i></div><span class="handle">@Elemento.techno · 14.8K</span></div></div></a>
 <a class="card" href="./hangout/" style="--bg:#000000;--fg:#FFFFFF;--ac:#F2C94C;--mood:radial-gradient(circle at 30% 22%, #F2C94C 0%, #8A5A1F 22%, #2A1708 52%, #000000 85%)">
-  <div class="mood"></div>
-  <div class="in"><div class="name" style="font-family:'Rubik', sans-serif;letter-spacing:0">HANG OUT</div>
-  <div class="desc">Reggaeton &amp; Hits · Panamá</div><div class="tag">Tú sabes con quién vienes.</div>
-  <div class="dots"><i style="background:#000000"></i><i style="background:#F2C94C"></i><i style="background:#FFFFFF"></i><i style="background:#FFF4D6"></i><i style="background:#2B2B2B"></i><i style="background:#FF4FA3"></i></div>
-  <div class="handle">@hangout.panama</div></div></a>
+  <div class="mood"></div><div class="grain"></div>
+  <div class="avatar"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" role="img" aria-label="avatar" class="logo-svg"><defs><clipPath id="clip98"><circle cx="160" cy="160" r="160"/></clipPath></defs><g clip-path="url(#clip98)"><rect width="320" height="320" fill="#000000"/><g transform="translate(72 72) scale(1.8)"><defs><filter id="neon97" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="3.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+    <g fill="none" stroke="#F2C94C" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" filter="url(#neon97)"><path d="M63 13C64.5 9.5 70.5 9.5 71.5 13.5L72.5 24C83 37 85 58 71 72C58.5 84.5 37 88.5 22 86.5C14 85.5 13.5 77.5 20 75.5C36 71 52 62 60 47.5C66 36 66.5 30 64 24Z"/><path d="M66.5 28C71 47 61 66 33 80"/></g></g></g></svg></div>
+  <div class="logo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 120" role="img" aria-label="Hang Out Panamá" class="logo-svg"><g transform="translate(0 6) scale(1.1)"><defs><filter id="neon92" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="3.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+    <g fill="none" stroke="#F2C94C" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" filter="url(#neon92)"><path d="M63 13C64.5 9.5 70.5 9.5 71.5 13.5L72.5 24C83 37 85 58 71 72C58.5 84.5 37 88.5 22 86.5C14 85.5 13.5 77.5 20 75.5C36 71 52 62 60 47.5C66 36 66.5 30 64 24Z"/><path d="M66.5 28C71 47 61 66 33 80"/></g></g><text x="126" y="76" text-anchor="start" font-family="'Rubik', sans-serif" font-weight="800" font-size="64" fill="#FFFFFF" textLength="330" lengthAdjust="spacingAndGlyphs">HANG OUT</text><text x="128" y="104" text-anchor="start" font-family="'DM Sans', sans-serif" font-weight="700" font-size="15" fill="#F2C94C" letter-spacing="5">PANAMÁ ®</text></svg></div>
+  <div class="in"><div class="desc">Reggaeton &amp; Hits · Panamá</div><div class="tag">Tú sabes con quién vienes.</div>
+  <div class="row"><div class="dots"><i style="background:#000000"></i><i style="background:#F2C94C"></i><i style="background:#FFFFFF"></i><i style="background:#FFF4D6"></i><i style="background:#2B2B2B"></i><i style="background:#FF4FA3"></i></div><span class="handle">@hangout.panama · 2.4K</span></div></div></a>
 <a class="card" href="./ignite/" style="--bg:#0A0A0F;--fg:#FFFFFF;--ac:#E3262B;--mood:linear-gradient(135deg, #1F3BFF 0%, #0A0A0F 50%, #E3262B 100%)">
-  <div class="mood"></div>
-  <div class="in"><div class="name" style="font-family:'Archivo Black', sans-serif;letter-spacing:-0.01em">IGNITE CLUB</div>
-  <div class="desc">Latin · Reggaeton · Electronic</div><div class="tag">Light it up.</div>
-  <div class="dots"><i style="background:#0A0A0F"></i><i style="background:#E3262B"></i><i style="background:#1F3BFF"></i><i style="background:#FF6B1A"></i><i style="background:#FFFFFF"></i><i style="background:#D62DFF"></i></div>
-  <div class="handle">@theigniteclubb</div></div></a>
+  <div class="mood"></div><div class="grain"></div>
+  <div class="avatar"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" role="img" aria-label="avatar" class="logo-svg"><defs><clipPath id="clip99"><circle cx="160" cy="160" r="160"/></clipPath></defs><g clip-path="url(#clip99)"><rect width="320" height="320" fill="#1A1A1A"/><g transform="translate(60 110) scale(.5)"><text x="18" y="96" text-anchor="start" font-family="'Archivo', sans-serif" font-weight="900" font-size="104" fill="#E3262B" textLength="364" lengthAdjust="spacingAndGlyphs" style="font-stretch:125%">IGNITE</text><text x="382" y="186" text-anchor="end" font-family="'Archivo', sans-serif" font-weight="900" font-size="104" fill="#E3262B" textLength="232" lengthAdjust="spacingAndGlyphs" style="font-stretch:125%">CLUB</text></g></g></svg></div>
+  <div class="logo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200" role="img" aria-label="Ignite Club" class="logo-svg"><text x="18" y="96" text-anchor="start" font-family="'Archivo', sans-serif" font-weight="900" font-size="104" fill="#E3262B" textLength="364" lengthAdjust="spacingAndGlyphs" style="font-stretch:125%">IGNITE</text><text x="382" y="186" text-anchor="end" font-family="'Archivo', sans-serif" font-weight="900" font-size="104" fill="#E3262B" textLength="232" lengthAdjust="spacingAndGlyphs" style="font-stretch:125%">CLUB</text></svg></div>
+  <div class="in"><div class="desc">Latin · Reggaeton · Electronic</div><div class="tag">Light it up.</div>
+  <div class="row"><div class="dots"><i style="background:#0A0A0F"></i><i style="background:#E3262B"></i><i style="background:#1F3BFF"></i><i style="background:#FF6B1A"></i><i style="background:#FFFFFF"></i><i style="background:#D62DFF"></i></div><span class="handle">@theigniteclubb · 608</span></div></div></a>
 <a class="card" href="./the-room/" style="--bg:#0B0505;--fg:#E8DCCB;--ac:#C1121F;--mood:radial-gradient(ellipse at 50% 35%, #7A0E0E 0%, #3A0707 45%, #0B0505 80%)">
-  <div class="mood"></div>
-  <div class="in"><div class="name" style="font-family:'Bodoni Moda', serif;letter-spacing:0.04em">THE ROOM</div>
-  <div class="desc">Social Club</div><div class="tag">Members of the night.</div>
-  <div class="dots"><i style="background:#0B0505"></i><i style="background:#7A0E0E"></i><i style="background:#C1121F"></i><i style="background:#E8DCCB"></i><i style="background:#B76E6E"></i><i style="background:#B08D57"></i></div>
-  <div class="handle">@theroom.social</div></div></a>
-<a class="card" href="./udp/" style="--bg:#FFFFFF;--fg:#0A0A0A;--ac:#C89B3C;--mood:linear-gradient(180deg, #8C8C8C 0%, #3A3A3A 55%, #0A0A0A 100%)">
-  <div class="mood"></div>
-  <div class="in"><div class="name" style="font-family:'Poppins', sans-serif;letter-spacing:-0.01em">UDP</div>
-  <div class="desc">Urban Development Project · PTY</div><div class="tag">Organizamos hoy, transformamos ciudad.</div>
-  <div class="dots"><i style="background:#0A0A0A"></i><i style="background:#FFFFFF"></i><i style="background:#C89B3C"></i><i style="background:#EDEDED"></i><i style="background:#4A4A4A"></i><i style="background:#005293"></i></div>
-  <div class="handle">@UDP.PA</div></div></a>
+  <div class="mood"></div><div class="grain"></div>
+  <div class="avatar"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" role="img" aria-label="avatar" class="logo-svg"><defs><clipPath id="clip100"><circle cx="160" cy="160" r="160"/></clipPath></defs><g clip-path="url(#clip100)"><rect width="320" height="320" fill="#1A1414"/><g transform="translate(26 92) scale(.5)"><text x="120" y="166" text-anchor="middle" font-family="'Bodoni Moda', serif" font-weight="400" font-size="112" fill="#F2EDE6" textLength="168" lengthAdjust="spacingAndGlyphs">THE</text><g transform="translate(205 -1) scale(1.12)"><g fill="none" stroke="#F2EDE6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="31" y="1" width="26" height="25" rx="2"/><path d="M31 20H57"/><path d="M18 29C30 24 58 24 70 29"/>
+      <path d="M24 35C30 29 40 31 44 37C48 31 58 29 64 35C66 49 56 62 44 66C32 62 22 49 24 35Z"/>
+      <path d="M31 45Q35.5 40.5 40 45Q35.5 48 31 45Z"/><path d="M48 45Q52.5 40.5 57 45Q52.5 48 48 45Z"/>
+      <circle cx="52.5" cy="44.5" r="7.5"/><path d="M44 49L42 55L44 57L46 55Z"/>
+      <path d="M60 47C66 60 63 80 67 97" stroke-dasharray="2 3"/>
+      <path d="M27 59C13 77 14 111 30 133H58C71 113 70 81 60 60"/>
+      <path d="M31 73C17 87 7 105 3 123L19 119L15 129L33 121C41 111 43 93 39 77"/>
+      <path d="M23 99L35 95M19 109L33 105M15 119L29 113"/>
+      <path d="M46 88q3 3 6 0M42 102q3 3 6 0M50 114q3 3 6 0"/>
+      <path d="M38 133V148M33 150H43M50 133V148M45 150H55"/>
+    </g></g><text x="410" y="166" text-anchor="middle" font-family="'Bodoni Moda', serif" font-weight="400" font-size="112" fill="#F2EDE6" textLength="236" lengthAdjust="spacingAndGlyphs">ROOM</text><text x="270" y="212" text-anchor="middle" font-family="'Josefin Sans', sans-serif" font-weight="400" font-size="24" fill="#F2EDE6" textLength="128" lengthAdjust="spacing">Social Club</text></g></g></svg></div>
+  <div class="logo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 230" role="img" aria-label="The Room Social Club" class="logo-svg"><text x="120" y="166" text-anchor="middle" font-family="'Bodoni Moda', serif" font-weight="400" font-size="112" fill="#E8DCCB" textLength="168" lengthAdjust="spacingAndGlyphs">THE</text><g transform="translate(205 -1) scale(1.12)"><g fill="none" stroke="#E8DCCB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="31" y="1" width="26" height="25" rx="2"/><path d="M31 20H57"/><path d="M18 29C30 24 58 24 70 29"/>
+      <path d="M24 35C30 29 40 31 44 37C48 31 58 29 64 35C66 49 56 62 44 66C32 62 22 49 24 35Z"/>
+      <path d="M31 45Q35.5 40.5 40 45Q35.5 48 31 45Z"/><path d="M48 45Q52.5 40.5 57 45Q52.5 48 48 45Z"/>
+      <circle cx="52.5" cy="44.5" r="7.5"/><path d="M44 49L42 55L44 57L46 55Z"/>
+      <path d="M60 47C66 60 63 80 67 97" stroke-dasharray="2 3"/>
+      <path d="M27 59C13 77 14 111 30 133H58C71 113 70 81 60 60"/>
+      <path d="M31 73C17 87 7 105 3 123L19 119L15 129L33 121C41 111 43 93 39 77"/>
+      <path d="M23 99L35 95M19 109L33 105M15 119L29 113"/>
+      <path d="M46 88q3 3 6 0M42 102q3 3 6 0M50 114q3 3 6 0"/>
+      <path d="M38 133V148M33 150H43M50 133V148M45 150H55"/>
+    </g></g><text x="410" y="166" text-anchor="middle" font-family="'Bodoni Moda', serif" font-weight="400" font-size="112" fill="#E8DCCB" textLength="236" lengthAdjust="spacingAndGlyphs">ROOM</text><text x="270" y="212" text-anchor="middle" font-family="'Josefin Sans', sans-serif" font-weight="400" font-size="24" fill="#E8DCCB" textLength="128" lengthAdjust="spacing">Social Club</text></svg></div>
+  <div class="in"><div class="desc">Social Club</div><div class="tag">Members of the night.</div>
+  <div class="row"><div class="dots"><i style="background:#0B0505"></i><i style="background:#7A0E0E"></i><i style="background:#C1121F"></i><i style="background:#E8DCCB"></i><i style="background:#B76E6E"></i><i style="background:#B08D57"></i></div><span class="handle">@theroom.social · 454</span></div></div></a>
+<a class="card" href="./udp/" style="--bg:#FFFFFF;--fg:#0A0A0A;--ac:#C89B3C;--mood:radial-gradient(ellipse at 50% 110%, rgba(200,155,60,.45) 0%, transparent 55%), linear-gradient(180deg, #3C3C3C 0%, #161616 55%, #0A0A0A 100%)">
+  <div class="mood"></div><div class="grain"></div>
+  <div class="avatar"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" role="img" aria-label="avatar" class="logo-svg"><defs><clipPath id="clip101"><circle cx="160" cy="160" r="160"/></clipPath></defs><g clip-path="url(#clip101)"><rect width="320" height="320" fill="#FFFFFF"/><circle cx="160" cy="160" r="150" fill="none" stroke="#E6E6E6" stroke-width="2"/><g transform="translate(52 46) scale(.6)">
+    <text x="180" y="140" text-anchor="middle" font-family="'Poppins', sans-serif" font-weight="900" font-size="158" fill="#0A0A0A" textLength="300" lengthAdjust="spacingAndGlyphs">UDP</text>
+    <rect x="30" y="160" width="300" height="38" rx="3" fill="#0A0A0A"/>
+    <text x="44" y="186" font-family="'Poppins', sans-serif" font-size="20" fill="#FFFFFF" letter-spacing="5"><tspan font-weight="700">URBAN</tspan><tspan font-weight="300" dx="8">DEVELOPMENT</tspan></text>
+    <rect x="30" y="204" width="300" height="38" rx="3" fill="#0A0A0A"/>
+    <text x="44" y="231" font-family="'Poppins', sans-serif" font-size="22" fill="#FFFFFF" letter-spacing="6"><tspan font-weight="700">PROJECT</tspan><tspan font-weight="300" dx="10" font-size="16">| PTY</tspan></text>
+    <g><rect x="276" y="211" width="40" height="24.8" fill="#FFFFFF"/><rect x="296" y="211" width="20" height="12.4" fill="#D21034"/><rect x="276" y="223.4" width="20" height="12.4" fill="#005293"/><path transform="translate(286 217.2) scale(0.3333333333333333)" fill="#005293" d="M0-10L2.9-3.1L10-3.1L4.3 1.2L6.5 8.1L0 4L-6.5 8.1L-4.3 1.2L-10-3.1L-2.9-3.1Z"/><path transform="translate(306 229.6) scale(0.3333333333333333)" fill="#D21034" d="M0-10L2.9-3.1L10-3.1L4.3 1.2L6.5 8.1L0 4L-6.5 8.1L-4.3 1.2L-10-3.1L-2.9-3.1Z"/></g></g><text x="160" y="236" text-anchor="middle" font-family="'Poppins', sans-serif" font-weight="500" font-size="9" fill="#4A4A4A" letter-spacing="3">ORGANIZAMOS HOY,</text><text x="160" y="250" text-anchor="middle" font-family="'Poppins', sans-serif" font-size="9" font-weight="500" fill="#4A4A4A" letter-spacing="3">TRANSFORMAMOS <tspan fill="#C89B3C" font-weight="700">CIUDAD.</tspan></text></g></svg></div>
+  <div class="logo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 260" role="img" aria-label="UDP Urban Development Project" class="logo-svg">
+    <text x="180" y="140" text-anchor="middle" font-family="'Poppins', sans-serif" font-weight="900" font-size="158" fill="#0A0A0A" textLength="300" lengthAdjust="spacingAndGlyphs">UDP</text>
+    <rect x="30" y="160" width="300" height="38" rx="3" fill="#0A0A0A"/>
+    <text x="44" y="186" font-family="'Poppins', sans-serif" font-size="20" fill="#FFFFFF" letter-spacing="5"><tspan font-weight="700">URBAN</tspan><tspan font-weight="300" dx="8">DEVELOPMENT</tspan></text>
+    <rect x="30" y="204" width="300" height="38" rx="3" fill="#0A0A0A"/>
+    <text x="44" y="231" font-family="'Poppins', sans-serif" font-size="22" fill="#FFFFFF" letter-spacing="6"><tspan font-weight="700">PROJECT</tspan><tspan font-weight="300" dx="10" font-size="16">| PTY</tspan></text>
+    <g><rect x="276" y="211" width="40" height="24.8" fill="#FFFFFF"/><rect x="296" y="211" width="20" height="12.4" fill="#D21034"/><rect x="276" y="223.4" width="20" height="12.4" fill="#005293"/><path transform="translate(286 217.2) scale(0.3333333333333333)" fill="#005293" d="M0-10L2.9-3.1L10-3.1L4.3 1.2L6.5 8.1L0 4L-6.5 8.1L-4.3 1.2L-10-3.1L-2.9-3.1Z"/><path transform="translate(306 229.6) scale(0.3333333333333333)" fill="#D21034" d="M0-10L2.9-3.1L10-3.1L4.3 1.2L6.5 8.1L0 4L-6.5 8.1L-4.3 1.2L-10-3.1L-2.9-3.1Z"/></g></svg></div>
+  <div class="in"><div class="desc">Urban Development Project · PTY</div><div class="tag">Organizamos hoy, transformamos ciudad.</div>
+  <div class="row"><div class="dots"><i style="background:#0A0A0A"></i><i style="background:#FFFFFF"></i><i style="background:#C89B3C"></i><i style="background:#EDEDED"></i><i style="background:#4A4A4A"></i><i style="background:#005293"></i></div><span class="handle">@UDP.PA · 203</span></div></div></a>
 <a class="card" href="./urban-nights/" style="--bg:#000000;--fg:#FFFFFF;--ac:#E10600;--mood:linear-gradient(180deg, #000000 0%, #1A1A1A 55%, #7A0300 100%)">
-  <div class="mood"></div>
-  <div class="in"><div class="name" style="font-family:'Big Shoulders Display', sans-serif;letter-spacing:0">URBAN NIGHTS</div>
-  <div class="desc">Live Urban Shows · Panamá</div><div class="tag">Los mejores artistas urbanos. En vivo.</div>
-  <div class="dots"><i style="background:#000000"></i><i style="background:#FFFFFF"></i><i style="background:#E10600"></i><i style="background:#8A8A8A"></i><i style="background:#1A1A1A"></i><i style="background:#0A3A8C"></i></div>
-  <div class="handle">@Urbannights.pa</div></div></a></div>
+  <div class="mood"></div><div class="grain"></div>
+  <div class="avatar"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" role="img" aria-label="avatar" class="logo-svg"><defs><clipPath id="clip102"><circle cx="160" cy="160" r="160"/></clipPath></defs><g clip-path="url(#clip102)"><rect width="320" height="320" fill="#FFFFFF"/><g transform="translate(64 100) scale(.6)">
+    <rect x="12" y="12" width="296" height="88" fill="none" stroke="#000000" stroke-width="5"/>
+    <text x="160" y="86" text-anchor="middle" font-family="'Russo One', sans-serif" font-weight="400" font-size="78" fill="#000000" textLength="268" lengthAdjust="spacingAndGlyphs">URBAN</text>
+    <rect x="22" y="53" width="276" height="6" fill="#FFFFFF"/>
+    <text x="160" y="186" text-anchor="middle" font-family="'Russo One', sans-serif" font-weight="400" font-size="78" fill="#000000" textLength="284" lengthAdjust="spacingAndGlyphs">NIGHTS</text>
+    <rect x="14" y="153" width="292" height="6" fill="#FFFFFF"/></g></g></svg></div>
+  <div class="logo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" role="img" aria-label="Urban Nights" class="logo-svg">
+    <rect x="12" y="12" width="296" height="88" fill="none" stroke="#FFFFFF" stroke-width="5"/>
+    <text x="160" y="86" text-anchor="middle" font-family="'Russo One', sans-serif" font-weight="400" font-size="78" fill="#FFFFFF" textLength="268" lengthAdjust="spacingAndGlyphs">URBAN</text>
+    <rect x="22" y="53" width="276" height="6" fill="#000000"/>
+    <text x="160" y="186" text-anchor="middle" font-family="'Russo One', sans-serif" font-weight="400" font-size="78" fill="#FFFFFF" textLength="284" lengthAdjust="spacingAndGlyphs">NIGHTS</text>
+    <rect x="14" y="153" width="292" height="6" fill="#000000"/></svg></div>
+  <div class="in"><div class="desc">Live Urban Shows · Panamá</div><div class="tag">Los mejores artistas urbanos. En vivo.</div>
+  <div class="row"><div class="dots"><i style="background:#000000"></i><i style="background:#FFFFFF"></i><i style="background:#E10600"></i><i style="background:#8A8A8A"></i><i style="background:#1A1A1A"></i><i style="background:#0A3A8C"></i></div><span class="handle">@Urbannights.pa · 178</span></div></div></a></div>
 </body></html>

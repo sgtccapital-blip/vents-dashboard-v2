@@ -2,6 +2,21 @@
   "slug": "arrive",
   "accountId": "social-arrive-models",
   "handler": "@Arrive.models",
+  "ig": {
+    "bio": [
+      "ARRIVE MODELS",
+      "🔸 Models & coming up influencers mngmt",
+      "⚡️ Strategy’s marketing impact",
+      "🔝 Events · Locals · Brands · Photos · Content"
+    ],
+    "highlights": [
+      "Talento",
+      "Eventos",
+      "Marcas",
+      "Casting"
+    ],
+    "followers": "6.5K"
+  },
   "name": "ARRIVE",
   "descriptor": "Talent & Experiences Agency",
   "tagline": "We make it happen.",
@@ -25,9 +40,9 @@
     "wordmark": [
       "ARRIVE"
     ],
-    "descriptorLine": "TALENT & EXPERIENCES",
+    "descriptorLine": "MODEL MANAGEMENT",
     "symbol": "Wordmark tipográfico. Monograma secundario: la 'A' de ARRIVE dentro de un círculo fino para avatares y favicons.",
-    "construction": "ARRIVE en Montserrat SemiBold, mayúsculas, tracking +12%. Descriptor en Montserrat Medium al 22% del alto de la palabra, tracking +40%, centrado debajo con una línea fina de separación.",
+    "construction": "ARRIVE en Montserrat SemiBold, mayúsculas. Debajo \"MODEL MANAGEMENT\" en Montserrat Regular con tracking amplio, del mismo ancho que ARRIVE. Evolución propuesta para la agencia completa: \"TALENT & EXPERIENCES\" con la misma construcción.",
     "clearspace": "Altura de la letra 'A' en los cuatro lados.",
     "minSize": "Digital 80 px de ancho · impreso 25 mm.",
     "versions": [

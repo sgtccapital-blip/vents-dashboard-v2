@@ -1,5 +1,5 @@
 /* DINNER CLUB — tokens de marca. Generado por scripts/build-brands.mjs desde brands/dinner-club/brand.json. No editar a mano. */
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700;800&family=Playfair+Display:ital,wght@0,400;0,500;1,400;1,500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;1,400;1,500&display=swap');
 
 :root {
   /* Paleta */
@@ -20,12 +20,13 @@
   --brand-line: #E2DACB;
 
   /* Tipografía */
-  --font-display: 'Outfit', sans-serif;
+  --font-display: 'Source Sans 3', sans-serif;
   --font-secondary: 'Playfair Display', serif;
-  --font-body: 'Outfit', sans-serif;
-  --tracking-display: 0.02em;
+  --font-body: 'Source Sans 3', sans-serif;
+  --tracking-display: 0.01em;
   --tracking-secondary: 0;
   --tracking-body: 0.01em;
+  --stretch-display: 100%;
   --text-display-xl: 6rem;
   --text-display-l: 4rem;
   --text-h1: 3rem;

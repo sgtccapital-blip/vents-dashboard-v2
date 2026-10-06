@@ -1,6 +1,6 @@
 # THE ROOM — Línea gráfica
 
-> Social Club · @theroom.social
+> Social Club · @theroom.social · 454 seguidores
 > **Members of the night.**
 
 Fuente de verdad: `brands/the-room/brand.json`. Tokens para web: `brands/the-room/tokens.css`.
@@ -22,9 +22,11 @@ La fiesta más exclusiva de Panamá: club social itinerante de reggaetón, hits 
 
 ## Logo
 
-- **Wordmark:** THE / ROOM — descriptor "Social Club"
-- **Símbolo:** El búho con sombrero de copa y monóculo: el anfitrión de la noche. Va entre THE y ROOM, o solo como sello.
-- **Construcción:** THE · búho · ROOM en Bodoni Moda Regular, mayúsculas, tracking +4%. 'Social Club' en Josefin Sans Light centrado debajo a 30% del alto.
+Archivos vectoriales (redibujados del avatar de Instagram): `brands/the-room/logo/primary.svg`, `brands/the-room/logo/inverse.svg`, `brands/the-room/logo/on-accent.svg`, `brands/the-room/logo/symbol.svg`, `brands/the-room/logo/avatar.svg`.
+Los SVG usan las fuentes de la marca vía Google Fonts; para impresión, convertir textos a contornos.
+
+- **Símbolo:** Búho de línea fina con sombrero de copa y monóculo con cadena. Va de pie entre THE y ROOM, con las patas sobre la línea base y el sombrero por encima de la altura de mayúsculas. Solo, funciona como sello.
+- **Construcción:** THE y ROOM en didona condensada de alto contraste (Bodoni Moda comprimida al ~78%), mayúsculas. El búho ocupa el espacio entre ambas palabras. "Social Club" en sans geométrica regular, centrado debajo a ~25% del alto de las mayúsculas.
 - **Área de respeto:** Altura del sombrero del búho alrededor.
 - **Tamaño mínimo:** Lockup 140 px · búho solo 24 px.
 
@@ -39,6 +41,12 @@ La fiesta más exclusiva de Panamá: club social itinerante de reggaetón, hits 
 - No usar el búho en colores fuera de paleta
 - No poner el logo sobre fotos sin oscurecer
 - No usar sans pesadas junto al logo
+
+## Instagram
+
+- **Bio:** The Room Social Club ® / Most exclusive party 🍸 / Reggaeton & Hits / ⬇️ TICKETS ⬇️
+- **Highlights:** Ediciones, Tickets, VIP, Partners
+- **Grilla:** Feed rojo/negro uniforme con el búho siempre centrado. Ciclo por edición: anuncio → lineup → recordatorio → noche → recap.
 
 ## Color
 
@@ -119,8 +127,6 @@ Web de club privado: próxima edición, venta de tickets/mesas y archivo de noch
 - **Animación firma:** El búho parpadea (monóculo brilla) y el wordmark aparece desde negro.
 
 ## Redes sociales
-
-**Grilla:** Feed rojo/negro uniforme con el búho siempre centrado. Ciclo por edición: anuncio → lineup → recordatorio → noche → recap.
 
 | Plantilla | Formato | Especificación |
 |---|---|---|

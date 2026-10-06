@@ -1,6 +1,6 @@
 # URBAN NIGHTS — Línea gráfica
 
-> Live Urban Shows · Panamá · @Urbannights.pa
+> Live Urban Shows · Panamá · @Urbannights.pa · 178 seguidores
 > **Los mejores artistas urbanos. En vivo.**
 
 Fuente de verdad: `brands/urban-nights/brand.json`. Tokens para web: `brands/urban-nights/tokens.css`.
@@ -22,9 +22,11 @@ La serie de shows urbanos en vivo de Panamá: un artista invitado por noche, DJs
 
 ## Logo
 
-- **Wordmark:** URBAN / NIGHTS — descriptor "®"
-- **Símbolo:** Wordmark apilado dentro de una caja con borde (como el avatar actual). Versión flyer: letras rojas con textura cromada.
-- **Construcción:** URBAN sobre NIGHTS en Big Shoulders Display Black, mayúsculas, interlineado 0.82, dentro de un rectángulo con borde de 6% del alto.
+Archivos vectoriales (redibujados del avatar de Instagram): `brands/urban-nights/logo/primary.svg`, `brands/urban-nights/logo/inverse.svg`, `brands/urban-nights/logo/on-accent.svg`, `brands/urban-nights/logo/symbol.svg`, `brands/urban-nights/logo/avatar.svg`.
+Los SVG usan las fuentes de la marca vía Google Fonts; para impresión, convertir textos a contornos.
+
+- **Símbolo:** Wordmark de bloque cortado por una franja horizontal a media altura (efecto stencil). URBAN va dentro de un rectángulo de contorno; NIGHTS debajo, sin caja.
+- **Construcción:** URBAN / NIGHTS en Russo One con una franja del color de fondo que corta cada línea a media altura (≈8% del alto). Caja de contorno solo alrededor de URBAN, grosor igual a la franja.
 - **Área de respeto:** Grosor del borde ×2 alrededor.
 - **Tamaño mínimo:** 56 px de ancho.
 
@@ -39,6 +41,12 @@ La serie de shows urbanos en vivo de Panamá: un artista invitado por noche, DJs
 - No usar serifas
 - No quitar la caja en el avatar
 - No usar más de un efecto (cromo o sólido, no ambos más sombra)
+
+## Instagram
+
+- **Bio:** Urban Nights ® / 🇵🇦 LOS MEJORES ARTISTAS URBANOS / COMING SOON 🔜
+- **Highlights:** Artistas, Shows, Tickets, VIP
+- **Grilla:** Flyer de artista (rojo/negro) → video del artista invitando → recap. Siempre un artista en primer plano.
 
 ## Color
 
@@ -62,10 +70,11 @@ La serie de shows urbanos en vivo de Panamá: un artista invitado por noche, DJs
 | Rol | Familia | Pesos | Estilo | Uso |
 |---|---|---|---|---|
 | display | Big Shoulders Display | 800, 900 | MAYÚSCULAS · tracking 0 | Logo, nombre del artista, fecha. |
+| logo | Russo One | 400 | MAYÚSCULAS · tracking 0 | Solo wordmark URBAN NIGHTS. |
 | secondary | Barlow | 600, 700 | MAYÚSCULAS · tracking 0.18em | Datos: venue, hora, tickets, géneros. |
 | body | Barlow | 400, 500 | normal · tracking 0 | Texto web y captions. |
 
-Cargar: `https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@800;900&family=Barlow:wght@400;500;600;700&display=swap`
+Cargar: `https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@800;900&family=Russo+One:wght@400&family=Barlow:wght@400;500;600;700&display=swap`
 
 **Escala web (px):** Display XL 96 · Display L 64 · H1 48 · H2 32 · H3 / editorial 24 · Body L 18 · Body 16 · Label 12
 
@@ -118,8 +127,6 @@ Web de serie de conciertos urbanos: próximo artista, tickets, historial de show
 - **Animación firma:** El nombre del artista cae desde arriba y el cromo brilla al impactar.
 
 ## Redes sociales
-
-**Grilla:** Flyer de artista (rojo/negro) → video del artista invitando → recap. Siempre un artista en primer plano.
 
 | Plantilla | Formato | Especificación |
 |---|---|---|

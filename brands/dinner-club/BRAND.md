@@ -1,6 +1,6 @@
 # DINNER CLUB — Línea gráfica
 
-> Dinner · Drinks · Party · @dinnerclub_pa
+> Dinner · Drinks · Party · @dinnerclub_pa · 450 seguidores
 > **Reserva para cenar. Quédate para la fiesta.**
 
 Fuente de verdad: `brands/dinner-club/brand.json`. Tokens para web: `brands/dinner-club/tokens.css`.
@@ -22,9 +22,11 @@ El plan de viernes y sábado para grupos y celebraciones en Ciudad de Panamá: c
 
 ## Logo
 
-- **Wordmark:** DINNER — descriptor "CLUB"
+Archivos vectoriales (redibujados del avatar de Instagram): `brands/dinner-club/logo/primary.svg`, `brands/dinner-club/logo/inverse.svg`, `brands/dinner-club/logo/on-accent.svg`, `brands/dinner-club/logo/symbol.svg`, `brands/dinner-club/logo/avatar.svg`.
+Los SVG usan las fuentes de la marca vía Google Fonts; para impresión, convertir textos a contornos.
+
 - **Símbolo:** Wordmark DINNER con CLUB pequeño espaciado debajo, dentro de un círculo (como el avatar actual). Monograma secundario 'DC' para servilletas, platos y sellos.
-- **Construcción:** DINNER en Outfit ExtraBold mayúsculas, tracking +2%. CLUB en Outfit Medium al 28% del alto, tracking +60%, centrado.
+- **Construcción:** Círculo blanco; DINNER en Source Sans 3 Bold mayúsculas centrado; CLUB en Source Sans 3 Regular al 35% del alto con tracking +45%, centrado debajo. Todo en Ink.
 - **Área de respeto:** Altura de la 'D' alrededor.
 - **Tamaño mínimo:** 64 px de ancho.
 
@@ -39,6 +41,12 @@ El plan de viernes y sábado para grupos y celebraciones en Ciudad de Panamá: c
 - No agregar copas o cubiertos al logo
 - No poner el logo sobre fotos de fiesta sin caja
 - No condensar el wordmark
+
+## Instagram
+
+- **Bio:** Dinner Club Panama / Reggaeton • Latin • Electronic / BEST PARTIES IN TOWN 🌃 / 📍 Panama City / 📩 Reservations & Guest List DM
+- **Highlights:** Menú, Noches, Reservas, Cumples
+- **Grilla:** Lanzamiento con grilla de 9: alternar Linen (mesa) y Ink (fiesta) en damero.
 
 ## Color
 
@@ -57,11 +65,11 @@ El plan de viernes y sábado para grupos y celebraciones en Ciudad de Panamá: c
 
 | Rol | Familia | Pesos | Estilo | Uso |
 |---|---|---|---|---|
-| display | Outfit | 500, 700, 800 | MAYÚSCULAS · tracking 0.02em | Logo, titulares, navegación. |
+| display | Source Sans 3 | 600, 700, 800 | MAYÚSCULAS · tracking 0.01em | Logo (DINNER en 700), titulares, navegación. |
 | secondary | Playfair Display (itálica) | 400, 500 | normal · tracking 0 | Frases de hospitalidad, nombres de platos y cócteles. |
-| body | Outfit | 300, 400 | normal · tracking 0.01em | Texto web, menús, captions. |
+| body | Source Sans 3 | 300, 400 | normal · tracking 0.01em | Texto web, menús, captions. |
 
-Cargar: `https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700;800&family=Playfair+Display:ital,wght@0,400;0,500;1,400;1,500&display=swap`
+Cargar: `https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;1,400;1,500&display=swap`
 
 **Escala web (px):** Display XL 96 · Display L 64 · H1 48 · H2 32 · H3 / editorial 24 · Body L 18 · Body 16 · Label 12
 
@@ -114,8 +122,6 @@ Web de restaurante-club: menú, noches temáticas y reservas para grupos y celeb
 - **Animación firma:** Una vela se apaga y se prende la luz de la pista.
 
 ## Redes sociales
-
-**Grilla:** Lanzamiento con grilla de 9: alternar Linen (mesa) y Ink (fiesta) en damero.
 
 | Plantilla | Formato | Especificación |
 |---|---|---|

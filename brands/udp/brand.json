@@ -2,6 +2,21 @@
   "slug": "udp",
   "accountId": "social-udp-pa",
   "handler": "@UDP.PA",
+  "ig": {
+    "bio": [
+      "Urban Development Project 🎭",
+      "Gestión integral de eventos y ciudad 🌇",
+      "Producción | Logística | Suministros",
+      "📍 Panamá"
+    ],
+    "highlights": [
+      "Casco Peatonal",
+      "Servicios",
+      "Proyectos",
+      "Aliados"
+    ],
+    "followers": "203"
+  },
   "name": "UDP",
   "descriptor": "Urban Development Project · PTY",
   "tagline": "Organizamos hoy, transformamos ciudad.",
@@ -27,7 +42,7 @@
     ],
     "descriptorLine": "URBAN DEVELOPMENT PROJECT · PTY",
     "symbol": "UDP en sans geométrica negra muy pesada con la barra 'URBAN DEVELOPMENT / PROJECT | PTY' + bandera de Panamá. El wordmark solo funciona como avatar.",
-    "construction": "UDP en Poppins ExtraBold, tracking −2%. Debajo, dos barras: 'URBAN DEVELOPMENT' en caja contorneada y 'PROJECT | PTY 🇵🇦' en caja sólida, Poppins Medium tracking +30%.",
+    "construction": "UDP en Poppins Black gigante. Debajo dos barras negras del mismo ancho: \"URBAN DEVELOPMENT\" (URBAN en bold, DEVELOPMENT en light) y \"PROJECT | PTY\" + bandera de Panamá. Versión completa en círculo con la fila de servicios y \"Organizamos hoy, transformamos ciudad.\"",
     "clearspace": "Altura de la barra inferior alrededor.",
     "minSize": "UDP solo 32 px · lockup completo 140 px.",
     "versions": [
@@ -257,5 +272,5 @@
     "cta": "Trabajemos juntos",
     "meta": "UDP · PANAMÁ"
   },
-  "mood": "linear-gradient(180deg, #8C8C8C 0%, #3A3A3A 55%, #0A0A0A 100%)"
+  "mood": "radial-gradient(ellipse at 50% 110%, rgba(200,155,60,.45) 0%, transparent 55%), linear-gradient(180deg, #3C3C3C 0%, #161616 55%, #0A0A0A 100%)"
 }

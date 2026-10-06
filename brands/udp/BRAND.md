@@ -1,6 +1,6 @@
 # UDP — Línea gráfica
 
-> Urban Development Project · PTY · @UDP.PA
+> Urban Development Project · PTY · @UDP.PA · 203 seguidores
 > **Organizamos hoy, transformamos ciudad.**
 
 Fuente de verdad: `brands/udp/brand.json`. Tokens para web: `brands/udp/tokens.css`.
@@ -22,9 +22,11 @@ Unidad integral que planifica, produce y opera eventos y actividades urbanas en 
 
 ## Logo
 
-- **Wordmark:** UDP — descriptor "URBAN DEVELOPMENT PROJECT · PTY"
+Archivos vectoriales (redibujados del avatar de Instagram): `brands/udp/logo/primary.svg`, `brands/udp/logo/inverse.svg`, `brands/udp/logo/on-accent.svg`, `brands/udp/logo/symbol.svg`, `brands/udp/logo/avatar.svg`.
+Los SVG usan las fuentes de la marca vía Google Fonts; para impresión, convertir textos a contornos.
+
 - **Símbolo:** UDP en sans geométrica negra muy pesada con la barra 'URBAN DEVELOPMENT / PROJECT | PTY' + bandera de Panamá. El wordmark solo funciona como avatar.
-- **Construcción:** UDP en Poppins ExtraBold, tracking −2%. Debajo, dos barras: 'URBAN DEVELOPMENT' en caja contorneada y 'PROJECT | PTY 🇵🇦' en caja sólida, Poppins Medium tracking +30%.
+- **Construcción:** UDP en Poppins Black gigante. Debajo dos barras negras del mismo ancho: "URBAN DEVELOPMENT" (URBAN en bold, DEVELOPMENT en light) y "PROJECT | PTY" + bandera de Panamá. Versión completa en círculo con la fila de servicios y "Organizamos hoy, transformamos ciudad."
 - **Área de respeto:** Altura de la barra inferior alrededor.
 - **Tamaño mínimo:** UDP solo 32 px · lockup completo 140 px.
 
@@ -39,6 +41,12 @@ Unidad integral que planifica, produce y opera eventos y actividades urbanas en 
 - No quitar la bandera del lockup completo
 - No poner el logo sobre fotos sin caja o degradado
 - No usar el dorado como fondo grande
+
+## Instagram
+
+- **Bio:** Urban Development Project 🎭 / Gestión integral de eventos y ciudad 🌇 / Producción | Logística | Suministros / 📍 Panamá
+- **Highlights:** Casco Peatonal, Servicios, Proyectos, Aliados
+- **Grilla:** Carruseles institucionales blancos alternando con fotos de ciudad B/N. Casco Peatonal con su sub-identidad colorida dentro del marco UDP.
 
 ## Color
 
@@ -116,8 +124,6 @@ Web corporativa B2G/B2B: servicios, proyectos, Casco Peatonal y contacto para al
 - **Animación firma:** La palabra clave se tiñe de Ochre de izquierda a derecha.
 
 ## Redes sociales
-
-**Grilla:** Carruseles institucionales blancos alternando con fotos de ciudad B/N. Casco Peatonal con su sub-identidad colorida dentro del marco UDP.
 
 | Plantilla | Formato | Especificación |
 |---|---|---|
