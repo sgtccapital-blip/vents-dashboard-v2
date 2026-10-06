@@ -9,7 +9,8 @@
     "fetch-raw": "node bin/fetch-raw.mjs",
     "transcribe": "node bin/transcribe.mjs",
     "render-brief": "node bin/render-brief.mjs",
-    "graphic": "node bin/graphic.mjs"
+    "graphic": "node bin/graphic.mjs",
+    "analyze-reference": "node bin/analyze-reference.mjs"
   },
   "dependencies": {
     "@remotion/bundler": "^4.0.533",

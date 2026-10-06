@@ -126,8 +126,8 @@ ${direction ? `## Dirección del equipo\n${direction}\n` : ''}
 Propón ${count} ideas de piezas distintas entre sí para ${account.handler}, respetando la mezcla de contenido de la cuenta (mayoría video orgánico). Cada idea debe poder producirse solo con este material.`;
 }
 
-export function developPrompt({ account, brand, task, assets, hasImages = false }) {
-    return `${accountContext(account, brand)}
+export function developPrompt({ account, brand, task, assets, hasImages = false, reference = '' }) {
+    return `${accountContext(account, brand)}${reference ? `\n## Referencia a recrear (formato y técnica, con material propio)\n${reference}\n` : ''}
 ## Idea aprobada
 Título: ${task.title}
 Formato: ${task.format} · Pilar: ${task.pillar}
@@ -139,7 +139,7 @@ Caption propuesto: ${task.caption || ''}
 ## Material raw asignado
 ${assetCatalog(assets)}
 ${hasImages ? '\nMiniaturas adjuntas en el mismo orden.\n' : ''}
-Desarrolla la pieza lista para editar: guion de edición plano a plano (EDL) usando los ids de los assets, textos en pantalla y subtítulos con el estilo de la cuenta, música, portada, cierre, historias de apoyo, caption final, hashtags y checklist para el editor. La estructura debe seguir la del reel de la cuenta.`;
+Desarrolla la pieza lista para editar: guion de edición plano a plano (EDL) usando los ids de los assets, textos en pantalla y subtítulos con el estilo de la cuenta, música, portada, cierre, historias de apoyo, caption final, hashtags y checklist para el editor. ${reference ? 'Recrea la estructura, el ritmo de cortes y la técnica de la referencia, adaptados a la línea de la cuenta.' : 'La estructura debe seguir la del reel de la cuenta.'}`;
 }
 
 export const SYSTEM_PROMPT = SYSTEM;

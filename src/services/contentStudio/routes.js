@@ -7,6 +7,8 @@ import { buildAliases, toAsset, mergeAssets, groupNights } from './rawLibrary.js
 import { generateStructured, availableProviders } from './llm.js';
 import { IdeaSchema, DevelopmentSchema, PromptPackSchema, SYSTEM_PROMPT, ideasPrompt, developPrompt, accountContext } from './ideaEngine.js';
 import { catalog, providerStatus, estimateCost, brandPrompt, runGeneration, friendlyError } from './generators.js';
+import { AdaptationSchema, REFERENCE_SYSTEM } from './referenceEngine.js';
+import multer from 'multer';
 import { renderBrief, slugify } from './brief.js';
 
 const MAX_IMAGES = 12;
@@ -156,9 +158,11 @@ export function registerContentStudio(app, { readDB, writeDB, loadBrands, accoun
         try {
             const brand = brandForAccount(account.id);
             const images = await thumbnailsFor(assets);
+            const refObj = task.referenceId ? (db.references || []).find(r => r.id === task.referenceId) : null;
+            const playbook = refObj?.playbookPath && fs.existsSync(path.join(projectRoot, refObj.playbookPath)) ? fs.readFileSync(path.join(projectRoot, refObj.playbookPath), 'utf-8') : '';
             const out = await generateStructured({
                 system: SYSTEM_PROMPT,
-                prompt: developPrompt({ account, brand, task, assets, hasImages: images.length > 0 }),
+                prompt: developPrompt({ account, brand, task, assets, hasImages: images.length > 0, reference: playbook }),
                 schema: DevelopmentSchema,
                 images,
                 geminiApiKey: geminiKey(),
@@ -402,6 +406,143 @@ export function registerContentStudio(app, { readDB, writeDB, loadBrands, accoun
                 geminiApiKey: geminiKey(),
             });
             res.json({ ...out.data, provider: out.provider, model: out.model });
+        } catch (err) {
+            res.status(502).json({ error: err.message });
+        }
+    });
+
+    // ─── Referencias y tutoriales: videos virales y técnicas para recrear ───
+    const libraryDir = path.join(contentDnaPath, '_library', 'references');
+    const refQueue = [];
+    let refRunning = null;
+    const upload = multer({
+        storage: multer.diskStorage({
+            destination: (req, file, cb) => {
+                req.refId ||= `ref-${Date.now()}`;
+                const dir = path.join(libraryDir, req.refId);
+                fs.mkdirSync(dir, { recursive: true });
+                cb(null, dir);
+            },
+            filename: (req, file, cb) => cb(null, `source${path.extname(file.originalname || '.mp4').toLowerCase() || '.mp4'}`),
+        }),
+        limits: { fileSize: 2 * 1024 * 1024 * 1024 },
+        fileFilter: (req, file, cb) => cb(null, /^video\//.test(file.mimetype)),
+    });
+
+    function runNextAnalysis() {
+        if (refRunning || !refQueue.length) return;
+        refRunning = refQueue.shift();
+        const child = spawn(process.execPath, ['bin/analyze-reference.mjs', refRunning], {
+            cwd: studioDir,
+            env: { ...process.env, CONTENT_DNA_PATH: contentDnaPath, DASHBOARD_URL: `http://127.0.0.1:${process.env.PORT || 8090}` },
+        });
+        let tail = '';
+        child.stderr.on('data', c => { tail = (tail + c).slice(-1500); });
+        child.on('close', code => {
+            if (code !== 0) {
+                const db = readDB();
+                const r = (db.references || []).find(x => x.id === refRunning);
+                if (r && r.status !== 'error') { r.status = 'error'; r.error = tail.split('\n').filter(Boolean).pop() || 'El análisis falló'; writeDB(db); }
+            }
+            refRunning = null;
+            runNextAnalysis();
+        });
+    }
+    const queueAnalysis = id => { if (!refQueue.includes(id) && refRunning !== id) refQueue.push(id); runNextAnalysis(); };
+
+    app.get('/api/studio/references', (req, res) => {
+        res.json((readDB().references || []).slice().sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))));
+    });
+
+    app.post('/api/studio/references', upload.single('file'), (req, res) => {
+        const b = req.body || {};
+        const type = b.type === 'tutorial' ? 'tutorial' : 'viral';
+        if (!req.file && !b.url) return res.status(400).json({ error: 'Pega un link o sube el video' });
+        if (b.url && !/^https?:\/\//.test(b.url)) return res.status(400).json({ error: 'Link no válido' });
+        const db = readDB();
+        const ref = {
+            id: req.refId || `ref-${Date.now()}`,
+            type,
+            url: b.url || null,
+            title: b.title || '',
+            notes: b.notes || '',
+            lang: b.lang || 'auto',
+            accountIds: b.accountIds ? [].concat(b.accountIds).flatMap(x => String(x).split(',')).filter(Boolean) : [],
+            sourcePath: req.file ? path.relative(projectRoot, req.file.path) : null,
+            status: 'queued',
+            createdAt: new Date().toISOString(),
+        };
+        db.references = [...(db.references || []), ref];
+        writeDB(db);
+        queueAnalysis(ref.id);
+        res.status(201).json(ref);
+    });
+
+    app.patch('/api/studio/references/:id', (req, res) => {
+        const db = readDB();
+        const ref = (db.references || []).find(r => r.id === req.params.id);
+        if (!ref) return res.status(404).json({ error: 'Referencia no encontrada' });
+        const changes = { ...(req.body || {}) };
+        delete changes.id;
+        delete changes.createdAt;
+        Object.assign(ref, changes);
+        writeDB(db);
+        res.json(ref);
+    });
+
+    app.post('/api/studio/references/:id/analyze', (req, res) => {
+        const db = readDB();
+        const ref = (db.references || []).find(r => r.id === req.params.id);
+        if (!ref) return res.status(404).json({ error: 'Referencia no encontrada' });
+        Object.assign(ref, { status: 'queued', error: null });
+        writeDB(db);
+        queueAnalysis(ref.id);
+        res.json(ref);
+    });
+
+    app.delete('/api/studio/references/:id', (req, res) => {
+        const db = readDB();
+        const before = (db.references || []).length;
+        db.references = (db.references || []).filter(r => r.id !== req.params.id);
+        if (db.references.length === before) return res.status(404).json({ error: 'Referencia no encontrada' });
+        writeDB(db);
+        fs.rmSync(path.join(libraryDir, req.params.id), { recursive: true, force: true });
+        res.json({ deleted: req.params.id });
+    });
+
+    // Recrear una referencia para una cuenta: crea la idea en el pipeline ligada a la referencia.
+    app.post('/api/studio/references/:id/recreate', async (req, res) => {
+        const db = readDB();
+        const ref = (db.references || []).find(r => r.id === req.params.id);
+        const account = (db.socialMedia || []).find(a => a.id === req.body?.accountId);
+        if (!ref?.analysis) return res.status(400).json({ error: 'La referencia todavía no está analizada' });
+        if (!account) return res.status(404).json({ error: 'Cuenta no encontrada' });
+        try {
+            const brand = brandForAccount(account.id);
+            const playbook = ref.playbookPath && fs.existsSync(path.join(projectRoot, ref.playbookPath)) ? fs.readFileSync(path.join(projectRoot, ref.playbookPath), 'utf-8') : JSON.stringify(ref.analysis);
+            const out = await generateStructured({
+                system: `${REFERENCE_SYSTEM}\n${SYSTEM_PROMPT}`,
+                prompt: `${accountContext(account, brand)}\n## Referencia\n${playbook}\n${req.body?.direction ? `\n## Dirección\n${req.body.direction}\n` : ''}\nDiseña UNA pieza para ${account.handler} que recree el formato y la técnica de la referencia con material propio y la línea de la cuenta.`,
+                schema: AdaptationSchema,
+                geminiApiKey: geminiKey(),
+            });
+            const a = out.data;
+            const task = {
+                id: `ct-${Date.now()}`,
+                createdAt: new Date().toISOString(),
+                title: a.title, accountId: account.id, accountHandler: account.handler,
+                format: a.format, pillar: a.pillar, status: 'idea',
+                hookVerbal: a.hook, hookVisual: a.overlayText ? `Texto en pantalla: ${a.overlayText}` : '',
+                scriptBody: `${a.concept}\n\nTomas:\n${a.shotList.map(s => `- ${s}`).join('\n')}`,
+                overlayText: a.overlayText, durationSec: a.durationSec, caption: a.caption, cta: a.cta,
+                hashtags: account.dna?.hashtags || '', ideaWhy: a.why,
+                rawAssetIds: [], referenceId: ref.id, source: 'reference',
+                publishDate: new Date().toISOString().slice(0, 10), publishTime: '19:30',
+            };
+            const fresh = readDB();
+            fresh.contentTasks = [...(fresh.contentTasks || []), task];
+            writeDB(fresh);
+            res.json(task);
         } catch (err) {
             res.status(502).json({ error: err.message });
         }

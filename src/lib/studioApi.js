@@ -28,6 +28,16 @@ export const studioApi = {
     generate: payload => call('/generate', { method: 'POST', body: payload }),
     generation: id => call(`/generate/${id}`),
     promptPack: payload => call('/prompt-pack', { method: 'POST', body: payload }),
+    references: () => call('/references'),
+    addReference: async formData => {
+        const res = await fetch('/api/studio/references', { method: 'POST', credentials: 'include', body: formData });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
+        return data;
+    },
+    reanalyze: id => call(`/references/${id}/analyze`, { method: 'POST' }),
+    deleteReference: id => call(`/references/${id}`, { method: 'DELETE' }),
+    recreate: (id, payload) => call(`/references/${id}/recreate`, { method: 'POST', body: payload }),
 };
 
 export const thumbUrl = (asset, size = 320) => {

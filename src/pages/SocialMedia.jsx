@@ -5,7 +5,7 @@ import {
     BarChart3, Eye, Heart, MessageCircle, ArrowRight, Sparkles,
     Globe, Music, Video, Camera, LinkIcon, ArrowLeft, Image,
     Film, CheckCircle2, Clock, Play, FileText, Check, ChevronRight,
-    Search, Filter, Sliders, Copy, Send, FolderGit2, Dna, Palette, FolderOpen, LayoutDashboard
+    Search, Filter, Sliders, Copy, Send, FolderGit2, Dna, Palette, FolderOpen, LayoutDashboard, GraduationCap
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import ContentCalendarGrid from '../components/ContentCalendarGrid';
@@ -15,6 +15,7 @@ import { loadBrandIndex, useBrandForAccount } from '../lib/useBrand';
 import BrandLinePanel from '../components/BrandLinePanel';
 import AccountWorkspace from '../components/studio/AccountWorkspace';
 import RawLibrary from '../components/studio/RawLibrary';
+import ReferencesPanel from '../components/studio/ReferencesPanel';
 import '../components/SocialEngine.css';
 
 const PLATFORM_META = {
@@ -575,6 +576,12 @@ export default function SocialMedia() {
                     <FolderOpen size={15} style={{ color: '#f472b6' }} /> 📥 Material raw
                 </button>
                 <button 
+                    className={`social-tab-btn ${currentTab === 'references' ? 'active' : ''}`}
+                    onClick={() => setCurrentTab('references')}
+                >
+                    <GraduationCap size={15} style={{ color: '#fbbf24' }} /> 🎓 Referencias & Tutoriales
+                </button>
+                <button 
                     className={`social-tab-btn ${currentTab === 'accounts' ? 'active' : ''}`}
                     onClick={() => setCurrentTab('accounts')}
                 >
@@ -846,6 +853,12 @@ export default function SocialMedia() {
             {currentTab === 'raw' && (
                 <div className="animate-in">
                     <RawLibrary accounts={accounts} />
+                </div>
+            )}
+
+            {currentTab === 'references' && (
+                <div className="animate-in">
+                    <ReferencesPanel accounts={accounts} />
                 </div>
             )}
 

@@ -59,3 +59,10 @@ Para cortes rápidos, reencuadres, limpieza de audio, velocidad, GIFs o extracci
 - **Google (Nano Banana / Veo):** desde el dashboard (Abrir cuenta → Generar con IA) o `POST /api/studio/generate`. Requiere `GEMINI_API_KEY` con facturación.
 - **Google Flow** no tiene API: genera prompts con `POST /api/studio/prompt-pack` y pide al usuario exportar los resultados a la carpeta de Drive.
 - Prompts: sujeto, acción, cámara, lente, luz, color y ambiente de la marca (`brand.imagery`, `content.video`). Nunca pidas logos, nombres ni texto renderizado: los agrega Remotion.
+
+## Referencias y tutoriales
+
+- Antes de crear una pieza "como tal video" o con una técnica nueva, revisa `content-dna/_library/TECNICAS.md` y el `PLAYBOOK.md` de la referencia (`content-dna/_library/references/<id>/`): gancho, estructura con tiempos, ritmo de cortes medido, técnica con parámetros y adaptaciones.
+- Analizar una referencia nueva: `cd studio && npm run analyze-reference -- <id>` (se crea desde el dashboard, pestaña Referencias).
+- Si la técnica está "Por construir": impleméntala como composición o componente reutilizable en `studio/src/` (registrada en `Root.jsx`), pruébala con una marca, mira el resultado y documenta su uso aquí.
+- Recrea formato y técnica con material propio y la línea de la cuenta; nunca copies el contenido, la música con derechos ni la imagen de otros.

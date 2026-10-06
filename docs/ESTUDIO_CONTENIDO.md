@@ -63,3 +63,16 @@ La API de Gemini no tiene uso gratis para imagen ni video. Tu plan incluye créd
 2. En Google Cloud, crea o elige un proyecto y vincúlale la cuenta de facturación donde aparecen los créditos.
 3. En aistudio.google.com → API keys, crea una key **en ese proyecto** y ponla en `GEMINI_API_KEY` del `.env`.
 4. Reinicia el servidor. El costo estimado aparece antes de cada generación y pide confirmación desde US$1.
+
+## Referencias y tutoriales (Redes Sociales → 🎓 Referencias & Tutoriales)
+
+Para enseñarle a la máquina formatos virales y técnicas de edición:
+
+1. **Agregar:** pega el link (Instagram, TikTok, YouTube, X…) o sube el video. Elige si es **video viral** (para recrear el formato) o **tutorial** (para aprender una técnica). Las notas y las cuentas son opcionales.
+2. **Análisis automático:** se descarga con `yt-dlp`, se miden los cortes de escena y el ritmo con ffmpeg, se extrae un frame por plano, se transcribe la voz con Whisper y la IA (viendo los frames) arma la receta: gancho, estructura segundo a segundo, edición (ritmo, transiciones, efectos, texto, subtítulos, color, audio), por qué funciona, la técnica con pasos y parámetros, cómo la hace la máquina y adaptaciones por cuenta.
+3. **Recrear para una cuenta:** crea la idea en Producción ligada a la referencia; al desarrollarla, el guion de edición sigue la estructura y el ritmo de la referencia con la línea de la cuenta.
+4. **Técnicas por construir:** si un tutorial enseña algo que la máquina todavía no tiene, queda marcado y el botón "Instrucción para Claude Code" da el pedido para programarlo como plantilla.
+
+Archivos: `content-dna/_library/references/<id>/` (video, frames, hoja de contacto, `PLAYBOOK.md`, `analysis.json`) y el índice `content-dna/_library/TECNICAS.md`. Desde la terminal: `cd studio && npm run analyze-reference -- <id>`.
+
+Instagram y TikTok a veces piden sesión: si un link falla, sube el video a mano, o define `YTDLP_COOKIES_BROWSER=chrome` en `.env` para que yt-dlp use tu sesión del navegador. Se recrea el formato y la técnica con material propio; nunca se reutiliza el contenido, la música con derechos ni la imagen de otros.
