@@ -1,15 +1,16 @@
 import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
     Instagram, Youtube, Twitter, Facebook, Plus, X, Edit3, Trash2,
     ExternalLink, Users, TrendingUp, CalendarDays, Hash, Share2,
     BarChart3, Eye, Heart, MessageCircle, ArrowRight, Sparkles,
     Globe, Music, Video, Camera, LinkIcon, ArrowLeft, Image,
     Film, CheckCircle2, Clock, Play, FileText, Check, ChevronRight,
-    Search, Filter, Sliders, Copy, Send, FolderGit2
+    Search, Filter, Sliders, Copy, Send, FolderGit2, Dna
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import ContentCalendarGrid from '../components/ContentCalendarGrid';
+import AccountDnaEditor from '../components/AccountDnaEditor';
+import { dnaCompleteness, normalizeDna } from '../lib/accountDna';
 import '../components/SocialEngine.css';
 
 const PLATFORM_META = {
@@ -106,12 +107,16 @@ const VIRAL_HOOKS_VAULT = [
     }
 ];
 
+const DEFAULT_PILLARS = [
+    'Branding & Lifestyle', 'Talento & Cenas', 'Nightlife & Energy',
+    'Autoridad & Negocios', 'Behind the Scenes', 'Educativo / Valor'
+];
+
 export default function SocialMedia() {
-    const navigate = useNavigate();
     const { 
-        socialMedia, addSocialMedia, updateSocialMedia, deleteSocialMedia, 
+        socialMedia, addSocialMedia, updateSocialMedia, 
         contentTasks, addContentTask, updateContentTask, deleteContentTask,
-        events, addActivity 
+        addActivity 
     } = useApp();
 
     // ─── Active Tab & Account Filter ───
@@ -155,11 +160,13 @@ export default function SocialMedia() {
         linkedEventIds: []
     });
 
+    const [dnaAccount, setDnaAccount] = useState(null);
+
     const [selectedHookCategory, setSelectedHookCategory] = useState('all');
     const [copiedHookId, setCopiedHookId] = useState(null);
 
     // ─── Accounts List ───
-    const accounts = socialMedia || [];
+    const accounts = useMemo(() => socialMedia || [], [socialMedia]);
 
     // Calculate aggregated metrics
     const totalAudience = useMemo(() => {
@@ -342,6 +349,21 @@ export default function SocialMedia() {
         setShowAccountModal(false);
     };
 
+    // ─── Handlers: ADN de cuenta ───
+    const handleSaveDna = (dna) => {
+        updateSocialMedia(dnaAccount.id, { dna });
+        if (addActivity) addActivity(`ADN actualizado: ${dnaAccount.handler} (${dnaCompleteness(dna)}%)`, '#a78bfa');
+        setDnaAccount(null);
+    };
+
+    // Pilares del ADN de la cuenta elegida en el formulario de contenido (o los genéricos si aún no tiene ADN)
+    const taskAccountPillars = useMemo(() => {
+        const acc = accounts.find(a => a.id === taskFormData.accountId || a.handler === taskFormData.accountHandler);
+        const pillars = normalizeDna(acc?.dna).pillars;
+        const base = pillars.length ? pillars : DEFAULT_PILLARS;
+        return taskFormData.pillar && !base.includes(taskFormData.pillar) ? [taskFormData.pillar, ...base] : base;
+    }, [accounts, taskFormData.accountId, taskFormData.accountHandler, taskFormData.pillar]);
+
     // Filtered Hooks
     const filteredHooks = useMemo(() => {
         if (selectedHookCategory === 'all') return VIRAL_HOOKS_VAULT;
@@ -503,7 +525,7 @@ export default function SocialMedia() {
                     className={`social-tab-btn ${currentTab === 'accounts' ? 'active' : ''}`}
                     onClick={() => setCurrentTab('accounts')}
                 >
-                    <Users size={15} /> 👥 Cuentas & Métricas ({accounts.length})
+                    <Dna size={15} style={{ color: '#a78bfa' }} /> 🧬 Cuentas & ADN ({accounts.length})
                 </button>
             </div>
 
@@ -774,6 +796,7 @@ export default function SocialMedia() {
                         const meta = PLATFORM_META[acc.platform] || PLATFORM_META.Instagram;
                         const IconComp = meta.icon;
                         const tasksForThis = (contentTasks || []).filter(t => t.accountHandler === acc.handler || t.accountId === acc.id);
+                        const dnaPct = dnaCompleteness(acc.dna);
 
                         return (
                             <div key={acc.id} className="card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -818,16 +841,32 @@ export default function SocialMedia() {
                                     </div>
                                 </div>
 
+                                <div className="dna-card-bar">
+                                    <Dna size={12} style={{ color: '#a78bfa' }} /> ADN
+                                    <div className="dna-progress-track">
+                                        <div className="dna-progress-fill" style={{ width: `${dnaPct}%` }} />
+                                    </div>
+                                    <span style={{ color: dnaPct === 100 ? '#34d399' : '#a78bfa' }}>{dnaPct}%</span>
+                                </div>
+
                                 <div style={{ display: 'flex', gap: '8px', marginTop: 'auto' }}>
                                     <button 
                                         className="social-btn-primary" 
                                         style={{ flex: 1, padding: '7px', fontSize: '12px', justifyContent: 'center' }}
+                                        onClick={() => setDnaAccount(acc)}
+                                    >
+                                        <Dna size={13} /> {dnaPct ? 'Editar ADN' : 'Definir ADN'}
+                                    </button>
+                                    <button 
+                                        className="social-btn-secondary" 
+                                        style={{ padding: '7px 12px', fontSize: '12px' }}
+                                        title="Ver pipeline de esta cuenta"
                                         onClick={() => {
                                             setSelectedAccountFilter(acc.handler);
                                             setCurrentTab('pipeline');
                                         }}
                                     >
-                                        <Film size={13} /> Ver Pipeline
+                                        <Film size={13} />
                                     </button>
                                     <button 
                                         className="social-btn-secondary" 
@@ -923,12 +962,9 @@ export default function SocialMedia() {
                                             value={taskFormData.pillar}
                                             onChange={(e) => setTaskFormData({ ...taskFormData, pillar: e.target.value })}
                                         >
-                                            <option value="Branding & Lifestyle">Branding & Lifestyle</option>
-                                            <option value="Talento & Cenas">Talento & Cenas de Chicas</option>
-                                            <option value="Nightlife & Energy">Nightlife & Energy</option>
-                                            <option value="Gastronomía & Rooftop">Gastronomía & Rooftop</option>
-                                            <option value="Speakeasy & Exclusividad">Speakeasy & Exclusividad</option>
-                                            <option value="Autoridad & Negocios">Autoridad & Negocios</option>
+                                            {taskAccountPillars.map(p => (
+                                                <option key={p} value={p}>{p}</option>
+                                            ))}
                                         </select>
                                     </div>
 
@@ -1177,6 +1213,14 @@ export default function SocialMedia() {
                         </form>
                     </div>
                 </div>
+            )}
+
+            {dnaAccount && (
+                <AccountDnaEditor
+                    account={dnaAccount}
+                    onSave={handleSaveDna}
+                    onClose={() => setDnaAccount(null)}
+                />
             )}
         </div>
     );

@@ -26,6 +26,7 @@ const require = createRequire(import.meta.url);
 const pdf = require('pdf-parse');
 import openCloudEngine from './src/services/openCloudEngine.js';
 import { normalizeTaskStatus, normalizeEventStatus, TASK_STATUSES, EVENT_STATUSES } from './src/lib/status.js';
+import { dnaToMarkdown, dnaCompleteness, accountSlug } from './src/lib/accountDna.js';
 
 dotenv.config();
 
@@ -37,6 +38,7 @@ const PORT = process.env.PORT || 8090;
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'db.json');
 const SEED_PATH = path.join(__dirname, 'db.seed.json');
 const VAULT_PATH = process.env.VAULT_PATH || path.join(__dirname, '_agent_inbox');
+const CONTENT_DNA_PATH = process.env.CONTENT_DNA_PATH || path.join(__dirname, 'content-dna');
 
 // Ensure db.json exists immediately on startup
 function ensureDBFile() {
@@ -820,6 +822,49 @@ app.post('/api/vault/upload', upload.single('file'), async (req, res) => {
 });
 
 // ─── Register CRUD Routes ─────────────────────────────────────
+
+// ─── ADN de cuentas → content-dna/<cuenta>/DNA.md ───────────────
+// Claude Code y los demás agentes leen estos archivos antes de crear contenido para una cuenta.
+// No se borran carpetas de cuentas eliminadas: pueden contener briefs y assets.
+function syncContentDnaFiles(accounts = []) {
+    try {
+        fs.mkdirSync(CONTENT_DNA_PATH, { recursive: true });
+        const rows = [];
+        for (const account of accounts) {
+            const slug = accountSlug(account);
+            const dir = path.join(CONTENT_DNA_PATH, slug);
+            fs.mkdirSync(dir, { recursive: true });
+            fs.writeFileSync(path.join(dir, 'DNA.md'), dnaToMarkdown(account), 'utf-8');
+            rows.push(`| ${account.handler} | ${account.platform || ''} | ${account.type || ''} | ${dnaCompleteness(account.dna)}% | [DNA.md](${slug}/DNA.md) |`);
+        }
+        const index = [
+            '# ADN de contenido por cuenta',
+            '',
+            'Generado automáticamente por el dashboard (sección Redes Sociales). No edites estos archivos a mano:',
+            'los cambios se sobrescriben al guardar la cuenta. Edita el ADN desde el dashboard.',
+            '',
+            'Antes de crear cualquier pieza (diseño, motion, edición, guion, caption o prompt) para una cuenta,',
+            'lee su `DNA.md`. Los entregables de cada cuenta van en su carpeta.',
+            '',
+            '| Cuenta | Plataforma | Tipo | ADN | Archivo |',
+            '|---|---|---|---|---|',
+            ...rows,
+            '',
+        ].join('\n');
+        fs.writeFileSync(path.join(CONTENT_DNA_PATH, 'README.md'), index, 'utf-8');
+    } catch (err) {
+        console.error('[ContentDNA] No se pudieron escribir los archivos de ADN:', err.message);
+    }
+}
+
+app.use('/api/socialMedia', (req, res, next) => {
+    if (req.method !== 'GET') {
+        res.on('finish', () => {
+            if (res.statusCode < 400) syncContentDnaFiles(readDB().socialMedia || []);
+        });
+    }
+    next();
+});
 
 const entities = ['agents', 'projects', 'companies', 'events', 'tasks', 'agentTasks', 'agentMemory', 'agentKPIs', 'circuitBreakers', 'notes', 'ideas', 'subscriptions', 'socialMedia', 'contentTasks', 'orders', 'contacts', 'decisionLog', 'portfolioRoadmap', 'promoters', 'imageGirls'];
 
@@ -4433,7 +4478,8 @@ app.listen(PORT, '0.0.0.0', async () => {
     
     // Sincronizar datos con Supabase antes de cualquier consulta RAG o peticiones de clientes
     await initSupabaseSync();
-    
+    syncContentDnaFiles(readDB().socialMedia || []);
+
     // Initialize db.json if it doesn't exist
     if (!fs.existsSync(DB_PATH)) {
         try {

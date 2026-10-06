@@ -818,3 +818,103 @@
     grid-template-columns: repeat(6, 260px);
   }
 }
+
+/* ─── ADN de cuentas ─── */
+.dna-modal { max-width: 960px; }
+
+.dna-hint {
+  font-weight: 500;
+  text-transform: none;
+  color: #64748b;
+  font-size: 11px;
+}
+
+.dna-progress { padding: 14px 26px 0; }
+
+.dna-progress-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.dna-progress-label strong { color: #a78bfa; }
+
+.dna-progress-track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.dna-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #7c3aed, #e1306c);
+  transition: width 0.3s;
+}
+
+.dna-section {
+  border: 1px solid color-mix(in srgb, var(--dna-accent) 30%, transparent);
+  background: color-mix(in srgb, var(--dna-accent) 5%, transparent);
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.dna-section-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--dna-accent);
+  margin-bottom: 12px;
+}
+
+.dna-section-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.dna-section textarea { font-family: inherit; resize: vertical; }
+
+.dna-palette-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.dna-palette-row input { flex: 1; min-width: 0; }
+
+.dna-swatches { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.dna-swatch {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.dna-footer { gap: 10px; flex-wrap: wrap; }
+
+.dna-export-actions { display: flex; gap: 8px; }
+
+.dna-card-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #94a3b8;
+}
+
+.dna-card-bar .dna-progress-track { flex: 1; height: 4px; }
+
+@media (max-width: 640px) {
+  .dna-section-grid { grid-template-columns: 1fr; }
+  .dna-section-grid .social-field { grid-column: 1 / -1; }
+}

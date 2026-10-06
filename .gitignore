@@ -41,3 +41,6 @@ openclaw-core/db/
 # Legacy repository snapshot (root Dashboard Events is source of truth)
 repo_git/
 backups/
+
+# ADN de cuentas (generado desde la base de datos por server.js)
+content-dna/
