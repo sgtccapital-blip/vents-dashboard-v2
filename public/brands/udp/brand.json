@@ -272,5 +272,135 @@
     "cta": "Trabajemos juntos",
     "meta": "UDP · PANAMÁ"
   },
-  "mood": "radial-gradient(ellipse at 50% 110%, rgba(200,155,60,.45) 0%, transparent 55%), linear-gradient(180deg, #3C3C3C 0%, #161616 55%, #0A0A0A 100%)"
+  "mood": "radial-gradient(ellipse at 50% 110%, rgba(200,155,60,.45) 0%, transparent 55%), linear-gradient(180deg, #3C3C3C 0%, #161616 55%, #0A0A0A 100%)",
+  "content": {
+    "observed": "Carruseles institucionales en blanco y negro con acento dorado ('¿Qué hacemos en UDP?', 'La ciudad está cambiando', '¿Qué es UDP?') y la agenda del Casco Peatonal con una sub-identidad más colorida. Todavía no publica video.",
+    "mix": [
+      {
+        "type": "Reels de montaje y operación",
+        "pct": 30,
+        "kind": "organic"
+      },
+      {
+        "type": "Reels del Casco Peatonal (gente y cultura)",
+        "pct": 25,
+        "kind": "organic"
+      },
+      {
+        "type": "Carruseles institucionales",
+        "pct": 25,
+        "kind": "graphic"
+      },
+      {
+        "type": "Stories: agenda, encuestas",
+        "pct": 20,
+        "kind": "stories"
+      }
+    ],
+    "video": {
+      "lengths": "Timelapse de montaje 10–20 s · Casco Peatonal 15–30 s · institucional 30–45 s",
+      "hook": "Antes y después en el primer segundo: calle vacía → evento lleno, con el claim en Poppins.",
+      "structure": [
+        {
+          "t": "0–2 s",
+          "label": "Antes",
+          "desc": "Calle vacía + claim"
+        },
+        {
+          "t": "2–10 s",
+          "label": "Operación",
+          "desc": "Timelapse de montaje y logística"
+        },
+        {
+          "t": "10–18 s",
+          "label": "Después",
+          "desc": "Gente disfrutando el espacio"
+        },
+        {
+          "t": "Final",
+          "label": "Firma",
+          "desc": "Lockup UDP + 'Organizamos hoy, transformamos ciudad.'"
+        }
+      ],
+      "camera": "Trípode y timelapse para montajes; gimbal a la altura de la gente en el Casco; drone para escala de ciudad.",
+      "grade": "Desaturado con calidez dorada; atardeceres dorados para piezas emocionales.",
+      "transitions": "Cortes ordenados, textos que entran por bloques, barrido ocre sobre la palabra clave.",
+      "overlay": {
+        "style": "Poppins Black mayúsculas blanco, alineado a la izquierda, palabra clave en ocre; etiqueta negra con texto blanco para el dato.",
+        "kicker": "ARTE · CULTURA · CIUDAD",
+        "text": "LA CIUDAD ESTÁ CAMBIANDO.",
+        "sub": "CASCO PEATONAL · DOMINGO 8AM–6PM"
+      },
+      "subtitles": {
+        "style": "Inter 600 blanco sobre caja negra, por frase; nombres de lugares en ocre.",
+        "sample": "cerramos la calle para que la gente la viva",
+        "highlight": "gente"
+      },
+      "cover": {
+        "style": "Foto de ciudad desaturada con claim en Poppins Black y la palabra clave en ocre; logo UDP arriba-izquierda.",
+        "title": "ASÍ SE MONTA EL CASCO"
+      },
+      "endcard": {
+        "style": "Fondo blanco con UDP gigante en Concrete detrás, lockup completo y 'Proyectos & alianzas por DM'.",
+        "cta": "Trabajemos juntos"
+      },
+      "music": "Instrumental moderno y cinematográfico; música local en piezas del Casco."
+    },
+    "organic": {
+      "principles": [
+        "Mostrar el trabajo detrás: montaje, logística, equipo",
+        "La ciudad y la gente como protagonistas",
+        "Nada de estética de nightlife",
+        "Datos concretos (personas, horas, metros)"
+      ],
+      "shots": [
+        "Timelapse de montaje",
+        "Equipo con chaleco UDP",
+        "Calle peatonal llena",
+        "Detalle de patrimonio",
+        "Familias y artistas callejeros",
+        "Drone del Casco",
+        "Atardecer en la ciudad"
+      ]
+    },
+    "stories": {
+      "principles": [
+        "Fondo blanco o foto desaturada",
+        "Agenda del fin de semana como sticker",
+        "Encuestas sobre la ciudad"
+      ],
+      "announce": "DOMINGO 31 · CASCO PEATONAL",
+      "poll": {
+        "q": "¿Qué quieres en el Casco Peatonal?",
+        "a": [
+          "Más música",
+          "Más comida"
+        ]
+      },
+      "countdown": "CASCO PEATONAL EN",
+      "link": "VER AGENDA"
+    },
+    "weekly": [
+      {
+        "day": "Lun",
+        "piece": "Recap del domingo (reel)"
+      },
+      {
+        "day": "Mié",
+        "piece": "Carrusel institucional"
+      },
+      {
+        "day": "Jue",
+        "piece": "Agenda del fin de semana"
+      },
+      {
+        "day": "Sáb",
+        "piece": "Timelapse de montaje"
+      },
+      {
+        "day": "Dom",
+        "piece": "Stories en vivo del Casco"
+      }
+    ]
+  }
 }

@@ -11,6 +11,8 @@ import { useApp } from '../context/AppContext';
 import ContentCalendarGrid from '../components/ContentCalendarGrid';
 import AccountDnaEditor from '../components/AccountDnaEditor';
 import { dnaCompleteness, normalizeDna } from '../lib/accountDna';
+import { loadBrandIndex, useBrandForAccount } from '../lib/useBrand';
+import BrandLinePanel from '../components/BrandLinePanel';
 import '../components/SocialEngine.css';
 
 const PLATFORM_META = {
@@ -165,10 +167,7 @@ export default function SocialMedia() {
     // Líneas gráficas generadas por `npm run brands` (public/brands/index.json), indexadas por cuenta
     const [brandByAccount, setBrandByAccount] = useState({});
     useEffect(() => {
-        fetch('/brands/index.json')
-            .then(r => (r.ok ? r.json() : []))
-            .then(list => setBrandByAccount(Object.fromEntries(list.map(b => [b.accountId, b]))))
-            .catch(() => {});
+        loadBrandIndex().then(list => setBrandByAccount(Object.fromEntries((list || []).map(b => [b.accountId, b]))));
     }, []);
 
     const [selectedHookCategory, setSelectedHookCategory] = useState('all');
@@ -366,6 +365,9 @@ export default function SocialMedia() {
     };
 
     // Pilares del ADN de la cuenta elegida en el formulario de contenido (o los genéricos si aún no tiene ADN)
+    // Guía de video de la cuenta elegida en el formulario de nueva pieza
+    const { brand: taskBrand } = useBrandForAccount(showTaskModal ? taskFormData.accountId : null);
+
     const taskAccountPillars = useMemo(() => {
         const acc = accounts.find(a => a.id === taskFormData.accountId || a.handler === taskFormData.accountHandler);
         const pillars = normalizeDna(acc?.dna).pillars;
@@ -964,6 +966,8 @@ export default function SocialMedia() {
                                         </select>
                                     </div>
                                 </div>
+
+                                <BrandLinePanel brand={taskBrand} compact />
 
                                 <div className="social-field full">
                                     <label>Título / Concepto Central</label>

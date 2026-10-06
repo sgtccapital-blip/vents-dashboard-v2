@@ -179,6 +179,44 @@ ${list(brand.logo.misuse)}
 - **Highlights:** ${(brand.ig?.highlights || []).join(', ')}
 - **Grilla:** ${brand.social.grid}
 
+## Línea de contenido
+
+Fuente: \`brands/${brand.slug}/content.json\`.
+
+**Lo que ya publica la cuenta:** ${brand.content.observed}
+
+**Mezcla:** ${brand.content.mix.map(m => `${m.type} ${m.pct}% (${m.kind})`).join(' · ')}
+
+### Video (la mayoría del contenido)
+
+- **Duración:** ${brand.content.video.lengths}
+- **Gancho:** ${brand.content.video.hook}
+- **Estructura:** ${brand.content.video.structure.map(x => `${x.t} ${x.label} (${x.desc})`).join(' → ')}
+- **Cámara:** ${brand.content.video.camera}
+- **Color:** ${brand.content.video.grade}
+- **Transiciones:** ${brand.content.video.transitions}
+- **Texto sobre video:** ${brand.content.video.overlay.style} Ejemplo: "${[brand.content.video.overlay.kicker, brand.content.video.overlay.text, brand.content.video.overlay.sub].filter(Boolean).join(' / ')}"
+- **Subtítulos:** ${brand.content.video.subtitles.style}
+- **Portada:** ${brand.content.video.cover.style}
+- **Cierre:** ${brand.content.video.endcard.style}
+- **Música:** ${brand.content.video.music}
+
+### Orgánico
+
+${list(brand.content.organic.principles)}
+
+**Lista de tomas:** ${brand.content.organic.shots.join(' · ')}
+
+### Historias
+
+${list(brand.content.stories.principles)}
+
+Set de gráficos: anuncio ("${brand.content.stories.announce}"), cuenta regresiva ("${brand.content.stories.countdown}"), encuesta ("${brand.content.stories.poll.q}" → ${brand.content.stories.poll.a.join(' / ')}), repost con marco de marca y link ("${brand.content.stories.link}").
+
+### Semana tipo
+
+${brand.content.weekly.map(w => `- **${w.day}:** ${w.piece}`).join('\n')}
+
 ## Color
 
 | Token | Nombre | Hex | Rol | Uso |
@@ -402,7 +440,100 @@ function webHero(brand, L) {
     </div>`;
 }
 
-const NAV = [['instagram', 'Instagram'], ['esencia', 'Esencia'], ['logo', 'Logo'], ['color', 'Color'], ['tipografia', 'Tipografía'], ['interfaz', 'Interfaz'], ['redes', 'Plantillas'], ['aplicaciones', 'Aplicaciones'], ['web', 'Web'], ['imagen', 'Imagen'], ['motion', 'Motion'], ['voz', 'Voz'], ['reglas', 'Reglas']];
+// ─── Línea de contenido (brands/<marca>/content.json) ───
+const KIND_LABEL = { organic: 'Orgánico (video)', graphic: 'Gráfico', stories: 'Historias' };
+
+function reelChrome(brand, L, caption) {
+    const handle = brand.handler.replace(/^@/, '').toLowerCase();
+    return `<div class="reel-ui"><div class="reel-progress"><i></i></div>
+      <div class="reel-side"><span>♥</span><span>💬</span><span>➤</span><span>⋯</span></div>
+      <div class="reel-foot"><div class="reel-user"><span class="reel-av">${L.avatar}</span><b>${esc(handle)}</b><em>Seguir</em></div><div class="reel-cap">${esc(caption)}</div></div></div>`;
+}
+
+function highlightWord(text, word) {
+    if (!word) return esc(text);
+    const i = text.toLowerCase().indexOf(word.toLowerCase());
+    if (i < 0) return esc(text);
+    return `${esc(text.slice(0, i))}<span class="hl">${esc(text.slice(i, i + word.length))}</span>${esc(text.slice(i + word.length))}`;
+}
+
+function videoFrames(brand, L) {
+    const v = brand.content.video;
+    const o = v.overlay;
+    const accentLast = ['institutional', 'impact'].includes(brand.layout);
+    const overlayText = accentLast ? headline(o.text, true) : esc(o.text);
+    return `<div class="vf-row">
+      <figure><div class="vframe l-${brand.layout} vf-overlay"><div class="ph"></div>
+        <div class="ov">${o.kicker ? `<div class="ov-k">${esc(o.kicker)}</div>` : ''}<div class="ov-t">${overlayText}</div>${o.sub ? `<div class="ov-s">${esc(o.sub)}</div>` : ''}</div>
+        ${reelChrome(brand, L, brand.voice.headlines[0])}</div><figcaption>Texto sobre video</figcaption></figure>
+      <figure><div class="vframe l-${brand.layout} vf-subs"><div class="ph alt"></div>
+        <div class="subs"><span>${highlightWord(v.subtitles.sample, v.subtitles.highlight)}</span></div>
+        ${reelChrome(brand, L, brand.tagline)}</div><figcaption>Subtítulos</figcaption></figure>
+      <figure><div class="vframe l-${brand.layout} vf-cover"><div class="ph alt2"></div>
+        <div class="cover-t"><div class="cover-logo-s">${moodSymbol(brand, L)}</div><div class="ct">${esc(v.cover.title)}</div></div>
+        <div class="play">▶</div></div><figcaption>Portada del reel</figcaption></figure>
+      <figure><div class="vframe l-${brand.layout} vf-end"><div class="end-in"><div class="end-logo">${L.primary}</div><div class="end-cta">${esc(v.endcard.cta)}</div><div class="end-h">${esc(brand.handler)}</div></div>
+        </div><figcaption>Cierre</figcaption></figure>
+    </div>`;
+}
+
+function storyGraphics(brand, L) {
+    const st = brand.content.stories;
+    const s = brand.sample;
+    return `<div class="sg-row">
+      <figure><div class="sg l-${brand.layout} sg-announce"><div class="ph"></div><div class="sg-in"><div class="sg-logo">${moodLogo(brand, L)}</div><div class="sg-big">${esc(st.announce)}</div><div class="sg-sub">${esc(s.sub)}</div><div class="ig-sticker link">🔗 ${esc(st.link)}</div></div></div><figcaption>Anuncio</figcaption></figure>
+      <figure><div class="sg l-${brand.layout} sg-count"><div class="sg-in"><div class="sg-sym">${L.symbol}</div><div class="sg-label">${esc(st.countdown)}</div><div class="ig-sticker countdown"><b>${esc(s.headline)}</b><div class="digits"><span>03</span><span>14</span><span>22</span></div><small>días · horas · min</small></div><div class="sg-sub">${esc(s.meta)}</div></div></div><figcaption>Cuenta regresiva</figcaption></figure>
+      <figure><div class="sg l-${brand.layout} sg-poll"><div class="ph alt"></div><div class="sg-in"><div class="sg-q">${esc(st.poll.q)}</div><div class="ig-sticker poll"><span>${esc(st.poll.a[0])}</span><span>${esc(st.poll.a[1])}</span></div><div class="sg-logo small">${moodLogo(brand, L)}</div></div></div><figcaption>Encuesta</figcaption></figure>
+      <figure><div class="sg l-${brand.layout} sg-repost"><div class="sg-in"><div class="sg-tag">REPOST</div><div class="repost-card"><div class="ph alt2"></div><span>@tu.usuario</span></div><div class="sg-sym">${moodSymbol(brand, L)}</div><div class="sg-sub">Etiqueta a ${esc(brand.handler)}</div></div></div><figcaption>Repost</figcaption></figure>
+      <figure><div class="sg l-${brand.layout} sg-link"><div class="sg-in"><div class="sg-big">${esc(brand.voice.headlines[0])}</div><div class="ig-sticker link big">🔗 ${esc(st.link)}</div><div class="sg-logo small">${L.onAccent}</div></div></div><figcaption>Link / CTA</figcaption></figure>
+    </div>`;
+}
+
+function contentSection(brand, L) {
+    const c = brand.content;
+    const v = c.video;
+    const kinds = { organic: 0, graphic: 0, stories: 0 };
+    c.mix.forEach(m => { kinds[m.kind] += m.pct; });
+    const mixBar = c.mix.map(m => `<div class="mix-seg k-${m.kind}" style="flex:${m.pct}"><b>${m.pct}%</b><span>${esc(m.type)}</span></div>`).join('');
+    const timeline = v.structure.map(x => `<div class="tl-seg"><em>${esc(x.t)}</em><b>${esc(x.label)}</b><span>${esc(x.desc)}</span></div>`).join('');
+    return `<div class="observed"><span>Lo que ya publica la cuenta</span><p>${esc(c.observed)}</p></div>
+  <h4>Mezcla de contenido</h4>
+  <div class="mix">${mixBar}</div>
+  <div class="mix-legend">${Object.entries(kinds).map(([k, v2]) => `<span class="k-${k}"><i></i>${KIND_LABEL[k]} ${v2}%</span>`).join('')}</div>
+
+  <h3 class="sub-h2">El reel</h3>
+  <div class="timeline">${timeline}</div>
+  <dl class="specs">
+    <dt>Duración</dt><dd>${esc(v.lengths)}</dd>
+    <dt>Gancho</dt><dd>${esc(v.hook)}</dd>
+    <dt>Cámara</dt><dd>${esc(v.camera)}</dd>
+    <dt>Color</dt><dd>${esc(v.grade)}</dd>
+    <dt>Transiciones</dt><dd>${esc(v.transitions)}</dd>
+    <dt>Música</dt><dd>${esc(v.music)}</dd>
+  </dl>
+  ${videoFrames(brand, L)}
+  <dl class="specs">
+    <dt>Texto sobre video</dt><dd>${esc(v.overlay.style)}</dd>
+    <dt>Subtítulos</dt><dd>${esc(v.subtitles.style)}</dd>
+    <dt>Portada</dt><dd>${esc(v.cover.style)}</dd>
+    <dt>Cierre</dt><dd>${esc(v.endcard.style)}</dd>
+  </dl>
+
+  <h3 class="sub-h2">Contenido orgánico</h3>
+  <div class="two">
+    <div><h4>Principios</h4><ul class="ok-list">${c.organic.principles.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>
+    <div><h4>Lista de tomas</h4><div class="shots">${c.organic.shots.map((x, i) => `<span><em>${String(i + 1).padStart(2, '0')}</em>${esc(x)}</span>`).join('')}</div></div>
+  </div>
+
+  <h3 class="sub-h2">Gráficos de historias</h3>
+  <ul class="inline">${c.stories.principles.map(x => `<li>${esc(x)}</li>`).join('')}</ul>
+  ${storyGraphics(brand, L)}
+
+  <h3 class="sub-h2">Semana tipo</h3>
+  <div class="week">${c.weekly.map(w => `<div><em>${esc(w.day)}</em><span>${esc(w.piece)}</span></div>`).join('')}</div>`;
+}
+
+const NAV = [['instagram', 'Instagram'], ['contenido', 'Contenido'], ['esencia', 'Esencia'], ['logo', 'Logo'], ['color', 'Color'], ['tipografia', 'Tipografía'], ['interfaz', 'Interfaz'], ['redes', 'Plantillas'], ['aplicaciones', 'Aplicaciones'], ['web', 'Web'], ['imagen', 'Imagen'], ['motion', 'Motion'], ['voz', 'Voz'], ['reglas', 'Reglas']];
 
 function brandbookHtml(brand, allBrands) {
     const t = themeOf(brand);
@@ -477,6 +608,13 @@ function brandbookHtml(brand, allBrands) {
       <div class="bio-card">${(brand.ig?.bio || []).map(l => `<div>${esc(l)}</div>`).join('')}</div>
     </div>
   </div>
+</section>
+
+<section id="contenido">
+  ${label('contenido', 'Contenido')}
+  <h2>Línea de contenido</h2>
+  <p class="lead">La mayoría del contenido es video orgánico. Así se graba, se edita y se viste para que todo se vea de la misma marca.</p>
+  ${contentSection(brand, L)}
 </section>
 
 <section id="esencia">
@@ -764,6 +902,139 @@ ul.x li::marker,.rule-card.no li::marker{content:"✕  ";color:#E5484D}.rule-car
 .bio-card{padding:18px 20px;border-radius:12px;background:#000;color:#F5F5F5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,sans-serif;font-size:14px;line-height:1.5;max-width:420px}
 .bio-card div:first-child{font-weight:700}
 
+/* ─── Contenido ─── */
+.sub-h2{margin-top:80px;font-size:clamp(22px,2.6vw,32px)}
+.observed{display:grid;grid-template-columns:200px 1fr;gap:24px;padding:24px 28px;border-radius:14px;background:var(--brand-surface);border:1px solid var(--brand-line);border-left:4px solid var(--brand-accent);margin:8px 0 8px}
+.observed span{font-family:var(--font-secondary);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--brand-accent)}
+.observed p{font-size:15px}
+.mix{display:flex;gap:4px;min-height:96px;border-radius:14px;overflow:hidden}
+.mix-seg{display:flex;flex-direction:column;justify-content:flex-end;padding:12px;min-width:0;font-size:12px;line-height:1.25}
+.mix-seg b{font-family:var(--font-display);font-stretch:var(--stretch-display);font-size:26px}
+.mix-seg span{overflow:hidden;text-overflow:ellipsis}
+.k-organic{background:var(--brand-accent);color:var(--brand-on-accent)}
+.k-graphic{background:var(--brand-fg);color:var(--brand-bg)}
+.k-stories{background:var(--brand-surface);color:var(--brand-fg);border:1px solid var(--brand-line)}
+.mix-legend{display:flex;flex-wrap:wrap;gap:20px;margin-top:12px;font-size:13px;color:var(--brand-muted)}
+.mix-legend span{display:flex;align-items:center;gap:8px;background:none;border:0;color:inherit}
+.mix-legend i{width:12px;height:12px;border-radius:3px}
+.mix-legend .k-organic i{background:var(--brand-accent)}.mix-legend .k-graphic i{background:var(--brand-fg)}.mix-legend .k-stories i{background:var(--brand-surface);border:1px solid var(--brand-muted)}
+.timeline{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px;margin:24px 0 8px}
+.tl-seg{position:relative;padding:18px 16px 16px;background:var(--brand-surface);border-top:4px solid var(--brand-accent);display:flex;flex-direction:column;gap:4px}
+.tl-seg:first-child{border-radius:12px 0 0 12px}.tl-seg:last-child{border-radius:0 12px 12px 0}
+.tl-seg em{font-style:normal;font-family:var(--font-secondary);font-size:11px;letter-spacing:.14em;color:var(--brand-accent)}
+.tl-seg b{font-family:var(--font-display);font-stretch:var(--stretch-display);text-transform:uppercase;letter-spacing:var(--tracking-display);font-size:20px}
+.tl-seg span{font-size:13px;color:var(--brand-muted)}
+
+.vf-row,.sg-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-top:32px}
+.sg-row{grid-template-columns:repeat(5,minmax(0,1fr))}
+.vframe,.sg{position:relative;aspect-ratio:9/16;border-radius:14px;overflow:hidden;container-type:inline-size;background:var(--brand-bg);color:#fff;border:1px solid var(--brand-line)}
+.vframe>.ph,.sg>.ph{position:absolute;inset:0}
+.vframe>.ph::after,.sg>.ph::after{content:"";position:absolute;inset:0;background-image:${GRAIN};opacity:.2;mix-blend-mode:overlay}
+.reel-ui{position:absolute;inset:0;pointer-events:none}
+.reel-progress{position:absolute;top:3cqw;left:4cqw;right:4cqw;height:.8cqw;background:rgba(255,255,255,.3);border-radius:2px}
+.reel-progress i{display:block;width:38%;height:100%;background:#fff;border-radius:2px}
+.reel-side{position:absolute;right:3cqw;bottom:24cqw;display:flex;flex-direction:column;gap:6cqw;font-size:7cqw;text-shadow:0 1px 6px rgba(0,0,0,.5)}
+.reel-foot{position:absolute;left:4cqw;right:16cqw;bottom:5cqw;font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;text-shadow:0 1px 6px rgba(0,0,0,.6)}
+.reel-user{display:flex;align-items:center;gap:2.4cqw;font-size:4cqw}
+.reel-av{width:8cqw;height:8cqw;border-radius:50%;overflow:hidden;flex:none;display:block}.reel-av .logo-svg{width:100%;height:100%}
+.reel-user em{font-style:normal;border:1px solid #fff;border-radius:1.6cqw;padding:.4cqw 2cqw;font-size:3.4cqw}
+.reel-cap{font-size:3.6cqw;margin-top:2cqw;opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vframe .hl{color:var(--brand-accent)}
+
+/* Texto sobre video: por defecto display centrado en el tercio superior */
+.ov{position:absolute;left:7cqw;right:7cqw;top:18cqw;text-align:center;text-shadow:0 2px 14px rgba(0,0,0,.45)}
+.ov-k{font-family:var(--font-secondary);font-size:3.6cqw;letter-spacing:.24em;text-transform:uppercase;opacity:.85}
+.ov-t{font-family:var(--font-display);font-stretch:var(--stretch-display);text-transform:uppercase;letter-spacing:var(--tracking-display);font-size:11cqw;line-height:.95;margin:2cqw 0;font-weight:800}
+.ov-s{font-family:var(--font-secondary);font-size:3.2cqw;letter-spacing:.18em;text-transform:uppercase;opacity:.9}
+.l-editorial .ov-t,.l-minimal .ov-t{font-family:var(--font-secondary);font-style:italic;text-transform:none;letter-spacing:0;font-weight:500;font-size:9.5cqw;line-height:1.05}
+.l-editorial .ov-t{color:var(--brand-champagne,#fff)}
+.l-social .ov{top:10cqw}.l-social .ov-t{font-family:var(--font-secondary);text-transform:none;letter-spacing:0;font-size:6.4cqw;line-height:1.15;font-weight:400}
+.l-centered .ov{top:auto;bottom:40%}.l-centered .ov-t{font-weight:400;font-size:10cqw;letter-spacing:.06em;color:var(--brand-cream,#fff)}.l-centered .ov-k,.l-centered .ov-s{letter-spacing:.34em}
+.l-impact .ov-t{font-weight:900;font-size:12cqw}
+.l-urban .ov{top:14cqw}.l-urban .ov-t{color:var(--brand-accent);font-weight:900;font-size:17cqw;-webkit-text-stroke:.5cqw #000;paint-order:stroke fill}
+.l-institutional .ov{text-align:left;top:auto;bottom:34cqw}.l-institutional .ov-t{font-weight:900;font-size:11cqw}
+.l-news .ov{top:auto;bottom:30cqw;left:0;right:0;text-align:left;background:rgba(10,10,10,.92);padding:3cqw 5cqw;border-top:1cqw solid var(--brand-accent);text-shadow:none}
+.l-news .ov-k{display:inline-block;background:var(--brand-bear,#E53935);padding:.4cqw 2cqw;letter-spacing:.14em;font-weight:800;opacity:1}
+.l-news .ov-t{font-weight:400;font-size:13cqw}.l-news .ov-t .hl,.l-news .ov-t{color:#fff}
+.l-news .ov-s{font-family:var(--font-mono,monospace);letter-spacing:0;color:var(--brand-accent)}
+.l-cinematic .ov-t{font-size:10cqw}.l-cinematic .ov-s{color:var(--brand-chrome,#ccc)}
+
+/* Subtítulos */
+.subs{position:absolute;left:6cqw;right:6cqw;bottom:36cqw;text-align:center}
+.subs span{display:inline;font-family:var(--font-secondary);font-weight:700;font-size:6cqw;line-height:1.5;background:rgba(0,0,0,.78);padding:.6cqw 2cqw;border-radius:1.4cqw;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+.l-impact .subs span,.l-urban .subs span{background:none;font-family:var(--font-display);font-stretch:var(--stretch-display);text-transform:uppercase;font-weight:900;font-size:9cqw;line-height:1.05;-webkit-text-stroke:.8cqw #000;paint-order:stroke fill}
+.l-cinematic .subs span,.l-centered .subs span{background:none;font-weight:400;font-size:4.6cqw;text-shadow:0 1px 8px rgba(0,0,0,.8);letter-spacing:.02em}
+.l-centered .subs span{color:var(--brand-cream,#fff)}
+.l-editorial .subs span{font-family:var(--font-display);text-transform:none;background:none;text-shadow:0 2px 10px rgba(0,0,0,.6);font-size:5.4cqw}
+.l-social .subs span{font-family:var(--font-body);border-radius:3cqw}
+.l-news .subs span,.l-institutional .subs span{font-family:var(--font-body);border-radius:0;background:#000}
+
+/* Portada y cierre */
+.cover-t{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5cqw;padding:10cqw;text-align:center}
+.cover-logo-s{width:22cqw}
+.brand-urban-nights .cover-logo-s,.brand-udp .cover-logo-s{width:34cqw}
+.ct{font-family:var(--font-display);font-stretch:var(--stretch-display);text-transform:uppercase;letter-spacing:var(--tracking-display);font-size:13cqw;line-height:.95;font-weight:800;text-shadow:0 2px 14px rgba(0,0,0,.4)}
+.l-editorial .ct,.l-minimal .ct{font-family:var(--font-secondary);font-style:italic;text-transform:none;letter-spacing:0;font-weight:500}
+.l-urban .ct{color:var(--brand-accent);font-weight:900;font-size:18cqw}
+.l-centered .ct{font-weight:400;font-size:11cqw;color:var(--brand-cream,#fff)}
+.play{position:absolute;top:4cqw;right:4cqw;font-size:5cqw;opacity:.9}
+.vf-end{background:var(--brand-bg)}
+.brand-udp .vf-end,.brand-dinner-club .vf-end{background:#0B0B0B}
+.end-in{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6cqw;padding:12cqw}
+.end-logo{width:74cqw}
+.brand-dinner-club .end-logo,.brand-5amclub .end-logo{width:54cqw}
+.end-cta{font-family:var(--font-secondary);font-size:4cqw;letter-spacing:.18em;text-transform:uppercase;background:var(--brand-accent);color:var(--brand-on-accent);padding:2.4cqw 5cqw;border-radius:var(--radius)}
+.end-h{font-size:4cqw;opacity:.7}
+.brand-udp .vf-end .end-logo .logo-svg,.brand-dinner-club .vf-end .end-logo .logo-svg{filter:none}
+
+/* Orgánico */
+.ok-list{list-style:none;padding:0}.ok-list li{padding:10px 0 10px 28px;border-top:1px solid var(--brand-line);position:relative}
+.ok-list li::before{content:"●";position:absolute;left:4px;color:var(--brand-accent);font-size:10px;top:15px}
+.shots{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.shots span{display:flex;gap:10px;align-items:baseline;padding:12px 14px;background:var(--brand-surface);border:1px solid var(--brand-line);border-radius:10px;font-size:14px}
+.shots em{font-style:normal;font-family:var(--font-secondary);font-size:11px;color:var(--brand-accent)}
+ul.inline{display:flex;flex-wrap:wrap;gap:8px 28px;list-style:none;padding:0;color:var(--brand-muted);font-size:14px}
+ul.inline li::before{content:"— ";color:var(--brand-accent)}
+
+/* Gráficos de historias */
+.sg-in{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6cqw;padding:12cqw 8cqw;text-align:center}
+.sg-logo{width:60cqw}.sg-logo.small{width:34cqw;margin-top:auto}
+.brand-dinner-club .sg-logo,.brand-5amclub .sg-logo{width:40cqw}.brand-dinner-club .sg-logo.small,.brand-5amclub .sg-logo.small{width:26cqw}
+.sg-sym{width:24cqw}
+.brand-urban-nights .sg-sym,.brand-udp .sg-sym{width:40cqw}
+.sg-big{font-family:var(--font-display);font-stretch:var(--stretch-display);text-transform:uppercase;letter-spacing:var(--tracking-display);font-size:12cqw;line-height:.95;font-weight:800;text-shadow:0 2px 14px rgba(0,0,0,.35)}
+.l-editorial .sg-big,.l-minimal .sg-big{font-family:var(--font-secondary);font-style:italic;text-transform:none;letter-spacing:0;font-weight:500}
+.sg-sub{font-family:var(--font-secondary);font-size:3.6cqw;letter-spacing:.18em;text-transform:uppercase;opacity:.85}
+.sg-label{font-family:var(--font-display);font-stretch:var(--stretch-display);text-transform:uppercase;font-size:9cqw;letter-spacing:var(--tracking-display);font-weight:800}
+.sg-q{font-family:var(--font-display);font-stretch:var(--stretch-display);text-transform:uppercase;letter-spacing:var(--tracking-display);font-size:9.5cqw;line-height:1;font-weight:800;margin-top:auto;text-shadow:0 2px 14px rgba(0,0,0,.4)}
+.l-editorial .sg-q,.l-minimal .sg-q,.l-social .sg-q{font-family:var(--font-secondary);text-transform:none;letter-spacing:0;font-weight:500}
+.sg-count{background:var(--brand-surface);color:var(--brand-fg)}
+.sg-repost{background:var(--brand-bg);color:var(--brand-fg)}
+.sg-repost::after{content:"";position:absolute;inset:0;border:3cqw solid var(--brand-accent);border-radius:inherit;pointer-events:none}
+.sg-tag{font-family:var(--font-secondary);font-size:3.6cqw;letter-spacing:.3em;color:var(--brand-accent)}
+.repost-card{position:relative;width:76cqw;aspect-ratio:4/5;border-radius:4cqw;overflow:hidden;transform:rotate(-4deg);box-shadow:0 4cqw 8cqw rgba(0,0,0,.4);border:1.4cqw solid #fff}
+.repost-card .ph{position:absolute;inset:0}
+.repost-card span{position:absolute;left:4cqw;bottom:4cqw;background:rgba(0,0,0,.6);color:#fff;font-size:3.6cqw;padding:1cqw 3cqw;border-radius:2cqw}
+.sg-link{background:var(--brand-accent);color:var(--brand-on-accent)}
+.sg-link .sg-big{text-shadow:none;margin-top:auto}
+.ig-sticker{background:#fff;color:#111;font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;border-radius:3.6cqw;box-shadow:0 2cqw 6cqw rgba(0,0,0,.25);text-shadow:none}
+.ig-sticker.link{padding:3cqw 6cqw;font-size:4.4cqw;font-weight:700;color:#3797F0;text-transform:uppercase}
+.ig-sticker.link.big{font-size:5cqw}
+.ig-sticker.countdown{width:80cqw;padding:5cqw;display:flex;flex-direction:column;gap:3cqw}
+.ig-sticker.countdown b{font-size:5cqw;text-transform:uppercase;letter-spacing:.04em}
+.digits{display:flex;justify-content:center;gap:2.4cqw}
+.digits span{background:linear-gradient(180deg,#8A3FFC,#D62976);color:#fff;font-size:9cqw;font-weight:800;padding:1.6cqw 2.6cqw;border-radius:2cqw}
+.brand-5amclub .digits span{background:var(--brand-accent)}
+.ig-sticker.countdown small{font-size:3cqw;color:#777}
+.ig-sticker.poll{width:80cqw;display:grid;grid-template-columns:1fr 1fr;overflow:hidden}
+.ig-sticker.poll span{padding:5cqw 2cqw;font-size:4.2cqw;font-weight:700;color:#111}
+.ig-sticker.poll span+span{border-left:1px solid #E5E5E5}
+
+.week{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:20px}
+.week div{display:flex;flex-direction:column;gap:6px;padding:18px;background:var(--brand-surface);border:1px solid var(--brand-line);border-radius:12px}
+.week em{font-style:normal;font-family:var(--font-display);font-stretch:var(--stretch-display);text-transform:uppercase;font-size:20px;color:var(--brand-accent);letter-spacing:var(--tracking-display)}
+.week span{font-size:14px}
+
 /* ─── Logo ─── */
 .on-bg{background:var(--brand-bg);color:var(--brand-fg)}
 .on-inverse{background:var(--brand-fg)}
@@ -868,14 +1139,14 @@ figure.wide{margin-top:28px}
 .seal{position:absolute;top:4cqw;right:4cqw;width:15cqw;z-index:2}
 
 /* editorial (ARRIVE) */
-.l-editorial>.ph{bottom:30%}
+.tpl.l-editorial>.ph{bottom:30%}
 .l-editorial .corner-logo{width:22cqw}
 .l-editorial .band{position:absolute;left:0;right:0;bottom:0;height:30%;background:var(--brand-ivory,var(--brand-surface));color:var(--brand-fg);padding:5cqw 6cqw;display:flex;flex-direction:column;justify-content:center}
 .l-editorial .h.sec{font-family:var(--font-secondary);font-style:italic;text-transform:none;letter-spacing:0;font-weight:500;font-size:10cqw}
 .l-editorial .meta{color:var(--brand-muted)}
 
 /* news (5AM) */
-.l-news>.ph{bottom:45%}
+.tpl.l-news>.ph{bottom:45%}
 .l-news .box{position:absolute;left:0;right:0;bottom:7%;top:52%;background:var(--brand-bg);padding:4cqw 5cqw;border-top:1.2cqw solid var(--brand-accent)}
 .l-news .pill{display:inline-block;background:var(--brand-bear,#E53935);color:#fff;font-family:var(--font-secondary);font-weight:800;font-size:2.6cqw;letter-spacing:.14em;padding:.6cqw 2cqw}
 .l-news .h{font-size:12.5cqw;margin-top:2cqw;font-weight:400}
@@ -891,10 +1162,10 @@ figure.wide{margin-top:28px}
 .l-centered .flare{width:66%;height:.45cqw;margin:5cqw 0 3cqw;background:var(--gradient-ember-flare,var(--brand-accent));box-shadow:0 0 4cqw var(--brand-accent)}
 .l-centered .sub{font-size:2.6cqw}
 .lineup{font-family:var(--font-secondary);font-size:2.4cqw;letter-spacing:.24em;margin-top:5cqw;opacity:.85}
-.l-centered>.meta{position:absolute;left:0;right:0;bottom:7cqw;text-align:center;color:var(--brand-fg)}
+.tpl.l-centered>.meta{position:absolute;left:0;right:0;bottom:7cqw;text-align:center;color:var(--brand-fg)}
 
 /* impact (Ignite) */
-.l-impact{padding:6cqw}
+.tpl.l-impact{padding:6cqw}
 .l-impact .k{position:relative;font-size:4cqw;color:#fff;letter-spacing:.2em}
 .l-impact .giant{position:relative;font-family:var(--font-display);font-stretch:var(--stretch-display);font-weight:900;text-transform:uppercase;font-size:27cqw;line-height:.82;color:var(--brand-accent);margin:5cqw 0 0 -3cqw;letter-spacing:-.02em;text-shadow:0 0 6cqw color-mix(in srgb,var(--brand-accent) 60%,transparent);transform:rotate(-5deg);white-space:nowrap}
 .l-impact .sub{position:relative;font-size:3.6cqw;margin-top:10cqw}
@@ -909,7 +1180,7 @@ figure.wide{margin-top:28px}
 .l-social .h{color:var(--brand-accent);font-size:13cqw}
 
 /* minimal (Dinner Club) */
-.l-minimal{background:var(--brand-bg);color:var(--brand-fg);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:8cqw}
+.tpl.l-minimal{background:var(--brand-bg);color:var(--brand-fg);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:8cqw}
 .l-minimal .k{font-family:var(--font-display);font-size:6cqw;color:var(--brand-fg);letter-spacing:.24em;font-weight:700}
 .l-minimal .circle{width:54cqw;margin:6cqw 0;filter:drop-shadow(0 2cqw 5cqw rgba(0,0,0,.1))}
 .l-minimal .sub.sec{font-family:var(--font-secondary);font-style:italic;text-transform:none;letter-spacing:0;font-size:4.6cqw}
@@ -917,8 +1188,8 @@ figure.wide{margin-top:28px}
 .l-minimal .meta{color:var(--brand-muted)}
 
 /* urban (Urban Nights) */
-.l-urban{padding:6cqw;text-align:center}
-.l-urban>*:not(.ph){position:relative}
+.tpl.l-urban{padding:6cqw;text-align:center}
+.tpl.l-urban>*:not(.ph){position:relative}
 .l-urban .skyline{position:absolute!important;left:0;right:0;bottom:12%;height:30%;background:linear-gradient(transparent,#000 85%),repeating-linear-gradient(90deg,#111 0 6%,#1c1c1c 6% 9%,#0d0d0d 9% 15%,#191919 15% 17%);clip-path:polygon(0 60%,5% 60%,5% 30%,9% 30%,9% 50%,14% 50%,14% 10%,18% 10%,18% 45%,24% 45%,24% 25%,29% 25%,29% 55%,35% 55%,35% 0,38% 0,38% 40%,45% 40%,45% 20%,50% 20%,50% 50%,57% 50%,57% 15%,61% 15%,61% 45%,68% 45%,68% 30%,73% 30%,73% 55%,80% 55%,80% 5%,84% 5%,84% 40%,90% 40%,90% 25%,95% 25%,95% 60%,100% 60%,100% 100%,0 100%)}
 .l-urban .k{color:#fff;letter-spacing:.24em;margin-top:26cqw}
 .l-urban .h.chrome{font-size:19cqw;background:var(--gradient-chrome-red,var(--brand-accent));-webkit-background-clip:text;background-clip:text;color:transparent;margin-top:2cqw;font-weight:900;filter:drop-shadow(0 .6cqw 0 #000)}
@@ -926,8 +1197,8 @@ figure.wide{margin-top:28px}
 .l-urban .bar{position:absolute!important;left:0;right:0;bottom:0;padding:3cqw;background:#000;border-top:.4cqw solid var(--brand-accent);font-family:var(--font-secondary);font-size:2.6cqw;letter-spacing:.16em;text-transform:uppercase}
 
 /* institutional (UDP) */
-.l-institutional{padding:7cqw;display:flex;flex-direction:column;justify-content:flex-end}
-.l-institutional>*:not(.ph){position:relative}
+.tpl.l-institutional{padding:7cqw;display:flex;flex-direction:column;justify-content:flex-end}
+.tpl.l-institutional>*:not(.ph){position:relative}
 .l-institutional .corner-logo{position:absolute!important;top:6cqw;left:7cqw;width:26cqw}
 .l-institutional .h{font-size:13cqw;font-weight:900;max-width:90%}
 .l-institutional .rule{width:12cqw;height:.8cqw;background:var(--brand-accent);margin:4cqw 0 2cqw}
@@ -1044,6 +1315,8 @@ blockquote{font-family:var(--font-display);font-stretch:var(--stretch-display);t
 @media (max-width:980px){
   .ig-layout{grid-template-columns:1fr;justify-items:center}.ig-notes{width:100%}
   .logo-grid,.misuse{grid-template-columns:repeat(2,1fr)}.logo-tile.wide{grid-column:span 2}
+  .vf-row{grid-template-columns:repeat(2,minmax(0,1fr))}.sg-row{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .timeline{grid-auto-flow:row}.tl-seg,.tl-seg:first-child,.tl-seg:last-child{border-radius:10px}
   .apps{grid-template-columns:minmax(0,1fr)}.app-band,.app-hl{grid-column:auto}
 }
 @media (max-width:800px){
@@ -1057,6 +1330,9 @@ blockquote{font-family:var(--font-display);font-stretch:var(--stretch-display);t
   .web-nav nav{display:none}
   .minsize{gap:20px}.minsize>div:first-child{width:160px!important}
   .ticket{grid-template-columns:1fr 110px}
+  .sg-row{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .observed{grid-template-columns:1fr;gap:8px}
+  .shots{grid-template-columns:1fr}
   .app-cards{min-height:260px}
 }
 `;
@@ -1120,6 +1396,11 @@ function validate(brand, file) {
     if (missing.length) throw new Error(`${file}: faltan campos ${missing.join(', ')}`);
     for (const c of brand.colors) if (!/^#[0-9A-Fa-f]{6}$/.test(c.hex)) throw new Error(`${file}: color inválido ${c.hex}`);
     if (!brand.typography.display) throw new Error(`${file}: falta typography.display`);
+    const c = brand.content;
+    for (const k of ['observed', 'mix', 'video', 'organic', 'stories', 'weekly']) if (c[k] == null) throw new Error(`${file}: content.json sin "${k}"`);
+    const total = c.mix.reduce((n, m) => n + m.pct, 0);
+    if (total !== 100) throw new Error(`${file}: la mezcla de contenido suma ${total}%, debe sumar 100%`);
+    for (const m of c.mix) if (!KIND_LABEL[m.kind]) throw new Error(`${file}: tipo de contenido inválido "${m.kind}"`);
     themeOf(brand);
 }
 
@@ -1129,6 +1410,9 @@ export function loadBrands() {
         .map(d => {
             const file = path.join(SRC, d.name, 'brand.json');
             const brand = JSON.parse(fs.readFileSync(file, 'utf-8'));
+            const contentFile = path.join(SRC, d.name, 'content.json');
+            if (!fs.existsSync(contentFile)) throw new Error(`${contentFile}: falta la línea de contenido`);
+            brand.content = JSON.parse(fs.readFileSync(contentFile, 'utf-8'));
             validate(brand, file);
             if (brand.slug !== d.name) throw new Error(`${file}: slug "${brand.slug}" no coincide con la carpeta`);
             return brand;
@@ -1212,7 +1496,8 @@ function build() {
             { name: `${root}/LEEME.txt`, data: kitReadme(brand, L) },
             { name: `${root}/BRAND.md`, data: md },
             { name: `${root}/tokens.css`, data: css },
-            { name: `${root}/brand.json`, data: JSON.stringify(brand, null, 2) },
+            { name: `${root}/brand.json`, data: fs.readFileSync(path.join(SRC, brand.slug, 'brand.json')) },
+            { name: `${root}/content.json`, data: fs.readFileSync(path.join(SRC, brand.slug, 'content.json')) },
             ...Object.entries(logoFiles).map(([name, data]) => ({ name: `${root}/logo/${name}.svg`, data })),
         ]));
     }

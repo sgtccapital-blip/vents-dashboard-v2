@@ -48,6 +48,53 @@ Los SVG usan las fuentes de la marca vía Google Fonts; para impresión, convert
 - **Highlights:** Artistas, Shows, Tickets, VIP
 - **Grilla:** Flyer de artista (rojo/negro) → video del artista invitando → recap. Siempre un artista en primer plano.
 
+## Línea de contenido
+
+Fuente: `brands/urban-nights/content.json`.
+
+**Lo que ya publica la cuenta:** Flyers rojo/negro de artista con skyline nocturno ('DANNY YASH · URBAN NIGHTS · mieventos.com'), reels del artista invitando a la noche, noches temáticas (Ladies, Latin House Saxo Sessions) y clips del público y del show.
+
+**Mezcla:** Reels del show y del público 35% (organic) · Video del artista invitando 25% (organic) · Flyer de artista 20% (graphic) · Stories: tickets, countdown, repost 20% (stories)
+
+### Video (la mayoría del contenido)
+
+- **Duración:** Invitación del artista 8–15 s · show 15–25 s · recap 20–30 s
+- **Gancho:** El artista mira a cámara y dice la fecha en el primer segundo, con su nombre en rojo gigante.
+- **Estructura:** 0–2 s Artista (A cámara + nombre en rojo) → 2–8 s Invitación (Subtítulos grandes, fecha y lugar) → 8–12 s Show (Clips de la tarima y el público) → Final Tickets (Logo URBAN NIGHTS + mieventos.com)
+- **Cámara:** Artista en plano medio con luz frontal dura; show desde la tarima hacia el público y desde el público hacia la tarima.
+- **Color:** Contraste alto, rojos profundos, negros puros, nitidez fuerte.
+- **Transiciones:** Letras que golpean, shake en el drop, flashes rojos.
+- **Texto sobre video:** Nombre del artista en Big Shoulders Display 900 rojo con borde negro, gigante, arriba; datos en Barlow mayúsculas en barra negra abajo. Ejemplo: "LIVE PERFORMANCE BY / DANNY YASH / SÁBADO 20 JUL · 10PM"
+- **Subtítulos:** Big Shoulders Display 800 blanco con borde negro grueso, 2–3 palabras por vez al centro; la palabra activa en rojo.
+- **Portada:** Artista recortado sobre skyline nocturno con su nombre en rojo cromado. Siempre un artista en la portada.
+- **Cierre:** Logo URBAN NIGHTS blanco en caja + 'TICKETS & VIP · MIEVENTOS.COM' en barra roja.
+- **Música:** Reggaetón y dembow en tendencia; temas del artista invitado.
+
+### Orgánico
+
+- El artista siempre en el centro
+- Audio limpio cuando el artista habla
+- Mostrar al público cantando sus temas
+- Patrocinadores al pie, nunca encima
+
+**Lista de tomas:** Artista a cámara invitando · Entrada a tarima · Público cantando · Detalle de cadenas y outfit · DJ en el mix show · Skyline nocturno · Mesa VIP con botellas
+
+### Historias
+
+- Fondo negro con rojo y cromo
+- Tickets como sticker de link en cada story
+- Repost del público con marco rojo
+
+Set de gráficos: anuncio ("SÁBADO 20 · JUL"), cuenta regresiva ("SHOW EN"), encuesta ("¿A quién quieres ver en tarima?" → Danny Yash / Otro 👀), repost con marco de marca y link ("TICKETS & VIP").
+
+### Semana tipo
+
+- **−10 días:** Flyer de artista
+- **−7 días:** Video del artista invitando
+- **−3 días:** Reel del show anterior
+- **Día:** Stories en vivo
+- **+1 día:** Recap del show
+
 ## Color
 
 | Token | Nombre | Hex | Rol | Uso |

@@ -48,6 +48,53 @@ Los SVG usan las fuentes de la marca vía Google Fonts; para impresión, convert
 - **Highlights:** Mercados, Cripto, Macro, Agencia
 - **Grilla:** Alternar breaking (negro + violeta) con explicador (navy). Cada post lleva fecha visible.
 
+## Línea de contenido
+
+Fuente: `brands/5amclub/content.json`.
+
+**Lo que ya publica la cuenta:** Posts de noticias de mercado con imágenes de alto impacto (gráficos de velas, Wall Street, oro, bancos centrales), titulares tipo breaking news ('MERCADOS EN ALERTA', 'S&P 500: HISTORIC 7000 POINTS'), banners de TV con lower-third y portadas estilo periódico. Hoy es más gráfico que video.
+
+**Mezcla:** Reels explicadores a cámara / voz en off 35% (organic) · Breaking news (post gráfico) 30% (graphic) · Carruseles explicadores 15% (graphic) · Stories: market open diario 20% (stories)
+
+### Video (la mayoría del contenido)
+
+- **Duración:** Breaking 15–25 s · explicadores 35–60 s
+- **Gancho:** Titular con la cifra en el primer frame ('ORO +5%') y voz que arranca en el dato, sin saludo.
+- **Estructura:** 0–2 s Titular (Cifra + flecha verde/roja) → 2–15 s Qué pasó (Gráfico, b-roll, voz clara) → 15–35 s Por qué importa (Impacto en tu dinero) → Final Qué vigilar (Próximo dato + sello 5AM)
+- **Cámara:** Presentador a cámara en plano medio con fondo oscuro, o voz en off sobre b-roll de gráficos y escenas de mercado.
+- **Color:** Alto contraste, fondos oscuros; verde y rojo saturados solo en gráficos; violeta de marca en titulares.
+- **Transiciones:** Cortes rápidos con whoosh; números que cuentan hasta la cifra; zoom al dato clave.
+- **Texto sobre video:** Caja negra con titular en Anton mayúsculas, palabra clave en violeta; píldora 'BREAKING' roja; ticker en Roboto Mono abajo. Ejemplo: "BREAKING / ORO +5% / MÁXIMO HISTÓRICO · $4,900/OZ"
+- **Subtítulos:** Subtítulo por frase en Inter 700, blanco sobre caja negra, abajo; cifras y tickers en violeta.
+- **Portada:** Portada tipo noticiero: titular Anton con cifra grande, flecha y fecha visible. Siempre legible a tamaño de grilla.
+- **Cierre:** Banda violeta con el globo 5AM, '@__5amclub' y el aviso 'No es asesoría financiera'.
+- **Música:** Bed tenso de noticiero, beats corporativos minimalistas; SFX de alerta y ticker.
+
+### Orgánico
+
+- El dato primero, la opinión después
+- Fuente y fecha en pantalla en cada pieza
+- Escenas IA solo para conceptos: nunca rostros reales fabricados
+- Disclaimer financiero en explicadores
+
+**Lista de tomas:** Presentador a cámara · Pantalla con gráfico · Manos en teclado/trading · B-roll de ciudad financiera · Primer plano de la cifra · Titular de prensa en pantalla
+
+### Historias
+
+- Market open cada mañana a las 5–7 am
+- Píldoras verde/rojo para tickers
+- Encuesta diaria compra/vende
+
+Set de gráficos: anuncio ("MARKET OPEN · LUN 05.10"), cuenta regresiva ("DATO DE EMPLEO EN"), encuesta ("Con la Fed así, ¿qué haces?" → Compro 📈 / Espero 📉), repost con marco de marca y link ("LEER EXPLICADOR").
+
+### Semana tipo
+
+- **Lun–Vie:** Story market open (5 tickers)
+- **Lun:** Reel: qué vigilar esta semana
+- **Mié:** Breaking del día (post)
+- **Jue:** Carrusel explicador
+- **Vie:** Reel resumen de la semana
+
 ## Color
 
 | Token | Nombre | Hex | Rol | Uso |

@@ -48,6 +48,53 @@ Los SVG usan las fuentes de la marca vía Google Fonts; para impresión, convert
 - **Highlights:** Ediciones, Tickets, VIP, Partners
 - **Grilla:** Feed rojo/negro uniforme con el búho siempre centrado. Ciclo por edición: anuncio → lineup → recordatorio → noche → recap.
 
+## Línea de contenido
+
+Fuente: `brands/the-room/content.json`.
+
+**Lo que ya publica la cuenta:** Flyers rojo/negro con el búho (estáticos y animados en reel), ediciones en Pa' Vacilar y Terraplén con lineup y patrocinadores (Absolut, Jägermeister), y reels de detalle de lujo (tacón, copa) con luz roja.
+
+**Mezcla:** Reels recap y detalles de lujo 40% (organic) · Flyer animado de edición 20% (graphic) · Flyer estático / lineup 15% (graphic) · Stories: countdown, tickets, repost 25% (stories)
+
+### Video (la mayoría del contenido)
+
+- **Duración:** Detalles 6–10 s · flyer animado 8–10 s · recap 15–25 s
+- **Gancho:** Revelar desde la oscuridad: un detalle de lujo iluminado en rojo (tacón, copa, bengala) antes de mostrar gente.
+- **Estructura:** 0–2 s Reveal (Detalle de lujo saliendo de la sombra) → 2–8 s Ambiente (Siluetas, mesas, bengalas en slow motion) → 8–12 s Pista (Cortes al beat solo en el drop) → Final Búho (Logo en cream sobre negro + fecha)
+- **Cámara:** Movimientos lentos (gimbal), planos detalle a la altura de las manos y los pies, gente de espaldas o en penumbra. Slow motion 60–120 fps.
+- **Color:** Viraje rojo vino, sombras profundas, viñeta y grano de película. Pieles cálidas.
+- **Transiciones:** Fundidos a negro y barridos de luz roja. Cortes al beat solo en el drop.
+- **Texto sobre video:** Bodoni Moda mayúsculas en cream con tracking amplio, centrado; datos en Josefin Sans muy espaciado. Pocas palabras. Ejemplo: "VIERNES 04 SEP / MEMBERS OF THE NIGHT / TERRAPLÉN · PISO 002"
+- **Subtítulos:** Sin subtítulos: la marca no habla, insinúa. Si hay voz, frase en Josefin Sans cream, minúsculas, muy pequeña.
+- **Portada:** Fondo velvet rojo/negro con el búho centrado y la fecha en Josefin; todas las portadas centradas y simétricas.
+- **Cierre:** Fundido a Noir con el lockup THE · búho · ROOM en cream y 'Tickets en bio'.
+- **Música:** Reggaetón, hits latinos y crossover; intros oscuras con bajos para teasers.
+
+### Orgánico
+
+- Insinuar, no mostrar todo: la exclusividad está en lo que no se ve
+- Gente bien vestida, de espaldas o en penumbra
+- Nada de flash directo
+- Patrocinadores siempre presentes pero discretos
+
+**Lista de tomas:** Tacón entrando al venue · Copa con luz roja · Botella con bengala · Manos con anillos · Silueta en la barra · Mesa VIP desde arriba · Pulsera de acceso · DJ en penumbra
+
+### Historias
+
+- Velvet rojo/negro con búho
+- Cuenta regresiva desde 7 días antes
+- Repost de invitados con marco de invitación
+
+Set de gráficos: anuncio ("VIERNES 04 · SEP"), cuenta regresiva ("FALTAN"), encuesta ("¿Mesa o pista?" → Mesa 🍾 / Pista 🔥), repost con marco de marca y link ("REQUEST ACCESS").
+
+### Semana tipo
+
+- **−14 días:** Flyer animado de anuncio
+- **−7 días:** Lineup + countdown en stories
+- **−2 días:** Reel de detalles (teaser)
+- **Día:** Stories en vivo + repost
+- **+1 día:** Recap 20 s
+
 ## Color
 
 | Token | Nombre | Hex | Rol | Uso |

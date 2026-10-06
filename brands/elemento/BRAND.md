@@ -48,6 +48,53 @@ Los SVG usan las fuentes de la marca vía Google Fonts; para impresión, convert
 - **Highlights:** Spotify, SoundCloud, YouTube, Demos
 - **Grilla:** Feed oscuro uniforme: todas las portadas en Void con un punto de luz azul. Lineups como carruseles con portada tipográfica.
 
+## Línea de contenido
+
+Fuente: `brands/elemento/content.json`.
+
+**Lo que ya publica la cuenta:** Reels de momentos de festival y club (escenario, multitud, DJ en cabina) con overlay de artista, venue y fecha centrado arriba ('NICO MORENO @ Complex Maastricht 29-12-2022') y palabras gigantes como 'Coachella'. Casi todo es video vertical con el audio real del set y sin subtítulos.
+
+**Mezcla:** Reels de momentos 55% (organic) · Spotlight de artistas 20% (organic) · Lineups y anuncios 10% (graphic) · Stories: track ID, música, repost 15% (stories)
+
+### Video (la mayoría del contenido)
+
+- **Duración:** Momentos 7–12 s en loop · spotlights 20–35 s · recaps 30–45 s
+- **Gancho:** Arranca en el drop: el primer frame ya es el pico (luces, brazos arriba, escenario). Nada de intros ni logos al inicio.
+- **Estructura:** 0–1 s Drop (Pico de energía + overlay del artista) → 1–8 s Inmersión (Tomas largas de escenario y luz) → 8–11 s Detalle (Cabina, manos, multitud) → Final Loop (El último frame empata con el primero)
+- **Cámara:** Tomas largas y estables desde la multitud o desde atrás de la cabina. Gran angular para escenarios monumentales; zoom para luces y siluetas.
+- **Color:** Viraje frío: negros azulados, altas luces azules, pieles poco saturadas, grano fino.
+- **Transiciones:** Cortes secos al beat. Como mucho un flash azul de 2 frames en el drop.
+- **Texto sobre video:** Artista en Unbounded mayúsculas + '@ VENUE · FECHA' en Space Grotesk, blanco, centrado en el tercio superior. Ejemplo: "LIVE AT / NICO MORENO / COMPLEX · MAASTRICHT · 29.12"
+- **Subtítulos:** Sin subtítulos: el audio es la música. En entrevistas, subtítulo por frase en Space Grotesk blanco, minúsculas, pequeño, abajo.
+- **Portada:** Frame oscuro del escenario con un solo punto de luz azul + nombre del artista en Unbounded. Todas las portadas oscuras para que la grilla sea uniforme.
+- **Cierre:** Sin pantalla final: la E cromada pequeña en la esquina del último segundo y el crédito del track en el caption.
+- **Música:** Audio real del set siempre. Nunca música de librería encima de un set.
+
+### Orgánico
+
+- Grabar el momento, no la pose: el escenario y la gente son la historia
+- Todo en 9:16 nativo
+- Grabar 3–5 s antes y después del drop para poder hacer loop
+- Acreditar siempre al artista y al promotor
+
+**Lista de tomas:** Escenario completo con láseres · Drop con brazos arriba · DJ desde atrás de la cabina · Manos en el mixer · Silueta a contraluz · Luces y humo en detalle · Entrada del venue · Público desde arriba
+
+### Historias
+
+- Fondo Void con un solo acento azul
+- Track ID y links a Spotify/SoundCloud como sticker
+- Repost de quienes etiquetan, con marco oscuro
+
+Set de gráficos: anuncio ("SÁBADO 14 · LIVE SET"), cuenta regresiva ("PRÓXIMO SET"), encuesta ("¿Cuál fue el track de la noche?" → El drop 🔊 / El cierre), repost con marco de marca y link ("ESCUCHAR SET").
+
+### Semana tipo
+
+- **Lun:** Reel momento del fin de semana
+- **Mié:** Spotlight de artista
+- **Vie:** Reel momento + story track ID
+- **Sáb:** Stories en vivo del evento
+- **Dom:** Recap de 30 s
+
 ## Color
 
 | Token | Nombre | Hex | Rol | Uso |

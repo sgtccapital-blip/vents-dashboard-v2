@@ -1,6 +1,6 @@
 # Marcas — cómo descargar y editar
 
-Cada carpeta (`arrive/`, `the-room/`, `ignite/`…) es una marca. `brand.json` es la **única fuente de verdad**; todo lo demás se genera con:
+Cada carpeta (`arrive/`, `the-room/`, `ignite/`…) es una marca. `brand.json` (identidad visual) y `content.json` (línea de contenido y video) son la **fuente de verdad**; todo lo demás se genera con:
 
 ```bash
 npm run brands
@@ -18,6 +18,7 @@ npm run brands
 |---|---|---|
 | Logos finales (diseñador) | Dejar SVG en `brands/<marca>/logo-source/` con los nombres `primary.svg`, `inverse.svg`, `on-accent.svg`, `symbol.svg`, `symbol-inverse.svg` o `avatar.svg`. Solo los que existan reemplazan al redibujo. | Diseñador |
 | Colores, tipografías, textos, reglas, plantillas, estructura web | `brands/<marca>/brand.json` | Tú, el diseñador o Claude Code |
+| Línea de contenido: mezcla, estilo de video, textos sobre video, subtítulos, portadas, cierre, guía orgánica, historias, semana tipo | `brands/<marca>/content.json` | Tú, el editor de video o Claude Code |
 | Composición de plantillas y brandbook | `scripts/build-brands.mjs` | Claude Code |
 | Redibujos vectoriales de los logos | `scripts/brand-logos.mjs` | Claude Code |
 

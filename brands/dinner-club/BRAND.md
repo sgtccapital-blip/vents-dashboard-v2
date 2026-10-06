@@ -48,6 +48,53 @@ Los SVG usan las fuentes de la marca vía Google Fonts; para impresión, convert
 - **Highlights:** Menú, Noches, Reservas, Cumples
 - **Grilla:** Lanzamiento con grilla de 9: alternar Linen (mesa) y Ink (fiesta) en damero.
 
+## Línea de contenido
+
+Fuente: `brands/dinner-club/content.json`.
+
+**Lo que ya publica la cuenta:** Cuenta sin publicaciones todavía: solo logo en círculo y bio ('Reggaeton • Latin • Electronic · Reservations & Guest List DM'). La línea de contenido es una propuesta de lanzamiento.
+
+**Mezcla:** Reels 'de cena a fiesta' 40% (organic) · Reels de platos y cócteles 20% (organic) · Fotos de mesa y flyer de fecha 15% (graphic) · Stories: reservas, menú, encuestas 25% (stories)
+
+### Video (la mayoría del contenido)
+
+- **Duración:** Cena→fiesta 12–18 s · platos/cócteles 6–10 s · recaps 20 s
+- **Gancho:** Plano cenital de la mesa servida en silencio cálido; el corte a la pista llega exacto en el drop.
+- **Estructura:** 0–3 s Mesa (Cenital, vela, lounge suave) → 3–7 s Brindis (Manos, copas, risas) → 7–8 s Drop (Vela se apaga → luz de pista) → Final Pista (Fiesta + logo en círculo)
+- **Cámara:** Cena: trípode o gimbal lento, cenitales y detalles a la altura de la mesa. Fiesta: cámara en mano, más movimiento.
+- **Color:** Cena cálida (madera, vela, crema); fiesta con más contraste y luces de color. Grano fino.
+- **Transiciones:** La transición firma: vela que se apaga o copa que choca en el drop y cambia de escena.
+- **Texto sobre video:** Playfair Display itálica blanca para la frase + Source Sans 3 mayúsculas espaciadas para el dato, centrado abajo. Ejemplo: "VIERNES · 8PM / Reserva para cenar. Quédate para la fiesta. / RESERVAS POR DM"
+- **Subtítulos:** Source Sans 3 600 blanco, por frase, abajo; nombres de platos en Playfair itálica.
+- **Portada:** Mitad mesa / mitad pista con el logo en círculo al centro. Portadas que alternan Linen y negro como damero.
+- **Cierre:** Logo DINNER CLUB en círculo blanco sobre negro + 'Reservations & guest list DM'.
+- **Música:** Lounge/afro house en la cena, reggaetón y latin al cambiar a la pista.
+
+### Orgánico
+
+- Siempre la dualidad cena + fiesta
+- La comida con luz cálida, nunca con flash
+- Mostrar grupos celebrando (cumpleaños, cenas de amigas)
+- Pocas palabras en pantalla
+
+**Lista de tomas:** Mesa cenital servida · Cóctel a contraluz de vela · Brindis de manos · Chef emplatando · Grupo riendo en mesa · Vela apagándose · Pista llena · DJ arrancando
+
+### Historias
+
+- Fondo Linen o negro con el círculo del logo
+- Encuesta '¿cuántos son?' para reservas
+- Menú del día con Playfair itálica
+
+Set de gráficos: anuncio ("VIERNES · MESA PARA 8"), cuenta regresiva ("RESERVAS CIERRAN EN"), encuesta ("¿Qué celebran este viernes?" → Cumpleaños 🎂 / Solo porque sí), repost con marco de marca y link ("RESERVAR MESA").
+
+### Semana tipo
+
+- **Lun:** Reel plato o cóctel
+- **Mié:** Story menú + encuesta
+- **Jue:** Flyer de fecha
+- **Vie:** Stories en vivo (cena y fiesta)
+- **Sáb:** Reel 'de cena a fiesta'
+
 ## Color
 
 | Token | Nombre | Hex | Rol | Uso |

@@ -918,3 +918,67 @@
   .dna-section-grid { grid-template-columns: 1fr; }
   .dna-section-grid .social-field { grid-column: 1 / -1; }
 }
+
+/* ─── Línea gráfica de la cuenta (ADN + guía de video) ─── */
+.brand-line {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.brand-line-top { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.brand-line-avatar { width: 56px; height: 56px; border-radius: 50%; overflow: hidden; flex: none; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.15); }
+.brand-line-avatar svg { width: 100%; height: 100%; display: block; }
+.brand-line-id { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 160px; }
+.brand-line-id b { font-size: 16px; color: #fff; }
+.brand-line-id span { font-size: 12px; color: #94a3b8; }
+.brand-line-label { display: flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 800; letter-spacing: 0.08em; color: #a78bfa; }
+.brand-line-actions { display: flex; gap: 8px; }
+.brand-line-actions a { padding: 6px 12px; font-size: 12px; text-decoration: none; }
+
+.brand-line-swatches { display: flex; flex-wrap: wrap; gap: 10px; }
+.brand-line-swatches div { display: flex; align-items: center; gap: 8px; }
+.brand-line-swatches span { width: 26px; height: 26px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.2); }
+.brand-line-swatches small { font-size: 10.5px; color: #94a3b8; line-height: 1.25; }
+.brand-line-fonts { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #cbd5e1; }
+
+.brand-line-video { border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 12px; display: flex; flex-direction: column; gap: 10px; }
+.brand-line-mix { display: flex; gap: 3px; height: 22px; border-radius: 6px; overflow: hidden; }
+.brand-line-mix span { display: grid; place-items: center; font-size: 10.5px; font-weight: 800; min-width: 0; }
+.brand-line-mix .mix-organic { background: #a78bfa; color: #0b0b12; }
+.brand-line-mix .mix-graphic { background: #e2e8f0; color: #0b0b12; }
+.brand-line-mix .mix-stories { background: rgba(255, 255, 255, 0.12); color: #e2e8f0; }
+
+.brand-line dl,
+.brand-guide dl { display: grid; grid-template-columns: 130px 1fr; gap: 6px 14px; margin: 0; font-size: 12.5px; }
+.brand-line dt,
+.brand-guide dt { color: #94a3b8; font-weight: 700; display: flex; align-items: flex-start; gap: 4px; }
+.brand-line dd,
+.brand-guide dd { margin: 0; color: #e2e8f0; line-height: 1.45; }
+.brand-line-more { font-size: 12px; color: #a78bfa; text-decoration: none; font-weight: 700; }
+
+.brand-guide {
+  border: 1px solid rgba(167, 139, 250, 0.35);
+  background: rgba(167, 139, 250, 0.06);
+  border-radius: 10px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.brand-guide-head { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800; color: #a78bfa; }
+.brand-guide-head a { margin-left: auto; font-size: 11px; font-weight: 700; color: #cbd5e1; text-decoration: none; display: flex; align-items: center; gap: 4px; }
+.brand-guide-swatches { display: flex; align-items: center; gap: 5px; }
+.brand-guide-swatches span { width: 16px; height: 16px; border-radius: 4px; border: 1px solid rgba(255, 255, 255, 0.2); }
+.brand-guide-swatches em { font-style: normal; font-size: 11px; color: #94a3b8; margin-left: 8px; }
+
+@media (max-width: 640px) {
+  .brand-line dl,
+  .brand-guide dl { grid-template-columns: 1fr; gap: 2px; }
+  .brand-line dd,
+  .brand-guide dd { margin-bottom: 6px; }
+}

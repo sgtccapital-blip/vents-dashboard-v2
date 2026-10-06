@@ -48,6 +48,53 @@ Los SVG usan las fuentes de la marca vía Google Fonts; para impresión, convert
 - **Highlights:** Next, Lineup, Recaps, Mesas
 - **Grilla:** Bloques de rojo intenso alternando con fotos de escenario azul. Siempre un elemento rojo por post.
 
+## Línea de contenido
+
+Fuente: `brands/ignite/content.json`.
+
+**Lo que ya publica la cuenta:** Reels de club con el logo IGNITE CLUB encendido en la pantalla LED del escenario, láseres rojo/azul y público a contraluz, más reels con frase arriba ('Ese momento donde entiendes por qué nadie quería perderse esta noche'). Todo es video oscuro de pista.
+
+**Mezcla:** Reels de pico de la noche 55% (organic) · Recaps y DJ 15% (organic) · Flyer / teaser de edición 10% (graphic) · Stories: countdown, tickets, repost 20% (stories)
+
+### Video (la mayoría del contenido)
+
+- **Duración:** Picos 6–10 s en loop · recaps 15–25 s · teaser 5 s
+- **Gancho:** Primer frame en el pico: el logo LED encendido o brazos arriba con láser. La frase entra con un golpe en el primer beat.
+- **Estructura:** 0–1 s Golpe (Logo LED / láser + frase en Archivo) → 1–6 s Energía (Cortes al beat, zoom-punch) → 6–9 s Drop (Flash rojo + multitud) → Final Logo (IGNITE se enciende como tubo LED)
+- **Cámara:** Cámara en mano dentro de la pista, desde abajo hacia el escenario; contraluz de LED. Movimiento intencional, nunca estático.
+- **Color:** Contraste alto, rojo y azul saturados, negros puros, motion blur y grano.
+- **Transiciones:** Zoom-punch en el drop, flashes rojos de 2–3 frames, glitch LED.
+- **Texto sobre video:** Archivo Black expandido en mayúsculas, blanco con la palabra clave en rojo, arriba-centro; entra con un golpe y se queda fija. Ejemplo: "SÁBADO / ESTA NOCHE SE PRENDE / LATIN · REGGAETON · ELECTRONIC"
+- **Subtítulos:** Cuando habla un DJ o el público: palabra por palabra en Archivo Black blanco con borde negro, centro; la palabra activa en rojo.
+- **Portada:** Frame del escenario con el logo LED rojo visible + una palabra en Archivo Black. Portadas alternan rojo y azul.
+- **Cierre:** El logo IGNITE CLUB parpadea y queda fijo en rojo sobre negro, con la fecha y el 🌶️.
+- **Música:** Latin, reggaetón y electrónica; usar el audio del DJ en el pico.
+
+### Orgánico
+
+- Siempre un elemento rojo en cuadro
+- El azul es la luz del escenario, nunca un fondo plano
+- Grabar desde dentro de la pista, no desde la barra
+- Loops cortos que inviten a repetir
+
+**Lista de tomas:** Logo LED en el escenario · Láseres sobre la multitud · Brazos arriba en el drop · DJ con contraluz · Confeti / CO2 · Grupo saltando · Pantalla LED en detalle
+
+### Historias
+
+- Fondo Night con degradado Stage
+- Countdown y tickets en sticker rojo
+- Repost del público con marco rojo
+
+Set de gráficos: anuncio ("SÁBADO 18 · 10PM"), cuenta regresiva ("SE PRENDE EN"), encuesta ("¿Qué no puede faltar?" → Reggaetón 🔥 / Electrónica ⚡), repost con marco de marca y link ("GET TICKETS").
+
+### Semana tipo
+
+- **−10 días:** Teaser 5 s del logo
+- **−7 días:** Flyer + countdown
+- **−3 días:** Reel pico de la edición anterior
+- **Día:** Stories en vivo
+- **+1 día:** Recap 'Así se prendió'
+
 ## Color
 
 | Token | Nombre | Hex | Rol | Uso |

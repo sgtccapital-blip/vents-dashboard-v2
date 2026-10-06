@@ -48,6 +48,53 @@ Los SVG usan las fuentes de la marca vía Google Fonts; para impresión, convert
 - **Highlights:** Talento, Eventos, Marcas, Casting
 - **Grilla:** Alternar foto de talento (marfil/cálida) con pieza tipográfica negra cada 3 posts. Portadas de reels con nombre en Cormorant.
 
+## Línea de contenido
+
+Fuente: `brands/arrive/content.json`.
+
+**Lo que ya publica la cuenta:** Fotos y reels de talento en venues y activaciones (retratos en terrazas y bares, eventos de marca como autos) y reels de 'noche de chicas' con frase en serif amarilla ('Así se vive una noche de chicas en Furia'). Mezcla de foto editorial y video de evento.
+
+**Mezcla:** Reels de eventos y activaciones 40% (organic) · BTS de content days 15% (organic) · Fotos de talento (editorial) 20% (graphic) · Casos y casting 10% (graphic) · Stories: casting, repost, eventos 15% (stories)
+
+### Video (la mayoría del contenido)
+
+- **Duración:** Eventos 12–20 s · BTS 20–40 s · casos para marcas 30–45 s
+- **Gancho:** Primer frame: el talento mirando a cámara o entrando al venue, con la frase en serif ya en pantalla.
+- **Estructura:** 0–2 s Entrada (Talento + frase en serif) → 2–10 s Experiencia (Planos de 1–2 s: mesa, brindis, detalles) → 10–15 s Resultado (Local lleno o marca en uso) → Final Firma (Logo ARRIVE pequeño + @talento)
+- **Cámara:** Estabilizado, a la altura de los ojos, con aire alrededor del talento. Slow motion 60 fps en momentos clave (pelo, brindis, caminata).
+- **Color:** Cálido y limpio: pieles cuidadas, negros profundos, contraste medio. Nada de filtros de color fuertes.
+- **Transiciones:** Cortes limpios al ritmo; match cuts de movimiento (giro, caminata) entre locaciones.
+- **Texto sobre video:** Frase corta en Cormorant Garamond itálica, champagne o blanco, centrada en el tercio superior; segunda línea en Montserrat mayúsculas pequeña. Ejemplo: "ARRIVE PRESENTS / Así se vive una noche de chicas / EN FURIA · PANAMÁ"
+- **Subtítulos:** En BTS y entrevistas: subtítulo por frase en Montserrat 600, blanco con sombra suave, abajo-centro. Palabra clave en champagne.
+- **Portada:** Retrato del talento con mucho aire + nombre en Cormorant itálica. Portadas cálidas que alternan con piezas tipográficas negras.
+- **Cierre:** Último segundo: fundido a marfil con el logo ARRIVE y el @ del talento.
+- **Música:** Afro house, R&B y pop en tendencia; audio trending cuando aplique.
+
+### Orgánico
+
+- Cuidar la luz antes que la cantidad de tomas
+- Siempre con autorización del talento y de la marca
+- Mostrar resultados para la marca, no solo fiesta
+- Etiquetar al talento, el venue y la marca
+
+**Lista de tomas:** Entrada del talento · Retrato a cámara (3 s) · Brindis en mesa · Detalle de producto de la marca · Caminata en slow motion · Equipo trabajando (BTS) · Local lleno · Selfie espejo del talento
+
+### Historias
+
+- Fondo marfil o negro, un solo acento champagne
+- Casting abierto con link
+- Repost del talento con marco editorial
+
+Set de gráficos: anuncio ("NOW CASTING · OCTUBRE"), cuenta regresiva ("CASTING CIERRA EN"), encuesta ("¿Qué marca quieres ver con ARRIVE?" → Moda / Gastronomía), repost con marco de marca y link ("APLICAR AL CASTING").
+
+### Semana tipo
+
+- **Lun:** Reel recap de activación
+- **Mar:** Foto de talento (comp card)
+- **Jue:** BTS content day
+- **Vie:** Reel noche de chicas
+- **Dom:** Caso de marca (carrusel)
+
 ## Color
 
 | Token | Nombre | Hex | Rol | Uso |

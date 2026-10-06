@@ -4,6 +4,8 @@ import {
     normalizeDna, dnaCompleteness, dnaToMarkdown, accountSlug,
     linesToList, listToLines, linesToReferences, referencesToLines, parsePalette,
 } from '../lib/accountDna';
+import { useBrandForAccount } from '../lib/useBrand';
+import BrandLinePanel from './BrandLinePanel';
 
 // El formulario trabaja con texto plano (listas = una entrada por línea) y se convierte al guardar.
 function toForm(dna) {
@@ -64,6 +66,7 @@ function Section({ icon, title, color, children }) {
 export default function AccountDnaEditor({ account, onSave, onClose }) {
     const [form, setForm] = useState(() => toForm(account.dna));
     const [copied, setCopied] = useState(false);
+    const { brand, avatarSvg } = useBrandForAccount(account.id);
     const set = key => value => setForm(prev => ({ ...prev, [key]: value }));
 
     const draftDna = useMemo(() => fromForm(form, account.dna), [form, account.dna]);
@@ -124,6 +127,8 @@ export default function AccountDnaEditor({ account, onSave, onClose }) {
 
                 <form onSubmit={handleSubmit}>
                     <div className="social-modal-body">
+                        <BrandLinePanel brand={brand} avatarSvg={avatarSvg} />
+
                         <Section icon={Target} title="IDENTIDAD Y ESTRATEGIA" color="#a78bfa">
                             <Field label="Concepto" hint="qué es la cuenta en una frase" value={form.concept} onChange={set('concept')}
                                 placeholder="Ej: La guía de la electrónica internacional en Panamá" />

@@ -267,5 +267,135 @@
     "cta": "Guest list",
     "meta": "BEST PARTIES IN TOWN"
   },
-  "mood": "radial-gradient(circle at 30% 22%, #F2C94C 0%, #8A5A1F 22%, #2A1708 52%, #000000 85%)"
+  "mood": "radial-gradient(circle at 30% 22%, #F2C94C 0%, #8A5A1F 22%, #2A1708 52%, #000000 85%)",
+  "content": {
+    "observed": "Reels y fotos con flash directo del público (amigas brindando, coros, bengalas, caras de cerca), artistas en vivo con luz azul y frases en serif blanca arriba del video ('Ese momento donde entiendes por qué nadie quería perderse esta noche').",
+    "mix": [
+      {
+        "type": "Reels de momentos con amigos",
+        "pct": 45,
+        "kind": "organic"
+      },
+      {
+        "type": "Photo dumps con flash",
+        "pct": 20,
+        "kind": "organic"
+      },
+      {
+        "type": "Flyer de edición",
+        "pct": 10,
+        "kind": "graphic"
+      },
+      {
+        "type": "Stories: repost de etiquetas, encuestas",
+        "pct": 25,
+        "kind": "stories"
+      }
+    ],
+    "video": {
+      "lengths": "Momentos 8–15 s · trends 10–20 s · photo dump carrusel de 10",
+      "hook": "Una cara de cerca cantando o riendo con flash, y la frase en serif ya escrita arriba.",
+      "structure": [
+        {
+          "t": "0–2 s",
+          "label": "Cara",
+          "desc": "Close-up con flash + frase"
+        },
+        {
+          "t": "2–8 s",
+          "label": "Combo",
+          "desc": "Grupos, brindis, coros"
+        },
+        {
+          "t": "8–12 s",
+          "label": "Pico",
+          "desc": "Bengalas o artista"
+        },
+        {
+          "t": "Final",
+          "label": "Banana",
+          "desc": "Banana neón + 'Búscate'"
+        }
+      ],
+      "camera": "Celular con flash encendido, cerca de la gente, a la altura del grupo. Estética de cámara compacta, sin estabilizar de más.",
+      "grade": "Cálido, flash duro, un poco sobreexpuesto, grano. Negros profundos alrededor.",
+      "transitions": "Cortes naturales al coro, flash blanco entre clips.",
+      "overlay": {
+        "style": "Frase en DM Serif Display blanca, centrada arriba, 2–3 líneas, minúsculas con mayúscula inicial. Es la firma de la cuenta.",
+        "kicker": "",
+        "text": "Ese momento donde entiendes por qué nadie quería perderse esta noche",
+        "sub": ""
+      },
+      "subtitles": {
+        "style": "Si alguien habla a cámara: DM Sans 700 blanco con caja negra redondeada, la palabra clave en amarillo banana.",
+        "sample": "dijimos que solo íbamos a una",
+        "highlight": "una"
+      },
+      "cover": {
+        "style": "Foto con flash de un grupo riendo + 'BÚSCATE 🍌' o fecha en Rubik amarillo.",
+        "title": "BÚSCATE 🍌"
+      },
+      "endcard": {
+        "style": "Banana neón que se enciende con zumbido sobre negro + 'Etiqueta a tu combo'.",
+        "cta": "Etiqueta a tu combo"
+      },
+      "music": "Reggaetón y hits del momento; audio trending en reels de humor."
+    },
+    "organic": {
+      "principles": [
+        "Caras reales y felices: la gente es el contenido",
+        "Flash siempre",
+        "Nunca exponer a nadie de forma vergonzosa",
+        "Repostear a todos los que etiquetan"
+      ],
+      "shots": [
+        "Amigas brindando",
+        "Coro a todo pulmón",
+        "Bengalas en mesa",
+        "Selfie del combo",
+        "Artista con el público",
+        "Baile en grupo",
+        "Letrero neón de la banana"
+      ]
+    },
+    "stories": {
+      "principles": [
+        "Fondo negro con banana neón",
+        "Repost masivo de etiquetas con marco amarillo",
+        "Encuestas y preguntas para el combo"
+      ],
+      "announce": "ESTE SÁBADO · VOL. 14",
+      "poll": {
+        "q": "¿Con quién vienes?",
+        "a": [
+          "Con mi combo 🍌",
+          "Sola y lista"
+        ]
+      },
+      "countdown": "FALTA POCO",
+      "link": "GUEST LIST"
+    },
+    "weekly": [
+      {
+        "day": "Lun",
+        "piece": "Photo dump 'Búscate'"
+      },
+      {
+        "day": "Mar",
+        "piece": "Reel momento con frase"
+      },
+      {
+        "day": "Jue",
+        "piece": "Trend / humor"
+      },
+      {
+        "day": "Vie",
+        "piece": "Flyer + countdown"
+      },
+      {
+        "day": "Sáb",
+        "piece": "Stories en vivo + reposts"
+      }
+    ]
+  }
 }

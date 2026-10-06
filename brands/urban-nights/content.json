@@ -1,0 +1,45 @@
+{
+  "observed": "Flyers rojo/negro de artista con skyline nocturno ('DANNY YASH · URBAN NIGHTS · mieventos.com'), reels del artista invitando a la noche, noches temáticas (Ladies, Latin House Saxo Sessions) y clips del público y del show.",
+  "mix": [
+    { "type": "Reels del show y del público", "pct": 35, "kind": "organic" },
+    { "type": "Video del artista invitando", "pct": 25, "kind": "organic" },
+    { "type": "Flyer de artista", "pct": 20, "kind": "graphic" },
+    { "type": "Stories: tickets, countdown, repost", "pct": 20, "kind": "stories" }
+  ],
+  "video": {
+    "lengths": "Invitación del artista 8–15 s · show 15–25 s · recap 20–30 s",
+    "hook": "El artista mira a cámara y dice la fecha en el primer segundo, con su nombre en rojo gigante.",
+    "structure": [
+      { "t": "0–2 s", "label": "Artista", "desc": "A cámara + nombre en rojo" },
+      { "t": "2–8 s", "label": "Invitación", "desc": "Subtítulos grandes, fecha y lugar" },
+      { "t": "8–12 s", "label": "Show", "desc": "Clips de la tarima y el público" },
+      { "t": "Final", "label": "Tickets", "desc": "Logo URBAN NIGHTS + mieventos.com" }
+    ],
+    "camera": "Artista en plano medio con luz frontal dura; show desde la tarima hacia el público y desde el público hacia la tarima.",
+    "grade": "Contraste alto, rojos profundos, negros puros, nitidez fuerte.",
+    "transitions": "Letras que golpean, shake en el drop, flashes rojos.",
+    "overlay": { "style": "Nombre del artista en Big Shoulders Display 900 rojo con borde negro, gigante, arriba; datos en Barlow mayúsculas en barra negra abajo.", "kicker": "LIVE PERFORMANCE BY", "text": "DANNY YASH", "sub": "SÁBADO 20 JUL · 10PM" },
+    "subtitles": { "style": "Big Shoulders Display 800 blanco con borde negro grueso, 2–3 palabras por vez al centro; la palabra activa en rojo.", "sample": "este sábado nos vemos en urban nights", "highlight": "urban" },
+    "cover": { "style": "Artista recortado sobre skyline nocturno con su nombre en rojo cromado. Siempre un artista en la portada.", "title": "DANNY YASH" },
+    "endcard": { "style": "Logo URBAN NIGHTS blanco en caja + 'TICKETS & VIP · MIEVENTOS.COM' en barra roja.", "cta": "Tickets & VIP" },
+    "music": "Reggaetón y dembow en tendencia; temas del artista invitado."
+  },
+  "organic": {
+    "principles": ["El artista siempre en el centro", "Audio limpio cuando el artista habla", "Mostrar al público cantando sus temas", "Patrocinadores al pie, nunca encima"],
+    "shots": ["Artista a cámara invitando", "Entrada a tarima", "Público cantando", "Detalle de cadenas y outfit", "DJ en el mix show", "Skyline nocturno", "Mesa VIP con botellas"]
+  },
+  "stories": {
+    "principles": ["Fondo negro con rojo y cromo", "Tickets como sticker de link en cada story", "Repost del público con marco rojo"],
+    "announce": "SÁBADO 20 · JUL",
+    "poll": { "q": "¿A quién quieres ver en tarima?", "a": ["Danny Yash", "Otro 👀"] },
+    "countdown": "SHOW EN",
+    "link": "TICKETS & VIP"
+  },
+  "weekly": [
+    { "day": "−10 días", "piece": "Flyer de artista" },
+    { "day": "−7 días", "piece": "Video del artista invitando" },
+    { "day": "−3 días", "piece": "Reel del show anterior" },
+    { "day": "Día", "piece": "Stories en vivo" },
+    { "day": "+1 día", "piece": "Recap del show" }
+  ]
+}

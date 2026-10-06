@@ -1,0 +1,45 @@
+{
+  "observed": "Flyers rojo/negro con el búho (estáticos y animados en reel), ediciones en Pa' Vacilar y Terraplén con lineup y patrocinadores (Absolut, Jägermeister), y reels de detalle de lujo (tacón, copa) con luz roja.",
+  "mix": [
+    { "type": "Reels recap y detalles de lujo", "pct": 40, "kind": "organic" },
+    { "type": "Flyer animado de edición", "pct": 20, "kind": "graphic" },
+    { "type": "Flyer estático / lineup", "pct": 15, "kind": "graphic" },
+    { "type": "Stories: countdown, tickets, repost", "pct": 25, "kind": "stories" }
+  ],
+  "video": {
+    "lengths": "Detalles 6–10 s · flyer animado 8–10 s · recap 15–25 s",
+    "hook": "Revelar desde la oscuridad: un detalle de lujo iluminado en rojo (tacón, copa, bengala) antes de mostrar gente.",
+    "structure": [
+      { "t": "0–2 s", "label": "Reveal", "desc": "Detalle de lujo saliendo de la sombra" },
+      { "t": "2–8 s", "label": "Ambiente", "desc": "Siluetas, mesas, bengalas en slow motion" },
+      { "t": "8–12 s", "label": "Pista", "desc": "Cortes al beat solo en el drop" },
+      { "t": "Final", "label": "Búho", "desc": "Logo en cream sobre negro + fecha" }
+    ],
+    "camera": "Movimientos lentos (gimbal), planos detalle a la altura de las manos y los pies, gente de espaldas o en penumbra. Slow motion 60–120 fps.",
+    "grade": "Viraje rojo vino, sombras profundas, viñeta y grano de película. Pieles cálidas.",
+    "transitions": "Fundidos a negro y barridos de luz roja. Cortes al beat solo en el drop.",
+    "overlay": { "style": "Bodoni Moda mayúsculas en cream con tracking amplio, centrado; datos en Josefin Sans muy espaciado. Pocas palabras.", "kicker": "VIERNES 04 SEP", "text": "MEMBERS OF THE NIGHT", "sub": "TERRAPLÉN · PISO 002" },
+    "subtitles": { "style": "Sin subtítulos: la marca no habla, insinúa. Si hay voz, frase en Josefin Sans cream, minúsculas, muy pequeña.", "sample": "esta noche, solo invitados", "highlight": "invitados" },
+    "cover": { "style": "Fondo velvet rojo/negro con el búho centrado y la fecha en Josefin; todas las portadas centradas y simétricas.", "title": "EDICIÓN Nº 07" },
+    "endcard": { "style": "Fundido a Noir con el lockup THE · búho · ROOM en cream y 'Tickets en bio'.", "cta": "Request access" },
+    "music": "Reggaetón, hits latinos y crossover; intros oscuras con bajos para teasers."
+  },
+  "organic": {
+    "principles": ["Insinuar, no mostrar todo: la exclusividad está en lo que no se ve", "Gente bien vestida, de espaldas o en penumbra", "Nada de flash directo", "Patrocinadores siempre presentes pero discretos"],
+    "shots": ["Tacón entrando al venue", "Copa con luz roja", "Botella con bengala", "Manos con anillos", "Silueta en la barra", "Mesa VIP desde arriba", "Pulsera de acceso", "DJ en penumbra"]
+  },
+  "stories": {
+    "principles": ["Velvet rojo/negro con búho", "Cuenta regresiva desde 7 días antes", "Repost de invitados con marco de invitación"],
+    "announce": "VIERNES 04 · SEP",
+    "poll": { "q": "¿Mesa o pista?", "a": ["Mesa 🍾", "Pista 🔥"] },
+    "countdown": "FALTAN",
+    "link": "REQUEST ACCESS"
+  },
+  "weekly": [
+    { "day": "−14 días", "piece": "Flyer animado de anuncio" },
+    { "day": "−7 días", "piece": "Lineup + countdown en stories" },
+    { "day": "−2 días", "piece": "Reel de detalles (teaser)" },
+    { "day": "Día", "piece": "Stories en vivo + repost" },
+    { "day": "+1 día", "piece": "Recap 20 s" }
+  ]
+}

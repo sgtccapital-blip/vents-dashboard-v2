@@ -48,6 +48,53 @@ Los SVG usan las fuentes de la marca vía Google Fonts; para impresión, convert
 - **Highlights:** Búscate, Fechas, Guest list, Vibes
 - **Grilla:** Fotos de gente con flash (70%) + piezas negras con banana (30%). Repost de etiquetas en stories.
 
+## Línea de contenido
+
+Fuente: `brands/hangout/content.json`.
+
+**Lo que ya publica la cuenta:** Reels y fotos con flash directo del público (amigas brindando, coros, bengalas, caras de cerca), artistas en vivo con luz azul y frases en serif blanca arriba del video ('Ese momento donde entiendes por qué nadie quería perderse esta noche').
+
+**Mezcla:** Reels de momentos con amigos 45% (organic) · Photo dumps con flash 20% (organic) · Flyer de edición 10% (graphic) · Stories: repost de etiquetas, encuestas 25% (stories)
+
+### Video (la mayoría del contenido)
+
+- **Duración:** Momentos 8–15 s · trends 10–20 s · photo dump carrusel de 10
+- **Gancho:** Una cara de cerca cantando o riendo con flash, y la frase en serif ya escrita arriba.
+- **Estructura:** 0–2 s Cara (Close-up con flash + frase) → 2–8 s Combo (Grupos, brindis, coros) → 8–12 s Pico (Bengalas o artista) → Final Banana (Banana neón + 'Búscate')
+- **Cámara:** Celular con flash encendido, cerca de la gente, a la altura del grupo. Estética de cámara compacta, sin estabilizar de más.
+- **Color:** Cálido, flash duro, un poco sobreexpuesto, grano. Negros profundos alrededor.
+- **Transiciones:** Cortes naturales al coro, flash blanco entre clips.
+- **Texto sobre video:** Frase en DM Serif Display blanca, centrada arriba, 2–3 líneas, minúsculas con mayúscula inicial. Es la firma de la cuenta. Ejemplo: "Ese momento donde entiendes por qué nadie quería perderse esta noche"
+- **Subtítulos:** Si alguien habla a cámara: DM Sans 700 blanco con caja negra redondeada, la palabra clave en amarillo banana.
+- **Portada:** Foto con flash de un grupo riendo + 'BÚSCATE 🍌' o fecha en Rubik amarillo.
+- **Cierre:** Banana neón que se enciende con zumbido sobre negro + 'Etiqueta a tu combo'.
+- **Música:** Reggaetón y hits del momento; audio trending en reels de humor.
+
+### Orgánico
+
+- Caras reales y felices: la gente es el contenido
+- Flash siempre
+- Nunca exponer a nadie de forma vergonzosa
+- Repostear a todos los que etiquetan
+
+**Lista de tomas:** Amigas brindando · Coro a todo pulmón · Bengalas en mesa · Selfie del combo · Artista con el público · Baile en grupo · Letrero neón de la banana
+
+### Historias
+
+- Fondo negro con banana neón
+- Repost masivo de etiquetas con marco amarillo
+- Encuestas y preguntas para el combo
+
+Set de gráficos: anuncio ("ESTE SÁBADO · VOL. 14"), cuenta regresiva ("FALTA POCO"), encuesta ("¿Con quién vienes?" → Con mi combo 🍌 / Sola y lista), repost con marco de marca y link ("GUEST LIST").
+
+### Semana tipo
+
+- **Lun:** Photo dump 'Búscate'
+- **Mar:** Reel momento con frase
+- **Jue:** Trend / humor
+- **Vie:** Flyer + countdown
+- **Sáb:** Stories en vivo + reposts
+
 ## Color
 
 | Token | Nombre | Hex | Rol | Uso |

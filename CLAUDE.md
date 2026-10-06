@@ -5,7 +5,7 @@
 Cada cuenta de redes tiene dos fuentes que se complementan:
 
 - **ADN de contenido** (qué publica y cómo habla): se edita en el dashboard (Redes Sociales → Cuentas & ADN) y `server.js` lo exporta a `content-dna/<cuenta>/DNA.md`.
-- **Línea gráfica** (cómo se ve): `brands/<marca>/brand.json` es la fuente de verdad. `npm run brands` genera `brands/<marca>/BRAND.md`, `brands/<marca>/tokens.css` y el brandbook visual en `public/brands/<marca>/` (servido en `/brands/<marca>/`).
+- **Línea gráfica** (cómo se ve) y **línea de contenido** (cómo se graba y edita cada video, textos en pantalla, subtítulos, historias): `brands/<marca>/brand.json` y `brands/<marca>/content.json` son la fuente de verdad. `npm run brands` genera `brands/<marca>/BRAND.md`, `brands/<marca>/tokens.css` y el brandbook visual en `public/brands/<marca>/` (servido en `/brands/<marca>/`).
 
 Reglas:
 - Antes de crear cualquier pieza para una cuenta (diseño, motion, edición, guion, caption, prompt para otro modelo, web), lee su `DNA.md` y su `BRAND.md`.

@@ -48,6 +48,53 @@ Los SVG usan las fuentes de la marca vía Google Fonts; para impresión, convert
 - **Highlights:** Casco Peatonal, Servicios, Proyectos, Aliados
 - **Grilla:** Carruseles institucionales blancos alternando con fotos de ciudad B/N. Casco Peatonal con su sub-identidad colorida dentro del marco UDP.
 
+## Línea de contenido
+
+Fuente: `brands/udp/content.json`.
+
+**Lo que ya publica la cuenta:** Carruseles institucionales en blanco y negro con acento dorado ('¿Qué hacemos en UDP?', 'La ciudad está cambiando', '¿Qué es UDP?') y la agenda del Casco Peatonal con una sub-identidad más colorida. Todavía no publica video.
+
+**Mezcla:** Reels de montaje y operación 30% (organic) · Reels del Casco Peatonal (gente y cultura) 25% (organic) · Carruseles institucionales 25% (graphic) · Stories: agenda, encuestas 20% (stories)
+
+### Video (la mayoría del contenido)
+
+- **Duración:** Timelapse de montaje 10–20 s · Casco Peatonal 15–30 s · institucional 30–45 s
+- **Gancho:** Antes y después en el primer segundo: calle vacía → evento lleno, con el claim en Poppins.
+- **Estructura:** 0–2 s Antes (Calle vacía + claim) → 2–10 s Operación (Timelapse de montaje y logística) → 10–18 s Después (Gente disfrutando el espacio) → Final Firma (Lockup UDP + 'Organizamos hoy, transformamos ciudad.')
+- **Cámara:** Trípode y timelapse para montajes; gimbal a la altura de la gente en el Casco; drone para escala de ciudad.
+- **Color:** Desaturado con calidez dorada; atardeceres dorados para piezas emocionales.
+- **Transiciones:** Cortes ordenados, textos que entran por bloques, barrido ocre sobre la palabra clave.
+- **Texto sobre video:** Poppins Black mayúsculas blanco, alineado a la izquierda, palabra clave en ocre; etiqueta negra con texto blanco para el dato. Ejemplo: "ARTE · CULTURA · CIUDAD / LA CIUDAD ESTÁ CAMBIANDO. / CASCO PEATONAL · DOMINGO 8AM–6PM"
+- **Subtítulos:** Inter 600 blanco sobre caja negra, por frase; nombres de lugares en ocre.
+- **Portada:** Foto de ciudad desaturada con claim en Poppins Black y la palabra clave en ocre; logo UDP arriba-izquierda.
+- **Cierre:** Fondo blanco con UDP gigante en Concrete detrás, lockup completo y 'Proyectos & alianzas por DM'.
+- **Música:** Instrumental moderno y cinematográfico; música local en piezas del Casco.
+
+### Orgánico
+
+- Mostrar el trabajo detrás: montaje, logística, equipo
+- La ciudad y la gente como protagonistas
+- Nada de estética de nightlife
+- Datos concretos (personas, horas, metros)
+
+**Lista de tomas:** Timelapse de montaje · Equipo con chaleco UDP · Calle peatonal llena · Detalle de patrimonio · Familias y artistas callejeros · Drone del Casco · Atardecer en la ciudad
+
+### Historias
+
+- Fondo blanco o foto desaturada
+- Agenda del fin de semana como sticker
+- Encuestas sobre la ciudad
+
+Set de gráficos: anuncio ("DOMINGO 31 · CASCO PEATONAL"), cuenta regresiva ("CASCO PEATONAL EN"), encuesta ("¿Qué quieres en el Casco Peatonal?" → Más música / Más comida), repost con marco de marca y link ("VER AGENDA").
+
+### Semana tipo
+
+- **Lun:** Recap del domingo (reel)
+- **Mié:** Carrusel institucional
+- **Jue:** Agenda del fin de semana
+- **Sáb:** Timelapse de montaje
+- **Dom:** Stories en vivo del Casco
+
 ## Color
 
 | Token | Nombre | Hex | Rol | Uso |

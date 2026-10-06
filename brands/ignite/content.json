@@ -1,0 +1,45 @@
+{
+  "observed": "Reels de club con el logo IGNITE CLUB encendido en la pantalla LED del escenario, láseres rojo/azul y público a contraluz, más reels con frase arriba ('Ese momento donde entiendes por qué nadie quería perderse esta noche'). Todo es video oscuro de pista.",
+  "mix": [
+    { "type": "Reels de pico de la noche", "pct": 55, "kind": "organic" },
+    { "type": "Recaps y DJ", "pct": 15, "kind": "organic" },
+    { "type": "Flyer / teaser de edición", "pct": 10, "kind": "graphic" },
+    { "type": "Stories: countdown, tickets, repost", "pct": 20, "kind": "stories" }
+  ],
+  "video": {
+    "lengths": "Picos 6–10 s en loop · recaps 15–25 s · teaser 5 s",
+    "hook": "Primer frame en el pico: el logo LED encendido o brazos arriba con láser. La frase entra con un golpe en el primer beat.",
+    "structure": [
+      { "t": "0–1 s", "label": "Golpe", "desc": "Logo LED / láser + frase en Archivo" },
+      { "t": "1–6 s", "label": "Energía", "desc": "Cortes al beat, zoom-punch" },
+      { "t": "6–9 s", "label": "Drop", "desc": "Flash rojo + multitud" },
+      { "t": "Final", "label": "Logo", "desc": "IGNITE se enciende como tubo LED" }
+    ],
+    "camera": "Cámara en mano dentro de la pista, desde abajo hacia el escenario; contraluz de LED. Movimiento intencional, nunca estático.",
+    "grade": "Contraste alto, rojo y azul saturados, negros puros, motion blur y grano.",
+    "transitions": "Zoom-punch en el drop, flashes rojos de 2–3 frames, glitch LED.",
+    "overlay": { "style": "Archivo Black expandido en mayúsculas, blanco con la palabra clave en rojo, arriba-centro; entra con un golpe y se queda fija.", "kicker": "SÁBADO", "text": "ESTA NOCHE SE PRENDE", "sub": "LATIN · REGGAETON · ELECTRONIC" },
+    "subtitles": { "style": "Cuando habla un DJ o el público: palabra por palabra en Archivo Black blanco con borde negro, centro; la palabra activa en rojo.", "sample": "esto se prendió desde el primer tema", "highlight": "prendió" },
+    "cover": { "style": "Frame del escenario con el logo LED rojo visible + una palabra en Archivo Black. Portadas alternan rojo y azul.", "title": "SE PRENDIÓ" },
+    "endcard": { "style": "El logo IGNITE CLUB parpadea y queda fijo en rojo sobre negro, con la fecha y el 🌶️.", "cta": "Get tickets" },
+    "music": "Latin, reggaetón y electrónica; usar el audio del DJ en el pico."
+  },
+  "organic": {
+    "principles": ["Siempre un elemento rojo en cuadro", "El azul es la luz del escenario, nunca un fondo plano", "Grabar desde dentro de la pista, no desde la barra", "Loops cortos que inviten a repetir"],
+    "shots": ["Logo LED en el escenario", "Láseres sobre la multitud", "Brazos arriba en el drop", "DJ con contraluz", "Confeti / CO2", "Grupo saltando", "Pantalla LED en detalle"]
+  },
+  "stories": {
+    "principles": ["Fondo Night con degradado Stage", "Countdown y tickets en sticker rojo", "Repost del público con marco rojo"],
+    "announce": "SÁBADO 18 · 10PM",
+    "poll": { "q": "¿Qué no puede faltar?", "a": ["Reggaetón 🔥", "Electrónica ⚡"] },
+    "countdown": "SE PRENDE EN",
+    "link": "GET TICKETS"
+  },
+  "weekly": [
+    { "day": "−10 días", "piece": "Teaser 5 s del logo" },
+    { "day": "−7 días", "piece": "Flyer + countdown" },
+    { "day": "−3 días", "piece": "Reel pico de la edición anterior" },
+    { "day": "Día", "piece": "Stories en vivo" },
+    { "day": "+1 día", "piece": "Recap 'Así se prendió'" }
+  ]
+}
