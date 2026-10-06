@@ -1,0 +1,52 @@
+/* IGNITE CLUB — tokens de marca. Generado por scripts/build-brands.mjs desde brands/ignite/brand.json. No editar a mano. */
+@import url('https://fonts.googleapis.com/css2?family=Archivo+Black:wght@400&family=Archivo+Narrow:wght@500;700&family=Archivo:wght@400;600&display=swap');
+
+:root {
+  /* Paleta */
+  --brand-night: #0A0A0F; /* Night · Primario */
+  --brand-red: #E3262B; /* Ignite Red · Primario */
+  --brand-volt: #1F3BFF; /* Volt Blue · Secundario */
+  --brand-ember: #FF6B1A; /* Ember · Acento */
+  --brand-white: #FFFFFF; /* White · Primario */
+  --brand-magenta: #D62DFF; /* Laser Magenta · Acento */
+
+  /* Roles */
+  --brand-bg: #0A0A0F;
+  --brand-surface: #16161F;
+  --brand-fg: #FFFFFF;
+  --brand-muted: #9A9AB0;
+  --brand-accent: #E3262B;
+  --brand-on-accent: #FFFFFF;
+  --brand-line: #26263A;
+
+  /* Tipografía */
+  --font-display: 'Archivo Black', sans-serif;
+  --font-secondary: 'Archivo Narrow', sans-serif;
+  --font-body: 'Archivo', sans-serif;
+  --tracking-display: -0.01em;
+  --tracking-secondary: 0.12em;
+  --tracking-body: 0;
+  --text-display-xl: 6rem;
+  --text-display-l: 4rem;
+  --text-h1: 3rem;
+  --text-h2: 2rem;
+  --text-h3: 1.5rem;
+  --text-body-l: 1.125rem;
+  --text-body: 1rem;
+  --text-label: 0.75rem;
+
+  /* Forma y movimiento */
+  --radius: 999px;
+  --space-1: 0.5rem;
+  --space-2: 1rem;
+  --space-3: 1.5rem;
+  --space-4: 2rem;
+  --space-6: 3rem;
+  --space-8: 4rem;
+  --space-12: 6rem;
+  --space-16: 8rem;
+  --ease: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --gradient-stage: linear-gradient(135deg, #1F3BFF 0%, #0A0A0F 50%, #E3262B 100%);
+  --gradient-heat: radial-gradient(circle at 50% 100%, #FF6B1A 0%, #E3262B 30%, #0A0A0F 70%);
+  --mood: linear-gradient(135deg, #1F3BFF 0%, #0A0A0F 50%, #E3262B 100%);
+}

@@ -1,0 +1,257 @@
+{
+  "slug": "hangout",
+  "accountId": "social-hangout-panama",
+  "handler": "@hangout.panama",
+  "name": "HANG OUT",
+  "descriptor": "Reggaeton & Hits · Panamá",
+  "tagline": "Tú sabes con quién vienes.",
+  "essence": "La fiesta donde lo importante es tu gente.",
+  "positioning": "La fiesta de reggaetón y hits más social de Panamá: grupos de amigos, risas, coros a todo pulmón y la banana como icono pícaro.",
+  "personality": [
+    "Divertida",
+    "Pícara",
+    "Cercana",
+    "Espontánea",
+    "Social"
+  ],
+  "values": [
+    "Tu gente primero",
+    "Pasarla bien sin pose",
+    "Todos salen en la foto",
+    "Buena vibra"
+  ],
+  "layout": "social",
+  "logo": {
+    "wordmark": [
+      "HANG OUT"
+    ],
+    "descriptorLine": "PANAMÁ ®",
+    "symbol": "La banana en línea neón dorada (símbolo actual). Es el icono de la marca: avatar, sticker, pulsera, letrero neón del venue.",
+    "construction": "Banana neón + HANG OUT en Rubik ExtraBold redondeada, tracking 0. Lockup horizontal con la banana inclinada 20° a la izquierda.",
+    "clearspace": "Grosor de la banana ×3 alrededor.",
+    "minSize": "Banana 24 px · lockup 100 px.",
+    "versions": [
+      "Banana neón sobre negro (principal)",
+      "Lockup negro sobre Banana",
+      "Banana sola (sticker, avatar)",
+      "Letrero neón para venue"
+    ],
+    "misuse": [
+      "No usar la banana rellena sólida (siempre línea neón)",
+      "No usar rojo (Ignite) ni crema/bordó (The Room)",
+      "No convertir la banana en contenido vulgar",
+      "No usar serif de lujo en el logo"
+    ]
+  },
+  "colors": [
+    {
+      "token": "black",
+      "name": "Black",
+      "hex": "#000000",
+      "role": "Primario",
+      "usage": "Fondo."
+    },
+    {
+      "token": "banana",
+      "name": "Banana Neon",
+      "hex": "#F2C94C",
+      "role": "Primario",
+      "usage": "Logo, titulares, stickers, CTA."
+    },
+    {
+      "token": "white",
+      "name": "White",
+      "hex": "#FFFFFF",
+      "role": "Primario",
+      "usage": "Frases y texto."
+    },
+    {
+      "token": "peel",
+      "name": "Peel Cream",
+      "hex": "#FFF4D6",
+      "role": "Secundario",
+      "usage": "Fondos claros de web y stories."
+    },
+    {
+      "token": "charcoal",
+      "name": "Charcoal",
+      "hex": "#2B2B2B",
+      "role": "Neutro",
+      "usage": "Superficies y tarjetas."
+    },
+    {
+      "token": "pink",
+      "name": "Flash Pink",
+      "hex": "#FF4FA3",
+      "role": "Acento",
+      "usage": "Stickers y reacciones puntuales (máx. 5%)."
+    }
+  ],
+  "theme": {
+    "bg": "black",
+    "surface": "charcoal",
+    "fg": "white",
+    "muted": "#BDBDBD",
+    "accent": "banana",
+    "line": "#3A3A3A"
+  },
+  "gradients": [
+    {
+      "name": "Neon glow",
+      "css": "radial-gradient(circle, rgba(242,201,76,0.45) 0%, transparent 60%)"
+    }
+  ],
+  "typography": {
+    "display": {
+      "family": "Rubik",
+      "weights": [
+        700,
+        800,
+        900
+      ],
+      "case": "uppercase",
+      "tracking": "0",
+      "usage": "Logo, titulares de flyer, stickers."
+    },
+    "secondary": {
+      "family": "DM Serif Display",
+      "weights": [
+        400
+      ],
+      "italic": false,
+      "case": "none",
+      "tracking": "0",
+      "usage": "Frases emocionales arriba del video ('Ese momento donde…')."
+    },
+    "body": {
+      "family": "DM Sans",
+      "weights": [
+        400,
+        500,
+        700
+      ],
+      "case": "none",
+      "tracking": "0",
+      "usage": "Texto web, captions."
+    }
+  },
+  "ui": {
+    "radius": "16px",
+    "buttonStyle": "Redondeado 16 px, sólido Banana con texto negro Rubik 800; secundario contorno blanco. Hover: rebote suave.",
+    "grid": "12 columnas, 1200 px, tarjetas tipo fotos instantáneas.",
+    "spacingBase": 8,
+    "shadow": "Glow amarillo suave en el logo; tarjetas sin sombra."
+  },
+  "imagery": {
+    "photography": "Fotos con flash directo del público: grupos abrazados, risas, brindis, coros, bengalas. Caras reales y felices.",
+    "treatment": "Flash, grano, color cálido, un poco sobreexpuesto; estética de cámara compacta.",
+    "avoid": "Fotos del escenario vacío, poses de modelo, imágenes que expongan a alguien de forma vergonzosa."
+  },
+  "graphicElements": [
+    "Stickers redondos con la banana",
+    "Frase en serif blanca centrada arriba",
+    "Marcos tipo foto instantánea",
+    "Garabatos/flechas a mano señalando amigos"
+  ],
+  "iconography": "Iconos redondeados y amigables. Phosphor Regular con terminaciones redondas.",
+  "motion": {
+    "principles": [
+      "Rebote divertido",
+      "Cortes naturales al coro",
+      "Flash entre clips"
+    ],
+    "easing": "cubic-bezier(0.34, 1.56, 0.64, 1)",
+    "durations": "250 ms UI · 500 ms entradas con rebote",
+    "signature": "La banana neón se enciende con un zumbido y guiña (parpadeo)."
+  },
+  "social": {
+    "grid": "Fotos de gente con flash (70%) + piezas negras con banana (30%). Repost de etiquetas en stories.",
+    "templates": [
+      {
+        "name": "Moment",
+        "format": "Reel 9:16",
+        "spec": "Clips de 1–2 s del público, frase serif blanca arriba, sticker banana al final."
+      },
+      {
+        "name": "Photo dump",
+        "format": "Carrusel 4:5",
+        "spec": "Portada 'BÚSCATE 🍌' en Rubik Banana, 10 fotos de flash."
+      },
+      {
+        "name": "Flyer",
+        "format": "4:5",
+        "spec": "Fondo negro, banana neón grande, fecha Rubik 900, 'REGGAETON | HITS', venue."
+      },
+      {
+        "name": "Tag your crew",
+        "format": "Story 9:16",
+        "spec": "Pregunta + sticker de mención, fondo Peel."
+      }
+    ]
+  },
+  "web": {
+    "concept": "Web divertida de comunidad: próxima fiesta, fotos para buscarte y guest list para grupos.",
+    "sitemap": [
+      "Inicio",
+      "Próxima Hang Out",
+      "Fotos (búscate)",
+      "Guest list para grupos",
+      "Mesas",
+      "Contacto"
+    ],
+    "hero": "Mosaico de fotos con flash en movimiento, banana neón al centro y 'Tú sabes con quién vienes.'",
+    "sections": [
+      "Próxima fecha",
+      "Galería por edición",
+      "Guest list por grupo (nombre del combo)",
+      "FAQ"
+    ],
+    "features": [
+      "Galería por edición",
+      "Guest list grupal",
+      "Compartir foto directo a IG"
+    ]
+  },
+  "voice": {
+    "tone": "Divertido, pícaro y cercano. Complicidad entre amigos. Humor sin vulgaridad.",
+    "headlines": [
+      "Tú sabes con quién vienes.",
+      "Búscate 🍌",
+      "POV: dijiste que solo ibas a una.",
+      "Ese momento donde entiendes por qué nadie quería perderse esta noche."
+    ],
+    "use": [
+      "combo",
+      "tu gente",
+      "búscate",
+      "etiqueta",
+      "🍌"
+    ],
+    "avoid": [
+      "exclusivo",
+      "VIP only",
+      "lujo",
+      "doble sentido explícito"
+    ]
+  },
+  "dos": [
+    "Caras y risas",
+    "Banana neón como firma",
+    "Repostear al público",
+    "Frases en serif blanca"
+  ],
+  "donts": [
+    "Rojo de Ignite",
+    "Lujo oscuro de The Room",
+    "Fotos sin gente",
+    "Humor vulgar"
+  ],
+  "sample": {
+    "kicker": "ESTE SÁBADO",
+    "headline": "HANG OUT",
+    "sub": "REGGAETON | HITS 🍌",
+    "cta": "Guest list",
+    "meta": "BEST PARTIES IN TOWN"
+  },
+  "mood": "radial-gradient(circle at 30% 22%, #F2C94C 0%, #8A5A1F 22%, #2A1708 52%, #000000 85%)"
+}

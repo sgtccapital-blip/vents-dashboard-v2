@@ -1,0 +1,262 @@
+{
+  "slug": "urban-nights",
+  "accountId": "social-urbannights-pa",
+  "handler": "@Urbannights.pa",
+  "name": "URBAN NIGHTS",
+  "descriptor": "Live Urban Shows · Panamá",
+  "tagline": "Los mejores artistas urbanos. En vivo.",
+  "essence": "El escenario de la música urbana panameña: artistas en vivo, noche de calle premium.",
+  "positioning": "La serie de shows urbanos en vivo de Panamá: un artista invitado por noche, DJs de reggaetón y dembow, y producción de concierto en club.",
+  "personality": [
+    "Poderosa",
+    "Callejera premium",
+    "Directa",
+    "Orgullosa",
+    "Ruidosa"
+  ],
+  "values": [
+    "El artista en el centro",
+    "Orgullo panameño",
+    "Show de verdad",
+    "Calle con estándar"
+  ],
+  "layout": "urban",
+  "logo": {
+    "wordmark": [
+      "URBAN",
+      "NIGHTS"
+    ],
+    "descriptorLine": "®",
+    "symbol": "Wordmark apilado dentro de una caja con borde (como el avatar actual). Versión flyer: letras rojas con textura cromada.",
+    "construction": "URBAN sobre NIGHTS en Big Shoulders Display Black, mayúsculas, interlineado 0.82, dentro de un rectángulo con borde de 6% del alto.",
+    "clearspace": "Grosor del borde ×2 alrededor.",
+    "minSize": "56 px de ancho.",
+    "versions": [
+      "Negro en caja sobre blanco (avatar)",
+      "Blanco en caja sobre negro",
+      "Siren Red cromado (flyers)",
+      "Monocromo para patrocinios"
+    ],
+    "misuse": [
+      "No usar el búho ni la paleta de The Room",
+      "No usar serifas",
+      "No quitar la caja en el avatar",
+      "No usar más de un efecto (cromo o sólido, no ambos más sombra)"
+    ]
+  },
+  "colors": [
+    {
+      "token": "black",
+      "name": "Black",
+      "hex": "#000000",
+      "role": "Primario",
+      "usage": "Fondo."
+    },
+    {
+      "token": "white",
+      "name": "White",
+      "hex": "#FFFFFF",
+      "role": "Primario",
+      "usage": "Logo, datos."
+    },
+    {
+      "token": "siren",
+      "name": "Siren Red",
+      "hex": "#E10600",
+      "role": "Primario",
+      "usage": "Titulares, nombre del artista, CTA."
+    },
+    {
+      "token": "chrome",
+      "name": "Chrome",
+      "hex": "#8A8A8A",
+      "role": "Secundario",
+      "usage": "Efecto metálico, bordes, texto secundario."
+    },
+    {
+      "token": "asphalt",
+      "name": "Asphalt",
+      "hex": "#1A1A1A",
+      "role": "Neutro",
+      "usage": "Superficies, tarjetas."
+    },
+    {
+      "token": "flag-blue",
+      "name": "Canal Blue",
+      "hex": "#0A3A8C",
+      "role": "Acento",
+      "usage": "Guiños patrios (bandera) en fechas especiales."
+    }
+  ],
+  "theme": {
+    "bg": "black",
+    "surface": "asphalt",
+    "fg": "white",
+    "muted": "chrome",
+    "accent": "siren",
+    "line": "#2E2E2E"
+  },
+  "gradients": [
+    {
+      "name": "Chrome red",
+      "css": "linear-gradient(180deg, #FF4A3D 0%, #E10600 45%, #7A0300 55%, #FF6B5E 100%)"
+    },
+    {
+      "name": "Skyline night",
+      "css": "linear-gradient(180deg, #000000 0%, #1A1A1A 60%, #3A0300 100%)"
+    }
+  ],
+  "typography": {
+    "display": {
+      "family": "Big Shoulders Display",
+      "weights": [
+        800,
+        900
+      ],
+      "case": "uppercase",
+      "tracking": "0",
+      "usage": "Logo, nombre del artista, fecha."
+    },
+    "secondary": {
+      "family": "Barlow",
+      "weights": [
+        600,
+        700
+      ],
+      "case": "uppercase",
+      "tracking": "0.18em",
+      "usage": "Datos: venue, hora, tickets, géneros."
+    },
+    "body": {
+      "family": "Barlow",
+      "weights": [
+        400,
+        500
+      ],
+      "case": "none",
+      "tracking": "0",
+      "usage": "Texto web y captions."
+    }
+  },
+  "ui": {
+    "radius": "0px",
+    "buttonStyle": "Rectangular Siren Red, Barlow 700 mayúsculas tracking 0.18em; secundario borde blanco 2 px.",
+    "grid": "12 columnas, 1280 px, artista recortado al centro.",
+    "spacingBase": 8,
+    "shadow": "Sombra dura: 6px 6px 0 #000 en tarjetas sobre fondos claros."
+  },
+  "imagery": {
+    "photography": "Artista recortado (PNG) con cadenas, gafas, actitud; skyline nocturno de Panamá; público con brazos arriba; humo rojo.",
+    "treatment": "Contraste alto, rojos profundos, negros puros, nitidez fuerte, toque de cromo.",
+    "avoid": "Fondos claros, poses suaves, estética de lujo minimalista."
+  },
+  "graphicElements": [
+    "Nombre del artista gigante en rojo cromado",
+    "Skyline de Ciudad de Panamá en silueta",
+    "Barras de datos con separadores",
+    "Logos de patrocinadores en blanco al pie"
+  ],
+  "iconography": "Sólidos y gruesos. Phosphor Bold.",
+  "motion": {
+    "principles": [
+      "Letras que golpean",
+      "Shake en el drop",
+      "Flashes rojos"
+    ],
+    "easing": "cubic-bezier(0.2, 0.9, 0.1, 1)",
+    "durations": "150 ms golpes · 500 ms entradas",
+    "signature": "El nombre del artista cae desde arriba y el cromo brilla al impactar."
+  },
+  "social": {
+    "grid": "Flyer de artista (rojo/negro) → video del artista invitando → recap. Siempre un artista en primer plano.",
+    "templates": [
+      {
+        "name": "Artist drop",
+        "format": "4:5",
+        "spec": "Skyline night, artista recortado, LIVE PERFORMANCE BY, nombre Big Shoulders 900 rojo cromado, URBAN NIGHTS, datos Barlow, tickets."
+      },
+      {
+        "name": "Artist invite",
+        "format": "Reel 9:16",
+        "spec": "Artista a cámara invitando, subtítulos grandes blanco con borde negro, logo al cierre."
+      },
+      {
+        "name": "Recap",
+        "format": "Reel 9:16",
+        "spec": "Momentos del show con shake y flashes, 15 s."
+      },
+      {
+        "name": "Tickets",
+        "format": "Story 9:16",
+        "spec": "Fecha gigante, 'TICKETS & VIP', link mieventos.com."
+      }
+    ]
+  },
+  "web": {
+    "concept": "Web de serie de conciertos urbanos: próximo artista, tickets, historial de shows.",
+    "sitemap": [
+      "Inicio",
+      "Próximo show",
+      "Tickets & VIP",
+      "Artistas que han pasado",
+      "Galería / videos",
+      "Patrocinios",
+      "Contacto"
+    ],
+    "hero": "Artista recortado sobre skyline nocturno, nombre gigante rojo cromado, fecha y 'Get tickets'.",
+    "sections": [
+      "Próximo show",
+      "Historial de artistas en grid",
+      "Videos",
+      "Patrocinadores",
+      "Booking"
+    ],
+    "features": [
+      "Tickets (mieventos.com)",
+      "Mesas VIP",
+      "Formulario de patrocinio"
+    ]
+  },
+  "voice": {
+    "tone": "Fuerte, directo, orgulloso. Anuncio de concierto.",
+    "headlines": [
+      "Los mejores artistas urbanos. En vivo.",
+      "Este sábado: DANNY YASH",
+      "Panamá suena así.",
+      "Tickets & VIP ya."
+    ],
+    "use": [
+      "en vivo",
+      "show",
+      "artista",
+      "tickets",
+      "Panamá"
+    ],
+    "avoid": [
+      "exclusivo",
+      "elegante",
+      "chill",
+      "sunset"
+    ]
+  },
+  "dos": [
+    "Artista grande y legible",
+    "Rojo + negro + cromo",
+    "Datos ordenados en barra",
+    "Tickets visibles"
+  ],
+  "donts": [
+    "Paleta de The Room",
+    "Serifas",
+    "Flyers sin jerarquía",
+    "Fondos claros"
+  ],
+  "sample": {
+    "kicker": "LIVE PERFORMANCE BY",
+    "headline": "DANNY YASH",
+    "sub": "REGGAETON LIVE · DJ SET",
+    "cta": "Get tickets",
+    "meta": "SÁBADO 20 JUL · 10PM · MIEVENTOS.COM"
+  },
+  "mood": "linear-gradient(180deg, #000000 0%, #1A1A1A 55%, #7A0300 100%)"
+}

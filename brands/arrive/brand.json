@@ -1,0 +1,255 @@
+{
+  "slug": "arrive",
+  "accountId": "social-arrive-models",
+  "handler": "@Arrive.models",
+  "name": "ARRIVE",
+  "descriptor": "Talent & Experiences Agency",
+  "tagline": "We make it happen.",
+  "essence": "El talento correcto, en el lugar correcto, con la producción correcta.",
+  "positioning": "La agencia de talento y experiencias más profesional de Panamá: representa modelos e influencers emergentes y los convierte en resultados para marcas, venues y eventos.",
+  "personality": [
+    "Profesional",
+    "Aspiracional",
+    "Exigente",
+    "Cálida",
+    "Discreta"
+  ],
+  "values": [
+    "Estándar alto en cada entrega",
+    "Cuidar al talento",
+    "Resultados medibles para las marcas",
+    "Elegancia sin exceso"
+  ],
+  "layout": "editorial",
+  "logo": {
+    "wordmark": [
+      "ARRIVE"
+    ],
+    "descriptorLine": "TALENT & EXPERIENCES",
+    "symbol": "Wordmark tipográfico. Monograma secundario: la 'A' de ARRIVE dentro de un círculo fino para avatares y favicons.",
+    "construction": "ARRIVE en Montserrat SemiBold, mayúsculas, tracking +12%. Descriptor en Montserrat Medium al 22% del alto de la palabra, tracking +40%, centrado debajo con una línea fina de separación.",
+    "clearspace": "Altura de la letra 'A' en los cuatro lados.",
+    "minSize": "Digital 80 px de ancho · impreso 25 mm.",
+    "versions": [
+      "Negro sobre blanco/marfil (principal)",
+      "Blanco sobre negro",
+      "Champagne sobre negro (solo piezas premium)",
+      "Monograma A en círculo (avatar, favicon, marca de agua)"
+    ],
+    "misuse": [
+      "No usar 'MODEL MANAGEMENT' como descriptor si la cuenta pasa a agencia completa",
+      "No aplicar degradados, sombras ni contornos",
+      "No usar el champagne sobre blanco (pierde contraste)",
+      "No deformar ni cambiar el tracking del wordmark"
+    ]
+  },
+  "colors": [
+    {
+      "token": "ink",
+      "name": "Ink",
+      "hex": "#0A0A0A",
+      "role": "Primario",
+      "usage": "Texto, logo, fondos de piezas nocturnas."
+    },
+    {
+      "token": "paper",
+      "name": "Paper",
+      "hex": "#FFFFFF",
+      "role": "Primario",
+      "usage": "Fondos web, logo invertido."
+    },
+    {
+      "token": "ivory",
+      "name": "Ivory",
+      "hex": "#F5F1EA",
+      "role": "Secundario",
+      "usage": "Fondos editoriales, tarjetas de talento, secciones alternas."
+    },
+    {
+      "token": "champagne",
+      "name": "Champagne",
+      "hex": "#C8A96A",
+      "role": "Acento",
+      "usage": "Detalles premium: líneas, números, hover, CTA sobre negro. Máximo 10% de la pieza."
+    },
+    {
+      "token": "stone",
+      "name": "Stone",
+      "hex": "#8A857C",
+      "role": "Neutro",
+      "usage": "Texto secundario, metadatos, bordes."
+    },
+    {
+      "token": "smoke",
+      "name": "Smoke",
+      "hex": "#E7E2D9",
+      "role": "Neutro",
+      "usage": "Bordes y divisores sobre marfil."
+    }
+  ],
+  "theme": {
+    "bg": "paper",
+    "surface": "ivory",
+    "fg": "ink",
+    "muted": "stone",
+    "accent": "champagne",
+    "line": "smoke"
+  },
+  "typography": {
+    "display": {
+      "family": "Montserrat",
+      "weights": [
+        500,
+        600,
+        700
+      ],
+      "case": "uppercase",
+      "tracking": "0.12em",
+      "usage": "Wordmark, títulos de sección, botones, etiquetas."
+    },
+    "secondary": {
+      "family": "Cormorant Garamond",
+      "weights": [
+        400,
+        500
+      ],
+      "italic": true,
+      "case": "none",
+      "tracking": "0",
+      "usage": "Titulares editoriales, nombres de talento, citas. Siempre en itálica."
+    },
+    "body": {
+      "family": "Inter",
+      "weights": [
+        400,
+        500,
+        600
+      ],
+      "case": "none",
+      "tracking": "0",
+      "usage": "Texto corrido web, captions largos, formularios."
+    }
+  },
+  "ui": {
+    "radius": "2px",
+    "buttonStyle": "Rectangular, Montserrat 600 mayúsculas tracking 0.16em. Primario negro con texto blanco; secundario contorno 1px negro. Hover: fondo champagne.",
+    "grid": "12 columnas, máx. 1240 px, márgenes generosos (80 px desktop / 20 px móvil).",
+    "spacingBase": 8,
+    "shadow": "Sin sombras: profundidad con color (marfil vs blanco) y líneas finas."
+  },
+  "imagery": {
+    "photography": "Retrato editorial de moda: luz natural suave de día o luz cálida de venue de noche. Piel cuidada, poses seguras, encuadres limpios con aire alrededor.",
+    "treatment": "Color cálido y neutro, contraste medio, negros profundos sin aplastar. Opción B/N para comp cards.",
+    "avoid": "Fotos de celular con flash, encuadres apretados, filtros de color fuertes, poses vulgares."
+  },
+  "graphicElements": [
+    "Líneas finas de 1 px en champagne o negro como divisores",
+    "Numeración editorial (01, 02, 03) en Montserrat",
+    "Nombre del talento en Cormorant itálica + ciudad/medidas en Montserrat pequeño",
+    "Marcos con mucho margen blanco/marfil"
+  ],
+  "iconography": "Iconos de línea fina (1.5 px), esquinas rectas, monocromos. Set recomendado: Lucide o Phosphor Light.",
+  "motion": {
+    "principles": [
+      "Lento y seguro: nada rebota",
+      "Fundidos y deslizamientos cortos (16–24 px)",
+      "Reveal del nombre del talento letra a letra"
+    ],
+    "easing": "cubic-bezier(0.22, 1, 0.36, 1)",
+    "durations": "240 ms UI · 600–900 ms reveals",
+    "signature": "El wordmark aparece con tracking que se cierra de 0.4em a 0.12em."
+  },
+  "social": {
+    "grid": "Alternar foto de talento (marfil/cálida) con pieza tipográfica negra cada 3 posts. Portadas de reels con nombre en Cormorant.",
+    "templates": [
+      {
+        "name": "Talent card",
+        "format": "4:5 · 1080×1350",
+        "spec": "Foto a sangre, banda inferior marfil con nombre en Cormorant itálica 64 px y datos en Montserrat 18 px."
+      },
+      {
+        "name": "Case study",
+        "format": "Carrusel 4:5",
+        "spec": "Portada negra con titular Montserrat + cifra en champagne; slides con resultado, proceso, fotos."
+      },
+      {
+        "name": "Event recap",
+        "format": "Reel 9:16",
+        "spec": "Cortes de 1–2 s, cierre con monograma A y @handle."
+      },
+      {
+        "name": "Casting call",
+        "format": "Story 9:16",
+        "spec": "Fondo marfil, 'NOW CASTING' en Montserrat, requisitos en Inter, sticker de link."
+      }
+    ]
+  },
+  "web": {
+    "concept": "Web de agencia de talento: portafolio filtrable de talento + casos de marca + formulario de booking.",
+    "sitemap": [
+      "Inicio",
+      "Talento (roster filtrable)",
+      "Perfil de talento",
+      "Experiencias & activaciones",
+      "Casos",
+      "Agencia",
+      "Casting",
+      "Contacto / Booking"
+    ],
+    "hero": "Video vertical de talento en loop a la derecha; a la izquierda 'We make it happen.' en Cormorant itálica gigante y CTA 'Book talent'.",
+    "sections": [
+      "Roster destacado en grid 4:5",
+      "Marcas con las que trabajamos (logos en gris)",
+      "Casos con cifra grande en champagne",
+      "Casting abierto",
+      "Footer negro con monograma"
+    ],
+    "features": [
+      "Filtro de talento por tipo/altura/ciudad",
+      "Comp card descargable en PDF",
+      "Formulario de booking con fechas"
+    ]
+  },
+  "voice": {
+    "tone": "Seguro, cálido y profesional. Habla de resultados y de personas. Frases cortas, sin exclamaciones.",
+    "headlines": [
+      "We make it happen.",
+      "Talento que se nota.",
+      "Conoce a la nueva cara de ARRIVE.",
+      "Una noche, 12 piezas de contenido, un local lleno."
+    ],
+    "use": [
+      "talento",
+      "booking",
+      "activación",
+      "producción",
+      "resultados"
+    ],
+    "avoid": [
+      "perreo",
+      "chicas lindas",
+      "la mejor rumba",
+      "emojis en titulares"
+    ]
+  },
+  "dos": [
+    "Mucho aire y márgenes",
+    "Etiquetar al talento y a la marca",
+    "Champagne solo como acento",
+    "Nombre del talento en Cormorant itálica"
+  ],
+  "donts": [
+    "Saturar de color",
+    "Texto encima de caras",
+    "Tono de fiesta",
+    "Más de dos tipografías por pieza"
+  ],
+  "sample": {
+    "kicker": "NEW FACE",
+    "headline": "Valeria R.",
+    "sub": "Model · Panamá City",
+    "cta": "Book talent",
+    "meta": "ARRIVE TALENT & EXPERIENCES"
+  },
+  "mood": "linear-gradient(160deg, #E9DFCF 0%, #C8A96A 45%, #3B3328 100%)"
+}

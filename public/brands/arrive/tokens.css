@@ -1,0 +1,50 @@
+/* ARRIVE — tokens de marca. Generado por scripts/build-brands.mjs desde brands/arrive/brand.json. No editar a mano. */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Inter:wght@400;500;600&display=swap');
+
+:root {
+  /* Paleta */
+  --brand-ink: #0A0A0A; /* Ink · Primario */
+  --brand-paper: #FFFFFF; /* Paper · Primario */
+  --brand-ivory: #F5F1EA; /* Ivory · Secundario */
+  --brand-champagne: #C8A96A; /* Champagne · Acento */
+  --brand-stone: #8A857C; /* Stone · Neutro */
+  --brand-smoke: #E7E2D9; /* Smoke · Neutro */
+
+  /* Roles */
+  --brand-bg: #FFFFFF;
+  --brand-surface: #F5F1EA;
+  --brand-fg: #0A0A0A;
+  --brand-muted: #8A857C;
+  --brand-accent: #C8A96A;
+  --brand-on-accent: #0A0A0A;
+  --brand-line: #E7E2D9;
+
+  /* Tipografía */
+  --font-display: 'Montserrat', sans-serif;
+  --font-secondary: 'Cormorant Garamond', serif;
+  --font-body: 'Inter', sans-serif;
+  --tracking-display: 0.12em;
+  --tracking-secondary: 0;
+  --tracking-body: 0;
+  --text-display-xl: 6rem;
+  --text-display-l: 4rem;
+  --text-h1: 3rem;
+  --text-h2: 2rem;
+  --text-h3: 1.5rem;
+  --text-body-l: 1.125rem;
+  --text-body: 1rem;
+  --text-label: 0.75rem;
+
+  /* Forma y movimiento */
+  --radius: 2px;
+  --space-1: 0.5rem;
+  --space-2: 1rem;
+  --space-3: 1.5rem;
+  --space-4: 2rem;
+  --space-6: 3rem;
+  --space-8: 4rem;
+  --space-12: 6rem;
+  --space-16: 8rem;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --mood: linear-gradient(160deg, #E9DFCF 0%, #C8A96A 45%, #3B3328 100%);
+}

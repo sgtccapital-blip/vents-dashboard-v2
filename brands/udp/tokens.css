@@ -1,0 +1,51 @@
+/* UDP — tokens de marca. Generado por scripts/build-brands.mjs desde brands/udp/brand.json. No editar a mano. */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800;900&family=Inter:wght@400;500;600&display=swap');
+
+:root {
+  /* Paleta */
+  --brand-ink: #0A0A0A; /* Ink · Primario */
+  --brand-white: #FFFFFF; /* White · Primario */
+  --brand-ochre: #C89B3C; /* Ochre Gold · Acento */
+  --brand-concrete: #EDEDED; /* Concrete · Secundario */
+  --brand-graphite: #4A4A4A; /* Graphite · Neutro */
+  --brand-canal: #005293; /* Canal Blue · Acento */
+  --brand-flag-red: #D21034; /* Flag Red · Acento */
+
+  /* Roles */
+  --brand-bg: #FFFFFF;
+  --brand-surface: #EDEDED;
+  --brand-fg: #0A0A0A;
+  --brand-muted: #4A4A4A;
+  --brand-accent: #C89B3C;
+  --brand-on-accent: #0A0A0A;
+  --brand-line: #DADADA;
+
+  /* Tipografía */
+  --font-display: 'Poppins', sans-serif;
+  --font-secondary: 'Poppins', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --tracking-display: -0.01em;
+  --tracking-secondary: 0.3em;
+  --tracking-body: 0;
+  --text-display-xl: 6rem;
+  --text-display-l: 4rem;
+  --text-h1: 3rem;
+  --text-h2: 2rem;
+  --text-h3: 1.5rem;
+  --text-body-l: 1.125rem;
+  --text-body: 1rem;
+  --text-label: 0.75rem;
+
+  /* Forma y movimiento */
+  --radius: 4px;
+  --space-1: 0.5rem;
+  --space-2: 1rem;
+  --space-3: 1.5rem;
+  --space-4: 2rem;
+  --space-6: 3rem;
+  --space-8: 4rem;
+  --space-12: 6rem;
+  --space-16: 8rem;
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --mood: linear-gradient(180deg, #8C8C8C 0%, #3A3A3A 55%, #0A0A0A 100%);
+}

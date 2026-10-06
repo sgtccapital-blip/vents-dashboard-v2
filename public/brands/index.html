@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Marcas — Líneas gráficas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton:wght@400&family=Inter:wght@400;500;600;800&family=Roboto+Mono:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Inter:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700;800&family=Playfair+Display:ital,wght@0,400;0,500;1,400;1,500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;600;800&family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@700;800;900&family=DM+Serif+Display:wght@400&family=DM+Sans:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black:wght@400&family=Archivo+Narrow:wght@500;700&family=Archivo:wght@400;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:wght@400;500;700&family=Josefin+Sans:wght@300;400;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800;900&family=Inter:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@800;900&family=Barlow:wght@400;500;600;700&display=swap">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0B0B0D;color:#F2F2F2;font-family:Inter,system-ui,sans-serif;padding:48px 32px}
+header{max-width:1240px;margin:0 auto 32px}
+h1{font-size:14px;letter-spacing:.24em;text-transform:uppercase;color:#9A9AA3;font-weight:600}
+h2{font-size:clamp(28px,4vw,44px);margin-top:8px;font-weight:700}
+p.lead{color:#9A9AA3;margin-top:8px;max-width:60ch}
+.grid{max-width:1240px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
+.card{position:relative;display:block;min-height:300px;overflow:hidden;border-radius:12px;background:var(--bg);color:var(--fg);text-decoration:none;border:1px solid rgba(255,255,255,.08);transition:transform .3s cubic-bezier(.22,1,.36,1)}
+.card:hover{transform:translateY(-4px)}
+.mood{position:absolute;inset:0 0 45% 0;background:var(--mood);opacity:.9}
+.mood::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 30%,var(--bg))}
+.in{position:relative;padding:24px;display:flex;flex-direction:column;min-height:300px;justify-content:flex-end}
+.name{font-size:38px;font-weight:800;text-transform:uppercase;line-height:.95}
+.desc{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ac);margin-top:10px}
+.tag{font-size:14px;opacity:.85;margin-top:6px}
+.dots{display:flex;gap:6px;margin-top:16px}.dots i{width:18px;height:18px;border-radius:50%;border:1px solid rgba(127,127,127,.4)}
+.handle{position:absolute;top:16px;right:18px;font-size:12px;opacity:.8}
+@media (max-width:600px){body{padding:32px 16px}.grid{grid-template-columns:1fr}}
+</style></head>
+<body>
+<header><h1>Command Center · Marcas</h1><h2>Líneas gráficas</h2><p class="lead">Sistema de marca de cada cuenta: logo, color, tipografía, interfaz, plantillas de redes, estructura web, imagen, motion y voz.</p></header>
+<div class="grid"><a class="card" href="./5amclub/" style="--bg:#0A0A0A;--fg:#FFFFFF;--ac:#F5B700;--mood:linear-gradient(170deg, #0B3D91 0%, #0A0A0A 55%, #3A0A0A 100%)">
+  <div class="mood"></div>
+  <div class="in"><div class="name" style="font-family:'Anton', sans-serif;letter-spacing:0.01em">5AM CLUB</div>
+  <div class="desc">Finances &amp; Markets</div><div class="tag">Before the market opens.</div>
+  <div class="dots"><i style="background:#0A0A0A"></i><i style="background:#FFFFFF"></i><i style="background:#F5B700"></i><i style="background:#0B3D91"></i><i style="background:#00C853"></i><i style="background:#E53935"></i></div>
+  <div class="handle">@__5amclub</div></div></a>
+<a class="card" href="./arrive/" style="--bg:#FFFFFF;--fg:#0A0A0A;--ac:#C8A96A;--mood:linear-gradient(160deg, #E9DFCF 0%, #C8A96A 45%, #3B3328 100%)">
+  <div class="mood"></div>
+  <div class="in"><div class="name" style="font-family:'Montserrat', sans-serif;letter-spacing:0.12em">ARRIVE</div>
+  <div class="desc">Talent &amp; Experiences Agency</div><div class="tag">We make it happen.</div>
+  <div class="dots"><i style="background:#0A0A0A"></i><i style="background:#FFFFFF"></i><i style="background:#F5F1EA"></i><i style="background:#C8A96A"></i><i style="background:#8A857C"></i><i style="background:#E7E2D9"></i></div>
+  <div class="handle">@Arrive.models</div></div></a>
+<a class="card" href="./dinner-club/" style="--bg:#F4EFE6;--fg:#0B0B0B;--ac:#8C6A43;--mood:linear-gradient(90deg, #E9B872 0%, #8C6A43 48%, #0B0B0B 52%, #1E1A2E 100%)">
+  <div class="mood"></div>
+  <div class="in"><div class="name" style="font-family:'Outfit', sans-serif;letter-spacing:0.02em">DINNER CLUB</div>
+  <div class="desc">Dinner · Drinks · Party</div><div class="tag">Reserva para cenar. Quédate para la fiesta.</div>
+  <div class="dots"><i style="background:#0B0B0B"></i><i style="background:#FFFFFF"></i><i style="background:#F4EFE6"></i><i style="background:#8C6A43"></i><i style="background:#E9B872"></i><i style="background:#4B4F3A"></i></div>
+  <div class="handle">@dinnerclub_pa</div></div></a>
+<a class="card" href="./elemento/" style="--bg:#05070F;--fg:#FFFFFF;--ac:#2F6BFF;--mood:radial-gradient(ellipse at 50% 30%, #2F6BFF 0%, #0B1A3A 40%, #05070F 75%)">
+  <div class="mood"></div>
+  <div class="in"><div class="name" style="font-family:'Unbounded', sans-serif;letter-spacing:0.06em">ELEMENTO</div>
+  <div class="desc">Techno · House · Electronic</div><div class="tag">Where movement becomes sound.</div>
+  <div class="dots"><i style="background:#05070F"></i><i style="background:#0B1A3A"></i><i style="background:#2F6BFF"></i><i style="background:#C9D3E0"></i><i style="background:#FFFFFF"></i><i style="background:#8FB3FF"></i></div>
+  <div class="handle">@Elemento.techno</div></div></a>
+<a class="card" href="./hangout/" style="--bg:#000000;--fg:#FFFFFF;--ac:#F2C94C;--mood:radial-gradient(circle at 30% 22%, #F2C94C 0%, #8A5A1F 22%, #2A1708 52%, #000000 85%)">
+  <div class="mood"></div>
+  <div class="in"><div class="name" style="font-family:'Rubik', sans-serif;letter-spacing:0">HANG OUT</div>
+  <div class="desc">Reggaeton &amp; Hits · Panamá</div><div class="tag">Tú sabes con quién vienes.</div>
+  <div class="dots"><i style="background:#000000"></i><i style="background:#F2C94C"></i><i style="background:#FFFFFF"></i><i style="background:#FFF4D6"></i><i style="background:#2B2B2B"></i><i style="background:#FF4FA3"></i></div>
+  <div class="handle">@hangout.panama</div></div></a>
+<a class="card" href="./ignite/" style="--bg:#0A0A0F;--fg:#FFFFFF;--ac:#E3262B;--mood:linear-gradient(135deg, #1F3BFF 0%, #0A0A0F 50%, #E3262B 100%)">
+  <div class="mood"></div>
+  <div class="in"><div class="name" style="font-family:'Archivo Black', sans-serif;letter-spacing:-0.01em">IGNITE CLUB</div>
+  <div class="desc">Latin · Reggaeton · Electronic</div><div class="tag">Light it up.</div>
+  <div class="dots"><i style="background:#0A0A0F"></i><i style="background:#E3262B"></i><i style="background:#1F3BFF"></i><i style="background:#FF6B1A"></i><i style="background:#FFFFFF"></i><i style="background:#D62DFF"></i></div>
+  <div class="handle">@theigniteclubb</div></div></a>
+<a class="card" href="./the-room/" style="--bg:#0B0505;--fg:#E8DCCB;--ac:#C1121F;--mood:radial-gradient(ellipse at 50% 35%, #7A0E0E 0%, #3A0707 45%, #0B0505 80%)">
+  <div class="mood"></div>
+  <div class="in"><div class="name" style="font-family:'Bodoni Moda', serif;letter-spacing:0.04em">THE ROOM</div>
+  <div class="desc">Social Club</div><div class="tag">Members of the night.</div>
+  <div class="dots"><i style="background:#0B0505"></i><i style="background:#7A0E0E"></i><i style="background:#C1121F"></i><i style="background:#E8DCCB"></i><i style="background:#B76E6E"></i><i style="background:#B08D57"></i></div>
+  <div class="handle">@theroom.social</div></div></a>
+<a class="card" href="./udp/" style="--bg:#FFFFFF;--fg:#0A0A0A;--ac:#C89B3C;--mood:linear-gradient(180deg, #8C8C8C 0%, #3A3A3A 55%, #0A0A0A 100%)">
+  <div class="mood"></div>
+  <div class="in"><div class="name" style="font-family:'Poppins', sans-serif;letter-spacing:-0.01em">UDP</div>
+  <div class="desc">Urban Development Project · PTY</div><div class="tag">Organizamos hoy, transformamos ciudad.</div>
+  <div class="dots"><i style="background:#0A0A0A"></i><i style="background:#FFFFFF"></i><i style="background:#C89B3C"></i><i style="background:#EDEDED"></i><i style="background:#4A4A4A"></i><i style="background:#005293"></i></div>
+  <div class="handle">@UDP.PA</div></div></a>
+<a class="card" href="./urban-nights/" style="--bg:#000000;--fg:#FFFFFF;--ac:#E10600;--mood:linear-gradient(180deg, #000000 0%, #1A1A1A 55%, #7A0300 100%)">
+  <div class="mood"></div>
+  <div class="in"><div class="name" style="font-family:'Big Shoulders Display', sans-serif;letter-spacing:0">URBAN NIGHTS</div>
+  <div class="desc">Live Urban Shows · Panamá</div><div class="tag">Los mejores artistas urbanos. En vivo.</div>
+  <div class="dots"><i style="background:#000000"></i><i style="background:#FFFFFF"></i><i style="background:#E10600"></i><i style="background:#8A8A8A"></i><i style="background:#1A1A1A"></i><i style="background:#0A3A8C"></i></div>
+  <div class="handle">@Urbannights.pa</div></div></a></div>
+</body></html>

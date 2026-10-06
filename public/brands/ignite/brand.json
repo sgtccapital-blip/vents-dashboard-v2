@@ -1,0 +1,259 @@
+{
+  "slug": "ignite",
+  "accountId": "social-igniteclub",
+  "handler": "@theigniteclubb",
+  "name": "IGNITE CLUB",
+  "descriptor": "Latin · Reggaeton · Electronic",
+  "tagline": "Light it up.",
+  "essence": "La chispa que prende la noche: energía de club, producción de luces y mezcla de géneros.",
+  "positioning": "La fiesta de mayor energía de Panamá: producción LED y láser, latin, reggaetón y electrónica para una generación que sale a sudar.",
+  "personality": [
+    "Intensa",
+    "Eléctrica",
+    "Atrevida",
+    "Joven",
+    "Explosiva"
+  ],
+  "values": [
+    "Energía de principio a fin",
+    "Producción que se siente",
+    "Mezclar sin miedo",
+    "Comunidad que vuelve"
+  ],
+  "layout": "impact",
+  "logo": {
+    "wordmark": [
+      "IGNITE",
+      "CLUB"
+    ],
+    "descriptorLine": "🌶️",
+    "symbol": "El wordmark apilado es el logo. Símbolo secundario: chispa/chile estilizado de 4 puntas para avatar y stickers.",
+    "construction": "IGNITE sobre CLUB en Archivo Black, mayúsculas, interletrado −1%, interlineado 0.85. CLUB alineado a la derecha bajo IGNITE.",
+    "clearspace": "Altura de la 'C' alrededor.",
+    "minSize": "60 px de ancho.",
+    "versions": [
+      "Ignite Red sobre Night (principal)",
+      "Blanco sobre Ignite Red",
+      "Rojo con glow (pantallas LED)",
+      "Chispa sola (avatar, sticker)"
+    ],
+    "misuse": [
+      "No usar tipografías finas con el logo",
+      "No poner el logo en amarillo (es de Hang Out)",
+      "No separar IGNITE y CLUB en líneas desalineadas",
+      "No usar el glow en impresos"
+    ]
+  },
+  "colors": [
+    {
+      "token": "night",
+      "name": "Night",
+      "hex": "#0A0A0F",
+      "role": "Primario",
+      "usage": "Fondo de todo."
+    },
+    {
+      "token": "red",
+      "name": "Ignite Red",
+      "hex": "#E3262B",
+      "role": "Primario",
+      "usage": "Logo, titulares, CTA. El fuego."
+    },
+    {
+      "token": "volt",
+      "name": "Volt Blue",
+      "hex": "#1F3BFF",
+      "role": "Secundario",
+      "usage": "Luz de escenario, degradados, hover. El frío que hace brillar al rojo."
+    },
+    {
+      "token": "ember",
+      "name": "Ember",
+      "hex": "#FF6B1A",
+      "role": "Acento",
+      "usage": "Chispas, detalles de calor, stickers."
+    },
+    {
+      "token": "white",
+      "name": "White",
+      "hex": "#FFFFFF",
+      "role": "Primario",
+      "usage": "Datos, texto."
+    },
+    {
+      "token": "magenta",
+      "name": "Laser Magenta",
+      "hex": "#D62DFF",
+      "role": "Acento",
+      "usage": "Solo en láseres/visuales de video, nunca en tipografía."
+    }
+  ],
+  "theme": {
+    "bg": "night",
+    "surface": "#16161F",
+    "fg": "white",
+    "muted": "#9A9AB0",
+    "accent": "red",
+    "line": "#26263A"
+  },
+  "gradients": [
+    {
+      "name": "Stage",
+      "css": "linear-gradient(135deg, #1F3BFF 0%, #0A0A0F 50%, #E3262B 100%)"
+    },
+    {
+      "name": "Heat",
+      "css": "radial-gradient(circle at 50% 100%, #FF6B1A 0%, #E3262B 30%, #0A0A0F 70%)"
+    }
+  ],
+  "typography": {
+    "display": {
+      "family": "Archivo Black",
+      "weights": [
+        400
+      ],
+      "case": "uppercase",
+      "tracking": "-0.01em",
+      "usage": "Logo, titulares, nombres de DJ, fechas grandes."
+    },
+    "secondary": {
+      "family": "Archivo Narrow",
+      "weights": [
+        500,
+        700
+      ],
+      "case": "uppercase",
+      "tracking": "0.12em",
+      "usage": "Datos: venue, hora, géneros."
+    },
+    "body": {
+      "family": "Archivo",
+      "weights": [
+        400,
+        600
+      ],
+      "case": "none",
+      "tracking": "0",
+      "usage": "Texto web y captions."
+    }
+  },
+  "ui": {
+    "radius": "999px",
+    "buttonStyle": "Píldora sólida Ignite Red, Archivo Black mayúsculas; hover con glow rojo y desplazamiento de 2 px.",
+    "grid": "12 columnas, 1280 px, composiciones diagonales y bloques grandes.",
+    "spacingBase": 8,
+    "shadow": "Glow rojo: 0 0 32px rgba(227,38,43,0.55) en CTA activos."
+  },
+  "imagery": {
+    "photography": "Escenario con pantallas LED, láseres, brazos arriba, DJ en el drop, público a contraluz rojo/azul.",
+    "treatment": "Contraste alto, rojo y azul saturados, motion blur intencional, grano.",
+    "avoid": "Fotos estáticas de pose, luz plana, estética elegante o minimalista."
+  },
+  "graphicElements": [
+    "Chispas/destellos Ember",
+    "Texto que se sale del encuadre (crop agresivo)",
+    "Diagonales de luz azul",
+    "Stickers redondos con 🌶️"
+  ],
+  "iconography": "Iconos sólidos gruesos. Phosphor Fill.",
+  "motion": {
+    "principles": [
+      "Golpe en el drop (zoom-punch)",
+      "Flashes rojos",
+      "Glitch LED de 2–3 frames"
+    ],
+    "easing": "cubic-bezier(0.34, 1.56, 0.64, 1)",
+    "durations": "120–200 ms golpes · 600 ms entradas",
+    "signature": "IGNITE se enciende como un tubo LED parpadeando antes de quedar fijo."
+  },
+  "social": {
+    "grid": "Bloques de rojo intenso alternando con fotos de escenario azul. Siempre un elemento rojo por post.",
+    "templates": [
+      {
+        "name": "Peak moment",
+        "format": "Reel 9:16",
+        "spec": "8–12 s en loop, frase serif blanca arriba opcional, logo LED al final."
+      },
+      {
+        "name": "Flyer de edición",
+        "format": "4:5",
+        "spec": "Fondo Stage, fecha gigante Archivo Black que se sale del borde, logo, DJs, datos en Narrow."
+      },
+      {
+        "name": "Teaser",
+        "format": "Reel 9:16",
+        "spec": "Logo encendiéndose + fecha + 🌶️. 5 s."
+      },
+      {
+        "name": "Recap",
+        "format": "Carrusel 4:5",
+        "spec": "Portada roja 'ASÍ SE PRENDIÓ', fotos de escenario."
+      }
+    ]
+  },
+  "web": {
+    "concept": "Landing de eventos de alta energía con venta de entradas y galería de video.",
+    "sitemap": [
+      "Inicio",
+      "Próxima Ignite (tickets)",
+      "Lineup",
+      "Galería / Videos",
+      "Mesas",
+      "Contacto"
+    ],
+    "hero": "Video del escenario con el logo LED parpadeando, fecha gigante y CTA 'Get tickets' con glow.",
+    "sections": [
+      "Cuenta regresiva",
+      "Lineup en tarjetas",
+      "Videos de ediciones pasadas",
+      "FAQ (edad, dress code)"
+    ],
+    "features": [
+      "Tickets",
+      "Cuenta regresiva",
+      "Galería de video"
+    ]
+  },
+  "voice": {
+    "tone": "Intenso, directo, de MC. Frases cortas que prenden.",
+    "headlines": [
+      "Light it up.",
+      "Esta noche se prende 🌶️",
+      "Así se prendió la última Ignite.",
+      "Ignite or go home."
+    ],
+    "use": [
+      "prender",
+      "energía",
+      "drop",
+      "esta noche",
+      "🌶️"
+    ],
+    "avoid": [
+      "exclusivo",
+      "elegante",
+      "relax",
+      "tranqui"
+    ]
+  },
+  "dos": [
+    "Rojo siempre presente",
+    "Tipografía gruesa y grande",
+    "Azul solo como luz",
+    "Loops cortos"
+  ],
+  "donts": [
+    "Amarillo/dorado (Hang Out)",
+    "Serif de lujo (The Room)",
+    "Fotos estáticas",
+    "Espacios vacíos sin energía"
+  ],
+  "sample": {
+    "kicker": "SÁBADO",
+    "headline": "IGNITE",
+    "sub": "LATIN · REGGAETON · ELECTRONIC",
+    "cta": "Get tickets",
+    "meta": "10PM · PANAMÁ"
+  },
+  "mood": "linear-gradient(135deg, #1F3BFF 0%, #0A0A0F 50%, #E3262B 100%)"
+}

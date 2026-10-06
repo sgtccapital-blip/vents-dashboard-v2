@@ -1,11 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
     Instagram, Youtube, Twitter, Facebook, Plus, X, Edit3, Trash2,
     ExternalLink, Users, TrendingUp, CalendarDays, Hash, Share2,
     BarChart3, Eye, Heart, MessageCircle, ArrowRight, Sparkles,
     Globe, Music, Video, Camera, LinkIcon, ArrowLeft, Image,
     Film, CheckCircle2, Clock, Play, FileText, Check, ChevronRight,
-    Search, Filter, Sliders, Copy, Send, FolderGit2, Dna
+    Search, Filter, Sliders, Copy, Send, FolderGit2, Dna, Palette
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import ContentCalendarGrid from '../components/ContentCalendarGrid';
@@ -161,6 +161,15 @@ export default function SocialMedia() {
     });
 
     const [dnaAccount, setDnaAccount] = useState(null);
+
+    // Líneas gráficas generadas por `npm run brands` (public/brands/index.json), indexadas por cuenta
+    const [brandByAccount, setBrandByAccount] = useState({});
+    useEffect(() => {
+        fetch('/brands/index.json')
+            .then(r => (r.ok ? r.json() : []))
+            .then(list => setBrandByAccount(Object.fromEntries(list.map(b => [b.accountId, b]))))
+            .catch(() => {});
+    }, []);
 
     const [selectedHookCategory, setSelectedHookCategory] = useState('all');
     const [copiedHookId, setCopiedHookId] = useState(null);
@@ -868,6 +877,18 @@ export default function SocialMedia() {
                                     >
                                         <Film size={13} />
                                     </button>
+                                    {brandByAccount[acc.id] && (
+                                        <a
+                                            className="social-btn-secondary"
+                                            style={{ padding: '7px 12px', fontSize: '12px' }}
+                                            href={`/brands/${brandByAccount[acc.id].slug}/`}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            title="Ver línea gráfica"
+                                        >
+                                            <Palette size={13} />
+                                        </a>
+                                    )}
                                     <button 
                                         className="social-btn-secondary" 
                                         style={{ padding: '7px 12px', fontSize: '12px' }}

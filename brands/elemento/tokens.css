@@ -1,0 +1,54 @@
+/* ELEMENTO — tokens de marca. Generado por scripts/build-brands.mjs desde brands/elemento/brand.json. No editar a mano. */
+@import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@500;600;800&family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  /* Paleta */
+  --brand-void: #05070F; /* Void · Primario */
+  --brand-abyss: #0B1A3A; /* Abyss · Secundario */
+  --brand-pulse: #2F6BFF; /* Pulse Blue · Acento */
+  --brand-chrome: #C9D3E0; /* Chrome · Secundario */
+  --brand-white: #FFFFFF; /* White · Primario */
+  --brand-ice: #8FB3FF; /* Ice · Acento */
+
+  /* Roles */
+  --brand-bg: #05070F;
+  --brand-surface: #0B1A3A;
+  --brand-fg: #FFFFFF;
+  --brand-muted: #C9D3E0;
+  --brand-accent: #2F6BFF;
+  --brand-on-accent: #FFFFFF;
+  --brand-line: #1A2A4F;
+
+  /* Tipografía */
+  --font-display: 'Unbounded', sans-serif;
+  --font-secondary: 'Space Grotesk', sans-serif;
+  --font-body: 'Space Grotesk', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --tracking-display: 0.06em;
+  --tracking-secondary: 0.2em;
+  --tracking-body: 0;
+  --tracking-mono: 0.08em;
+  --text-display-xl: 6rem;
+  --text-display-l: 4rem;
+  --text-h1: 3rem;
+  --text-h2: 2rem;
+  --text-h3: 1.5rem;
+  --text-body-l: 1.125rem;
+  --text-body: 1rem;
+  --text-label: 0.75rem;
+
+  /* Forma y movimiento */
+  --radius: 0px;
+  --space-1: 0.5rem;
+  --space-2: 1rem;
+  --space-3: 1.5rem;
+  --space-4: 2rem;
+  --space-6: 3rem;
+  --space-8: 4rem;
+  --space-12: 6rem;
+  --space-16: 8rem;
+  --ease: cubic-bezier(0.7, 0, 0.3, 1);
+  --gradient-deep-field: radial-gradient(ellipse at 50% 0%, #0B1A3A 0%, #05070F 70%);
+  --gradient-chrome: linear-gradient(180deg, #FFFFFF 0%, #C9D3E0 45%, #6B7A90 55%, #E6ECF5 100%);
+  --mood: radial-gradient(ellipse at 50% 30%, #2F6BFF 0%, #0B1A3A 40%, #05070F 75%);
+}

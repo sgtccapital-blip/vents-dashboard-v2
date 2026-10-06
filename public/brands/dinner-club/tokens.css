@@ -1,0 +1,50 @@
+/* DINNER CLUB — tokens de marca. Generado por scripts/build-brands.mjs desde brands/dinner-club/brand.json. No editar a mano. */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700;800&family=Playfair+Display:ital,wght@0,400;0,500;1,400;1,500&display=swap');
+
+:root {
+  /* Paleta */
+  --brand-ink: #0B0B0B; /* Ink · Primario */
+  --brand-white: #FFFFFF; /* White · Primario */
+  --brand-linen: #F4EFE6; /* Linen · Secundario */
+  --brand-walnut: #8C6A43; /* Walnut · Acento */
+  --brand-candle: #E9B872; /* Candle · Acento */
+  --brand-olive: #4B4F3A; /* Olive · Neutro */
+
+  /* Roles */
+  --brand-bg: #F4EFE6;
+  --brand-surface: #FFFFFF;
+  --brand-fg: #0B0B0B;
+  --brand-muted: #4B4F3A;
+  --brand-accent: #8C6A43;
+  --brand-on-accent: #FFFFFF;
+  --brand-line: #E2DACB;
+
+  /* Tipografía */
+  --font-display: 'Outfit', sans-serif;
+  --font-secondary: 'Playfair Display', serif;
+  --font-body: 'Outfit', sans-serif;
+  --tracking-display: 0.02em;
+  --tracking-secondary: 0;
+  --tracking-body: 0.01em;
+  --text-display-xl: 6rem;
+  --text-display-l: 4rem;
+  --text-h1: 3rem;
+  --text-h2: 2rem;
+  --text-h3: 1.5rem;
+  --text-body-l: 1.125rem;
+  --text-body: 1rem;
+  --text-label: 0.75rem;
+
+  /* Forma y movimiento */
+  --radius: 999px;
+  --space-1: 0.5rem;
+  --space-2: 1rem;
+  --space-3: 1.5rem;
+  --space-4: 2rem;
+  --space-6: 3rem;
+  --space-8: 4rem;
+  --space-12: 6rem;
+  --space-16: 8rem;
+  --ease: cubic-bezier(0.45, 0, 0.2, 1);
+  --mood: linear-gradient(90deg, #E9B872 0%, #8C6A43 48%, #0B0B0B 52%, #1E1A2E 100%);
+}

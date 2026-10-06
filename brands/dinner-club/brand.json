@@ -1,0 +1,253 @@
+{
+  "slug": "dinner-club",
+  "accountId": "social-dinnerclub-pa",
+  "handler": "@dinnerclub_pa",
+  "name": "DINNER CLUB",
+  "descriptor": "Dinner · Drinks · Party",
+  "tagline": "Reserva para cenar. Quédate para la fiesta.",
+  "essence": "La noche completa en un solo lugar: empieza en la mesa, termina en la pista.",
+  "positioning": "El plan de viernes y sábado para grupos y celebraciones en Ciudad de Panamá: cena cuidada, cócteles y fiesta de reggaetón, latin y electrónica sin cambiar de lugar.",
+  "personality": [
+    "Sofisticada",
+    "Cálida",
+    "Pícara",
+    "Anfitriona",
+    "Relajada"
+  ],
+  "values": [
+    "Hospitalidad",
+    "Buena mesa",
+    "Celebrar con los tuyos",
+    "Transición perfecta"
+  ],
+  "layout": "minimal",
+  "logo": {
+    "wordmark": [
+      "DINNER"
+    ],
+    "descriptorLine": "CLUB",
+    "symbol": "Wordmark DINNER con CLUB pequeño espaciado debajo, dentro de un círculo (como el avatar actual). Monograma secundario 'DC' para servilletas, platos y sellos.",
+    "construction": "DINNER en Outfit ExtraBold mayúsculas, tracking +2%. CLUB en Outfit Medium al 28% del alto, tracking +60%, centrado.",
+    "clearspace": "Altura de la 'D' alrededor.",
+    "minSize": "64 px de ancho.",
+    "versions": [
+      "Ink sobre blanco en círculo (principal)",
+      "Blanco sobre Ink",
+      "Ink sobre Linen",
+      "Monograma DC (sello)"
+    ],
+    "misuse": [
+      "No usar colores saturados o neón",
+      "No agregar copas o cubiertos al logo",
+      "No poner el logo sobre fotos de fiesta sin caja",
+      "No condensar el wordmark"
+    ]
+  },
+  "colors": [
+    {
+      "token": "ink",
+      "name": "Ink",
+      "hex": "#0B0B0B",
+      "role": "Primario",
+      "usage": "Logo, texto, fondos de noche."
+    },
+    {
+      "token": "white",
+      "name": "White",
+      "hex": "#FFFFFF",
+      "role": "Primario",
+      "usage": "Fondos, logo invertido."
+    },
+    {
+      "token": "linen",
+      "name": "Linen",
+      "hex": "#F4EFE6",
+      "role": "Secundario",
+      "usage": "Fondos web, menús, tarjetas."
+    },
+    {
+      "token": "walnut",
+      "name": "Walnut",
+      "hex": "#8C6A43",
+      "role": "Acento",
+      "usage": "Detalles cálidos: líneas, precios, hover."
+    },
+    {
+      "token": "candle",
+      "name": "Candle",
+      "hex": "#E9B872",
+      "role": "Acento",
+      "usage": "Luz de vela en piezas de noche, CTA sobre negro."
+    },
+    {
+      "token": "olive",
+      "name": "Olive",
+      "hex": "#4B4F3A",
+      "role": "Neutro",
+      "usage": "Secciones de menú, toques de restaurante."
+    }
+  ],
+  "theme": {
+    "bg": "linen",
+    "surface": "white",
+    "fg": "ink",
+    "muted": "olive",
+    "accent": "walnut",
+    "line": "#E2DACB"
+  },
+  "typography": {
+    "display": {
+      "family": "Outfit",
+      "weights": [
+        500,
+        700,
+        800
+      ],
+      "case": "uppercase",
+      "tracking": "0.02em",
+      "usage": "Logo, titulares, navegación."
+    },
+    "secondary": {
+      "family": "Playfair Display",
+      "weights": [
+        400,
+        500
+      ],
+      "italic": true,
+      "case": "none",
+      "tracking": "0",
+      "usage": "Frases de hospitalidad, nombres de platos y cócteles."
+    },
+    "body": {
+      "family": "Outfit",
+      "weights": [
+        300,
+        400
+      ],
+      "case": "none",
+      "tracking": "0.01em",
+      "usage": "Texto web, menús, captions."
+    }
+  },
+  "ui": {
+    "radius": "999px",
+    "buttonStyle": "Píldora Ink con texto blanco Outfit 700 mayúsculas tracking 0.14em; secundario contorno Ink. Hover: Walnut.",
+    "grid": "12 columnas, 1180 px, mucho aire tipo menú impreso.",
+    "spacingBase": 8,
+    "shadow": "Muy suave: 0 10px 30px rgba(11,11,11,0.08) en tarjetas sobre Linen."
+  },
+  "imagery": {
+    "photography": "Mesa servida desde arriba, cócteles a contraluz de vela, manos brindando, grupo riendo en la mesa, luego pista en penumbra.",
+    "treatment": "Cálido y suave en la cena (madera, vela); más contraste en la fiesta. Grano fino, negros cálidos.",
+    "avoid": "Flash sobre comida, colores fríos, fotos de multitud masiva."
+  },
+  "graphicElements": [
+    "Círculo del logo como marco",
+    "Líneas finas tipo menú con precios en Walnut",
+    "Itálicas Playfair para nombres",
+    "Split vertical cena | fiesta"
+  ],
+  "iconography": "Línea fina 1.25 px, redondeada. Phosphor Light.",
+  "motion": {
+    "principles": [
+      "Primera mitad pausada, segunda al beat",
+      "Transición cena → fiesta en el drop",
+      "Fundidos cálidos"
+    ],
+    "easing": "cubic-bezier(0.45, 0, 0.2, 1)",
+    "durations": "300 ms UI · 700 ms transiciones",
+    "signature": "Una vela se apaga y se prende la luz de la pista."
+  },
+  "social": {
+    "grid": "Lanzamiento con grilla de 9: alternar Linen (mesa) y Ink (fiesta) en damero.",
+    "templates": [
+      {
+        "name": "De cena a fiesta",
+        "format": "Reel 9:16",
+        "spec": "Mitad lenta en mesa (lounge) → corte en el drop a la pista (reggaetón). Logo en círculo al cierre."
+      },
+      {
+        "name": "Plato / cóctel",
+        "format": "4:5",
+        "spec": "Foto cenital, nombre en Playfair itálica, descripción breve Outfit."
+      },
+      {
+        "name": "Flyer de fecha",
+        "format": "4:5",
+        "spec": "Linen, logo en círculo, 'VIERNES' Outfit 800, línea Walnut, 'Reservations & guest list DM'."
+      },
+      {
+        "name": "Reserva",
+        "format": "Story 9:16",
+        "spec": "Encuesta '¿Cuántos son?' + botón DM."
+      }
+    ]
+  },
+  "web": {
+    "concept": "Web de restaurante-club: menú, noches temáticas y reservas para grupos y celebraciones.",
+    "sitemap": [
+      "Inicio",
+      "Menú (cena y cócteles)",
+      "Noches (calendario)",
+      "Celebraciones / grupos",
+      "Reservas",
+      "Galería",
+      "Contacto"
+    ],
+    "hero": "Split vertical: mitad mesa con vela (Linen), mitad pista (Ink); al centro el logo en círculo y 'Reserva para cenar. Quédate para la fiesta.'",
+    "sections": [
+      "Menú destacado",
+      "Calendario de noches",
+      "Paquetes de cumpleaños",
+      "Reservas",
+      "Galería"
+    ],
+    "features": [
+      "Reservas con número de personas y ocasión",
+      "Menú web",
+      "Paquetes de celebración"
+    ]
+  },
+  "voice": {
+    "tone": "Anfitrión elegante con picardía. Invita, no grita.",
+    "headlines": [
+      "Reserva para cenar. Quédate para la fiesta.",
+      "La mesa que todos quieren esta noche.",
+      "Cuando la cena tranquila termina así…",
+      "Celebra aquí."
+    ],
+    "use": [
+      "mesa",
+      "reserva",
+      "celebrar",
+      "esta noche",
+      "guest list"
+    ],
+    "avoid": [
+      "perreo",
+      "full",
+      "barra libre",
+      "mega fiesta"
+    ]
+  },
+  "dos": [
+    "Siempre la dualidad cena + fiesta",
+    "Paleta B/N + cálidos",
+    "Itálica Playfair en nombres",
+    "Reservas por DM visibles"
+  ],
+  "donts": [
+    "Neón y saturados",
+    "Estética de fiesta masiva",
+    "Comida con flash",
+    "Más de un acento cálido por pieza"
+  ],
+  "sample": {
+    "kicker": "VIERNES",
+    "headline": "DINNER CLUB",
+    "sub": "Reserva para cenar. Quédate para la fiesta.",
+    "cta": "Reservar mesa",
+    "meta": "REGGAETON · LATIN · ELECTRONIC"
+  },
+  "mood": "linear-gradient(90deg, #E9B872 0%, #8C6A43 48%, #0B0B0B 52%, #1E1A2E 100%)"
+}

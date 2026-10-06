@@ -1,0 +1,156 @@
+# ELEMENTO — Línea gráfica
+
+> Techno · House · Electronic · @Elemento.techno
+> **Where movement becomes sound.**
+
+Fuente de verdad: `brands/elemento/brand.json`. Tokens para web: `brands/elemento/tokens.css`.
+Brandbook visual: `/brands/elemento/` en el dashboard. Este archivo se genera con `npm run brands`; no lo edites a mano.
+
+## Esencia
+
+**El movimiento convertido en sonido: la electrónica como experiencia física y visual.**
+
+Plataforma de música electrónica desde Panamá: curaduría de momentos y artistas internacionales, música propia y eventos con estándar de festival.
+
+**Personalidad:** Inmersiva · Minimalista · Futurista · Precisa · Nocturna
+
+**Valores:**
+- La música primero
+- Respeto por el artista
+- Producción de nivel festival
+- Comunidad sin pose
+
+## Logo
+
+- **Wordmark:** ELEMENTO — descriptor "D.A.N.C.E."
+- **Símbolo:** La 'E' cromada en itálica con destello azul (símbolo actual). Funciona sola como avatar, sello de video y favicon.
+- **Construcción:** Símbolo 'E' + wordmark ELEMENTO en Unbounded SemiBold, tracking +18%. Lockup horizontal: símbolo a la izquierda a 1.4× la altura del texto.
+- **Área de respeto:** Medio ancho de la 'E' alrededor.
+- **Tamaño mínimo:** Símbolo 24 px · lockup 120 px.
+
+**Versiones:**
+- Símbolo cromado sobre Void (principal)
+- Símbolo plano blanco (sellos en video)
+- Lockup horizontal blanco
+- Símbolo Pulse Blue para UI
+
+**Usos incorrectos:**
+- No poner el símbolo cromado sobre fondos claros
+- No cambiar la inclinación de la E
+- No combinar con colores cálidos
+- No usar el glow azul en texto corrido
+
+## Color
+
+| Token | Nombre | Hex | Rol | Uso |
+|---|---|---|---|---|
+| `--brand-void` | Void | `#05070F` | Primario | Fondo principal de todo: web, posts, video. |
+| `--brand-abyss` | Abyss | `#0B1A3A` | Secundario | Superficies, tarjetas, degradados de profundidad. |
+| `--brand-pulse` | Pulse Blue | `#2F6BFF` | Acento | Glow, enlaces, CTA, ecualizadores, detalles de luz. |
+| `--brand-chrome` | Chrome | `#C9D3E0` | Secundario | Texto secundario, metálicos, bordes. |
+| `--brand-white` | White | `#FFFFFF` | Primario | Titulares y texto principal. |
+| `--brand-ice` | Ice | `#8FB3FF` | Acento | Hover y brillos secundarios. |
+
+**Roles de interfaz:** fondo `#05070F` · superficie `#0B1A3A` · texto `#FFFFFF` · secundario `#C9D3E0` · acento `#2F6BFF` (texto sobre acento `#FFFFFF`).
+
+**Degradados:**
+- Deep field: `radial-gradient(ellipse at 50% 0%, #0B1A3A 0%, #05070F 70%)`
+- Chrome: `linear-gradient(180deg, #FFFFFF 0%, #C9D3E0 45%, #6B7A90 55%, #E6ECF5 100%)`
+
+## Tipografía (Google Fonts)
+
+| Rol | Familia | Pesos | Estilo | Uso |
+|---|---|---|---|---|
+| display | Unbounded | 500, 600, 800 | MAYÚSCULAS · tracking 0.06em | Titulares, nombres de artistas, lineups. |
+| secondary | Space Grotesk | 400, 500, 700 | MAYÚSCULAS · tracking 0.2em | Metadatos: venue, fecha, ciudad, etiquetas. |
+| body | Space Grotesk | 400, 500 | normal · tracking 0 | Texto corrido y captions. |
+| mono | JetBrains Mono | 400, 500 | MAYÚSCULAS · tracking 0.08em | Track IDs, BPM, tiempos, coordenadas. |
+
+Cargar: `https://fonts.googleapis.com/css2?family=Unbounded:wght@500;600;800&family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap`
+
+**Escala web (px):** Display XL 96 · Display L 64 · H1 48 · H2 32 · H3 / editorial 24 · Body L 18 · Body 16 · Label 12
+
+## Interfaz y web
+
+- **Radio:** 0px
+- **Botones:** Rectangular sin radio, borde 1px Pulse Blue, texto Space Grotesk mayúsculas tracking 0.2em; hover con glow azul.
+- **Grid:** 12 columnas a pantalla completa, 1440 px máx., mucho espacio negativo.
+- **Espaciado base:** 8 px
+- **Profundidad:** Glow: 0 0 40px rgba(47,107,255,0.35) solo en elementos activos.
+- **Iconografía:** Iconos geométricos de línea 1 px, terminaciones rectas. Phosphor Thin.
+
+### Estructura de la web
+
+Web inmersiva de sello/plataforma: eventos, artistas, música y archivo de momentos.
+
+**Mapa del sitio:** Inicio → Eventos → Evento (lineup + tickets) → Artistas → Música (Spotify/SoundCloud embebido) → Archivo / Moments → Demos (envío de música) → Contacto
+
+**Hero:** Video de escenario a pantalla completa con la E cromada al centro y 'Where movement becomes sound.' en Unbounded; reproductor flotante minimal.
+
+**Secciones clave:**
+- Próximo evento con cuenta regresiva en mono
+- Grid de moments en video
+- Playlists embebidas
+- Formulario de demos
+
+**Funcionalidades:**
+- Reproductor persistente
+- Cuenta regresiva
+- Envío de demos con link
+
+## Fotografía e imagen
+
+- **Qué fotografiar:** Escenarios monumentales, láseres, humo, siluetas del público a contraluz, DJ en cabina desde atrás. Arquitectura de luz.
+- **Tratamiento:** Negros azulados profundos, viraje frío, altas luces azules. Grano fino. Nunca colores cálidos dominantes.
+- **Evitar:** Fotos de mesa/botellas, flashes directos, colores neón rosados o verdes, selfies.
+
+**Elementos gráficos:**
+- Línea de horizonte de luz (barra horizontal Pulse Blue con glow)
+- Retícula técnica y coordenadas en mono
+- Forma de onda/ecualizador minimal
+- Símbolo E como marca de agua en esquina
+
+## Motion
+
+- **Principios:** Sincronizado al beat · Loops perfectos · Luz que barre de izquierda a derecha
+- **Easing:** `cubic-bezier(0.7, 0, 0.3, 1)`
+- **Duraciones:** Ritmo de 120–128 BPM: 470 ms por pulso
+- **Animación firma:** La E aparece con un destello de luz azul que cruza el cromado.
+
+## Redes sociales
+
+**Grilla:** Feed oscuro uniforme: todas las portadas en Void con un punto de luz azul. Lineups como carruseles con portada tipográfica.
+
+| Plantilla | Formato | Especificación |
+|---|---|---|
+| Moment | Reel 9:16 | Sin intro, abre en el drop. Overlay inferior: ARTISTA (Unbounded 56 px) / @ VENUE · FECHA (Space Grotesk 22 px). |
+| Lineup | 4:5 · 1080×1350 | Fondo Deep field, nombres apilados en Unbounded, fecha en mono, línea de horizonte azul. |
+| Artist spotlight | Carrusel 4:5 | Portada foto + nombre; slides: por qué importa, 3 tracks (mono), dónde verlo. |
+| Track ID | Story 9:16 | Ecualizador animado, track en mono, sticker de link a Spotify. |
+
+## Voz
+
+Minimalista, inmersivo, con autoridad musical. Manifiesto corto. Nada de exclamaciones.
+
+**Titulares de referencia:**
+- "Where movement becomes sound."
+- "D.A.N.C.E."
+- "El momento exacto."
+- "Sound first."
+
+**Palabras que sí:** set, movimiento, sonido, escenario, track ID
+**Palabras que no:** perreo, rumba, botellas, la mejor fiesta
+
+## Reglas
+
+**Siempre:**
+- Siempre oscuro
+- Acreditar artista, venue y track
+- Un solo punto de luz azul por pieza
+- Abrir en el momento de mayor energía
+
+**Nunca:**
+- Fondos claros
+- Colores cálidos
+- Plantillas con muchos elementos
+- Música de librería sobre sets
