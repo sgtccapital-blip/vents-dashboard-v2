@@ -52,3 +52,10 @@ Si están instalados los plugins de Remotion, usa sus skills (`remotion-best-pra
 ## Edición directa con ffmpeg
 
 Para cortes rápidos, reencuadres, limpieza de audio, velocidad, GIFs o extracción de frames, usa el skill `video-recipes`.
+
+## Generar material con IA
+
+- **Higgsfield (MCP):** si el servidor `higgsfield` de `.mcp.json` está conectado, usa sus herramientas (`generate_image`, `generate_video`, `get_generation_status`, `create_character`, `list_characters`). Pide siempre 9:16 y sin texto ni logos. Guarda los resultados en `content-dna/<cuenta>/ai/<fecha>/` para que entren al pipeline.
+- **Google (Nano Banana / Veo):** desde el dashboard (Abrir cuenta → Generar con IA) o `POST /api/studio/generate`. Requiere `GEMINI_API_KEY` con facturación.
+- **Google Flow** no tiene API: genera prompts con `POST /api/studio/prompt-pack` y pide al usuario exportar los resultados a la carpeta de Drive.
+- Prompts: sujeto, acción, cámara, lente, luz, color y ambiente de la marca (`brand.imagery`, `content.video`). Nunca pidas logos, nombres ni texto renderizado: los agrega Remotion.

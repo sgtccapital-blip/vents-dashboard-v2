@@ -115,3 +115,32 @@ test('los esquemas de IA validan la forma esperada', () => {
     assert.ok(IdeaSchema.safeParse({ ideas: [] }).success);
     assert.ok(!DevelopmentSchema.safeParse({ hookVerbal: 'x' }).success);
 });
+
+test('generadores: prompt de marca y costo estimado', async () => {
+    const { brandPrompt, estimateCost } = await import('../src/services/contentStudio/generators.js');
+    const brand = {
+        name: 'THE ROOM', descriptor: 'Social Club', essence: 'Club privado',
+        imagery: { treatment: 'Viraje rojo vino.', photography: 'Detalles de lujo.', avoid: 'Flash directo.' },
+        colors: [{ name: 'Noir', hex: '#0B0505' }, { name: 'Bordeaux', hex: '#7A0E0E' }],
+        content: { video: { camera: 'Gimbal lento.', grade: 'Rojo.', transitions: 'Fundidos.' } },
+    };
+    const p = brandPrompt(brand, 'copa con luz roja', 'video');
+    assert.match(p, /^copa con luz roja/);
+    assert.match(p, /bordeaux #7A0E0E/);
+    assert.match(p, /Camera: Gimbal lento/);
+    assert.match(p, /No text, no captions, no logos/);
+    assert.equal(brandPrompt(null, 'x', 'image'), 'x');
+    assert.equal(estimateCost({ provider: 'google', kind: 'video', model: 'veo-3.1-fast-generate-preview', resolution: '1080p', durationSeconds: 8 }), 0.96);
+    assert.equal(estimateCost({ provider: 'google', kind: 'image', model: 'gemini-3.1-flash-image', size: '2K', count: 2 }), 0.202);
+    assert.equal(estimateCost({ provider: 'higgsfield', kind: 'video', model: 'x' }), null);
+});
+
+test('el material IA local sobrevive al sync de Drive y lo de Flow en Drive se marca como IA', () => {
+    const aliases = buildAliases(BRANDS);
+    const ai = { id: 'ai-1', driveId: null, localPath: 'content-dna/x/ai/a.png', kind: 'image', status: 'new', accountIds: ['social-igniteclub'] };
+    const { assets } = mergeAssets([ai], []);
+    assert.deepEqual(assets.map(a => [a.id, a.status]), [['ai-1', 'new']]);
+    const flow = toAsset({ file: { id: 'f9', name: 'shot1.mp4', mimeType: 'video/mp4' }, trail: [{ id: 'n', name: '2026-10-04 Ignite' }, { id: 'f', name: 'Flow' }] }, aliases);
+    assert.equal(flow.source, 'ai');
+    assert.deepEqual(flow.detectedAccountIds, ['social-igniteclub']);
+});

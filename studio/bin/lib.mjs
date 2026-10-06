@@ -57,6 +57,8 @@ export function syncBrandsToStudio() {
 
 /** Ruta local de un asset raw: content-dna/<cuenta>/raw/<noche>/<archivo>. */
 export function localRawPath(accountSlug, asset) {
+    // Lo generado con IA ya vive en disco (ruta relativa a la carpeta que contiene content-dna/)
+    if (asset.localPath) return path.join(CONTENT_DNA, '..', asset.localPath);
     const night = (asset.nightName || 'sin-noche').replace(/[/\\:]/g, '-');
     return path.join(CONTENT_DNA, accountSlug, 'raw', night, asset.name);
 }

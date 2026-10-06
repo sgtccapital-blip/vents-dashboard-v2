@@ -46,6 +46,18 @@ export const DevelopmentSchema = z.object({
     checklist: z.array(z.string()).describe('Checklist de edición y publicación para el editor'),
 });
 
+export const PromptPackSchema = z.object({
+    prompts: z.array(z.object({
+        tool: z.enum(['Google Flow / Veo', 'Nano Banana', 'Higgsfield']),
+        type: z.enum(['video', 'image']),
+        title: z.string().describe('Para qué sirve la toma: b-roll, transición, fondo de historia…'),
+        prompt: z.string().describe('Prompt en inglés listo para pegar'),
+        negativePrompt: z.string(),
+        settings: z.string().describe('Formato y ajustes: 9:16, duración, resolución, modelo sugerido'),
+        usage: z.string().describe('Cómo se usa en una pieza de la cuenta'),
+    })),
+});
+
 const SYSTEM = `Eres el director creativo y editor jefe de ARRIVE Agency (Panamá). Diseñas piezas para Instagram/TikTok a partir de material raw real grabado en eventos.
 Reglas:
 - Respeta al pie de la letra el ADN, la línea gráfica y la línea de contenido de la cuenta: voz, pilares, mezcla, estructura del reel, textos en pantalla, subtítulos, portada y cierre.

@@ -23,9 +23,17 @@ export const studioApi = {
     execute: taskId => call(`/execute/${taskId}`, { method: 'POST' }),
     render: (taskId, opts = {}) => call(`/render/${taskId}`, { method: 'POST', body: opts }),
     renderStatus: taskId => call(`/render/${taskId}`),
+    generators: () => call('/generators'),
+    estimate: payload => call('/generate/estimate', { method: 'POST', body: payload }),
+    generate: payload => call('/generate', { method: 'POST', body: payload }),
+    generation: id => call(`/generate/${id}`),
+    promptPack: payload => call('/prompt-pack', { method: 'POST', body: payload }),
 };
 
-export const thumbUrl = (asset, size = 320) => (asset.thumbnailLink ? `/api/studio/thumb/${asset.driveId}?s=${size}` : null);
+export const thumbUrl = (asset, size = 320) => {
+    if (asset.thumbPath) return `/api/studio/media?path=${encodeURIComponent(asset.thumbPath)}`;
+    return asset.thumbnailLink ? `/api/studio/thumb/${asset.driveId}?s=${size}` : null;
+};
 
 export const formatDuration = s => (s == null ? '' : s >= 60 ? `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}` : `${Math.round(s)}s`);
 

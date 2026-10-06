@@ -12,7 +12,7 @@ export async function fetchRawForTask(taskId, db = readDB()) {
     const slug = await accountSlugOf(account);
     const ids = new Set([...(task.rawAssetIds || []), ...((task.development?.edl || []).map(s => s.assetId))]);
     const assets = (db.rawAssets || []).filter(a => ids.has(a.id));
-    const missing = assets.filter(a => !fs.existsSync(localRawPath(slug, a)));
+    const missing = assets.filter(a => a.driveId && !fs.existsSync(localRawPath(slug, a)));
     if (!missing.length) return { slug, assets, downloaded: 0 };
 
     const { createDriveClient, driveCredentialsFromEnv } = await import(path.join(ROOT, 'src/services/contentStudio/drive.js'));

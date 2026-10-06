@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { BookOpen, FolderOpen, Clapperboard, Dna, ExternalLink, X } from 'lucide-react';
+import { BookOpen, FolderOpen, Clapperboard, Dna, ExternalLink, X, Sparkles } from 'lucide-react';
 import RawLibrary from './RawLibrary';
 import ProductionBoard from './ProductionBoard';
+import GeneratePanel from './GeneratePanel';
 import BrandLinePanel from '../BrandLinePanel';
 import { useBrandForAccount } from '../../lib/useBrand';
 import './Studio.css';
@@ -9,6 +10,7 @@ import './Studio.css';
 const TABS = [
     { id: 'brandbook', label: 'Brandbook', icon: BookOpen },
     { id: 'raw', label: 'Material raw → Ideas', icon: FolderOpen },
+    { id: 'generate', label: 'Generar con IA', icon: Sparkles },
     { id: 'production', label: 'Producción', icon: Clapperboard },
     { id: 'dna', label: 'ADN', icon: Dna },
 ];
@@ -57,6 +59,9 @@ export default function AccountWorkspace({ account, accounts, tasks, initialTab 
                     </div>
                     <div className="ws-panel ws-pad" hidden={tab !== 'raw'}>
                         <RawLibrary account={account} accounts={accounts} onApproveIdea={idea => onApproveIdea(account, idea)} />
+                    </div>
+                    <div className="ws-panel ws-pad" hidden={tab !== 'generate'}>
+                        <GeneratePanel account={account} />
                     </div>
                     <div className="ws-panel ws-pad" hidden={tab !== 'production'}>
                         <ProductionBoard account={account} tasks={accountTasks} onTaskChange={onTaskChange} onOpenTask={onOpenTask} />

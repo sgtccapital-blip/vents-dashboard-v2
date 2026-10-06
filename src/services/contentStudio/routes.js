@@ -5,7 +5,8 @@ import path from 'path';
 import { parseFolderId, createDriveClient, driveCredentialsFromEnv, crawlFolder } from './drive.js';
 import { buildAliases, toAsset, mergeAssets, groupNights } from './rawLibrary.js';
 import { generateStructured, availableProviders } from './llm.js';
-import { IdeaSchema, DevelopmentSchema, SYSTEM_PROMPT, ideasPrompt, developPrompt } from './ideaEngine.js';
+import { IdeaSchema, DevelopmentSchema, PromptPackSchema, SYSTEM_PROMPT, ideasPrompt, developPrompt, accountContext } from './ideaEngine.js';
+import { catalog, providerStatus, estimateCost, brandPrompt, runGeneration, friendlyError } from './generators.js';
 import { renderBrief, slugify } from './brief.js';
 
 const MAX_IMAGES = 12;
@@ -268,6 +269,142 @@ export function registerContentStudio(app, { readDB, writeDB, loadBrands, accoun
         if (!abs.startsWith(contentDnaPath + path.sep) || !fs.existsSync(abs)) return res.status(404).end();
         if (req.query.download) res.attachment(path.basename(abs));
         res.sendFile(abs);
+    });
+
+    // ─── Generación con IA (Google Nano Banana / Veo, Higgsfield) ───
+    const genJobs = new Map();
+    const mimeOf = file => ({ '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp' }[path.extname(file).toLowerCase()] || 'image/jpeg');
+
+    /** Bytes de una imagen de la biblioteca para usar como referencia o primer frame. */
+    async function assetImage(asset) {
+        if (asset.localPath) {
+            const abs = path.join(projectRoot, asset.localPath);
+            const file = asset.kind === 'image' ? abs : (asset.thumbPath ? path.join(projectRoot, asset.thumbPath) : null);
+            if (!file || !fs.existsSync(file)) return null;
+            return { data: fs.readFileSync(file).toString('base64'), mimeType: mimeOf(file) };
+        }
+        if (!asset.thumbnailLink) return null;
+        const res = await driveClient().fetchThumbnail(asset.thumbnailLink, 1600);
+        if (!res.ok) return null;
+        return { data: Buffer.from(await res.arrayBuffer()).toString('base64'), mimeType: (res.headers.get('content-type') || 'image/jpeg').split(';')[0] };
+    }
+
+    async function videoThumb(absVideo) {
+        const thumb = absVideo.replace(/\.[^.]+$/, '.thumb.jpg');
+        await new Promise(resolve => {
+            const p = spawn('ffmpeg', ['-y', '-ss', '1', '-i', absVideo, '-frames:v', '1', '-vf', 'scale=540:-1', thumb]);
+            p.on('close', resolve);
+            p.on('error', resolve);
+        });
+        return fs.existsSync(thumb) ? thumb : null;
+    }
+
+    app.get('/api/studio/generators', (req, res) => {
+        res.json({ providers: providerStatus(geminiKey()), catalog: catalog() });
+    });
+
+    app.post('/api/studio/generate/estimate', (req, res) => {
+        res.json({ usd: estimateCost(req.body || {}) });
+    });
+
+    app.post('/api/studio/generate', (req, res) => {
+        const b = req.body || {};
+        const db = readDB();
+        const account = (db.socialMedia || []).find(a => a.id === b.accountId);
+        if (!account) return res.status(404).json({ error: 'Cuenta no encontrada' });
+        if (!b.prompt?.trim()) return res.status(400).json({ error: 'Escribe qué quieres generar' });
+        const status = providerStatus(geminiKey());
+        if (!status[b.provider]) return res.status(400).json({ error: b.provider === 'higgsfield' ? 'Falta HF_API_KEY_ID / HF_API_KEY_SECRET en .env' : 'Falta GEMINI_API_KEY en .env' });
+
+        const id = `gen-${Date.now()}`;
+        const job = { id, status: 'running', progress: 0, accountId: account.id, kind: b.kind, provider: b.provider, model: b.model, estimateUsd: estimateCost(b), assets: [], error: null, startedAt: new Date().toISOString() };
+        genJobs.set(id, job);
+        res.json(job);
+
+        (async () => {
+            const brand = brandForAccount(account.id);
+            const prompt = b.useBrandStyle === false ? b.prompt : brandPrompt(brand, b.prompt, b.kind);
+            const pool = db.rawAssets || [];
+            const refs = (await Promise.all(pool.filter(a => (b.refAssetIds || []).includes(a.id)).map(assetImage))).filter(Boolean);
+            const firstAsset = pool.find(a => a.id === b.firstFrameAssetId);
+            const firstFrame = firstAsset ? await assetImage(firstAsset) : null;
+            const day = new Date().toISOString().slice(0, 10);
+            const slug = accountSlug(account);
+            const outDir = path.join(contentDnaPath, slug, 'ai', day);
+            const files = await runGeneration({
+                provider: b.provider, kind: b.kind, model: b.model, prompt,
+                aspectRatio: b.aspectRatio || '9:16', size: b.size, resolution: b.resolution, durationSeconds: b.durationSeconds || 8,
+                count: Math.min(Number(b.count) || 1, b.kind === 'video' ? 2 : 4), refs, firstFrame, negativePrompt: b.negativePrompt,
+                outDir, baseName: `${b.kind}-${Date.now()}`, geminiApiKey: geminiKey(),
+                onProgress: p => { job.progress = p; },
+            });
+            const rel = abs => path.relative(projectRoot, abs);
+            const created = [];
+            for (const f of files) {
+                const thumb = f.kind === 'video' ? await videoThumb(f.file) : null;
+                created.push({
+                    id: `ai-${path.basename(f.file).replace(/\.[^.]+$/, '')}`,
+                    driveId: null,
+                    source: 'ai',
+                    provider: b.provider,
+                    model: b.model,
+                    prompt: b.prompt,
+                    name: path.basename(f.file),
+                    mimeType: f.mimeType,
+                    kind: f.kind,
+                    localPath: rel(f.file),
+                    thumbPath: thumb ? rel(thumb) : (f.kind === 'image' ? rel(f.file) : null),
+                    durationSec: f.kind === 'video' ? Number(b.durationSeconds || 8) : null,
+                    width: null, height: null,
+                    orientation: (b.aspectRatio || '9:16') === '9:16' ? 'vertical' : 'horizontal',
+                    nightId: `ai-${day}`,
+                    nightName: `IA · ${day}`,
+                    nightDate: day,
+                    folderPath: `IA / ${day}`,
+                    webViewLink: `/api/studio/media?path=${encodeURIComponent(rel(f.file))}`,
+                    detectedAccountIds: [account.id],
+                    accountIds: [account.id],
+                    accountIdsManual: true,
+                    status: 'new', notes: `Generado con ${b.model}`, tags: ['ia'], usedIn: [],
+                    firstSeenAt: new Date().toISOString(), lastSeenAt: new Date().toISOString(),
+                });
+            }
+            const fresh = readDB();
+            fresh.rawAssets = [...(fresh.rawAssets || []), ...created];
+            writeDB(fresh);
+            job.assets = created;
+            job.status = 'done';
+            job.progress = 100;
+        })().catch(err => {
+            job.status = 'error';
+            job.error = friendlyError(err);
+        }).finally(() => { job.finishedAt = new Date().toISOString(); });
+    });
+
+    app.get('/api/studio/generate/:id', (req, res) => {
+        const job = genJobs.get(req.params.id);
+        if (!job) return res.status(404).json({ error: 'Trabajo no encontrado' });
+        res.json(job);
+    });
+
+    // Paquete de prompts para herramientas sin API (Google Flow) o para usar a mano (Higgsfield, Nano Banana).
+    app.post('/api/studio/prompt-pack', async (req, res) => {
+        const { accountId, goal = '', count = 4 } = req.body || {};
+        const db = readDB();
+        const account = (db.socialMedia || []).find(a => a.id === accountId);
+        if (!account) return res.status(404).json({ error: 'Cuenta no encontrada' });
+        try {
+            const brand = brandForAccount(accountId);
+            const out = await generateStructured({
+                system: `${SYSTEM_PROMPT}\nAdemás eres experto en prompts para generadores de video e imagen (Google Flow/Veo 3.1, Nano Banana, Higgsfield: Kling, Seedance, Soul). Escribes prompts cinematográficos en inglés, concretos (sujeto, acción, cámara, lente, luz, color, ambiente, audio). Regla estricta: nunca pidas que el generador dibuje logos, nombres de marca, letras, números ni texto (salen deformes); si la toma necesita un logo o pantalla, describe la pantalla vacía o con luz abstracta y deja espacio libre para que el logo real se agregue en edición.`,
+                prompt: `${accountContext(account, brand)}\n## Objetivo\n${goal || 'Material de apoyo (b-roll, transiciones, fondos) que combine con lo que publica la cuenta.'}\n\nCrea ${Math.min(Number(count) || 4, 8)} prompts listos para pegar. Mezcla video (Flow/Veo o Higgsfield) e imagen (Nano Banana o Higgsfield Soul) según convenga.`,
+                schema: PromptPackSchema,
+                geminiApiKey: geminiKey(),
+            });
+            res.json({ ...out.data, provider: out.provider, model: out.model });
+        } catch (err) {
+            res.status(502).json({ error: err.message });
+        }
     });
 
     // Sync automático: cada mañana (después de la noche) y a media tarde, hora de Panamá.

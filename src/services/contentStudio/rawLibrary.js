@@ -49,6 +49,9 @@ export function matchAccounts(text, aliasTable) {
         .map(({ accountId }) => accountId);
 }
 
+// Material generado con IA y exportado a Drive (Flow, Veo, Higgsfield…) se marca como IA.
+const AI_HINT = /\b(flow|veo|higgsfield|nano ?banana|kling|seedance|soul|ia|ai)\b/i;
+
 export function toAsset({ file, trail }, aliasTable) {
     const night = trail[0] || null;
     const folderPath = trail.map(t => t.name).join(' / ');
@@ -74,6 +77,7 @@ export function toAsset({ file, trail }, aliasTable) {
         nightDate,
         folderPath,
         detectedAccountIds: matchAccounts(`${folderPath} ${file.name}`, aliasTable),
+        source: AI_HINT.test(`${folderPath} ${file.name}`) ? 'ai' : 'raw',
     };
 }
 
@@ -101,8 +105,10 @@ export function mergeAssets(existing = [], incoming = [], now = new Date().toISO
             lastSeenAt: now,
         };
     });
-    const missing = existing.filter(a => !seen.has(a.id)).map(a => ({ ...a, status: 'missing' }));
-    return { assets: [...merged, ...missing], added, missing: missing.length };
+    // Lo generado localmente (sin driveId) no depende de Drive y se conserva tal cual.
+    const local = existing.filter(a => !a.driveId);
+    const missing = existing.filter(a => a.driveId && !seen.has(a.id)).map(a => ({ ...a, status: 'missing' }));
+    return { assets: [...merged, ...local, ...missing], added, missing: missing.length };
 }
 
 /** Agrupa assets por noche/evento para la vista de biblioteca. */
