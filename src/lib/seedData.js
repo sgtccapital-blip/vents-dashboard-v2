@@ -838,24 +838,23 @@ export const seedTasks = [
 ];
 export const seedLinks = [];
 export const seedSocialMedia = [
-    { id: 'social-arrive-agency', platform: 'Instagram', handler: '@arriveagency', type: 'Agencia Matriz', url: 'https://instagram.com/arriveagency', followers: '18.4K', description: 'Creative, Talent & Experiences · Panamá', metrics: { growth: '+850', engagement: '6.5%', clicks: '1.2K', views: '45K' } },
-    { id: 'social-arrive-models', platform: 'Instagram', handler: '@Arrive.models', type: 'Talento & UGC', url: 'https://instagram.com/Arrive.models', followers: '5.9K', description: 'Models, Creadores & Cenas de Chicas', metrics: { growth: '+120', engagement: '6.8%', clicks: '540', views: '14K' } },
-    { id: 'social-elemento-techno', platform: 'Instagram', handler: '@Elemento.techno', type: 'Electronica Internacional', url: 'https://instagram.com/Elemento.techno', followers: '12.8K', description: 'Electrónica Internacional', metrics: { growth: '+450', engagement: '5.2%', clicks: '850', views: '28K' } },
-    { id: 'social-5amclub-new', platform: 'Instagram', handler: '@_5amclub', type: 'Finanzas', url: 'https://instagram.com/_5amclub', followers: '3.9K', description: 'Finanzas y Productividad', metrics: { growth: '+80', engagement: '4.1%', clicks: '310', views: '9K' } },
-    { id: 'social-moojoo-events', platform: 'Instagram', handler: '@Moojoo.events', type: 'Party promoter', url: 'https://instagram.com/Moojoo.events', followers: '2.6K', description: 'Party promoter', metrics: { growth: '+210', engagement: '7.3%', clicks: '490', views: '11K' } },
-    { id: 'social-ciutatelectronicapty', platform: 'Instagram', handler: '@Ciutatelectronicapty', type: 'Electronica Panama', url: 'https://instagram.com/Ciutatelectronicapty', followers: '409', description: 'Electrónica Panamá', metrics: { growth: '+15', engagement: '3.2%', clicks: '80', views: '1.2K' } },
-    { id: 'social-urbannights-pa', platform: 'Instagram', handler: '@Urbannights.pa', type: 'Party', url: 'https://instagram.com/Urbannights.pa', followers: '200', description: 'Party & Events', metrics: { growth: '+8', engagement: '2.9%', clicks: '45', views: '600' } },
-    { id: 'social-udp-pa', platform: 'Instagram', handler: '@UDP.PA', type: 'Gestionar de casco peatonal', url: 'https://instagram.com/UDP.PA', followers: '223', description: 'Gestión de casco peatonal', metrics: { growth: '+12', engagement: '4.5%', clicks: '60', views: '850' } },
-    { id: 'social-theroom-social', platform: 'Instagram', handler: '@theroom.social', type: 'Party', url: 'https://instagram.com/theroom.social', followers: '444', description: 'Party & Social Club', metrics: { growth: '+30', engagement: '5.6%', clicks: '110', views: '1.8K' } },
-    { id: 'social-igniteclub', platform: 'Instagram', handler: '@IGNITECLUB', type: 'Party', url: 'https://instagram.com/IGNITECLUB', followers: '686', description: 'Party & Nightlife', metrics: { growth: '+45', engagement: '6.1%', clicks: '190', views: '2.5K' } },
-    { id: 'social-music-pty', platform: 'Instagram', handler: '@Music.pty', type: 'Music Viral & booking artistas', url: 'https://instagram.com/Music.pty', followers: '99K', description: 'Music Viral & booking de artistas', metrics: { growth: '+1.2K', engagement: '8.4%', clicks: '3.5K', views: '150K' } }
+    { id: 'social-elemento-techno', platform: 'Instagram', handler: '@Elemento.techno', type: 'Electrónica · Techno · House', url: 'https://instagram.com/Elemento.techno', followers: '14.8K', description: 'D.A.N.C.E. — Where movement becomes sound', metrics: {growth: '+450', engagement: '5.2%', clicks: '850', views: '28K'} },
+    { id: 'social-arrive-models', platform: 'Instagram', handler: '@Arrive.models', type: 'Agencia · Models & Influencers', url: 'https://instagram.com/Arrive.models', followers: '6.5K', description: 'Models & coming up influencers management · Strategy & marketing impact', metrics: {growth: '+120', engagement: '6.8%', clicks: '540', views: '14K'} },
+    { id: 'social-5amclub-new', platform: 'Instagram', handler: '@__5amclub', type: 'Finanzas · Noticias de mercado', url: 'https://instagram.com/__5amclub', followers: '3.8K', description: '5am Club — Finances & more 🏦 · Panamá · 5amclubagency.com', metrics: {growth: '+80', engagement: '4.1%', clicks: '310', views: '9K'} },
+    { id: 'social-urbannights-pa', platform: 'Instagram', handler: '@Urbannights.pa', type: 'Party · Artistas urbanos', url: 'https://instagram.com/Urbannights.pa', followers: '178', description: 'Urban Nights ® — los mejores artistas urbanos de Panamá · Coming soon', metrics: {growth: '+8', engagement: '2.9%', clicks: '45', views: '600'} },
+    { id: 'social-udp-pa', platform: 'Instagram', handler: '@UDP.PA', type: 'Gestión de eventos y ciudad', url: 'https://instagram.com/UDP.PA', followers: '203', description: 'Urban Development Project — gestión integral de eventos y ciudad · Producción | Logística | Suministros', metrics: {growth: '+12', engagement: '4.5%', clicks: '60', views: '850'} },
+    { id: 'social-theroom-social', platform: 'Instagram', handler: '@theroom.social', type: 'Party · Reggaeton & Hits', url: 'https://instagram.com/theroom.social', followers: '454', description: 'The Room Social Club ® — Most exclusive party · Reggaeton & Hits', metrics: {growth: '+30', engagement: '5.6%', clicks: '110', views: '1.8K'} },
+    { id: 'social-igniteclub', platform: 'Instagram', handler: '@theigniteclubb', type: 'Party · Latin · Reggaeton · Electronic', url: 'https://instagram.com/theigniteclubb', followers: '608', description: 'Ignite Club 🌶️ — Best parties in town · Latin, Reggaeton, Electronic', metrics: {growth: '+45', engagement: '6.1%', clicks: '190', views: '2.5K'} },
+    { id: 'social-music-pty', platform: 'Instagram', handler: '@Music.pty', type: 'Música urbana · Programa TV', url: 'https://instagram.com/Music.pty', followers: '98.6K', description: 'MUSIC #FeeltheVybz — el mejor programa del género urbano, viernes 8:00 PM por Canal 23 (@mas23tv)', metrics: {growth: '+1.2K', engagement: '8.4%', clicks: '3.5K', views: '150K'} },
+    { id: 'social-hangout-panama', platform: 'Instagram', handler: '@hangout.panama', url: 'https://instagram.com/hangout.panama', followers: '2.4K', type: 'Party · Reggaeton & Hits', description: 'Hang Out Panama ® — Reggaeton | Hits 🍌 · Best parties in town', metrics: {growth: '+0', engagement: '—', clicks: '—', views: '—'} },
+    { id: 'social-dinnerclub-pa', platform: 'Instagram', handler: '@dinnerclub_pa', url: 'https://instagram.com/dinnerclub_pa', followers: '450', type: 'Dinner Party · Reggaeton · Latin · Electronic', description: 'Dinner Club Panama — Reggaeton • Latin • Electronic · Reservations & Guest List DM', metrics: {growth: '+0', engagement: '—', clicks: '—', views: '—'} }
 ];
 export const seedContentTasks = [
     {
         id: 'ct-1',
         title: 'Recap Semanal: The Night Belongs to ARRIVE',
-        accountId: 'social-arrive-agency',
-        accountHandler: '@arriveagency',
+        accountId: 'social-arrive-models',
+        accountHandler: '@Arrive.models',
         format: 'Reel 9:16',
         pillar: 'Branding & Lifestyle',
         status: 'ready',
@@ -894,8 +893,8 @@ export const seedContentTasks = [
     {
         id: 'ct-6',
         title: 'Cómo escalamos las reservas de un local en 30 días sin pagar ads',
-        accountId: 'social-arrive-agency',
-        accountHandler: '@arriveagency',
+        accountId: 'social-arrive-models',
+        accountHandler: '@Arrive.models',
         format: 'Reel 9:16',
         pillar: 'Autoridad & Negocios',
         status: 'idea',

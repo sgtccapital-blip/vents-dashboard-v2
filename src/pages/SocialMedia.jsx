@@ -131,7 +131,7 @@ export default function SocialMedia() {
     const [taskFormData, setTaskFormData] = useState({
         title: '',
         accountId: '',
-        accountHandler: '@arriveagency',
+        accountHandler: '',
         format: 'Reel 9:16',
         pillar: 'Branding & Lifestyle',
         status: 'idea',
@@ -224,27 +224,27 @@ export default function SocialMedia() {
 
     // ─── Handlers: Content Task Modal ───
     const handleOpenNewTask = (prefilledData = {}) => {
-        const defaultHandler = selectedAccountFilter !== 'all' ? selectedAccountFilter : '@arriveagency';
-        const matchingAcc = accounts.find(a => a.handler === defaultHandler) || accounts[0];
+        const matchingAcc = accounts.find(a => a.handler === selectedAccountFilter) || accounts[0];
+        const dna = normalizeDna(matchingAcc?.dna);
         setEditingTask(null);
         setTaskFormData({
             title: '',
-            accountId: matchingAcc?.id || 'social-arrive-agency',
-            accountHandler: matchingAcc?.handler || '@arriveagency',
+            accountId: matchingAcc?.id || '',
+            accountHandler: matchingAcc?.handler || '',
             format: 'Reel 9:16',
-            pillar: 'Branding & Lifestyle',
+            pillar: dna.pillars[0] || DEFAULT_PILLARS[0],
             status: 'idea',
             hookVerbal: '',
             hookVisual: '',
             scriptBody: '',
-            cta: 'Guarda este Reel y etiqueta a alguien especial.',
+            cta: dna.ctas[0] || 'Guarda este Reel y etiqueta a alguien especial.',
             assignee: 'Andrés V. (Lead Filmmaker)',
             shootingLocation: 'Casco Antiguo HQ',
             assetsDriveUrl: '',
             publishDate: new Date().toISOString().split('T')[0],
             publishTime: '19:30',
             caption: '',
-            hashtags: '#arriveagency #panama #nightlife #cascoantiguo',
+            hashtags: dna.hashtags,
             ...prefilledData
         });
         setShowTaskModal(true);
@@ -1152,7 +1152,7 @@ export default function SocialMedia() {
                                         <input 
                                             type="text" 
                                             required
-                                            placeholder="@arriveagency"
+                                            placeholder="@cuenta"
                                             value={accountFormData.handler}
                                             onChange={(e) => setAccountFormData({ ...accountFormData, handler: e.target.value })}
                                         />
@@ -1185,7 +1185,7 @@ export default function SocialMedia() {
                                     <label>Enlace Directo al Perfil</label>
                                     <input 
                                         type="url" 
-                                        placeholder="https://instagram.com/arriveagency"
+                                        placeholder="https://instagram.com/cuenta"
                                         value={accountFormData.url}
                                         onChange={(e) => setAccountFormData({ ...accountFormData, url: e.target.value })}
                                     />
