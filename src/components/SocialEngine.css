@@ -1,0 +1,820 @@
+/* ═══════════════════════════════════════════════════════════════════
+   SOCIAL MEDIA & CONTENT ENGINE PRO — LUXURY DARK STYLING
+   Optimized for High-Impact Content Creation & Multi-Account Control
+   ═══════════════════════════════════════════════════════════════════ */
+
+.social-engine-container {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  width: 100%;
+}
+
+/* ─── Hero Header & Metrics Strip ─── */
+.social-hero-header {
+  position: relative;
+  background: radial-gradient(circle at 10% 0%, rgba(225, 48, 108, 0.15) 0%, transparent 50%),
+              radial-gradient(circle at 90% 100%, rgba(131, 58, 180, 0.15) 0%, transparent 60%),
+              linear-gradient(145deg, #12121c 0%, #0a0a10 100%);
+  border: 1px solid rgba(225, 48, 108, 0.25);
+  border-radius: 16px;
+  padding: 22px 26px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.social-hero-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #833ab4, #e1306c 40%, #fd1d1d 70%, #fcb045);
+}
+
+.social-hero-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.social-hero-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.social-hero-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #833ab4, #e1306c);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  box-shadow: 0 4px 18px rgba(225, 48, 108, 0.4);
+}
+
+.social-hero-titles h1 {
+  font-family: 'Outfit', sans-serif;
+  font-size: 22px;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.social-hero-titles p {
+  margin: 3px 0 0 0;
+  font-size: 13px;
+  color: #94a3b8;
+}
+
+.social-hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.social-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 18px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #e1306c 0%, #c13584 100%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(225, 48, 108, 0.35);
+  transition: all 0.2s ease;
+}
+
+.social-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(225, 48, 108, 0.5);
+}
+
+.social-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #e2e8f0;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.social-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+/* ─── Hero Metrics Strip ─── */
+.social-metrics-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.social-metric-card {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.social-metric-lbl {
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.social-metric-val {
+  font-size: 18px;
+  font-weight: 800;
+  color: #f8fafc;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.social-metric-sub {
+  font-size: 11px;
+  color: #64748b;
+}
+
+/* ─── Multi-Account Channel Bar (Selector) ─── */
+.social-channels-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 6px 2px 12px 2px;
+  scrollbar-width: thin;
+}
+
+.social-channel-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 30px;
+  background: rgba(18, 18, 26, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #cbd5e1;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.social-channel-chip:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+.social-channel-chip.active {
+  background: linear-gradient(135deg, rgba(225, 48, 108, 0.2), rgba(131, 58, 180, 0.2));
+  border-color: #e1306c;
+  color: #ffffff;
+  box-shadow: 0 2px 12px rgba(225, 48, 108, 0.25);
+}
+
+.channel-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.channel-count-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+}
+
+.social-channel-chip.active .channel-count-badge {
+  background: #e1306c;
+  color: #ffffff;
+}
+
+/* ─── Main Section Navigation Tabs ─── */
+.social-tabs-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.social-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.social-tab-btn:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: #f1f5f9;
+}
+
+.social-tab-btn.active {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(225, 48, 108, 0.4);
+  color: #ffffff;
+}
+
+/* ─── Filters & Search Toolbar ─── */
+.social-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.social-search-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(18, 18, 26, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 8px 14px;
+  min-width: 260px;
+  flex: 1;
+  max-width: 380px;
+}
+
+.social-search-input input {
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-size: 12.5px;
+  outline: none;
+  width: 100%;
+}
+
+.social-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.social-filter-select {
+  background: rgba(18, 18, 26, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 7px 12px;
+  color: #cbd5e1;
+  font-size: 12px;
+  font-weight: 500;
+  outline: none;
+  cursor: pointer;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   KANBAN PRODUCTION PIPELINE (HARD-HITTING CONTENT BOARD)
+   ═══════════════════════════════════════════════════════════════════ */
+.social-kanban-board {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(260px, 1fr));
+  gap: 16px;
+  overflow-x: auto;
+  padding-bottom: 20px;
+  scrollbar-width: thin;
+}
+
+.social-kanban-col {
+  background: rgba(14, 14, 20, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  min-height: 480px;
+  padding: 12px;
+  gap: 12px;
+}
+
+.kanban-col-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.kanban-col-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.kanban-col-count {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #cbd5e1;
+}
+
+.kanban-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+  overflow-y: auto;
+  max-height: 720px;
+}
+
+/* ─── Individual Content Card ─── */
+.social-content-card {
+  background: linear-gradient(155deg, rgba(22, 22, 32, 0.95) 0%, rgba(13, 13, 20, 0.98) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.social-content-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(225, 48, 108, 0.4);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.5);
+}
+
+.card-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.card-account-pill {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #e1306c;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.card-format-pill {
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #cbd5e1;
+}
+
+.card-title {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1.35;
+}
+
+.card-hook-box {
+  background: rgba(0, 0, 0, 0.3);
+  border-left: 2px solid #fbbf24;
+  padding: 6px 10px;
+  border-radius: 0 6px 6px 0;
+}
+
+.card-hook-label {
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #fbbf24;
+  margin-bottom: 2px;
+}
+
+.card-hook-text {
+  font-size: 11.5px;
+  color: #f1f5f9;
+  font-style: italic;
+  line-height: 1.3;
+}
+
+.card-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #94a3b8;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.card-assignee {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.card-date {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.card-actions-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 4px;
+}
+
+.card-advance-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(225, 48, 108, 0.12);
+  border: 1px solid rgba(225, 48, 108, 0.3);
+  color: #f472b6;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.card-advance-btn:hover {
+  background: rgba(225, 48, 108, 0.25);
+  color: #ffffff;
+}
+
+.card-icon-btn {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: color 0.2s;
+}
+
+.card-icon-btn:hover {
+  color: #f8fafc;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   VIRAL HOOKS VAULT (BANCO DE GANCHOS DUROS)
+   ═══════════════════════════════════════════════════════════════════ */
+.hooks-vault-container {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.hooks-vault-banner {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.1) 0%, rgba(225, 48, 108, 0.1) 100%);
+  border: 1px solid rgba(251, 191, 36, 0.25);
+  border-radius: 12px;
+  padding: 18px 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.hooks-vault-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+  color: #fbbf24;
+}
+
+.hooks-vault-sub {
+  margin: 3px 0 0 0;
+  font-size: 12.5px;
+  color: #cbd5e1;
+}
+
+.hooks-category-chips {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.hook-category-chip {
+  padding: 6px 14px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.hook-category-chip:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.hook-category-chip.active {
+  background: rgba(251, 191, 36, 0.18);
+  border-color: #fbbf24;
+  color: #fbbf24;
+}
+
+.hooks-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 16px;
+}
+
+.hook-card {
+  background: rgba(18, 18, 26, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: all 0.2s;
+}
+
+.hook-card:hover {
+  border-color: rgba(251, 191, 36, 0.35);
+  transform: translateY(-2px);
+}
+
+.hook-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.hook-cat-badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(251, 191, 36, 0.12);
+  color: #fbbf24;
+}
+
+.hook-text {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1.4;
+  font-style: italic;
+  margin: 0;
+}
+
+.hook-why {
+  font-size: 11.5px;
+  color: #94a3b8;
+  line-height: 1.35;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 8px 10px;
+  border-radius: 6px;
+}
+
+.hook-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.hook-use-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #d4af37, #b8860b);
+  border: none;
+  color: #000;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.hook-use-btn:hover {
+  box-shadow: 0 4px 12px rgba(212, 175, 55, 0.4);
+}
+
+.hook-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #94a3b8;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.hook-copy-btn:hover {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   FULL SCRIPT & CONTENT CREATION MODAL PRO
+   ═══════════════════════════════════════════════════════════════════ */
+.social-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+}
+
+.social-modal-box {
+  background: #11111a;
+  border: 1px solid rgba(225, 48, 108, 0.35);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 760px;
+  max-height: 92vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+  display: flex;
+  flex-direction: column;
+}
+
+.social-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 22px 26px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.social-modal-title {
+  margin: 0;
+  font-family: 'Outfit', sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.social-modal-sub {
+  margin: 4px 0 0 0;
+  font-size: 12.5px;
+  color: #94a3b8;
+}
+
+.social-modal-close {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.social-modal-body {
+  padding: 24px 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.social-form-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.social-form-row.three-col {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.social-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.social-field.full {
+  grid-column: 1 / -1;
+}
+
+.social-field label {
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #cbd5e1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.social-field input,
+.social-field select,
+.social-field textarea {
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 13px;
+  color: #ffffff;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.social-field input:focus,
+.social-field select:focus,
+.social-field textarea:focus {
+  border-color: #e1306c;
+}
+
+.social-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 26px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Responsive tweaks */
+@media (max-width: 900px) {
+  .social-metrics-strip {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .social-kanban-board {
+    grid-template-columns: repeat(6, 260px);
+  }
+}

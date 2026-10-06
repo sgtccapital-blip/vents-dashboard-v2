@@ -1,13 +1,16 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Instagram, Youtube, Twitter, Facebook, Plus, X, Edit3, Trash2,
     ExternalLink, Users, TrendingUp, CalendarDays, Hash, Share2,
     BarChart3, Eye, Heart, MessageCircle, ArrowRight, Sparkles,
-    Globe, Music, Video, Camera, LinkIcon, ArrowLeft, Image
+    Globe, Music, Video, Camera, LinkIcon, ArrowLeft, Image,
+    Film, CheckCircle2, Clock, Play, FileText, Check, ChevronRight,
+    Search, Filter, Sliders, Copy, Send, FolderGit2
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import ContentCalendarGrid from '../components/ContentCalendarGrid';
+import '../components/SocialEngine.css';
 
 const PLATFORM_META = {
     Instagram: { icon: Instagram, color: '#E1306C', gradient: 'linear-gradient(135deg, #833AB4, #E1306C, #F77737)' },
@@ -19,654 +22,1162 @@ const PLATFORM_META = {
     Website: { icon: Globe, color: '#8b5cf6', gradient: 'linear-gradient(135deg, #8b5cf6, #6d28d9)' },
 };
 
-const emptyAccount = {
-    platform: 'Instagram', handler: '', type: 'Company Page', url: '',
-    followers: '', description: '', companyId: '', linkedEventIds: [],
-};
+// ─── Pipeline Column Configurations ───
+const PIPELINE_COLUMNS = [
+    { id: 'idea', label: '💡 Ideas & Ángulos', color: '#94a3b8' },
+    { id: 'script', label: '✍️ Guión & Hooks', color: '#fbbf24' },
+    { id: 'shooting', label: '🎬 Por Grabar / Rodaje', color: '#c084fc' },
+    { id: 'editing', label: '✂️ En Edición 4K', color: '#60a5fa' },
+    { id: 'ready', label: '✅ Listo / Aprobado', color: '#34d399' },
+    { id: 'published', label: '🚀 Publicado', color: '#22c55e' }
+];
+
+// ─── Viral Hooks Vault Database (Fórmulas de Contenido DURO) ───
+const VIRAL_HOOKS_VAULT = [
+    {
+        id: 'hook-1',
+        category: 'Negativo / Shock',
+        text: 'El peor error que cometen al salir de noche en Panamá...',
+        why: 'Genera miedo a perderse algo (FOMO) o a tomar una mala decisión. Retención promedio +65% en los primeros 3s.',
+        pillar: 'Nightlife & Venues'
+    },
+    {
+        id: 'hook-2',
+        category: 'POV & Experiencia',
+        text: 'POV: Fuiste invitada a la mesa imperial de ARRIVE Models en Casco...',
+        why: 'Inmersión instantánea. Ideal para creadoras de contenido y chicas que quieren pertenecer al grupo VIP.',
+        pillar: 'ARRIVE Models & Talento'
+    },
+    {
+        id: 'hook-3',
+        category: 'Curiosidad / Secretos',
+        text: 'Existe una puerta escondida en el Casco que el 99% de la gente ignora...',
+        why: 'Despierta el instinto de exploración y exclusividad. Fomenta guardados masivos en Instagram.',
+        pillar: 'Speakeasy & Coctelería'
+    },
+    {
+        id: 'hook-4',
+        category: 'Gastronomía & Rooftops',
+        text: '5 razones por las que este atardecer arruinará todos los demás rooftops para ti.',
+        why: 'Usa una polarización sutil que obliga al usuario a ver las 5 razones para corroborar si es verdad.',
+        pillar: 'Terraplén Rooftop'
+    },
+    {
+        id: 'hook-5',
+        category: 'Shock & Beat Drop',
+        text: 'Cuando la cena tranquila de un viernes termina convirtiéndose en esto...',
+        why: 'Perfecto para Reels con beat drop (de comer sushi a show de botellas con bengalas en FURIA).',
+        pillar: 'Furia Club Panamá'
+    },
+    {
+        id: 'hook-6',
+        category: 'Negocios & Crecimiento',
+        text: 'Deja de quemar plata en anuncios de Instagram si tu local sigue vacío los jueves.',
+        why: 'Ataca un dolor directo de los dueños de negocios y posiciona a ARRIVE Agency como autoridad operativa.',
+        pillar: 'ARRIVE Agency Growth'
+    },
+    {
+        id: 'hook-7',
+        category: 'Cenas de Chicas & Lifestyle',
+        text: 'Lo que nadie te cuenta de cómo se eligen las invitadas a las cenas VIP de Panamá.',
+        why: 'Detrás de escena aspiracional que genera cientos de comentarios y solicitudes por DM.',
+        pillar: 'ARRIVE Models'
+    },
+    {
+        id: 'hook-8',
+        category: 'Alta Coctelería',
+        text: 'Pedí el cóctel más caro de la carta y esto fue lo que me trajeron.',
+        why: 'Curiosidad por lujo y experiencia estética. Excelente para destacar mixología de autor.',
+        pillar: 'Gastronomía'
+    },
+    {
+        id: 'hook-9',
+        category: 'Behind The Scenes',
+        text: 'Así grabamos 12 Reels 4K en una sola tarde con el equipo de ARRIVE Studio.',
+        why: 'Muestra rigor técnico, cámaras Sony FX3, iluminación pro y velocidad de entrega para clientes.',
+        pillar: 'ARRIVE Studio'
+    },
+    {
+        id: 'hook-10',
+        category: 'Listas & Ranking',
+        text: 'Los únicos 3 spots en Casco Antiguo donde la música realmente vale la pena.',
+        why: 'Genera debate en comentarios y alto número de shares por WhatsApp.',
+        pillar: 'Nightlife'
+    }
+];
 
 export default function SocialMedia() {
     const navigate = useNavigate();
-    const { socialMedia, addSocialMedia, updateSocialMedia, deleteSocialMedia, events } = useApp();
-    const [showModal, setShowModal] = useState(false);
+    const { 
+        socialMedia, addSocialMedia, updateSocialMedia, deleteSocialMedia, 
+        contentTasks, addContentTask, updateContentTask, deleteContentTask,
+        events, addActivity 
+    } = useApp();
+
+    // ─── Active Tab & Account Filter ───
+    const [currentTab, setCurrentTab] = useState('pipeline'); // 'pipeline' | 'calendar' | 'hooks' | 'artes' | 'accounts'
+    const [selectedAccountFilter, setSelectedAccountFilter] = useState('all'); // 'all' | handler
+    const [searchQuery, setSearchQuery] = useState('');
+    const [filterFormat, setFilterFormat] = useState('all');
+
+    // ─── Modals State ───
+    const [showTaskModal, setShowTaskModal] = useState(false);
+    const [editingTask, setEditingTask] = useState(null);
+    const [taskFormData, setTaskFormData] = useState({
+        title: '',
+        accountId: '',
+        accountHandler: '@arriveagency',
+        format: 'Reel 9:16',
+        pillar: 'Branding & Lifestyle',
+        status: 'idea',
+        hookVerbal: '',
+        hookVisual: '',
+        scriptBody: '',
+        cta: '',
+        assignee: 'Andrés V. (Lead Filmmaker)',
+        shootingLocation: 'Casco Antiguo HQ',
+        assetsDriveUrl: '',
+        publishDate: new Date().toISOString().split('T')[0],
+        publishTime: '19:30',
+        caption: '',
+        hashtags: '#arriveagency #panama #nightlife #cascoantiguo'
+    });
+
+    const [showAccountModal, setShowAccountModal] = useState(false);
     const [editingAccount, setEditingAccount] = useState(null);
-    const [filterPlatform, setFilterPlatform] = useState('all');
-    const [filterEvent, setFilterEvent] = useState('all');
-    const [viewMode, setViewMode] = useState('grid');
-    const [selectedAccount, setSelectedAccount] = useState(null);
-    const [editingArt, setEditingArt] = useState(null);
+    const [accountFormData, setAccountFormData] = useState({
+        platform: 'Instagram',
+        handler: '',
+        type: 'Empresa / Venue',
+        url: '',
+        followers: '',
+        description: '',
+        linkedEventIds: []
+    });
 
-    console.log("SocialMedia rendering. selectedAccount:", selectedAccount, "editingArt:", editingArt);
+    const [selectedHookCategory, setSelectedHookCategory] = useState('all');
+    const [copiedHookId, setCopiedHookId] = useState(null);
 
-    const openNew = () => { setEditingAccount({ ...emptyAccount, id: `social-${Date.now()}` }); setShowModal(true); };
-    const openEdit = (acc) => { setEditingAccount({ ...acc, linkedEventIds: acc.linkedEventIds || [] }); setShowModal(true); };
-    const saveAccount = () => {
-        if (!editingAccount.handler.trim()) return;
-        const existing = socialMedia.find(a => a.id === editingAccount.id);
-        if (existing) updateSocialMedia(editingAccount.id, editingAccount);
-        else addSocialMedia(editingAccount);
-        setShowModal(false);
-        setEditingAccount(null);
+    // ─── Accounts List ───
+    const accounts = socialMedia || [];
+
+    // Calculate aggregated metrics
+    const totalAudience = useMemo(() => {
+        return accounts.reduce((sum, acc) => {
+            const num = parseFloat((acc.followers || '0').replace(/[^0-9.]/g, ''));
+            const mult = (acc.followers || '').toLowerCase().includes('k') ? 1000 : 
+                         (acc.followers || '').toLowerCase().includes('m') ? 1000000 : 1;
+            return sum + (isNaN(num) ? 0 : num * mult);
+        }, 0);
+    }, [accounts]);
+
+    const formatAudience = (num) => {
+        if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+        if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+        return num.toString();
     };
-    const removeAccount = (id) => {
-        if (confirm('¿Eliminar esta cuenta?')) deleteSocialMedia(id);
-        setShowModal(false);
+
+    // Filtered Content Tasks
+    const filteredTasks = useMemo(() => {
+        return (contentTasks || []).filter(task => {
+            const matchAccount = selectedAccountFilter === 'all' || 
+                task.accountHandler === selectedAccountFilter ||
+                task.accountId === selectedAccountFilter;
+            const matchFormat = filterFormat === 'all' || task.format === filterFormat;
+            const matchSearch = !searchQuery || 
+                task.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                task.hookVerbal?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                task.accountHandler?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                task.scriptBody?.toLowerCase().includes(searchQuery.toLowerCase());
+            return matchAccount && matchFormat && matchSearch;
+        });
+    }, [contentTasks, selectedAccountFilter, filterFormat, searchQuery]);
+
+    // Tasks grouped by status
+    const tasksByColumn = useMemo(() => {
+        const grouped = {};
+        PIPELINE_COLUMNS.forEach(col => grouped[col.id] = []);
+        filteredTasks.forEach(task => {
+            const colId = task.status || 'idea';
+            if (grouped[colId]) grouped[colId].push(task);
+            else grouped['idea'].push(task);
+        });
+        return grouped;
+    }, [filteredTasks]);
+
+    // Count tasks per account
+    const taskCountByAccount = useMemo(() => {
+        const counts = {};
+        (contentTasks || []).forEach(t => {
+            const h = t.accountHandler || t.accountId;
+            counts[h] = (counts[h] || 0) + 1;
+        });
+        return counts;
+    }, [contentTasks]);
+
+    // ─── Handlers: Content Task Modal ───
+    const handleOpenNewTask = (prefilledData = {}) => {
+        const defaultHandler = selectedAccountFilter !== 'all' ? selectedAccountFilter : '@arriveagency';
+        const matchingAcc = accounts.find(a => a.handler === defaultHandler) || accounts[0];
+        setEditingTask(null);
+        setTaskFormData({
+            title: '',
+            accountId: matchingAcc?.id || 'social-arrive-agency',
+            accountHandler: matchingAcc?.handler || '@arriveagency',
+            format: 'Reel 9:16',
+            pillar: 'Branding & Lifestyle',
+            status: 'idea',
+            hookVerbal: '',
+            hookVisual: '',
+            scriptBody: '',
+            cta: 'Guarda este Reel y etiqueta a alguien especial.',
+            assignee: 'Andrés V. (Lead Filmmaker)',
+            shootingLocation: 'Casco Antiguo HQ',
+            assetsDriveUrl: '',
+            publishDate: new Date().toISOString().split('T')[0],
+            publishTime: '19:30',
+            caption: '',
+            hashtags: '#arriveagency #panama #nightlife #cascoantiguo',
+            ...prefilledData
+        });
+        setShowTaskModal(true);
     };
 
-    const closeArtEdit = () => setEditingArt(null);
-    const saveArt = () => {
-        if (!editingArt.title.trim()) return;
-        const currentArtes = (socialMedia.find(a => a.id === selectedAccount) || {}).artes || [];
-        
-        let updatedArt = { ...editingArt };
-        if (updatedArt.type === 'Story' || updatedArt.type === 'Reel') {
-            updatedArt.format = '1080x1920';
+    const handleOpenEditTask = (task) => {
+        setEditingTask(task);
+        setTaskFormData({ ...task });
+        setShowTaskModal(true);
+    };
+
+    const handleSaveTask = (e) => {
+        e.preventDefault();
+        if (!taskFormData.title.trim()) return;
+
+        const matchingAcc = accounts.find(a => a.handler === taskFormData.accountHandler || a.id === taskFormData.accountId);
+        const finalTask = {
+            ...taskFormData,
+            accountId: matchingAcc?.id || taskFormData.accountId,
+            accountHandler: matchingAcc?.handler || taskFormData.accountHandler,
+        };
+
+        if (editingTask) {
+            updateContentTask(editingTask.id, finalTask);
+            if (addActivity) addActivity(`Actualizado contenido: "${finalTask.title}" (${finalTask.accountHandler})`, '#60a5fa');
         } else {
-            updatedArt.format = '1080x1080';
-        }
-
-        const updated = currentArtes.find(a => a.id === editingArt.id)
-            ? currentArtes.map(a => a.id === editingArt.id ? updatedArt : a)
-            : [...currentArtes, updatedArt];
-        updateSocialMedia(selectedAccount, { artes: updated });
-        closeArtEdit();
-    };
-    const deleteArt = (id) => {
-        const currentArtes = (socialMedia.find(a => a.id === selectedAccount) || {}).artes || [];
-        updateSocialMedia(selectedAccount, { artes: currentArtes.filter(a => a.id !== id) });
-        closeArtEdit();
-    };
-
-    const addArtForAccount = (accountId) => {
-        console.log("addArtForAccount clicked for account:", accountId);
-        setEditingArt({ id: `art-${Date.now()}`, accountId, title: '', description: '', references: '', type: 'Post', format: '1080x1080', status: 'Pendiente' });
-    };
-
-    const toggleEventLink = (eventId) => {
-        setEditingAccount(prev => {
-            const linked = prev.linkedEventIds || [];
-            return {
-                ...prev,
-                linkedEventIds: linked.includes(eventId)
-                    ? linked.filter(id => id !== eventId)
-                    : [...linked, eventId]
+            const newTask = {
+                ...finalTask,
+                id: `ct-${Date.now()}`,
+                createdAt: new Date().toISOString()
             };
+            addContentTask(newTask);
+            if (addActivity) addActivity(`Creado nuevo contenido DURO para ${finalTask.accountHandler}: "${finalTask.title}"`, '#fbbf24');
+        }
+        setShowTaskModal(false);
+    };
+
+    const handleDeleteTask = (id, title) => {
+        if (window.confirm(`¿Eliminar la pieza "${title}"?`)) {
+            deleteContentTask(id);
+            if (addActivity) addActivity(`Eliminado contenido: "${title}"`, '#ef4444');
+            setShowTaskModal(false);
+        }
+    };
+
+    // Fast advance pipeline status
+    const handleAdvanceStatus = (task, e) => {
+        e.stopPropagation();
+        const currentIndex = PIPELINE_COLUMNS.findIndex(c => c.id === (task.status || 'idea'));
+        const nextCol = PIPELINE_COLUMNS[currentIndex + 1];
+        if (nextCol) {
+            updateContentTask(task.id, { status: nextCol.id });
+            if (addActivity) addActivity(`Avanzó "${task.title}" a: ${nextCol.label}`, nextCol.color);
+        }
+    };
+
+    // Use a Viral Hook
+    const handleUseHook = (hook) => {
+        handleOpenNewTask({
+            title: hook.text,
+            hookVerbal: hook.text,
+            pillar: hook.pillar,
+            status: 'script'
         });
     };
 
-    const filtered = socialMedia.filter(a => {
-        if (filterPlatform !== 'all' && a.platform !== filterPlatform) return false;
-        if (filterEvent !== 'all' && !(a.linkedEventIds || []).includes(filterEvent)) return false;
-        return true;
-    });
+    const handleCopyHook = (hook) => {
+        navigator.clipboard.writeText(hook.text);
+        setCopiedHookId(hook.id);
+        setTimeout(() => setCopiedHookId(null), 2000);
+    };
 
-    const platforms = [...new Set(socialMedia.map(a => a.platform))];
-    const totalFollowers = socialMedia.reduce((s, a) => {
-        const n = parseFloat((a.followers || '0').replace(/[^0-9.]/g, ''));
-        const mult = (a.followers || '').toLowerCase().includes('k') ? 1000 : 1;
-        return s + (n * mult);
-    }, 0);
+    // ─── Handlers: Account Modal ───
+    const handleOpenNewAccount = () => {
+        setEditingAccount(null);
+        setAccountFormData({
+            platform: 'Instagram',
+            handler: '@',
+            type: 'Empresa / Venue',
+            url: '',
+            followers: '1K',
+            description: '',
+            linkedEventIds: []
+        });
+        setShowAccountModal(true);
+    };
 
-    const getEventName = (id) => events.find(e => e.id === id)?.name || id;
+    const handleSaveAccount = (e) => {
+        e.preventDefault();
+        if (!accountFormData.handler.trim()) return;
 
-    // ── DETAIL VIEW FOR SELECTED ACCOUNT ──
-    let pageContent = null;
-    if (selectedAccount) {
-        const acc = socialMedia.find(a => a.id === selectedAccount);
-        if (!acc) { setSelectedAccount(null); return null; }
-        const meta = PLATFORM_META[acc.platform] || PLATFORM_META.Website;
-        const PlatIcon = meta.icon;
-        const calAccounts = [{ id: acc.id, handler: acc.handler, platform: acc.platform, companyId: acc.companyId }];
-        const linkedEvts = (acc.linkedEventIds || []).map(id => events.find(e => e.id === id)).filter(Boolean);
-        const acctArtes = acc.artes || [];
-        pageContent = (
-            <div className="page-content animate-in">
-                {/* Back + Header */}
-                <button className="btn btn-ghost" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '6px' }}
-                    onClick={() => setSelectedAccount(null)}>
-                    <ArrowLeft size={16} /> Volver a Redes
-                </button>
-                <div style={{
-                    padding: '28px', borderRadius: '20px', marginBottom: '24px',
-                    background: `linear-gradient(135deg, ${meta.color}12, ${meta.color}04)`,
-                    border: `1px solid ${meta.color}20`,
-                }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                        <div style={{
-                            width: '56px', height: '56px', borderRadius: '16px',
-                            background: meta.gradient,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            boxShadow: `0 4px 20px ${meta.color}30`,
-                        }}>
-                            <PlatIcon size={26} color="#fff" />
+        if (editingAccount) {
+            updateSocialMedia(editingAccount.id, accountFormData);
+        } else {
+            const newAcc = {
+                ...accountFormData,
+                id: `social-${Date.now()}`,
+                metrics: { growth: '+100', engagement: '5.5%', clicks: '200', views: '5K' }
+            };
+            addSocialMedia(newAcc);
+        }
+        setShowAccountModal(false);
+    };
+
+    // Filtered Hooks
+    const filteredHooks = useMemo(() => {
+        if (selectedHookCategory === 'all') return VIRAL_HOOKS_VAULT;
+        return VIRAL_HOOKS_VAULT.filter(h => h.category.toLowerCase().includes(selectedHookCategory.toLowerCase()));
+    }, [selectedHookCategory]);
+
+    return (
+        <div className="page-content animate-in social-engine-container">
+            {/* ═══════════════════════════════════════════════════════════════════
+               HERO HEADER: SOCIAL MEDIA & CONTENT ENGINE PRO
+               ═══════════════════════════════════════════════════════════════════ */}
+            <div className="social-hero-header">
+                <div className="social-hero-top">
+                    <div className="social-hero-brand">
+                        <div className="social-hero-icon">
+                            <Sparkles size={22} />
                         </div>
-                        <div style={{ flex: 1 }}>
-                            <h1 style={{ fontSize: '24px', fontWeight: 800, margin: 0 }}>{acc.handler}</h1>
-                            <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', margin: '2px 0 0' }}>
-                                {acc.platform} · {acc.type} {acc.followers ? `· ${acc.followers} seguidores` : ''}
+                        <div className="social-hero-titles">
+                            <h1>
+                                SOCIAL MEDIA & CONTENT ENGINE <span style={{ color: '#fbbf24' }}>PRO</span>
+                            </h1>
+                            <p>
+                                Creación de contenido DURO, producción 4K y control multi-cuenta centralizado.
                             </p>
                         </div>
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                            {acc.url && (
-                                <a href={acc.url} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ fontSize: '12px', padding: '6px 14px' }}>
-                                    <ExternalLink size={14} /> Abrir
-                                </a>
-                            )}
-                            <button className="btn btn-primary" style={{ fontSize: '12px', padding: '6px 14px' }}
-                                onClick={() => openEdit(acc)}>
-                                <Edit3 size={14} /> Editar
-                            </button>
-                        </div>
                     </div>
-                    {linkedEvts.length > 0 && (
-                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '16px' }}>
-                            {linkedEvts.map(ev => (
-                                <span key={ev.id} style={{
-                                    fontSize: '11px', padding: '4px 10px', borderRadius: '8px',
-                                    background: `${ev.color || '#8b5cf6'}15`, color: ev.color || '#8b5cf6',
-                                    fontWeight: 600, border: `1px solid ${ev.color || '#8b5cf6'}25`, cursor: 'pointer',
-                                }} onClick={() => navigate(`/eventos/${ev.id}`)}>
-                                    {ev.icon} {ev.name}
-                                </span>
-                            ))}
-                        </div>
-                    )}
-                </div>
 
-                {/* Calendar */}
-                <div className="card" style={{ padding: 0, overflow: 'hidden', marginBottom: '20px' }}>
-                    <div style={{
-                        display: 'flex', alignItems: 'center', gap: '10px',
-                        padding: '14px 20px', borderBottom: '1px solid var(--border-subtle)',
-                        background: `${meta.color}06`,
-                    }}>
-                        <div style={{ padding: '7px', borderRadius: '9px', background: `${meta.color}15`, color: meta.color }}>
-                            <CalendarDays size={16} />
-                        </div>
-                        <div>
-                            <h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0 }}>Calendario de Contenido</h3>
-                            <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', margin: 0 }}>Planificación semanal para {acc.handler}</p>
-                        </div>
-                    </div>
-                    <ContentCalendarGrid accounts={calAccounts} companies={[]} />
-                </div>
-
-                {/* Artes */}
-                <div className="card" style={{ padding: '24px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                        <h3 style={{ fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-                            <Image size={18} color={meta.color} /> Artes y Material Visual
-                        </h3>
-                        <button className="btn btn-primary" style={{ fontSize: '12px', padding: '6px 14px' }} onClick={() => addArtForAccount(acc.id)}>
-                            <Plus size={14} /> Subir Arte
-                        </button>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: '14px' }}>
-                        {acctArtes.map(art => {
-                            const isV = art.type === 'Story' || art.type === 'Reel';
-                            return (
-                                <div key={art.id} style={{
-                                    background: 'var(--bg-secondary)', borderRadius: '12px',
-                                    border: '1px solid var(--border-subtle)', overflow: 'hidden',
-                                    transition: 'all 0.2s', cursor: 'pointer',
-                                }}
-                                    onClick={() => setEditingArt({ ...art })}
-                                    onMouseEnter={e => { e.currentTarget.style.borderColor = `${meta.color}40`; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.transform = 'translateY(0)'; }}
-                                >
-                                    <div style={{
-                                        aspectRatio: isV ? '9/16' : '1/1',
-                                        background: `linear-gradient(45deg, ${meta.color}15, transparent)`,
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        borderBottom: '1px solid var(--border-subtle)', position: 'relative',
-                                    }}>
-                                        <PlatIcon size={isV ? 36 : 28} style={{ opacity: 0.15, color: meta.color }} />
-                                        <span style={{
-                                            position: 'absolute', top: '6px', right: '6px',
-                                            fontSize: '9px', fontWeight: 600, padding: '2px 7px', borderRadius: '6px',
-                                            background: art.status === 'Aprobado' ? 'rgba(34,197,94,0.15)' : art.status === 'Revisión' ? 'rgba(245,158,11,0.15)' : 'rgba(255,255,255,0.08)',
-                                            color: art.status === 'Aprobado' ? '#4ade80' : art.status === 'Revisión' ? '#fbbf24' : 'var(--text-tertiary)',
-                                        }}>{art.status}</span>
-                                    </div>
-                                    <div style={{ padding: '14px' }}>
-                                        <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>{art.title}</div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                            <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{art.format}</span>
-                                            <span style={{ fontSize: '10px', padding: '2px 7px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', color: 'var(--text-secondary)' }}>{art.type}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                        <div style={{
-                            border: '2px dashed var(--border-subtle)', borderRadius: '12px',
-                            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                            aspectRatio: '1/1', cursor: 'pointer', color: 'var(--text-tertiary)', transition: 'all 0.2s',
-                        }}
-                            onClick={() => addArtForAccount(acc.id)}
-                            onMouseEnter={e => { e.currentTarget.style.borderColor = meta.color; e.currentTarget.style.color = meta.color; }}
-                            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.color = 'var(--text-tertiary)'; }}
+                    <div className="social-hero-actions">
+                        <button 
+                            className="social-btn-secondary"
+                            onClick={() => setCurrentTab('hooks')}
                         >
-                            <Plus size={24} style={{ marginBottom: '6px' }} />
-                            <span style={{ fontSize: '12px', fontWeight: 500 }}>Añadir Arte</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
-    } else {
-
-    pageContent = (
-        <div className="page-content animate-in">
-            {/* HERO HEADER */}
-            <div style={{
-                padding: '32px', borderRadius: '20px', marginBottom: '28px',
-                background: 'linear-gradient(135deg, rgba(225,48,108,0.12), rgba(131,58,180,0.08), rgba(247,119,55,0.06))',
-                border: '1px solid rgba(225,48,108,0.15)', position: 'relative', overflow: 'hidden',
-            }}>
-                <div style={{
-                    position: 'absolute', top: '-50%', right: '-10%', width: '300px', height: '300px',
-                    background: 'radial-gradient(circle, rgba(225,48,108,0.08) 0%, transparent 70%)',
-                    borderRadius: '50%', pointerEvents: 'none',
-                }} />
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative' }}>
-                    <div>
-                        <h1 style={{ fontSize: '28px', fontWeight: 800, margin: '0 0 6px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <div style={{
-                                width: '48px', height: '48px', borderRadius: '14px',
-                                background: 'linear-gradient(135deg, #833AB4, #E1306C, #F77737)',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            }}>
-                                <Share2 size={22} color="#fff" />
-                            </div>
-                            Redes Sociales
-                        </h1>
-                        <p style={{ color: 'var(--text-secondary)', fontSize: '14px', margin: 0, maxWidth: '500px' }}>
-                            Gestiona todas tus cuentas de redes sociales y vincula contenido a tus eventos.
-                        </p>
-                    </div>
-                    <button className="btn btn-primary" onClick={openNew} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Plus size={16} /> Nueva Cuenta
-                    </button>
-                </div>
-
-                {/* Quick Stats */}
-                <div style={{ display: 'flex', gap: '24px', marginTop: '24px' }}>
-                    {[
-                        { label: 'Cuentas', value: socialMedia.length, color: '#E1306C', icon: Hash },
-                        { label: 'Plataformas', value: platforms.length, color: '#833AB4', icon: Globe },
-                        { label: 'Seguidores Totales', value: totalFollowers >= 1000 ? `${(totalFollowers / 1000).toFixed(1)}K` : totalFollowers, color: '#F77737', icon: Users },
-                        { label: 'Eventos Vinculados', value: new Set(socialMedia.flatMap(a => a.linkedEventIds || [])).size, color: '#10b981', icon: CalendarDays },
-                    ].map(stat => (
-                        <div key={stat.label} style={{
-                            display: 'flex', alignItems: 'center', gap: '12px',
-                            padding: '12px 18px', borderRadius: '12px',
-                            background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)',
-                        }}>
-                            <div style={{
-                                width: '36px', height: '36px', borderRadius: '10px',
-                                background: `${stat.color}18`, color: stat.color,
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            }}>
-                                <stat.icon size={18} />
-                            </div>
-                            <div>
-                                <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)' }}>{stat.value}</div>
-                                <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{stat.label}</div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            {/* FILTERS */}
-            <div style={{
-                display: 'flex', gap: '12px', marginBottom: '24px', alignItems: 'center', flexWrap: 'wrap',
-            }}>
-                <select className="form-select" value={filterPlatform} onChange={e => setFilterPlatform(e.target.value)}
-                    style={{ width: '180px', fontSize: '13px' }}>
-                    <option value="all">Todas las Plataformas</option>
-                    {Object.keys(PLATFORM_META).map(p => <option key={p} value={p}>{p}</option>)}
-                </select>
-                <select className="form-select" value={filterEvent} onChange={e => setFilterEvent(e.target.value)}
-                    style={{ width: '220px', fontSize: '13px' }}>
-                    <option value="all">Todos los Eventos</option>
-                    {events.map(ev => <option key={ev.id} value={ev.id}>{ev.icon} {ev.name}</option>)}
-                </select>
-                <div style={{ marginLeft: 'auto', display: 'flex', gap: '4px' }}>
-                    {['grid', 'list'].map(mode => (
-                        <button key={mode} className={`btn ${viewMode === mode ? 'btn-primary' : 'btn-ghost'}`}
-                            style={{ padding: '6px 14px', fontSize: '12px' }}
-                            onClick={() => setViewMode(mode)}>
-                            {mode === 'grid' ? 'Grid' : 'Lista'}
+                            <Sparkles size={14} style={{ color: '#fbbf24' }} /> Banco de Hooks Virales
                         </button>
-                    ))}
+                        <button 
+                            className="social-btn-primary"
+                            onClick={() => handleOpenNewTask()}
+                        >
+                            <Plus size={16} /> + Nuevo Contenido DURO
+                        </button>
+                    </div>
+                </div>
+
+                {/* Aggregated Live Metrics Strip */}
+                <div className="social-metrics-strip">
+                    <div className="social-metric-card">
+                        <div className="social-metric-lbl">
+                            <Users size={12} style={{ color: '#e1306c' }} /> Audiencia Total
+                        </div>
+                        <div className="social-metric-val">
+                            {formatAudience(totalAudience)}
+                            <span className="social-metric-sub">{accounts.length} cuentas</span>
+                        </div>
+                    </div>
+
+                    <div className="social-metric-card">
+                        <div className="social-metric-lbl">
+                            <Film size={12} style={{ color: '#60a5fa' }} /> En Producción
+                        </div>
+                        <div className="social-metric-val">
+                            {(contentTasks || []).filter(t => ['script', 'shooting', 'editing'].includes(t.status)).length}
+                            <span className="social-metric-sub">piezas activas</span>
+                        </div>
+                    </div>
+
+                    <div className="social-metric-card">
+                        <div className="social-metric-lbl">
+                            <CheckCircle2 size={12} style={{ color: '#34d399' }} /> Listos para Publicar
+                        </div>
+                        <div className="social-metric-val">
+                            {(contentTasks || []).filter(t => t.status === 'ready').length}
+                            <span className="social-metric-sub">Reels aprobados</span>
+                        </div>
+                    </div>
+
+                    <div className="social-metric-card">
+                        <div className="social-metric-lbl">
+                            <TrendingUp size={12} style={{ color: '#fbbf24' }} /> Publicados Recientes
+                        </div>
+                        <div className="social-metric-val">
+                            {(contentTasks || []).filter(t => t.status === 'published').length}
+                            <span className="social-metric-sub">en feed</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            {/* ACCOUNTS GRID / LIST */}
-            {filtered.length === 0 ? (
-                <div style={{
-                    textAlign: 'center', padding: '80px 20px',
-                    background: 'var(--bg-card)', borderRadius: '16px', border: '1px solid var(--border-subtle)',
-                }}>
-                    <Share2 size={48} style={{ color: 'var(--text-tertiary)', marginBottom: '16px' }} />
-                    <h3 style={{ fontSize: '18px', marginBottom: '8px' }}>Sin cuentas registradas</h3>
-                    <p style={{ color: 'var(--text-tertiary)', fontSize: '14px', marginBottom: '20px' }}>
-                        Agrega tus cuentas de redes sociales para empezar a gestionar contenido.
-                    </p>
-                    <button className="btn btn-primary" onClick={openNew}><Plus size={14} /> Agregar Cuenta</button>
+            {/* ═══════════════════════════════════════════════════════════════════
+               MULTI-ACCOUNT CHANNEL BAR (FAST SWITCHER)
+               ═══════════════════════════════════════════════════════════════════ */}
+            <div className="social-channels-bar">
+                <button
+                    className={`social-channel-chip ${selectedAccountFilter === 'all' ? 'active' : ''}`}
+                    onClick={() => setSelectedAccountFilter('all')}
+                >
+                    <div className="channel-avatar" style={{ background: 'linear-gradient(135deg, #d4af37, #b8860b)' }}>
+                        ⚡
+                    </div>
+                    <span>Todas las Cuentas (Pipeline Global)</span>
+                    <span className="channel-count-badge">{(contentTasks || []).length}</span>
+                </button>
+
+                {accounts.map(acc => {
+                    const count = taskCountByAccount[acc.handler] || taskCountByAccount[acc.id] || 0;
+                    const meta = PLATFORM_META[acc.platform] || PLATFORM_META.Instagram;
+                    const IconComp = meta.icon;
+
+                    return (
+                        <button
+                            key={acc.id}
+                            className={`social-channel-chip ${selectedAccountFilter === acc.handler ? 'active' : ''}`}
+                            onClick={() => setSelectedAccountFilter(acc.handler)}
+                        >
+                            <div className="channel-avatar" style={{ background: meta.gradient }}>
+                                <IconComp size={12} />
+                            </div>
+                            <span style={{ fontWeight: 700 }}>{acc.handler}</span>
+                            <span style={{ fontSize: '11px', color: '#94a3b8' }}>{acc.followers}</span>
+                            {count > 0 && (
+                                <span className="channel-count-badge">{count}</span>
+                            )}
+                        </button>
+                    );
+                })}
+
+                <button 
+                    className="social-channel-chip"
+                    style={{ borderStyle: 'dashed', background: 'transparent' }}
+                    onClick={handleOpenNewAccount}
+                    title="Añadir nueva cuenta"
+                >
+                    <Plus size={13} /> Añadir Cuenta
+                </button>
+            </div>
+
+            {/* ═══════════════════════════════════════════════════════════════════
+               MAIN NAVIGATION TABS & TOOLBAR
+               ═══════════════════════════════════════════════════════════════════ */}
+            <div className="social-tabs-nav">
+                <button 
+                    className={`social-tab-btn ${currentTab === 'pipeline' ? 'active' : ''}`}
+                    onClick={() => setCurrentTab('pipeline')}
+                >
+                    <Film size={15} /> 📋 Pipeline de Producción DURO
+                </button>
+                <button 
+                    className={`social-tab-btn ${currentTab === 'calendar' ? 'active' : ''}`}
+                    onClick={() => setCurrentTab('calendar')}
+                >
+                    <CalendarDays size={15} /> 📅 Calendario Multi-Cuenta
+                </button>
+                <button 
+                    className={`social-tab-btn ${currentTab === 'hooks' ? 'active' : ''}`}
+                    onClick={() => setCurrentTab('hooks')}
+                >
+                    <Sparkles size={15} style={{ color: '#fbbf24' }} /> 🎯 Banco de Hooks Virales
+                </button>
+                <button 
+                    className={`social-tab-btn ${currentTab === 'accounts' ? 'active' : ''}`}
+                    onClick={() => setCurrentTab('accounts')}
+                >
+                    <Users size={15} /> 👥 Cuentas & Métricas ({accounts.length})
+                </button>
+            </div>
+
+            {/* Toolbar: Search & Format Filter */}
+            {(currentTab === 'pipeline' || currentTab === 'calendar') && (
+                <div className="social-toolbar">
+                    <div className="social-search-input">
+                        <Search size={14} style={{ color: '#94a3b8' }} />
+                        <input 
+                            type="text" 
+                            placeholder="Buscar por título, gancho verbal, guión o cuenta..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                    </div>
+
+                    <div className="social-filter-group">
+                        <select 
+                            className="social-filter-select"
+                            value={filterFormat}
+                            onChange={(e) => setFilterFormat(e.target.value)}
+                        >
+                            <option value="all">Todos los formatos</option>
+                            <option value="Reel 9:16">Reel 9:16 (4K 60fps)</option>
+                            <option value="Carrusel HD">Carrusel HD</option>
+                            <option value="TikTok / UGC">TikTok / UGC Creator</option>
+                            <option value="Story Seq">Secuencia de Stories</option>
+                        </select>
+
+                        <button 
+                            className="social-btn-primary" 
+                            style={{ padding: '7px 14px', fontSize: '12px' }}
+                            onClick={() => handleOpenNewTask()}
+                        >
+                            <Plus size={14} /> Nueva Pieza
+                        </button>
+                    </div>
                 </div>
-            ) : (
-                <div style={{
-                    display: viewMode === 'grid' ? 'grid' : 'flex',
-                    gridTemplateColumns: viewMode === 'grid' ? 'repeat(auto-fill, minmax(320px, 1fr))' : undefined,
-                    flexDirection: viewMode === 'list' ? 'column' : undefined,
-                    gap: '16px',
-                }}>
-                    {filtered.map(account => {
-                        const meta = PLATFORM_META[account.platform] || PLATFORM_META.Website;
-                        const PlatIcon = meta.icon;
-                        const linkedEvents = (account.linkedEventIds || []).map(id => events.find(e => e.id === id)).filter(Boolean);
+            )}
+
+            {/* ═══════════════════════════════════════════════════════════════════
+               TAB 1: KANBAN PRODUCTION PIPELINE (HARD-HITTING CONTENT)
+               ═══════════════════════════════════════════════════════════════════ */}
+            {currentTab === 'pipeline' && (
+                <div className="social-kanban-board animate-in">
+                    {PIPELINE_COLUMNS.map((col, colIdx) => {
+                        const colTasks = tasksByColumn[col.id] || [];
+                        const nextCol = PIPELINE_COLUMNS[colIdx + 1];
 
                         return (
-                            <div key={account.id} className="card" style={{
-                                padding: 0, overflow: 'hidden', cursor: 'pointer',
-                                transition: 'all 0.25s', position: 'relative',
-                            }}
-                                onClick={() => setSelectedAccount(account.id)}
-                                onMouseEnter={e => { e.currentTarget.style.borderColor = meta.color + '40'; e.currentTarget.style.transform = 'translateY(-3px)'; }}
-                                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.transform = 'translateY(0)'; }}
-                            >
-                                {/* Platform Banner */}
-                                <div style={{
-                                    height: '6px', background: meta.gradient,
-                                }} />
-                                <div style={{ padding: '20px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '14px' }}>
-                                        <div style={{
-                                            width: '48px', height: '48px', borderRadius: '14px',
-                                            background: meta.gradient,
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            boxShadow: `0 4px 15px ${meta.color}30`,
-                                        }}>
-                                            <PlatIcon size={22} color="#fff" />
-                                        </div>
-                                        <div style={{ flex: 1 }}>
-                                            <div style={{ fontSize: '16px', fontWeight: 700 }}>{account.handler}</div>
-                                            <div style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
-                                                {account.platform} · {account.type}
-                                            </div>
-                                        </div>
-                                        {account.followers && (
-                                            <div style={{
-                                                textAlign: 'right', padding: '6px 12px', borderRadius: '10px',
-                                                background: `${meta.color}12`,
-                                            }}>
-                                                <div style={{ fontSize: '16px', fontWeight: 800, color: meta.color }}>{account.followers}</div>
-                                                <div style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>seguidores</div>
-                                            </div>
-                                        )}
+                            <div key={col.id} className="social-kanban-col">
+                                <div className="kanban-col-head">
+                                    <div className="kanban-col-title" style={{ color: col.color }}>
+                                        <span>{col.label}</span>
                                     </div>
-                                    {account.description && (
-                                        <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '0 0 14px', lineHeight: 1.5 }}>
-                                            {account.description}
-                                        </p>
+                                    <span className="kanban-col-count">{colTasks.length}</span>
+                                </div>
+
+                                <div className="kanban-cards-list">
+                                    {colTasks.length === 0 ? (
+                                        <div style={{ padding: '24px 10px', textAlign: 'center', color: '#64748b', fontSize: '12px' }}>
+                                            Sin piezas en {col.label.split(' ')[1] || 'esta fase'}
+                                        </div>
+                                    ) : (
+                                        colTasks.map(task => (
+                                            <div 
+                                                key={task.id} 
+                                                className="social-content-card"
+                                                onClick={() => handleOpenEditTask(task)}
+                                            >
+                                                <div className="card-topline">
+                                                    <span className="card-account-pill">
+                                                        <Instagram size={11} /> {task.accountHandler}
+                                                    </span>
+                                                    <span className="card-format-pill">
+                                                        {task.format}
+                                                    </span>
+                                                </div>
+
+                                                <h4 className="card-title">{task.title}</h4>
+
+                                                {task.hookVerbal && (
+                                                    <div className="card-hook-box">
+                                                        <div className="card-hook-label">🎣 Gancho Verbal:</div>
+                                                        <div className="card-hook-text">"{task.hookVerbal}"</div>
+                                                    </div>
+                                                )}
+
+                                                <div className="card-meta-row">
+                                                    <span className="card-assignee">
+                                                        👤 {task.assignee ? task.assignee.split(' ')[0] : 'Filmmaker'}
+                                                    </span>
+                                                    <span className="card-date">
+                                                        📅 {task.publishDate || 'S/F'}
+                                                    </span>
+                                                </div>
+
+                                                <div className="card-actions-strip">
+                                                    {nextCol ? (
+                                                        <button 
+                                                            className="card-advance-btn"
+                                                            onClick={(e) => handleAdvanceStatus(task, e)}
+                                                            title={`Mover a ${nextCol.label}`}
+                                                        >
+                                                            <span>Avanzar</span>
+                                                            <ArrowRight size={11} />
+                                                        </button>
+                                                    ) : (
+                                                        <span style={{ fontSize: '10.5px', color: '#22c55e', fontWeight: 700 }}>
+                                                            ✓ Publicado
+                                                        </span>
+                                                    )}
+
+                                                    {task.assetsDriveUrl && (
+                                                        <a 
+                                                            href={task.assetsDriveUrl}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            onClick={(e) => e.stopPropagation()}
+                                                            className="card-icon-btn"
+                                                            title="Abrir carpeta en Google Drive"
+                                                        >
+                                                            <FolderGit2 size={14} style={{ color: '#fbbf24' }} />
+                                                        </a>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))
                                     )}
 
-                                    {/* Linked Events */}
-                                    {linkedEvents.length > 0 && (
-                                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                                            {linkedEvents.map(ev => (
-                                                <span key={ev.id} style={{
-                                                    fontSize: '11px', padding: '3px 10px', borderRadius: '8px',
-                                                    background: `${ev.color || '#8b5cf6'}15`,
-                                                    color: ev.color || '#8b5cf6',
-                                                    fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px',
-                                                    border: `1px solid ${ev.color || '#8b5cf6'}25`,
-                                                }}
-                                                    onClick={(e) => { e.stopPropagation(); navigate(`/eventos/${ev.id}`); }}
-                                                >
-                                                    {ev.icon} {ev.name}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    )}
-
-                                    {/* Action row */}
-                                    <div style={{
-                                        display: 'flex', gap: '8px', marginTop: '14px', paddingTop: '14px',
-                                        borderTop: '1px solid var(--border-subtle)',
-                                    }}>
-                                        {account.url && (
-                                            <a href={account.url} target="_blank" rel="noreferrer"
-                                                onClick={e => e.stopPropagation()}
-                                                className="btn btn-ghost" style={{ fontSize: '11px', padding: '4px 10px' }}>
-                                                <ExternalLink size={12} /> Abrir
-                                            </a>
-                                        )}
-                                        <button className="btn btn-ghost" style={{ fontSize: '11px', padding: '4px 10px', marginLeft: 'auto' }}
-                                            onClick={e => { e.stopPropagation(); openEdit(account); }}>
-                                            <Edit3 size={12} /> Editar
-                                        </button>
-                                    </div>
+                                    <button 
+                                        onClick={() => handleOpenNewTask({ status: col.id })}
+                                        style={{
+                                            padding: '8px',
+                                            borderRadius: '8px',
+                                            border: '1px dashed rgba(255,255,255,0.1)',
+                                            background: 'transparent',
+                                            color: '#94a3b8',
+                                            fontSize: '11.5px',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '4px'
+                                        }}
+                                    >
+                                        <Plus size={13} /> Añadir aquí
+                                    </button>
                                 </div>
                             </div>
                         );
                     })}
+                </div>
+            )}
 
-                    {/* Add Card */}
+            {/* ═══════════════════════════════════════════════════════════════════
+               TAB 2: MULTI-ACCOUNT CALENDAR GRID
+               ═══════════════════════════════════════════════════════════════════ */}
+            {currentTab === 'calendar' && (
+                <div className="animate-in card" style={{ padding: 0, overflow: 'hidden' }}>
                     <div style={{
-                        border: '2px dashed var(--border-subtle)', borderRadius: '14px',
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                        minHeight: '200px', cursor: 'pointer', color: 'var(--text-tertiary)',
-                        transition: 'all 0.2s',
-                    }}
-                        onClick={openNew}
-                        onMouseEnter={e => { e.currentTarget.style.borderColor = '#E1306C'; e.currentTarget.style.color = '#E1306C'; }}
-                        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.color = 'var(--text-tertiary)'; }}
-                    >
-                        <Plus size={28} style={{ marginBottom: '8px' }} />
-                        <span style={{ fontSize: '14px', fontWeight: 600 }}>Agregar Cuenta</span>
+                        padding: '16px 20px',
+                        background: 'linear-gradient(145deg, rgba(225,48,108,0.1), rgba(131,58,180,0.05))',
+                        borderBottom: '1px solid rgba(255,255,255,0.08)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between'
+                    }}>
+                        <div>
+                            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#fff' }}>
+                                Calendario de Planificación Semanal
+                            </h3>
+                            <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#94a3b8' }}>
+                                Visualiza y programa qué cuenta publica cada día de la semana.
+                            </p>
+                        </div>
+                    </div>
+                    <ContentCalendarGrid 
+                        accounts={selectedAccountFilter === 'all' ? accounts : accounts.filter(a => a.handler === selectedAccountFilter)} 
+                        companies={[]}
+                    />
+                </div>
+            )}
+
+            {/* ═══════════════════════════════════════════════════════════════════
+               TAB 3: VIRAL HOOKS VAULT (BANCO DE GANCHOS DUROS)
+               ═══════════════════════════════════════════════════════════════════ */}
+            {currentTab === 'hooks' && (
+                <div className="hooks-vault-container animate-in">
+                    <div className="hooks-vault-banner">
+                        <div>
+                            <h3 className="hooks-vault-title">🎯 Banco de Hooks Virales & Fórmulas de Retención</h3>
+                            <p className="hooks-vault-sub">
+                                Ganchos probados para los primeros 3 segundos de tus Reels y TikToks. Detén el scroll al instante.
+                            </p>
+                        </div>
+                        <button 
+                            className="social-btn-primary"
+                            onClick={() => handleOpenNewTask()}
+                        >
+                            <Plus size={15} /> Crear con Hook Personalizado
+                        </button>
+                    </div>
+
+                    {/* Category Filter Chips */}
+                    <div className="hooks-category-chips">
+                        {[
+                            { id: 'all', label: 'Todos los Hooks' },
+                            { id: 'negativo', label: '⚠️ Negativo & Shock' },
+                            { id: 'pov', label: '👑 POV & Experiencias VIP' },
+                            { id: 'curiosidad', label: '🔍 Curiosidad & Secretos' },
+                            { id: 'gastronomía', label: '🍸 Rooftops & Coctelería' },
+                            { id: 'negocios', label: '📈 Negocios & Autoridad' }
+                        ].map(cat => (
+                            <button
+                                key={cat.id}
+                                className={`hook-category-chip ${selectedHookCategory === cat.id ? 'active' : ''}`}
+                                onClick={() => setSelectedHookCategory(cat.id)}
+                            >
+                                {cat.label}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Hooks Grid */}
+                    <div className="hooks-grid">
+                        {filteredHooks.map(hook => (
+                            <div key={hook.id} className="hook-card">
+                                <div className="hook-card-head">
+                                    <span className="hook-cat-badge">{hook.category}</span>
+                                    <span style={{ fontSize: '11px', color: '#64748b' }}>{hook.pillar}</span>
+                                </div>
+
+                                <p className="hook-text">"{hook.text}"</p>
+
+                                <div className="hook-why">
+                                    💡 <strong>Por qué funciona:</strong> {hook.why}
+                                </div>
+
+                                <div className="hook-card-footer">
+                                    <button 
+                                        className="hook-copy-btn"
+                                        onClick={() => handleCopyHook(hook)}
+                                    >
+                                        {copiedHookId === hook.id ? <Check size={12} color="#22c55e" /> : <Copy size={12} />}
+                                        {copiedHookId === hook.id ? 'Copiado' : 'Copiar'}
+                                    </button>
+
+                                    <button 
+                                        className="hook-use-btn"
+                                        onClick={() => handleUseHook(hook)}
+                                    >
+                                        <Plus size={13} /> Usar en Guión
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </div>
             )}
 
-            {/* Events Quick Access */}
-            {events.length > 0 && (
-                <div style={{ marginTop: '32px' }}>
-                    <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <CalendarDays size={18} color="var(--accent-primary)" /> Redes por Evento
-                    </h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
-                        {events.map(ev => {
-                            const eventAccounts = socialMedia.filter(a => (a.linkedEventIds || []).includes(ev.id));
-                            return (
-                                <div key={ev.id} style={{
-                                    padding: '16px 20px', borderRadius: '14px',
-                                    background: 'var(--bg-card)', border: '1px solid var(--border-subtle)',
-                                    display: 'flex', alignItems: 'center', gap: '14px',
-                                    cursor: 'pointer', transition: 'all 0.2s',
-                                }}
-                                    onClick={() => navigate(`/eventos/${ev.id}`)}
-                                    onMouseEnter={e => { e.currentTarget.style.borderColor = (ev.color || '#8b5cf6') + '50'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.transform = 'translateY(0)'; }}
-                                >
-                                    <div style={{
-                                        width: '42px', height: '42px', borderRadius: '12px',
-                                        background: `${ev.color || '#8b5cf6'}20`, color: ev.color || '#8b5cf6',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        fontSize: '20px', flexShrink: 0,
-                                    }}>{ev.icon}</div>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ fontSize: '14px', fontWeight: 600 }}>{ev.name}</div>
-                                        <div style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
-                                            {eventAccounts.length} {eventAccounts.length === 1 ? 'cuenta vinculada' : 'cuentas vinculadas'}
+            {/* ═══════════════════════════════════════════════════════════════════
+               TAB 4: ACCOUNTS & METRICS PROFILES
+               ═══════════════════════════════════════════════════════════════════ */}
+            {currentTab === 'accounts' && (
+                <div className="animate-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '18px' }}>
+                    {accounts.map(acc => {
+                        const meta = PLATFORM_META[acc.platform] || PLATFORM_META.Instagram;
+                        const IconComp = meta.icon;
+                        const tasksForThis = (contentTasks || []).filter(t => t.accountHandler === acc.handler || t.accountId === acc.id);
+
+                        return (
+                            <div key={acc.id} className="card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                        <div style={{
+                                            width: '42px', height: '42px', borderRadius: '12px',
+                                            background: meta.gradient, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            color: '#fff', boxShadow: `0 4px 14px ${meta.color}40`
+                                        }}>
+                                            <IconComp size={20} />
+                                        </div>
+                                        <div>
+                                            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#fff' }}>{acc.handler}</h3>
+                                            <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#94a3b8' }}>{acc.type}</p>
                                         </div>
                                     </div>
-                                    <ArrowRight size={16} style={{ color: 'var(--text-tertiary)' }} />
+
+                                    {acc.url && (
+                                        <a href={acc.url} target="_blank" rel="noreferrer" className="social-btn-secondary" style={{ padding: '6px 10px', fontSize: '11px' }}>
+                                            <ExternalLink size={12} /> Abrir
+                                        </a>
+                                    )}
                                 </div>
-                            );
-                        })}
+
+                                <p style={{ fontSize: '12px', color: '#cbd5e1', margin: 0, lineHeight: 1.4 }}>
+                                    {acc.description || 'Cuenta oficial gestionada por ARRIVE Agency'}
+                                </p>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '8px' }}>
+                                    <div>
+                                        <div style={{ fontSize: '10px', color: '#64748b' }}>SEGUIDORES</div>
+                                        <div style={{ fontSize: '14px', fontWeight: 800, color: '#f8fafc' }}>{acc.followers}</div>
+                                    </div>
+                                    <div>
+                                        <div style={{ fontSize: '10px', color: '#64748b' }}>PIPELINE</div>
+                                        <div style={{ fontSize: '14px', fontWeight: 800, color: '#fbbf24' }}>{tasksForThis.length} posts</div>
+                                    </div>
+                                    <div>
+                                        <div style={{ fontSize: '10px', color: '#64748b' }}>ENGAGEMENT</div>
+                                        <div style={{ fontSize: '14px', fontWeight: 800, color: '#34d399' }}>{acc.metrics?.engagement || '6.5%'}</div>
+                                    </div>
+                                </div>
+
+                                <div style={{ display: 'flex', gap: '8px', marginTop: 'auto' }}>
+                                    <button 
+                                        className="social-btn-primary" 
+                                        style={{ flex: 1, padding: '7px', fontSize: '12px', justifyContent: 'center' }}
+                                        onClick={() => {
+                                            setSelectedAccountFilter(acc.handler);
+                                            setCurrentTab('pipeline');
+                                        }}
+                                    >
+                                        <Film size={13} /> Ver Pipeline
+                                    </button>
+                                    <button 
+                                        className="social-btn-secondary" 
+                                        style={{ padding: '7px 12px', fontSize: '12px' }}
+                                        onClick={() => {
+                                            setEditingAccount(acc);
+                                            setAccountFormData({ ...acc });
+                                            setShowAccountModal(true);
+                                        }}
+                                    >
+                                        <Edit3 size={13} />
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+
+            {/* ═══════════════════════════════════════════════════════════════════
+               MODAL: CONTENT CREATOR & SCRIPT PRO
+               ═══════════════════════════════════════════════════════════════════ */}
+            {showTaskModal && (
+                <div className="social-modal-overlay animate-in" onClick={() => setShowTaskModal(false)}>
+                    <div className="social-modal-box" onClick={(e) => e.stopPropagation()}>
+                        <div className="social-modal-header">
+                            <div>
+                                <h3 className="social-modal-title">
+                                    <Film size={20} style={{ color: '#e1306c' }} />
+                                    {editingTask ? 'Editar Pieza de Contenido DURO' : 'Nueva Pieza de Contenido DURO'}
+                                </h3>
+                                <p className="social-modal-sub">
+                                    Estructura completa de video: Gancho de 3s, retención, B-roll, llamado a la acción y Drive.
+                                </p>
+                            </div>
+                            <button className="social-modal-close" onClick={() => setShowTaskModal(false)}>✕</button>
+                        </div>
+
+                        <form onSubmit={handleSaveTask}>
+                            <div className="social-modal-body">
+                                <div className="social-form-row">
+                                    <div className="social-field">
+                                        <label>Cuenta de Destino</label>
+                                        <select 
+                                            value={taskFormData.accountHandler}
+                                            onChange={(e) => {
+                                                const selected = accounts.find(a => a.handler === e.target.value);
+                                                setTaskFormData({
+                                                    ...taskFormData,
+                                                    accountHandler: e.target.value,
+                                                    accountId: selected?.id || taskFormData.accountId
+                                                });
+                                            }}
+                                        >
+                                            {accounts.map(acc => (
+                                                <option key={acc.id} value={acc.handler}>
+                                                    {acc.handler} ({acc.type})
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div className="social-field">
+                                        <label>Formato de Publicación</label>
+                                        <select 
+                                            value={taskFormData.format}
+                                            onChange={(e) => setTaskFormData({ ...taskFormData, format: e.target.value })}
+                                        >
+                                            <option value="Reel 9:16">Reel 9:16 (4K 60fps)</option>
+                                            <option value="Carrusel HD">Carrusel HD (1080x1350)</option>
+                                            <option value="TikTok / UGC">TikTok / UGC Creator</option>
+                                            <option value="Story Seq">Secuencia de Stories</option>
+                                            <option value="Post 1:1">Post Feed 1:1</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="social-field full">
+                                    <label>Título / Concepto Central</label>
+                                    <input 
+                                        type="text" 
+                                        required
+                                        placeholder="Ej: Dinner Party & Bottle Show Extravaganza"
+                                        value={taskFormData.title}
+                                        onChange={(e) => setTaskFormData({ ...taskFormData, title: e.target.value })}
+                                    />
+                                </div>
+
+                                <div className="social-form-row">
+                                    <div className="social-field">
+                                        <label>Pilar de Contenido</label>
+                                        <select 
+                                            value={taskFormData.pillar}
+                                            onChange={(e) => setTaskFormData({ ...taskFormData, pillar: e.target.value })}
+                                        >
+                                            <option value="Branding & Lifestyle">Branding & Lifestyle</option>
+                                            <option value="Talento & Cenas">Talento & Cenas de Chicas</option>
+                                            <option value="Nightlife & Energy">Nightlife & Energy</option>
+                                            <option value="Gastronomía & Rooftop">Gastronomía & Rooftop</option>
+                                            <option value="Speakeasy & Exclusividad">Speakeasy & Exclusividad</option>
+                                            <option value="Autoridad & Negocios">Autoridad & Negocios</option>
+                                        </select>
+                                    </div>
+
+                                    <div className="social-field">
+                                        <label>Fase en el Pipeline</label>
+                                        <select 
+                                            value={taskFormData.status}
+                                            onChange={(e) => setTaskFormData({ ...taskFormData, status: e.target.value })}
+                                        >
+                                            {PIPELINE_COLUMNS.map(col => (
+                                                <option key={col.id} value={col.id}>{col.label}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                {/* SECTION: HOOKS DUROS */}
+                                <div style={{ background: 'rgba(251, 191, 36, 0.05)', border: '1px solid rgba(251, 191, 36, 0.25)', borderRadius: '10px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                    <div style={{ fontSize: '12px', fontWeight: 800, color: '#fbbf24', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <Sparkles size={14} /> FÓRMULA DE RETENCIÓN DE 0 A 3 SEGUNDOS
+                                    </div>
+
+                                    <div className="social-field full">
+                                        <label>🎣 Gancho Verbal (Lo que se dice o escucha en los primeros 3 segundos)</label>
+                                        <input 
+                                            type="text" 
+                                            placeholder='Ej: "El peor error que cometen al salir de noche en Panamá..."'
+                                            value={taskFormData.hookVerbal}
+                                            onChange={(e) => setTaskFormData({ ...taskFormData, hookVerbal: e.target.value })}
+                                        />
+                                    </div>
+
+                                    <div className="social-field full">
+                                        <label>👁️ Gancho Visual (Texto en pantalla gigante o toma de acción de apertura)</label>
+                                        <input 
+                                            type="text" 
+                                            placeholder='Ej: Corte ultra rápido a 60fps con audio drop sincronizado de botellas y luces...'
+                                            value={taskFormData.hookVisual}
+                                            onChange={(e) => setTaskFormData({ ...taskFormData, hookVisual: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="social-field full">
+                                    <label>📝 Estructura del Guión & Desglose de Tomas (B-Roll / Argumento)</label>
+                                    <textarea 
+                                        rows={4}
+                                        placeholder="Escena 1 (0-3s): Hook visual brindando con copa...&#10;Escena 2 (3-8s): Terraplén al atardecer y cena de chicas...&#10;Escena 3 (8-14s): Furia con bengalas..."
+                                        value={taskFormData.scriptBody}
+                                        onChange={(e) => setTaskFormData({ ...taskFormData, scriptBody: e.target.value })}
+                                    />
+                                </div>
+
+                                <div className="social-field full">
+                                    <label>🎯 Llamado a la Acción (CTA)</label>
+                                    <input 
+                                        type="text" 
+                                        placeholder='Ej: Comenta "VIP" para enviarte la lista de la cena del jueves.'
+                                        value={taskFormData.cta}
+                                        onChange={(e) => setTaskFormData({ ...taskFormData, cta: e.target.value })}
+                                    />
+                                </div>
+
+                                <div className="social-form-row three-col">
+                                    <div className="social-field">
+                                        <label>Responsable</label>
+                                        <input 
+                                            type="text" 
+                                            value={taskFormData.assignee}
+                                            onChange={(e) => setTaskFormData({ ...taskFormData, assignee: e.target.value })}
+                                        />
+                                    </div>
+
+                                    <div className="social-field">
+                                        <label>Fecha de Publicación</label>
+                                        <input 
+                                            type="date" 
+                                            value={taskFormData.publishDate}
+                                            onChange={(e) => setTaskFormData({ ...taskFormData, publishDate: e.target.value })}
+                                        />
+                                    </div>
+
+                                    <div className="social-field">
+                                        <label>Hora Pico</label>
+                                        <input 
+                                            type="time" 
+                                            value={taskFormData.publishTime}
+                                            onChange={(e) => setTaskFormData({ ...taskFormData, publishTime: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="social-field full">
+                                    <label>📁 Link a Google Drive / Dropbox (Archivos 4K & Brutos)</label>
+                                    <input 
+                                        type="url" 
+                                        placeholder="https://drive.google.com/drive/folders/..."
+                                        value={taskFormData.assetsDriveUrl}
+                                        onChange={(e) => setTaskFormData({ ...taskFormData, assetsDriveUrl: e.target.value })}
+                                    />
+                                </div>
+
+                                <div className="social-field full">
+                                    <label>💬 Copy / Caption Final + Hashtags</label>
+                                    <textarea 
+                                        rows={3}
+                                        placeholder="Escribe el copy final listo para copiar y pegar en Meta Business Suite..."
+                                        value={taskFormData.caption}
+                                        onChange={(e) => setTaskFormData({ ...taskFormData, caption: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="social-modal-footer">
+                                {editingTask ? (
+                                    <button 
+                                        type="button" 
+                                        className="social-btn-secondary" 
+                                        style={{ color: '#ef4444' }}
+                                        onClick={() => handleDeleteTask(editingTask.id, editingTask.title)}
+                                    >
+                                        <Trash2 size={14} /> Eliminar
+                                    </button>
+                                ) : <div />}
+
+                                <div style={{ display: 'flex', gap: '10px' }}>
+                                    <button 
+                                        type="button" 
+                                        className="social-btn-secondary" 
+                                        onClick={() => setShowTaskModal(false)}
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button 
+                                        type="submit" 
+                                        className="social-btn-primary"
+                                    >
+                                        {editingTask ? 'Guardar Cambios' : 'Añadir al Pipeline'}
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* ═══════════════════════════════════════════════════════════════════
+               MODAL: ACCOUNT MANAGEMENT
+               ═══════════════════════════════════════════════════════════════════ */}
+            {showAccountModal && (
+                <div className="social-modal-overlay animate-in" onClick={() => setShowAccountModal(false)}>
+                    <div className="social-modal-box" style={{ maxWidth: '520px' }} onClick={(e) => e.stopPropagation()}>
+                        <div className="social-modal-header">
+                            <div>
+                                <h3 className="social-modal-title">
+                                    {editingAccount ? 'Editar Cuenta' : 'Vincular Nueva Cuenta'}
+                                </h3>
+                                <p className="social-modal-sub">
+                                    Configura los perfiles de redes sociales que gestiona ARRIVE Agency.
+                                </p>
+                            </div>
+                            <button className="social-modal-close" onClick={() => setShowAccountModal(false)}>✕</button>
+                        </div>
+
+                        <form onSubmit={handleSaveAccount}>
+                            <div className="social-modal-body">
+                                <div className="social-form-row">
+                                    <div className="social-field">
+                                        <label>Plataforma</label>
+                                        <select 
+                                            value={accountFormData.platform}
+                                            onChange={(e) => setAccountFormData({ ...accountFormData, platform: e.target.value })}
+                                        >
+                                            <option value="Instagram">Instagram</option>
+                                            <option value="TikTok">TikTok</option>
+                                            <option value="YouTube">YouTube</option>
+                                            <option value="Facebook">Facebook</option>
+                                            <option value="Twitter">Twitter / X</option>
+                                            <option value="LinkedIn">LinkedIn</option>
+                                        </select>
+                                    </div>
+
+                                    <div className="social-field">
+                                        <label>Handler / Usuario</label>
+                                        <input 
+                                            type="text" 
+                                            required
+                                            placeholder="@arriveagency"
+                                            value={accountFormData.handler}
+                                            onChange={(e) => setAccountFormData({ ...accountFormData, handler: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="social-form-row">
+                                    <div className="social-field">
+                                        <label>Tipo de Cuenta</label>
+                                        <input 
+                                            type="text" 
+                                            placeholder="Ej: Agencia, Venue, Talento, Música"
+                                            value={accountFormData.type}
+                                            onChange={(e) => setAccountFormData({ ...accountFormData, type: e.target.value })}
+                                        />
+                                    </div>
+
+                                    <div className="social-field">
+                                        <label>Seguidores Actuales</label>
+                                        <input 
+                                            type="text" 
+                                            placeholder="Ej: 14.2K"
+                                            value={accountFormData.followers}
+                                            onChange={(e) => setAccountFormData({ ...accountFormData, followers: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="social-field full">
+                                    <label>Enlace Directo al Perfil</label>
+                                    <input 
+                                        type="url" 
+                                        placeholder="https://instagram.com/arriveagency"
+                                        value={accountFormData.url}
+                                        onChange={(e) => setAccountFormData({ ...accountFormData, url: e.target.value })}
+                                    />
+                                </div>
+
+                                <div className="social-field full">
+                                    <label>Descripción / Enfoque</label>
+                                    <textarea 
+                                        rows={2}
+                                        placeholder="Enfoque de contenido para esta cuenta..."
+                                        value={accountFormData.description}
+                                        onChange={(e) => setAccountFormData({ ...accountFormData, description: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="social-modal-footer">
+                                <button type="button" className="social-btn-secondary" onClick={() => setShowAccountModal(false)}>
+                                    Cancelar
+                                </button>
+                                <button type="submit" className="social-btn-primary">
+                                    {editingAccount ? 'Guardar Cambios' : 'Vincular Cuenta'}
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}
         </div>
-    );
-    }
-
-    return (
-        <>
-            {pageContent}
-
-            {/* MODAL - Add/Edit Account */}
-            {showModal && editingAccount && (
-                <div className="modal-overlay" onClick={() => setShowModal(false)}>
-                    <div className="modal" style={{ maxWidth: '580px' }} onClick={e => e.stopPropagation()}>
-                        <div className="modal-header" style={{
-                            borderBottom: `3px solid ${(PLATFORM_META[editingAccount.platform] || PLATFORM_META.Website).color}`,
-                        }}>
-                            <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <Share2 size={18} />
-                                {socialMedia.find(a => a.id === editingAccount.id) ? 'Editar Cuenta' : 'Nueva Cuenta de Red Social'}
-                            </h3>
-                            <button className="btn btn-ghost" style={{ padding: '8px' }} onClick={() => setShowModal(false)}><X size={18} /></button>
-                        </div>
-                        <div className="modal-body">
-                            <div className="grid-2">
-                                <div className="form-group">
-                                    <label className="form-label">Plataforma</label>
-                                    <select className="form-select" value={editingAccount.platform}
-                                        onChange={e => setEditingAccount({ ...editingAccount, platform: e.target.value })}>
-                                        {Object.keys(PLATFORM_META).map(p => <option key={p} value={p}>{p}</option>)}
-                                    </select>
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Tipo</label>
-                                    <select className="form-select" value={editingAccount.type}
-                                        onChange={e => setEditingAccount({ ...editingAccount, type: e.target.value })}>
-                                        <option value="Company Page">Página de Empresa</option>
-                                        <option value="Personal Profile">Perfil Personal</option>
-                                        <option value="Event Page">Página de Evento</option>
-                                        <option value="Brand">Marca</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div className="form-group">
-                                <label className="form-label">Handle / Nombre</label>
-                                <input className="form-input" placeholder="@handle o nombre" value={editingAccount.handler}
-                                    onChange={e => setEditingAccount({ ...editingAccount, handler: e.target.value })} />
-                            </div>
-                            <div className="grid-2">
-                                <div className="form-group">
-                                    <label className="form-label">URL</label>
-                                    <input className="form-input" placeholder="https://..." value={editingAccount.url}
-                                        onChange={e => setEditingAccount({ ...editingAccount, url: e.target.value })} />
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Seguidores</label>
-                                    <input className="form-input" placeholder="Ej: 2.1K" value={editingAccount.followers}
-                                        onChange={e => setEditingAccount({ ...editingAccount, followers: e.target.value })} />
-                                </div>
-                            </div>
-                            <div className="form-group">
-                                <label className="form-label">Descripción</label>
-                                <textarea className="form-textarea" rows={2} placeholder="Descripción de la cuenta..."
-                                    value={editingAccount.description}
-                                    onChange={e => setEditingAccount({ ...editingAccount, description: e.target.value })} />
-                            </div>
-
-                            {/* Link to Events */}
-                            <div className="form-group">
-                                <label className="form-label" style={{ marginBottom: '8px' }}>Vincular a Eventos</label>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', maxHeight: '160px', overflowY: 'auto', padding: '4px' }}>
-                                    {events.map(ev => {
-                                        const isLinked = (editingAccount.linkedEventIds || []).includes(ev.id);
-                                        return (
-                                            <button key={ev.id} type="button"
-                                                className={`btn ${isLinked ? 'btn-primary' : 'btn-secondary'}`}
-                                                style={{
-                                                    fontSize: '12px', padding: '6px 12px',
-                                                    background: isLinked ? (ev.color || '#8b5cf6') : undefined,
-                                                    borderColor: isLinked ? (ev.color || '#8b5cf6') : undefined,
-                                                }}
-                                                onClick={() => toggleEventLink(ev.id)}>
-                                                {ev.icon} {ev.name}
-                                            </button>
-                                        );
-                                    })}
-                                    {events.length === 0 && (
-                                        <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>No hay eventos creados aún.</span>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                        <div className="modal-footer" style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            {socialMedia.find(a => a.id === editingAccount.id) ? (
-                                <button className="btn btn-ghost" style={{ color: '#ef4444' }} onClick={() => removeAccount(editingAccount.id)}>
-                                    <Trash2 size={14} /> Eliminar
-                                </button>
-                            ) : <div />}
-                            <div style={{ display: 'flex', gap: '8px' }}>
-                                <button className="btn btn-ghost" onClick={() => setShowModal(false)}>Cancelar</button>
-                                <button className="btn btn-primary" onClick={saveAccount}>Guardar</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Modal Editar Arte */}
-            {editingArt && (
-                <div className="modal-overlay" onClick={closeArtEdit} style={{ zIndex: 9999 }}>
-                    <div className="modal" style={{ maxWidth: '500px' }} onClick={e => e.stopPropagation()}>
-                        <div className="modal-header">
-                            <h3>{editingArt.id.toString().startsWith('art-') ? 'Añadir Nuevo Arte' : 'Editar Arte'}</h3>
-                            <button className="btn btn-ghost" style={{ padding: '8px' }} onClick={closeArtEdit}><X size={18} /></button>
-                        </div>
-                        <div className="modal-body">
-                            <div className="form-group">
-                                <label>Título de la imagen</label>
-                                <input className="form-input" placeholder="Ej: Flyer Oficial, Lineup, etc." value={editingArt.title} onChange={e => setEditingArt({ ...editingArt, title: e.target.value })} />
-                            </div>
-                            <div className="grid-2">
-                                <div className="form-group">
-                                    <label>Tipo de formato</label>
-                                    <select className="form-select" value={editingArt.type} onChange={e => setEditingArt({ ...editingArt, type: e.target.value })}>
-                                        <option value="Post">Post (1:1 / 4:5)</option>
-                                        <option value="Story">Story (9:16)</option>
-                                        <option value="Reel">Reel (9:16)</option>
-                                    </select>
-                                </div>
-                                <div className="form-group">
-                                    <label>Estado de Diseño</label>
-                                    <select className="form-select" value={editingArt.status} onChange={e => setEditingArt({ ...editingArt, status: e.target.value })}>
-                                        <option value="Pendiente">Pendiente (Idea)</option>
-                                        <option value="Revisión">En Revisión</option>
-                                        <option value="Aprobado">Aprobado</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div className="form-group">
-                                <label>Descripción para el copy / Indicaciones</label>
-                                <textarea className="form-textarea" rows={3} placeholder="Texto de la publicación o indicaciones para el diseñador..." value={editingArt.description || ''} onChange={e => setEditingArt({ ...editingArt, description: e.target.value })} />
-                            </div>
-                            <div className="form-group">
-                                <label>Referencias Visuales (Links)</label>
-                                <input className="form-input" placeholder="Enlace a Drive, Pinterest, etc." value={editingArt.references || ''} onChange={e => setEditingArt({ ...editingArt, references: e.target.value })} />
-                            </div>
-                        </div>
-                        <div className="modal-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            {!editingArt.id.toString().startsWith('art-') ? (
-                                <button className="btn btn-ghost" style={{ color: '#ef4444' }} onClick={() => deleteArt(editingArt.id)}>Eliminar</button>
-                            ) : <div></div>}
-                            <div style={{ display: 'flex', gap: '12px' }}>
-                                <button className="btn btn-ghost" onClick={closeArtEdit}>Cancelar</button>
-                                <button className="btn btn-primary" onClick={saveArt}>Guardar</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-        </>
     );
 }

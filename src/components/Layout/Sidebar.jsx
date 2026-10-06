@@ -6,8 +6,8 @@ import {
 import { useState } from 'react';
 
 const navItems = [
-    { path: '/', icon: LayoutDashboard, label: 'Command Center', section: 'AGENCIA' },
-    { path: '/arrive', icon: Sparkles, label: 'ARRIVE Agency & Clientes', section: 'AGENCIA' },
+    { path: '/', icon: Sparkles, label: 'ARRIVE Agency OS (Oficina)', section: 'AGENCIA' },
+    { path: '/arrive', icon: Building2, label: 'Clientes & 3 Divisiones', section: 'AGENCIA' },
     { path: '/portfolio', icon: Briefcase, label: 'Portfolio OS', section: 'STRATEGY' },
     { path: '/workspace', icon: LayoutTemplate, label: 'Workspace', section: 'OPERATIONS' },
     { path: '/calendar', icon: Calendar, label: 'Master Calendar', section: 'OPERATIONS' },
