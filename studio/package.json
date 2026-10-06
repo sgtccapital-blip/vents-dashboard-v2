@@ -1,0 +1,27 @@
+{
+  "name": "content-machine-studio",
+  "private": true,
+  "type": "module",
+  "description": "Máquina de contenido: montaje de video, motion graphics y gráficos por marca (Remotion + ffmpeg + whisper).",
+  "scripts": {
+    "studio": "remotion studio src/index.js",
+    "doctor": "node bin/doctor.mjs",
+    "fetch-raw": "node bin/fetch-raw.mjs",
+    "transcribe": "node bin/transcribe.mjs",
+    "render-brief": "node bin/render-brief.mjs",
+    "graphic": "node bin/graphic.mjs"
+  },
+  "dependencies": {
+    "@remotion/bundler": "^4.0.533",
+    "@remotion/captions": "^4.0.533",
+    "@remotion/cli": "^4.0.533",
+    "@remotion/google-fonts": "^4.0.533",
+    "@remotion/media": "^4.0.533",
+    "@remotion/media-utils": "^4.0.533",
+    "@remotion/renderer": "^4.0.533",
+    "@remotion/transitions": "^4.0.533",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "remotion": "^4.0.533"
+  }
+}

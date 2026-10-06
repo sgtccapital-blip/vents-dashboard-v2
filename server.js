@@ -875,7 +875,7 @@ entities.forEach(entity => {
 });
 
 // ─── Estudio de contenido: Drive raw → ideas → desarrollo → producción ───
-registerContentStudio(app, { readDB, writeDB, loadBrands, accountSlug, contentDnaPath: CONTENT_DNA_PATH, cron });
+registerContentStudio(app, { readDB, writeDB, loadBrands, accountSlug, contentDnaPath: CONTENT_DNA_PATH, rootDir: __dirname, cron });
 
 // ─── Activity Feed (append-only) ──────────────────────────────
 

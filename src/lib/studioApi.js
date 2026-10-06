@@ -21,8 +21,12 @@ export const studioApi = {
     ideas: payload => call('/ideas', { method: 'POST', body: payload }),
     develop: taskId => call(`/develop/${taskId}`, { method: 'POST', body: {} }),
     execute: taskId => call(`/execute/${taskId}`, { method: 'POST' }),
+    render: (taskId, opts = {}) => call(`/render/${taskId}`, { method: 'POST', body: opts }),
+    renderStatus: taskId => call(`/render/${taskId}`),
 };
 
 export const thumbUrl = (asset, size = 320) => (asset.thumbnailLink ? `/api/studio/thumb/${asset.driveId}?s=${size}` : null);
 
 export const formatDuration = s => (s == null ? '' : s >= 60 ? `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}` : `${Math.round(s)}s`);
+
+export const mediaUrl = (relPath, { download = false, v } = {}) => `/api/studio/media?path=${encodeURIComponent(relPath)}${download ? '&download=1' : ''}${v ? `&v=${encodeURIComponent(v)}` : ''}`;

@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Wand2, PackageCheck, FileText, Film, Copy, Check, X, Clapperboard } from 'lucide-react';
 import { studioApi } from '../../lib/studioApi';
+import RenderPanel from './RenderPanel';
 
 const STAGES = [
     { id: 'idea', label: 'Idea', next: 'Desarrollar con IA' },
@@ -93,6 +94,7 @@ export default function ProductionBoard({ account, tasks, onTaskChange, onOpenTa
                                     </div>
                                     <b onClick={() => onOpenTask(t)}>{t.title}</b>
                                     {t.hookVerbal && <p>{t.hookVerbal}</p>}
+                                    {t.development && ['editing', 'ready', 'published'].includes(stage.id) && <RenderPanel task={t} />}
                                     <div className="prod-card-actions">
                                         {stage.id === 'idea' && (
                                             <button className="social-btn-primary" disabled={!!busy[t.id]} onClick={() => run(t, 'develop')}>

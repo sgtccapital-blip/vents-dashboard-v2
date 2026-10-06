@@ -95,6 +95,19 @@ export function createDriveClient({ apiKey, serviceAccount, fetchImpl = fetch } 
             return files;
         },
 
+        /** Descarga el archivo original a `dest` (en streaming, sirve para videos pesados). */
+        async downloadFile(id, dest) {
+            const res = await authed(`${DRIVE}/files/${id}?alt=media&supportsAllDrives=true`);
+            if (!res.ok) throw new Error(`Drive ${res.status} al descargar ${id}: ${(await res.text()).slice(0, 200)}`);
+            const { Readable } = await import('stream');
+            const { pipeline } = await import('stream/promises');
+            fs.mkdirSync(dest.slice(0, dest.lastIndexOf('/')), { recursive: true });
+            const tmp = `${dest}.part`;
+            await pipeline(Readable.fromWeb(res.body), fs.createWriteStream(tmp));
+            fs.renameSync(tmp, dest);
+            return dest;
+        },
+
         /** Miniatura (los thumbnailLink de Drive exigen credenciales para archivos privados). */
         async fetchThumbnail(thumbnailLink, size = 480) {
             const url = thumbnailLink.replace(/=s\d+$/, `=s${size}`);

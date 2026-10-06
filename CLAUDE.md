@@ -19,3 +19,7 @@ Reglas:
 El material de cada noche llega de Google Drive al dashboard (Redes Sociales → Material raw); la IA propone ideas, las desarrolla en un guion de edición (EDL) y genera un brief de producción en `content-dna/<cuenta>/briefs/`. Guía completa en `docs/ESTUDIO_CONTENIDO.md`; código en `src/services/contentStudio/`.
 
 Cuando te pidan ejecutar un brief: léelo completo, respeta el EDL, el estilo de texto/subtítulos/cierre de la cuenta (`BRAND.md` → Línea de contenido) y deja el render donde indica el brief.
+
+## Máquina de contenido (`studio/`)
+
+Para editar, montar, renderizar video, motion graphics o gráficos de historias usa el skill `content-machine` (pipeline Remotion + ffmpeg + Whisper en `studio/`) y `video-recipes` para ediciones rápidas con ffmpeg. Corre `cd studio && npm run doctor` antes de producir y revisa la hoja de contacto de cada render antes de entregarlo.

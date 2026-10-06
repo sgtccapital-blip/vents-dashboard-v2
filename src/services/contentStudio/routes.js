@@ -1,5 +1,6 @@
 // Rutas del estudio de contenido: Drive → biblioteca raw → ideas → desarrollo → paquete de producción.
 import fs from 'fs';
+import { spawn } from 'child_process';
 import path from 'path';
 import { parseFolderId, createDriveClient, driveCredentialsFromEnv, crawlFolder } from './drive.js';
 import { buildAliases, toAsset, mergeAssets, groupNights } from './rawLibrary.js';
@@ -9,7 +10,7 @@ import { renderBrief, slugify } from './brief.js';
 
 const MAX_IMAGES = 12;
 
-export function registerContentStudio(app, { readDB, writeDB, loadBrands, accountSlug, contentDnaPath, cron }) {
+export function registerContentStudio(app, { readDB, writeDB, loadBrands, accountSlug, contentDnaPath, rootDir, cron }) {
     const brandForAccount = accountId => {
         try { return loadBrands().find(b => b.accountId === accountId) || null; } catch { return null; }
     };
@@ -206,6 +207,67 @@ export function registerContentStudio(app, { readDB, writeDB, loadBrands, accoun
         db.contentTasks[idx] = { ...task, briefPath: `content-dna/${slug}/briefs/${file}`, executedAt: new Date().toISOString() };
         writeDB(db);
         res.json({ task: db.contentTasks[idx], markdown });
+    });
+
+    // ─── Render: máquina de contenido (studio/) ───
+    // Un render a la vez; los demás esperan en cola. El estado vive en memoria y el log en disco.
+    const jobs = new Map();
+    const queue = [];
+    let running = null;
+    const studioDir = path.join(rootDir, 'studio');
+    const projectRoot = path.dirname(contentDnaPath); // las rutas guardadas son relativas a la carpeta que contiene content-dna/
+
+    function startNext() {
+        if (running || !queue.length) return;
+        const job = queue.shift();
+        running = job;
+        job.status = 'running';
+        job.startedAt = new Date().toISOString();
+        const args = ['bin/render-brief.mjs', job.taskId, ...(job.captions ? ['--captions'] : [])];
+        const child = spawn(process.execPath, args, {
+            cwd: studioDir,
+            env: { ...process.env, CONTENT_DNA_PATH: contentDnaPath, DASHBOARD_URL: `http://127.0.0.1:${process.env.PORT || 8090}` },
+        });
+        const onData = chunk => {
+            job.log = (job.log + chunk.toString()).slice(-6000);
+            const pct = [...job.log.matchAll(/›\s+(\d+)%/g)].pop();
+            if (pct) job.progress = Number(pct[1]);
+        };
+        child.stdout.on('data', onData);
+        child.stderr.on('data', onData);
+        child.on('close', code => {
+            job.status = code === 0 ? 'done' : 'error';
+            job.finishedAt = new Date().toISOString();
+            running = null;
+            startNext();
+        });
+    }
+
+    app.post('/api/studio/render/:taskId', (req, res) => {
+        const task = (readDB().contentTasks || []).find(t => t.id === req.params.taskId);
+        if (!task) return res.status(404).json({ error: 'Pieza no encontrada' });
+        if (!task.development?.edl?.length) return res.status(400).json({ error: 'Primero desarrolla la pieza' });
+        if (!fs.existsSync(path.join(studioDir, 'node_modules'))) return res.status(500).json({ error: 'La máquina de contenido no está instalada: cd studio && npm install' });
+        const existing = jobs.get(task.id);
+        if (existing && ['queued', 'running'].includes(existing.status)) return res.json(existing);
+        const job = { taskId: task.id, status: 'queued', progress: 0, log: '', captions: Boolean(req.body?.captions), queuedAt: new Date().toISOString() };
+        jobs.set(task.id, job);
+        queue.push(job);
+        startNext();
+        res.json(job);
+    });
+
+    app.get('/api/studio/render/:taskId', (req, res) => {
+        res.json(jobs.get(req.params.taskId) || { status: 'idle' });
+    });
+
+    // Archivos generados (renders, portadas, gráficos) para verlos en el dashboard. Solo dentro de content-dna/.
+    app.get('/api/studio/media', (req, res) => {
+        const rel = String(req.query.path || '');
+        const abs = path.resolve(projectRoot, rel);
+        if (!abs.startsWith(contentDnaPath + path.sep) || !fs.existsSync(abs)) return res.status(404).end();
+        if (req.query.download) res.attachment(path.basename(abs));
+        res.sendFile(abs);
     });
 
     // Sync automático: cada mañana (después de la noche) y a media tarde, hora de Panamá.

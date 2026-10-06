@@ -30,3 +30,15 @@ Una carpeta por noche o evento, con la fecha y el nombre de la marca en el nombr
 | `GOOGLE_DRIVE_FOLDER_ID` | Opcional: carpeta por defecto. También se puede pegar el link desde el dashboard. |
 | `ANTHROPIC_API_KEY` | Claude como motor principal de ideas y desarrollo (modelo `CLAUDE_MODEL`, por defecto `claude-opus-5-5`). |
 | `GEMINI_API_KEY` / `GEMINI_MODEL` | Respaldo si Claude no está configurado o falla. |
+
+## Máquina de contenido (`studio/`)
+
+Producción local en tu Mac: **Remotion 4** (motion graphics y montaje con React), **ffmpeg 9** (edición, H.264 por hardware), **Whisper** (subtítulos palabra por palabra, modelo `studio/models/ggml-small.bin`), **ImageMagick**, **rclone** y **exiftool**.
+
+- **Desde el dashboard:** Abrir cuenta → Producción → **Renderizar video** (opción Subtítulos). Al terminar aparece el video con portada, descarga y las historias de apoyo.
+- **Desde la terminal** (`cd studio`): `npm run doctor`, `npm run render-brief -- <taskId>`, `npm run graphic -- --brand the-room --type story-announce`, `npm run transcribe -- video.mp4`, `npm run studio` (vista previa de composiciones).
+- **Con Claude Code:** skills del proyecto `content-machine` y `video-recipes` (en `.claude/skills/`).
+
+Salidas en `content-dna/<cuenta>/renders/` (video, portada, hoja de contacto, historias) y `content-dna/<cuenta>/graphics/`. Audio masterizado a −14 LUFS.
+
+Instalación en otra máquina: `brew install ffmpeg imagemagick whisper-cpp rclone exiftool`, `cd studio && npm install`, descargar `ggml-small.bin` de huggingface.co/ggerganov/whisper.cpp a `studio/models/` y correr `npm run doctor`.
