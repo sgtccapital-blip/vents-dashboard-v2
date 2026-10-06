@@ -13,7 +13,7 @@
 <header class="top">
   <a class="back" href="../">← Marcas</a>
   <div class="top-logo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" role="img" aria-label="Dinner Club" class="logo-svg"><circle cx="150" cy="150" r="150" fill="#FFFFFF"/><text x="150" y="160" text-anchor="middle" font-family="'Source Sans 3', sans-serif" font-weight="700" font-size="66" fill="#0B0B0B" textLength="206" lengthAdjust="spacingAndGlyphs">DINNER</text><text x="150" y="202" text-anchor="middle" font-family="'Source Sans 3', sans-serif" font-weight="400" font-size="22" fill="#0B0B0B" textLength="84" lengthAdjust="spacing">CLUB</text></svg></div>
-  <nav><a href="#instagram">Instagram</a><a href="#esencia">Esencia</a><a href="#logo">Logo</a><a href="#color">Color</a><a href="#tipografia">Tipografía</a><a href="#interfaz">Interfaz</a><a href="#redes">Plantillas</a><a href="#aplicaciones">Aplicaciones</a><a href="#web">Web</a><a href="#imagen">Imagen</a><a href="#motion">Motion</a><a href="#voz">Voz</a><a href="#reglas">Reglas</a></nav>
+  <nav><a href="#instagram">Instagram</a><a href="#esencia">Esencia</a><a href="#logo">Logo</a><a href="#color">Color</a><a href="#tipografia">Tipografía</a><a href="#interfaz">Interfaz</a><a href="#redes">Plantillas</a><a href="#aplicaciones">Aplicaciones</a><a href="#web">Web</a><a href="#imagen">Imagen</a><a href="#motion">Motion</a><a href="#voz">Voz</a><a href="#reglas">Reglas</a><a class="kit-btn" href="./dinner-club-kit.zip" download>↓ Kit</a></nav>
 </header>
 
 <section class="cover">
@@ -90,7 +90,8 @@
     <div class="mu busy"><div class="mu-in" style="filter:drop-shadow(4px 4px 0 #f0f)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" role="img" aria-label="Dinner Club" class="logo-svg"><circle cx="150" cy="150" r="150" fill="#FFFFFF"/><text x="150" y="160" text-anchor="middle" font-family="'Source Sans 3', sans-serif" font-weight="700" font-size="66" fill="#0B0B0B" textLength="206" lengthAdjust="spacingAndGlyphs">DINNER</text><text x="150" y="202" text-anchor="middle" font-family="'Source Sans 3', sans-serif" font-weight="400" font-size="22" fill="#0B0B0B" textLength="84" lengthAdjust="spacing">CLUB</text></svg></div><span>No sombras ni fondos ruidosos</span></div>
   </div>
   <ul class="x cols"><li>No usar colores saturados o neón</li><li>No agregar copas o cubiertos al logo</li><li>No poner el logo sobre fotos de fiesta sin caja</li><li>No condensar el wordmark</li></ul>
-  <div class="downloads"><h4>Descargar</h4><a href="./logo/primary.svg" download>primary.svg</a><a href="./logo/inverse.svg" download>inverse.svg</a><a href="./logo/on-accent.svg" download>on-accent.svg</a><a href="./logo/symbol.svg" download>symbol.svg</a><a href="./logo/avatar.svg" download>avatar.svg</a></div>
+  <div class="downloads"><h4>Descargar</h4><a class="kit" href="./dinner-club-kit.zip" download>Kit completo (.zip)</a><a href="./logo/primary.svg" download>primary.svg</a><a href="./logo/inverse.svg" download>inverse.svg</a><a href="./logo/on-accent.svg" download>on-accent.svg</a><a href="./logo/symbol.svg" download>symbol.svg</a><a href="./logo/avatar.svg" download>avatar.svg</a></div>
+  <p class="small">Redibujo vectorial a partir del avatar de Instagram, pendiente de versión final de diseño.</p>
 </section>
 
 <section id="color">
@@ -237,6 +238,13 @@
     <div class="rule-card ok"><h3>Siempre</h3><ul><li>Siempre la dualidad cena + fiesta</li><li>Paleta B/N + cálidos</li><li>Itálica Playfair en nombres</li><li>Reservas por DM visibles</li></ul></div>
     <div class="rule-card no"><h3>Nunca</h3><ul><li>Neón y saturados</li><li>Estética de fiesta masiva</li><li>Comida con flash</li><li>Más de un acento cálido por pieza</li></ul></div>
   </div>
+  <h4 class="sub-h">Para diseñadores</h4>
+  <ol class="steps">
+    <li>Descarga el <a href="./dinner-club-kit.zip" download>kit de DINNER CLUB</a>: logos SVG, colores (HEX, RGB y CMYK), tipografías con links de descarga y esta guía.</li>
+    <li>Trabaja los logos en Illustrator o Figma. Entrégalos en SVG con los mismos nombres (<code>primary.svg</code>, <code>inverse.svg</code>, <code>on-accent.svg</code>, <code>symbol.svg</code>, <code>avatar.svg</code>), textos convertidos a contornos.</li>
+    <li>Los archivos van en <code>brands/dinner-club/logo-source/</code>. Desde ese momento reemplazan al redibujo en todo el sistema: brandbook, plantillas, kit y webs.</li>
+    <li>Cambios de color, tipografía, textos o reglas: se editan en <code>brands/dinner-club/brand.json</code> (o se le piden a Claude Code) y se regenera con <code>npm run brands</code>.</li>
+  </ol>
   <h4 class="sub-h">Para desarrolladores</h4>
   <p>Importa <a href="./tokens.css"><code>tokens.css</code></a> en la web de la marca y usa las variables (<code>var(--brand-accent)</code>, <code>var(--font-display)</code>…). Datos completos en <a href="./brand.json"><code>brand.json</code></a>.</p>
 </section>

@@ -148,6 +148,10 @@ ul.x li::marker,.rule-card.no li::marker{content:"✕  ";color:#E5484D}.rule-car
 .downloads h4{margin:0 12px 0 0}
 .downloads a{font-family:var(--font-secondary);font-size:12px;letter-spacing:.06em;text-decoration:none;border:1px solid var(--brand-line);padding:8px 14px;border-radius:999px;background:var(--brand-surface)}
 .downloads a:hover{border-color:var(--brand-accent);color:var(--brand-accent)}
+.downloads a.kit{background:var(--brand-accent);color:var(--brand-on-accent);border-color:var(--brand-accent);font-weight:700}
+.top a.kit-btn{color:var(--brand-on-accent);background:var(--brand-accent);padding:6px 12px;border-radius:999px}
+.top a.kit-btn:hover{color:var(--brand-on-accent);filter:brightness(1.1)}
+.steps{padding-left:22px;max-width:70ch}.steps li{margin:10px 0;padding-left:6px}
 
 /* ─── Color ─── */
 .ratio-bar{display:flex;height:72px;border-radius:14px;overflow:hidden;border:1px solid var(--brand-line);margin-top:24px}

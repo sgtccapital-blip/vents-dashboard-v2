@@ -24,7 +24,7 @@
       <path d="M46 88q3 3 6 0M42 102q3 3 6 0M50 114q3 3 6 0"/>
       <path d="M38 133V148M33 150H43M50 133V148M45 150H55"/>
     </g></g><text x="410" y="166" text-anchor="middle" font-family="'Bodoni Moda', serif" font-weight="400" font-size="112" fill="#E8DCCB" textLength="236" lengthAdjust="spacingAndGlyphs">ROOM</text><text x="270" y="212" text-anchor="middle" font-family="'Josefin Sans', sans-serif" font-weight="400" font-size="24" fill="#E8DCCB" textLength="128" lengthAdjust="spacing">Social Club</text></svg></div>
-  <nav><a href="#instagram">Instagram</a><a href="#esencia">Esencia</a><a href="#logo">Logo</a><a href="#color">Color</a><a href="#tipografia">Tipografía</a><a href="#interfaz">Interfaz</a><a href="#redes">Plantillas</a><a href="#aplicaciones">Aplicaciones</a><a href="#web">Web</a><a href="#imagen">Imagen</a><a href="#motion">Motion</a><a href="#voz">Voz</a><a href="#reglas">Reglas</a></nav>
+  <nav><a href="#instagram">Instagram</a><a href="#esencia">Esencia</a><a href="#logo">Logo</a><a href="#color">Color</a><a href="#tipografia">Tipografía</a><a href="#interfaz">Interfaz</a><a href="#redes">Plantillas</a><a href="#aplicaciones">Aplicaciones</a><a href="#web">Web</a><a href="#imagen">Imagen</a><a href="#motion">Motion</a><a href="#voz">Voz</a><a href="#reglas">Reglas</a><a class="kit-btn" href="./the-room-kit.zip" download>↓ Kit</a></nav>
 </header>
 
 <section class="cover">
@@ -398,7 +398,8 @@
     </g></g><text x="410" y="166" text-anchor="middle" font-family="'Bodoni Moda', serif" font-weight="400" font-size="112" fill="#E8DCCB" textLength="236" lengthAdjust="spacingAndGlyphs">ROOM</text><text x="270" y="212" text-anchor="middle" font-family="'Josefin Sans', sans-serif" font-weight="400" font-size="24" fill="#E8DCCB" textLength="128" lengthAdjust="spacing">Social Club</text></svg></div><span>No sombras ni fondos ruidosos</span></div>
   </div>
   <ul class="x cols"><li>No separar el búho del wordmark en el lockup principal</li><li>No usar el búho en colores fuera de paleta</li><li>No poner el logo sobre fotos sin oscurecer</li><li>No usar sans pesadas junto al logo</li></ul>
-  <div class="downloads"><h4>Descargar</h4><a href="./logo/primary.svg" download>primary.svg</a><a href="./logo/inverse.svg" download>inverse.svg</a><a href="./logo/on-accent.svg" download>on-accent.svg</a><a href="./logo/symbol.svg" download>symbol.svg</a><a href="./logo/avatar.svg" download>avatar.svg</a></div>
+  <div class="downloads"><h4>Descargar</h4><a class="kit" href="./the-room-kit.zip" download>Kit completo (.zip)</a><a href="./logo/primary.svg" download>primary.svg</a><a href="./logo/inverse.svg" download>inverse.svg</a><a href="./logo/on-accent.svg" download>on-accent.svg</a><a href="./logo/symbol.svg" download>symbol.svg</a><a href="./logo/avatar.svg" download>avatar.svg</a></div>
+  <p class="small">Redibujo vectorial a partir del avatar de Instagram, pendiente de versión final de diseño.</p>
 </section>
 
 <section id="color">
@@ -776,6 +777,13 @@
     <div class="rule-card ok"><h3>Siempre</h3><ul><li>Búho y wordmark centrados</li><li>Datos en Josefin con mucho tracking</li><li>Paleta roja/negra/crema siempre</li><li>Link de tickets visible</li></ul></div>
     <div class="rule-card no"><h3>Nunca</h3><ul><li>Sans pesadas</li><li>Colores fríos o neón</li><li>Flyers saturados</li><li>Tono de promoción barata</li></ul></div>
   </div>
+  <h4 class="sub-h">Para diseñadores</h4>
+  <ol class="steps">
+    <li>Descarga el <a href="./the-room-kit.zip" download>kit de THE ROOM</a>: logos SVG, colores (HEX, RGB y CMYK), tipografías con links de descarga y esta guía.</li>
+    <li>Trabaja los logos en Illustrator o Figma. Entrégalos en SVG con los mismos nombres (<code>primary.svg</code>, <code>inverse.svg</code>, <code>on-accent.svg</code>, <code>symbol.svg</code>, <code>avatar.svg</code>), textos convertidos a contornos.</li>
+    <li>Los archivos van en <code>brands/the-room/logo-source/</code>. Desde ese momento reemplazan al redibujo en todo el sistema: brandbook, plantillas, kit y webs.</li>
+    <li>Cambios de color, tipografía, textos o reglas: se editan en <code>brands/the-room/brand.json</code> (o se le piden a Claude Code) y se regenera con <code>npm run brands</code>.</li>
+  </ol>
   <h4 class="sub-h">Para desarrolladores</h4>
   <p>Importa <a href="./tokens.css"><code>tokens.css</code></a> en la web de la marca y usa las variables (<code>var(--brand-accent)</code>, <code>var(--font-display)</code>…). Datos completos en <a href="./brand.json"><code>brand.json</code></a>.</p>
 </section>

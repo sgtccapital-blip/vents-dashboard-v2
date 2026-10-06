@@ -18,7 +18,7 @@
     <rect x="22" y="53" width="276" height="6" fill="#000000"/>
     <text x="160" y="186" text-anchor="middle" font-family="'Russo One', sans-serif" font-weight="400" font-size="78" fill="#FFFFFF" textLength="284" lengthAdjust="spacingAndGlyphs">NIGHTS</text>
     <rect x="14" y="153" width="292" height="6" fill="#000000"/></svg></div>
-  <nav><a href="#instagram">Instagram</a><a href="#esencia">Esencia</a><a href="#logo">Logo</a><a href="#color">Color</a><a href="#tipografia">Tipografía</a><a href="#interfaz">Interfaz</a><a href="#redes">Plantillas</a><a href="#aplicaciones">Aplicaciones</a><a href="#web">Web</a><a href="#imagen">Imagen</a><a href="#motion">Motion</a><a href="#voz">Voz</a><a href="#reglas">Reglas</a></nav>
+  <nav><a href="#instagram">Instagram</a><a href="#esencia">Esencia</a><a href="#logo">Logo</a><a href="#color">Color</a><a href="#tipografia">Tipografía</a><a href="#interfaz">Interfaz</a><a href="#redes">Plantillas</a><a href="#aplicaciones">Aplicaciones</a><a href="#web">Web</a><a href="#imagen">Imagen</a><a href="#motion">Motion</a><a href="#voz">Voz</a><a href="#reglas">Reglas</a><a class="kit-btn" href="./urban-nights-kit.zip" download>↓ Kit</a></nav>
 </header>
 
 <section class="cover">
@@ -230,7 +230,8 @@
     <rect x="14" y="153" width="292" height="6" fill="#000000"/></svg></div><span>No sombras ni fondos ruidosos</span></div>
   </div>
   <ul class="x cols"><li>No usar el búho ni la paleta de The Room</li><li>No usar serifas</li><li>No quitar la caja en el avatar</li><li>No usar más de un efecto (cromo o sólido, no ambos más sombra)</li></ul>
-  <div class="downloads"><h4>Descargar</h4><a href="./logo/primary.svg" download>primary.svg</a><a href="./logo/inverse.svg" download>inverse.svg</a><a href="./logo/on-accent.svg" download>on-accent.svg</a><a href="./logo/symbol.svg" download>symbol.svg</a><a href="./logo/avatar.svg" download>avatar.svg</a></div>
+  <div class="downloads"><h4>Descargar</h4><a class="kit" href="./urban-nights-kit.zip" download>Kit completo (.zip)</a><a href="./logo/primary.svg" download>primary.svg</a><a href="./logo/inverse.svg" download>inverse.svg</a><a href="./logo/on-accent.svg" download>on-accent.svg</a><a href="./logo/symbol.svg" download>symbol.svg</a><a href="./logo/avatar.svg" download>avatar.svg</a></div>
+  <p class="small">Redibujo vectorial a partir del avatar de Instagram, pendiente de versión final de diseño.</p>
 </section>
 
 <section id="color">
@@ -490,6 +491,13 @@
     <div class="rule-card ok"><h3>Siempre</h3><ul><li>Artista grande y legible</li><li>Rojo + negro + cromo</li><li>Datos ordenados en barra</li><li>Tickets visibles</li></ul></div>
     <div class="rule-card no"><h3>Nunca</h3><ul><li>Paleta de The Room</li><li>Serifas</li><li>Flyers sin jerarquía</li><li>Fondos claros</li></ul></div>
   </div>
+  <h4 class="sub-h">Para diseñadores</h4>
+  <ol class="steps">
+    <li>Descarga el <a href="./urban-nights-kit.zip" download>kit de URBAN NIGHTS</a>: logos SVG, colores (HEX, RGB y CMYK), tipografías con links de descarga y esta guía.</li>
+    <li>Trabaja los logos en Illustrator o Figma. Entrégalos en SVG con los mismos nombres (<code>primary.svg</code>, <code>inverse.svg</code>, <code>on-accent.svg</code>, <code>symbol.svg</code>, <code>avatar.svg</code>), textos convertidos a contornos.</li>
+    <li>Los archivos van en <code>brands/urban-nights/logo-source/</code>. Desde ese momento reemplazan al redibujo en todo el sistema: brandbook, plantillas, kit y webs.</li>
+    <li>Cambios de color, tipografía, textos o reglas: se editan en <code>brands/urban-nights/brand.json</code> (o se le piden a Claude Code) y se regenera con <code>npm run brands</code>.</li>
+  </ol>
   <h4 class="sub-h">Para desarrolladores</h4>
   <p>Importa <a href="./tokens.css"><code>tokens.css</code></a> en la web de la marca y usa las variables (<code>var(--brand-accent)</code>, <code>var(--font-display)</code>…). Datos completos en <a href="./brand.json"><code>brand.json</code></a>.</p>
 </section>

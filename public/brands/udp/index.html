@@ -19,7 +19,7 @@
     <rect x="30" y="204" width="300" height="38" rx="3" fill="#0A0A0A"/>
     <text x="44" y="231" font-family="'Poppins', sans-serif" font-size="22" fill="#FFFFFF" letter-spacing="6"><tspan font-weight="700">PROJECT</tspan><tspan font-weight="300" dx="10" font-size="16">| PTY</tspan></text>
     <g><rect x="276" y="211" width="40" height="24.8" fill="#FFFFFF"/><rect x="296" y="211" width="20" height="12.4" fill="#D21034"/><rect x="276" y="223.4" width="20" height="12.4" fill="#005293"/><path transform="translate(286 217.2) scale(0.3333333333333333)" fill="#005293" d="M0-10L2.9-3.1L10-3.1L4.3 1.2L6.5 8.1L0 4L-6.5 8.1L-4.3 1.2L-10-3.1L-2.9-3.1Z"/><path transform="translate(306 229.6) scale(0.3333333333333333)" fill="#D21034" d="M0-10L2.9-3.1L10-3.1L4.3 1.2L6.5 8.1L0 4L-6.5 8.1L-4.3 1.2L-10-3.1L-2.9-3.1Z"/></g></svg></div>
-  <nav><a href="#instagram">Instagram</a><a href="#esencia">Esencia</a><a href="#logo">Logo</a><a href="#color">Color</a><a href="#tipografia">Tipografía</a><a href="#interfaz">Interfaz</a><a href="#redes">Plantillas</a><a href="#aplicaciones">Aplicaciones</a><a href="#web">Web</a><a href="#imagen">Imagen</a><a href="#motion">Motion</a><a href="#voz">Voz</a><a href="#reglas">Reglas</a></nav>
+  <nav><a href="#instagram">Instagram</a><a href="#esencia">Esencia</a><a href="#logo">Logo</a><a href="#color">Color</a><a href="#tipografia">Tipografía</a><a href="#interfaz">Interfaz</a><a href="#redes">Plantillas</a><a href="#aplicaciones">Aplicaciones</a><a href="#web">Web</a><a href="#imagen">Imagen</a><a href="#motion">Motion</a><a href="#voz">Voz</a><a href="#reglas">Reglas</a><a class="kit-btn" href="./udp-kit.zip" download>↓ Kit</a></nav>
 </header>
 
 <section class="cover">
@@ -204,7 +204,8 @@
     <g><rect x="276" y="211" width="40" height="24.8" fill="#FFFFFF"/><rect x="296" y="211" width="20" height="12.4" fill="#D21034"/><rect x="276" y="223.4" width="20" height="12.4" fill="#005293"/><path transform="translate(286 217.2) scale(0.3333333333333333)" fill="#005293" d="M0-10L2.9-3.1L10-3.1L4.3 1.2L6.5 8.1L0 4L-6.5 8.1L-4.3 1.2L-10-3.1L-2.9-3.1Z"/><path transform="translate(306 229.6) scale(0.3333333333333333)" fill="#D21034" d="M0-10L2.9-3.1L10-3.1L4.3 1.2L6.5 8.1L0 4L-6.5 8.1L-4.3 1.2L-10-3.1L-2.9-3.1Z"/></g></svg></div><span>No sombras ni fondos ruidosos</span></div>
   </div>
   <ul class="x cols"><li>No usar colores de nightlife</li><li>No quitar la bandera del lockup completo</li><li>No poner el logo sobre fotos sin caja o degradado</li><li>No usar el dorado como fondo grande</li></ul>
-  <div class="downloads"><h4>Descargar</h4><a href="./logo/primary.svg" download>primary.svg</a><a href="./logo/inverse.svg" download>inverse.svg</a><a href="./logo/on-accent.svg" download>on-accent.svg</a><a href="./logo/symbol.svg" download>symbol.svg</a><a href="./logo/avatar.svg" download>avatar.svg</a></div>
+  <div class="downloads"><h4>Descargar</h4><a class="kit" href="./udp-kit.zip" download>Kit completo (.zip)</a><a href="./logo/primary.svg" download>primary.svg</a><a href="./logo/inverse.svg" download>inverse.svg</a><a href="./logo/on-accent.svg" download>on-accent.svg</a><a href="./logo/symbol.svg" download>symbol.svg</a><a href="./logo/avatar.svg" download>avatar.svg</a></div>
+  <p class="small">Redibujo vectorial a partir del avatar de Instagram, pendiente de versión final de diseño.</p>
 </section>
 
 <section id="color">
@@ -393,6 +394,13 @@
     <div class="rule-card ok"><h3>Siempre</h3><ul><li>Claims de marca</li><li>UDP gigante de fondo</li><li>Ochre solo en la palabra clave</li><li>Logo y bandera en cada pieza</li></ul></div>
     <div class="rule-card no"><h3>Nunca</h3><ul><li>Colores de nightlife</li><li>Textos largos sin jerarquía</li><li>Stock genérico</li><li>Más de un acento por pieza</li></ul></div>
   </div>
+  <h4 class="sub-h">Para diseñadores</h4>
+  <ol class="steps">
+    <li>Descarga el <a href="./udp-kit.zip" download>kit de UDP</a>: logos SVG, colores (HEX, RGB y CMYK), tipografías con links de descarga y esta guía.</li>
+    <li>Trabaja los logos en Illustrator o Figma. Entrégalos en SVG con los mismos nombres (<code>primary.svg</code>, <code>inverse.svg</code>, <code>on-accent.svg</code>, <code>symbol.svg</code>, <code>avatar.svg</code>), textos convertidos a contornos.</li>
+    <li>Los archivos van en <code>brands/udp/logo-source/</code>. Desde ese momento reemplazan al redibujo en todo el sistema: brandbook, plantillas, kit y webs.</li>
+    <li>Cambios de color, tipografía, textos o reglas: se editan en <code>brands/udp/brand.json</code> (o se le piden a Claude Code) y se regenera con <code>npm run brands</code>.</li>
+  </ol>
   <h4 class="sub-h">Para desarrolladores</h4>
   <p>Importa <a href="./tokens.css"><code>tokens.css</code></a> en la web de la marca y usa las variables (<code>var(--brand-accent)</code>, <code>var(--font-display)</code>…). Datos completos en <a href="./brand.json"><code>brand.json</code></a>.</p>
 </section>

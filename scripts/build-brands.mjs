@@ -3,12 +3,15 @@
 //   brands/<marca>/BRAND.md       → guía completa para Claude Code y otros LLMs
 //   brands/<marca>/logo/*.svg     → logos vectoriales (principal, invertido, sobre acento, símbolo, avatar)
 //   public/brands/<marca>/        → brandbook visual (index.html + tokens.css + brand.json + logo/)
+//   public/brands/<marca>/<marca>-kit.zip → kit descargable (logos, tokens, guía, LEEME para diseño)
 //   public/brands/index.html|json → índice de marcas (el dashboard enlaza desde aquí)
+// Logos finales de diseño: si existe brands/<marca>/logo-source/<versión>.svg, reemplaza al redibujo generado.
 // Uso: npm run brands
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { logoSet } from './brand-logos.mjs';
+import { zipFiles } from './zip.mjs';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SRC = path.join(ROOT, 'brands');
@@ -259,6 +262,40 @@ ${list(brand.donts)}
 `;
 }
 
+// ─── Logos: redibujo generado + versiones finales del diseñador ───
+const LOGO_KEYS = { primary: 'primary', inverse: 'inverse', 'on-accent': 'onAccent', symbol: 'symbol', 'symbol-inverse': 'symbolInverse', avatar: 'avatar' };
+
+// Prepara un SVG exportado de Illustrator/Figma para ir en línea: quita prólogo y tamaño fijo,
+// y renombra ids/clases para que dos archivos con "cls-1" no se pisen en la misma página.
+function inlineDesignerSvg(markup, ns) {
+    let svg = markup.replace(/<\?xml[^>]*>/g, '').replace(/<!DOCTYPE[^>]*>/gi, '').replace(/<!--[\s\S]*?-->/g, '').trim();
+    const ids = [...svg.matchAll(/\sid="([^"]+)"/g)].map(m => m[1]);
+    for (const id of ids) {
+        const safe = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        svg = svg.replace(new RegExp(`id="${safe}"`, 'g'), `id="${ns}-${id}"`)
+            .replace(new RegExp(`#${safe}([)"'\\s])`, 'g'), `#${ns}-${id}$1`);
+    }
+    svg = svg.replace(/\b(cls|st)(-?\d+)\b/g, `${ns}-$1$2`);
+    return svg.replace(/<svg\b([^>]*)>/, (_, attrs) => {
+        const clean = attrs.replace(/\s(width|height|class)="[^"]*"/g, '');
+        return `<svg${clean} class="logo-svg">`;
+    });
+}
+
+function brandLogos(brand, t = themeOf(brand)) {
+    const L = logoSet(brand.slug, t);
+    L.fromDesigner = [];
+    const dir = path.join(SRC, brand.slug, 'logo-source');
+    if (!fs.existsSync(dir)) return L;
+    for (const [file, key] of Object.entries(LOGO_KEYS)) {
+        const src = path.join(dir, `${file}.svg`);
+        if (!fs.existsSync(src)) continue;
+        L[key] = inlineDesignerSvg(fs.readFileSync(src, 'utf-8'), `${brand.slug}-${file}`);
+        L.fromDesigner.push(file);
+    }
+    return L;
+}
+
 // ─── Piezas del brandbook ───
 // Logo que va sobre las fotos/moods de las plantillas: claro sobre moods oscuros.
 const MOOD_LOGO = { udp: 'inverse', 'dinner-club': 'primary', arrive: 'primary' };
@@ -369,7 +406,7 @@ const NAV = [['instagram', 'Instagram'], ['esencia', 'Esencia'], ['logo', 'Logo'
 
 function brandbookHtml(brand, allBrands) {
     const t = themeOf(brand);
-    const L = logoSet(brand.slug, t);
+    const L = brandLogos(brand, t);
     const ty = brand.typography;
     const num = id => String(NAV.findIndex(([k]) => k === id) + 1).padStart(2, '0');
     const label = (id, txt) => `<div class="label"><span>${num(id)}</span>${txt}</div>`;
@@ -413,7 +450,7 @@ function brandbookHtml(brand, allBrands) {
 <header class="top">
   <a class="back" href="../">← Marcas</a>
   <div class="top-logo">${L.primary}</div>
-  <nav>${NAV.map(([id, txt]) => `<a href="#${id}">${txt}</a>`).join('')}</nav>
+  <nav>${NAV.map(([id, txt]) => `<a href="#${id}">${txt}</a>`).join('')}<a class="kit-btn" href="./${brand.slug}-kit.zip" download>↓ Kit</a></nav>
 </header>
 
 <section class="cover">
@@ -476,7 +513,8 @@ function brandbookHtml(brand, allBrands) {
     <div class="mu busy"><div class="mu-in" style="filter:drop-shadow(4px 4px 0 #f0f)">${L.primary}</div><span>No sombras ni fondos ruidosos</span></div>
   </div>
   <ul class="x cols">${brand.logo.misuse.map(v => `<li>${esc(v)}</li>`).join('')}</ul>
-  <div class="downloads"><h4>Descargar</h4>${LOGO_FILES.map(f => `<a href="./logo/${f}.svg" download>${f}.svg</a>`).join('')}</div>
+  <div class="downloads"><h4>Descargar</h4><a class="kit" href="./${brand.slug}-kit.zip" download>Kit completo (.zip)</a>${LOGO_FILES.map(f => `<a href="./logo/${f}.svg" download>${f}.svg</a>`).join('')}</div>
+  <p class="small">${L.fromDesigner.length ? `Versiones finales de diseño: ${L.fromDesigner.join(', ')}.` : 'Redibujo vectorial a partir del avatar de Instagram, pendiente de versión final de diseño.'}</p>
 </section>
 
 <section id="color">
@@ -586,6 +624,13 @@ function brandbookHtml(brand, allBrands) {
     <div class="rule-card ok"><h3>Siempre</h3><ul>${brand.dos.map(v => `<li>${esc(v)}</li>`).join('')}</ul></div>
     <div class="rule-card no"><h3>Nunca</h3><ul>${brand.donts.map(v => `<li>${esc(v)}</li>`).join('')}</ul></div>
   </div>
+  <h4 class="sub-h">Para diseñadores</h4>
+  <ol class="steps">
+    <li>Descarga el <a href="./${brand.slug}-kit.zip" download>kit de ${esc(brand.name)}</a>: logos SVG, colores (HEX, RGB y CMYK), tipografías con links de descarga y esta guía.</li>
+    <li>Trabaja los logos en Illustrator o Figma. Entrégalos en SVG con los mismos nombres (<code>primary.svg</code>, <code>inverse.svg</code>, <code>on-accent.svg</code>, <code>symbol.svg</code>, <code>avatar.svg</code>), textos convertidos a contornos.</li>
+    <li>Los archivos van en <code>brands/${esc(brand.slug)}/logo-source/</code>. Desde ese momento reemplazan al redibujo en todo el sistema: brandbook, plantillas, kit y webs.</li>
+    <li>Cambios de color, tipografía, textos o reglas: se editan en <code>brands/${esc(brand.slug)}/brand.json</code> (o se le piden a Claude Code) y se regenera con <code>npm run brands</code>.</li>
+  </ol>
   <h4 class="sub-h">Para desarrolladores</h4>
   <p>Importa <a href="./tokens.css"><code>tokens.css</code></a> en la web de la marca y usa las variables (<code>var(--brand-accent)</code>, <code>var(--font-display)</code>…). Datos completos en <a href="./brand.json"><code>brand.json</code></a>.</p>
 </section>
@@ -752,6 +797,10 @@ ul.x li::marker,.rule-card.no li::marker{content:"✕  ";color:#E5484D}.rule-car
 .downloads h4{margin:0 12px 0 0}
 .downloads a{font-family:var(--font-secondary);font-size:12px;letter-spacing:.06em;text-decoration:none;border:1px solid var(--brand-line);padding:8px 14px;border-radius:999px;background:var(--brand-surface)}
 .downloads a:hover{border-color:var(--brand-accent);color:var(--brand-accent)}
+.downloads a.kit{background:var(--brand-accent);color:var(--brand-on-accent);border-color:var(--brand-accent);font-weight:700}
+.top a.kit-btn{color:var(--brand-on-accent);background:var(--brand-accent);padding:6px 12px;border-radius:999px}
+.top a.kit-btn:hover{color:var(--brand-on-accent);filter:brightness(1.1)}
+.steps{padding-left:22px;max-width:70ch}.steps li{margin:10px 0;padding-left:6px}
 
 /* ─── Color ─── */
 .ratio-bar{display:flex;height:72px;border-radius:14px;overflow:hidden;border:1px solid var(--brand-line);margin-top:24px}
@@ -1017,7 +1066,7 @@ function hubHtml(brands) {
     const fonts = brands.map(b => `<link rel="stylesheet" href="${googleFontsUrl(b)}">`).join('\n');
     const cards = brands.map(b => {
         const t = themeOf(b);
-        const L = logoSet(b.slug, t);
+        const L = brandLogos(b, t);
         return `<a class="card" href="./${b.slug}/" style="--bg:${t.bg};--fg:${t.fg};--ac:${t.accent};--mood:${b.mood}">
   <div class="mood"></div><div class="grain"></div>
   <div class="avatar">${L.avatar}</div>
@@ -1087,6 +1136,49 @@ export function loadBrands() {
         .sort((a, b) => a.name.localeCompare(b.name));
 }
 
+// LEEME del kit para el diseñador
+function cmyk(hex) {
+    const [r, g, b] = hexToRgb(hex).map(v => v / 255);
+    const k = 1 - Math.max(r, g, b);
+    if (k === 1) return '0 0 0 100';
+    return [r, g, b].map(v => Math.round(((1 - v - k) / (1 - k)) * 100)).concat(Math.round(k * 100)).join(' ');
+}
+function kitReadme(brand, L) {
+    const families = [...new Set(Object.values(brand.typography).map(f => f.family))];
+    return `${brand.name} — KIT DE MARCA
+${'='.repeat(brand.name.length + 17)}
+${brand.descriptor} · ${brand.handler}
+${brand.tagline}
+
+CONTENIDO
+- logo/            Logos en SVG: primary (principal), inverse (invertido), on-accent (sobre color de acento), symbol (símbolo), avatar (Instagram).
+- BRAND.md         Guía completa: esencia, logo, color, tipografía, interfaz, web, imagen, motion, redes, voz y reglas.
+- tokens.css       Variables CSS para desarrollo web.
+- brand.json       Datos fuente de la marca.
+
+ESTADO DE LOS LOGOS
+${L.fromDesigner.length ? `Versiones finales de diseño: ${L.fromDesigner.join(', ')}.` : 'Redibujos vectoriales hechos a partir del avatar de Instagram. Los textos usan las tipografías de la marca (no están convertidos a contornos): instálalas antes de abrir los SVG.'}
+
+TIPOGRAFÍAS (gratis, Google Fonts)
+${families.map(f => `- ${f}: https://fonts.google.com/specimen/${f.replace(/ /g, '+')}`).join('\n')}
+${Object.entries(brand.typography).map(([role, f]) => `  ${role}: ${f.family}${f.italic ? ' Italic' : ''}${f.stretch ? ` (ancho ${f.stretch}%)` : ''} · pesos ${f.weights.join('/')} · ${f.usage}`).join('\n')}
+
+COLORES
+${brand.colors.map(c => `- ${c.name.padEnd(16)} HEX ${c.hex}  RGB ${hexToRgb(c.hex).join(' ').padEnd(11)}  CMYK ≈ ${cmyk(c.hex).padEnd(14)} ${c.role} — ${c.usage}`).join('\n')}
+(CMYK aproximado. Para impresión validar con la imprenta o asignar Pantone.)
+
+CÓMO ENTREGAR CAMBIOS
+1. Logos: exporta SVG con los mismos nombres (primary.svg, inverse.svg, on-accent.svg, symbol.svg, avatar.svg),
+   textos convertidos a contornos. En Illustrator: Exportar como SVG > Estilo: Atributos de presentación.
+   En Figma: Outline text antes de exportar.
+2. Envíalos para guardarlos en brands/${brand.slug}/logo-source/ del proyecto. Reemplazan automáticamente al redibujo
+   en el brandbook, las plantillas, el kit y las webs.
+3. Ajustes de color, tipografía, textos o reglas: indícalos y se actualizan en brand.json (fuente de verdad).
+
+Brandbook: /brands/${brand.slug}/ en el dashboard.
+`;
+}
+
 // SVG autónomo: incrusta la carga de fuentes para que se vea bien al abrirlo directamente.
 const standaloneSvg = (markup, brand) =>
     markup.replace('class="logo-svg">', `class="logo-svg"><style>@import url('${googleFontsUrl(brand)}');</style>`);
@@ -1097,18 +1189,32 @@ function build() {
     fs.writeFileSync(path.join(OUT, 'brandbook.css'), BRANDBOOK_CSS);
     for (const brand of brands) {
         const css = tokensCss(brand);
-        const L = logoSet(brand.slug, themeOf(brand));
-        const files = { primary: L.primary, inverse: L.inverse, 'on-accent': L.onAccent, symbol: L.symbol, avatar: L.avatar };
+        const L = brandLogos(brand);
+        const sourceDir = path.join(SRC, brand.slug, 'logo-source');
+        const logoFiles = Object.fromEntries(LOGO_FILES.map(name => {
+            const designer = path.join(sourceDir, `${name}.svg`);
+            const key = LOGO_KEYS[name];
+            return [name, fs.existsSync(designer) ? fs.readFileSync(designer, 'utf-8') : standaloneSvg(L[key], brand)];
+        }));
         const dir = path.join(OUT, brand.slug);
         for (const base of [path.join(SRC, brand.slug, 'logo'), path.join(dir, 'logo')]) {
             fs.mkdirSync(base, { recursive: true });
-            for (const [name, markup] of Object.entries(files)) fs.writeFileSync(path.join(base, `${name}.svg`), standaloneSvg(markup, brand));
+            for (const [name, markup] of Object.entries(logoFiles)) fs.writeFileSync(path.join(base, `${name}.svg`), markup);
         }
+        const md = brandMd(brand);
         fs.writeFileSync(path.join(SRC, brand.slug, 'tokens.css'), css);
-        fs.writeFileSync(path.join(SRC, brand.slug, 'BRAND.md'), brandMd(brand));
+        fs.writeFileSync(path.join(SRC, brand.slug, 'BRAND.md'), md);
         fs.writeFileSync(path.join(dir, 'tokens.css'), css);
         fs.writeFileSync(path.join(dir, 'brand.json'), JSON.stringify(brand, null, 2));
         fs.writeFileSync(path.join(dir, 'index.html'), brandbookHtml(brand, brands));
+        const root = `${brand.slug}-kit`;
+        fs.writeFileSync(path.join(dir, `${brand.slug}-kit.zip`), zipFiles([
+            { name: `${root}/LEEME.txt`, data: kitReadme(brand, L) },
+            { name: `${root}/BRAND.md`, data: md },
+            { name: `${root}/tokens.css`, data: css },
+            { name: `${root}/brand.json`, data: JSON.stringify(brand, null, 2) },
+            ...Object.entries(logoFiles).map(([name, data]) => ({ name: `${root}/logo/${name}.svg`, data })),
+        ]));
     }
     fs.writeFileSync(path.join(OUT, 'index.html'), hubHtml(brands));
     fs.writeFileSync(path.join(OUT, 'index.json'), JSON.stringify(brands.map(b => ({ slug: b.slug, name: b.name, accountId: b.accountId, handler: b.handler })), null, 2));

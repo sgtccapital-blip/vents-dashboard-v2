@@ -12,4 +12,4 @@ Reglas:
 - En webs y piezas HTML usa `tokens.css` de la marca (`var(--brand-accent)`, `var(--font-display)`…); no copies hex ni fuentes a mano.
 - Para cambiar una línea gráfica edita `brand.json` y corre `npm run brands`. No edites a mano `BRAND.md`, `tokens.css`, `public/brands/` ni los `DNA.md`.
 - No inventes paleta, tipografía ni tono si no están definidos: pregunta.
-- Los logos del brandbook son recreaciones tipográficas; los archivos originales van en `brands/<marca>/logo/`.
+- Los logos son redibujos vectoriales (`scripts/brand-logos.mjs`). Las versiones finales del diseñador van en `brands/<marca>/logo-source/` y reemplazan al redibujo. Guía completa en `brands/README.md`.

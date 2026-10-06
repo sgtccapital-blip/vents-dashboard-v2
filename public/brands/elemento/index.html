@@ -24,7 +24,7 @@
       <path fill="#FFFFFF" opacity=".55" d="M24 2H165L163 5H24C12 5 4 12 3 22H2C2 10 11 2 24 2Z"/>
     </g>
     <ellipse cx="214" cy="21" rx="26" ry="16" fill="url(#flare28)" opacity=".9"/><rect x="170" y="20" width="96" height="1.6" fill="#CFE0FF" filter="url(#glow29)"/><rect x="186" y="20.3" width="60" height="1" fill="#FFFFFF"/></g><text x="300" y="92" text-anchor="start" font-family="'Unbounded', sans-serif" font-weight="600" font-size="70" fill="#FFFFFF" textLength="500" lengthAdjust="spacingAndGlyphs">ELEMENTO</text><text x="302" y="128" text-anchor="start" font-family="'Space Grotesk', sans-serif" font-weight="500" font-size="15" fill="#2F6BFF" textLength="496" lengthAdjust="spacing">D.A.N.C.E. — WHERE MOVEMENT BECOMES SOUND</text></svg></div>
-  <nav><a href="#instagram">Instagram</a><a href="#esencia">Esencia</a><a href="#logo">Logo</a><a href="#color">Color</a><a href="#tipografia">Tipografía</a><a href="#interfaz">Interfaz</a><a href="#redes">Plantillas</a><a href="#aplicaciones">Aplicaciones</a><a href="#web">Web</a><a href="#imagen">Imagen</a><a href="#motion">Motion</a><a href="#voz">Voz</a><a href="#reglas">Reglas</a></nav>
+  <nav><a href="#instagram">Instagram</a><a href="#esencia">Esencia</a><a href="#logo">Logo</a><a href="#color">Color</a><a href="#tipografia">Tipografía</a><a href="#interfaz">Interfaz</a><a href="#redes">Plantillas</a><a href="#aplicaciones">Aplicaciones</a><a href="#web">Web</a><a href="#imagen">Imagen</a><a href="#motion">Motion</a><a href="#voz">Voz</a><a href="#reglas">Reglas</a><a class="kit-btn" href="./elemento-kit.zip" download>↓ Kit</a></nav>
 </header>
 
 <section class="cover">
@@ -398,7 +398,8 @@
     <ellipse cx="214" cy="21" rx="26" ry="16" fill="url(#flare28)" opacity=".9"/><rect x="170" y="20" width="96" height="1.6" fill="#CFE0FF" filter="url(#glow29)"/><rect x="186" y="20.3" width="60" height="1" fill="#FFFFFF"/></g><text x="300" y="92" text-anchor="start" font-family="'Unbounded', sans-serif" font-weight="600" font-size="70" fill="#FFFFFF" textLength="500" lengthAdjust="spacingAndGlyphs">ELEMENTO</text><text x="302" y="128" text-anchor="start" font-family="'Space Grotesk', sans-serif" font-weight="500" font-size="15" fill="#2F6BFF" textLength="496" lengthAdjust="spacing">D.A.N.C.E. — WHERE MOVEMENT BECOMES SOUND</text></svg></div><span>No sombras ni fondos ruidosos</span></div>
   </div>
   <ul class="x cols"><li>No poner el símbolo cromado sobre fondos claros</li><li>No cambiar la inclinación de la E</li><li>No combinar con colores cálidos</li><li>No usar el glow azul en texto corrido</li></ul>
-  <div class="downloads"><h4>Descargar</h4><a href="./logo/primary.svg" download>primary.svg</a><a href="./logo/inverse.svg" download>inverse.svg</a><a href="./logo/on-accent.svg" download>on-accent.svg</a><a href="./logo/symbol.svg" download>symbol.svg</a><a href="./logo/avatar.svg" download>avatar.svg</a></div>
+  <div class="downloads"><h4>Descargar</h4><a class="kit" href="./elemento-kit.zip" download>Kit completo (.zip)</a><a href="./logo/primary.svg" download>primary.svg</a><a href="./logo/inverse.svg" download>inverse.svg</a><a href="./logo/on-accent.svg" download>on-accent.svg</a><a href="./logo/symbol.svg" download>symbol.svg</a><a href="./logo/avatar.svg" download>avatar.svg</a></div>
+  <p class="small">Redibujo vectorial a partir del avatar de Instagram, pendiente de versión final de diseño.</p>
 </section>
 
 <section id="color">
@@ -784,6 +785,13 @@
     <div class="rule-card ok"><h3>Siempre</h3><ul><li>Siempre oscuro</li><li>Acreditar artista, venue y track</li><li>Un solo punto de luz azul por pieza</li><li>Abrir en el momento de mayor energía</li></ul></div>
     <div class="rule-card no"><h3>Nunca</h3><ul><li>Fondos claros</li><li>Colores cálidos</li><li>Plantillas con muchos elementos</li><li>Música de librería sobre sets</li></ul></div>
   </div>
+  <h4 class="sub-h">Para diseñadores</h4>
+  <ol class="steps">
+    <li>Descarga el <a href="./elemento-kit.zip" download>kit de ELEMENTO</a>: logos SVG, colores (HEX, RGB y CMYK), tipografías con links de descarga y esta guía.</li>
+    <li>Trabaja los logos en Illustrator o Figma. Entrégalos en SVG con los mismos nombres (<code>primary.svg</code>, <code>inverse.svg</code>, <code>on-accent.svg</code>, <code>symbol.svg</code>, <code>avatar.svg</code>), textos convertidos a contornos.</li>
+    <li>Los archivos van en <code>brands/elemento/logo-source/</code>. Desde ese momento reemplazan al redibujo en todo el sistema: brandbook, plantillas, kit y webs.</li>
+    <li>Cambios de color, tipografía, textos o reglas: se editan en <code>brands/elemento/brand.json</code> (o se le piden a Claude Code) y se regenera con <code>npm run brands</code>.</li>
+  </ol>
   <h4 class="sub-h">Para desarrolladores</h4>
   <p>Importa <a href="./tokens.css"><code>tokens.css</code></a> en la web de la marca y usa las variables (<code>var(--brand-accent)</code>, <code>var(--font-display)</code>…). Datos completos en <a href="./brand.json"><code>brand.json</code></a>.</p>
 </section>
