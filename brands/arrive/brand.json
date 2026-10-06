@@ -2,6 +2,11 @@
   "slug": "arrive",
   "accountId": "social-arrive-models",
   "handler": "@Arrive.models",
+  "driveAliases": [
+    "arrive",
+    "arrive models",
+    "arrive agency"
+  ],
   "ig": {
     "bio": [
       "ARRIVE MODELS",

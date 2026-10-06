@@ -7,9 +7,16 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import net from 'node:net';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
-const PORT = 18000 + Math.floor(Math.random() * 1000);
+// Puerto libre asignado por el sistema (uno al azar podía chocar con otro servicio local).
+const PORT = await new Promise((resolve, reject) => {
+    const srv = net.createServer().listen(0, '127.0.0.1', () => {
+        const { port } = srv.address();
+        srv.close(() => resolve(port));
+    }).on('error', reject);
+});
 const BASE = `http://127.0.0.1:${PORT}/api`;
 const PASSWORD = 'test-password';
 const TOKEN = 'test-token';

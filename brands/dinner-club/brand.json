@@ -2,6 +2,10 @@
   "slug": "dinner-club",
   "accountId": "social-dinnerclub-pa",
   "handler": "@dinnerclub_pa",
+  "driveAliases": [
+    "dinner club",
+    "dinnerclub"
+  ],
   "ig": {
     "bio": [
       "Dinner Club Panama",

@@ -2,6 +2,10 @@
   "slug": "urban-nights",
   "accountId": "social-urbannights-pa",
   "handler": "@Urbannights.pa",
+  "driveAliases": [
+    "urban nights",
+    "urbannights"
+  ],
   "ig": {
     "bio": [
       "Urban Nights ®",

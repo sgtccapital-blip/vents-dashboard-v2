@@ -2,6 +2,10 @@
   "slug": "ignite",
   "accountId": "social-igniteclub",
   "handler": "@theigniteclubb",
+  "driveAliases": [
+    "ignite",
+    "ignite club"
+  ],
   "ig": {
     "bio": [
       "Ignite Club 🌶️",

@@ -27,6 +27,8 @@ const pdf = require('pdf-parse');
 import openCloudEngine from './src/services/openCloudEngine.js';
 import { normalizeTaskStatus, normalizeEventStatus, TASK_STATUSES, EVENT_STATUSES } from './src/lib/status.js';
 import { dnaToMarkdown, dnaCompleteness, accountSlug } from './src/lib/accountDna.js';
+import { registerContentStudio } from './src/services/contentStudio/routes.js';
+import { loadBrands } from './scripts/build-brands.mjs';
 
 dotenv.config();
 
@@ -872,6 +874,9 @@ entities.forEach(entity => {
     app.use(`/api/${entity}`, createCRUDRoutes(entity));
 });
 
+// ─── Estudio de contenido: Drive raw → ideas → desarrollo → producción ───
+registerContentStudio(app, { readDB, writeDB, loadBrands, accountSlug, contentDnaPath: CONTENT_DNA_PATH, cron });
+
 // ─── Activity Feed (append-only) ──────────────────────────────
 
 app.get('/api/activity', (req, res) => {
@@ -1699,26 +1704,39 @@ function executeOpenClawAction(actionName, data, db) {
         }
 
         case 'add_task': {
+            const rawText = data.text || data.title || 'Nueva tarea creada por OpenClaw';
+            const rawPriority = (data.priority || 'medium').toLowerCase();
+            const priorityNorm = rawPriority.includes('crit') || rawPriority.includes('urg') ? 'critical' :
+                                 rawPriority.includes('alt') || rawPriority.includes('high') ? 'high' :
+                                 rawPriority.includes('baj') || rawPriority.includes('low') ? 'low' : 'medium';
+            const venue = data.venue || data.category || (rawText.toLowerCase().includes('terraplén') ? 'Terraplén Rooftop' : rawText.toLowerCase().includes('furia') ? 'Furia Panamá' : rawText.toLowerCase().includes('piano') ? 'Piano Bar Casco' : rawText.toLowerCase().includes('primavera') ? 'Primavera Club' : rawText.toLowerCase().includes('wedding') || rawText.toLowerCase().includes('boda') ? 'ARRIVE Services' : rawText.toLowerCase().includes('podcast') ? 'ARRIVE Studio' : 'ARRIVE Agency');
+            const division = data.division || (venue.toLowerCase().includes('terraplén') || venue.toLowerCase().includes('furia') || venue.toLowerCase().includes('piano') || venue.toLowerCase().includes('primavera') ? 'nightlife' : rawText.toLowerCase().includes('boda') || rawText.toLowerCase().includes('wedding') ? 'services' : rawText.toLowerCase().includes('podcast') ? 'studio' : rawText.toLowerCase().includes('modelo') || rawText.toLowerCase().includes('chica') ? 'models' : 'services');
+            
             const newTask = {
                 id: data.id || `task-${Date.now()}`,
-                text: data.text || data.title || 'Nueva tarea creada por OpenClaw',
-                title: data.text || data.title || 'Nueva tarea creada por OpenClaw',
-                priority: data.priority || 'media',
-                category: data.category || 'General',
+                text: rawText,
+                title: rawText,
+                priority: priorityNorm,
+                category: venue,
+                venue: venue,
+                division: division,
+                tag: data.tag || (data.category ? `#${data.category.replace(/\s+/g, '')}` : '#Operaciones'),
                 done: false,
-                status: 'todo',
-                projectId: data.projectId || null,
+                status: 'pending',
+                projectId: data.projectId || (rawText.toLowerCase().includes('podcast') ? 'proj-podcast-live' : rawText.toLowerCase().includes('wedding') || rawText.toLowerCase().includes('boda') ? 'proj-wedding-content' : null),
                 eventId: data.eventId || null,
-                assignedTo: data.assignee || data.assignedTo || 'GG',
-                assignee: data.assignee || data.assignedTo || 'GG',
-                dueDate: data.dueDate || null,
+                assignedTo: data.assignee || data.assignedTo || 'Mateo L. (Operations Lead)',
+                assignee: data.assignee || data.assignedTo || 'Mateo L. (Operations Lead)',
+                due: data.due || data.dueDate || null,
+                dueDate: data.due || data.dueDate || null,
+                agency: 'arrive',
                 createdAt: new Date().toISOString()
             };
 
             db.tasks.unshift(newTask);
 
-            if (data.projectId) {
-                const pIdx = db.projects.findIndex(p => p.id === data.projectId);
+            if (newTask.projectId) {
+                const pIdx = db.projects.findIndex(p => p.id === newTask.projectId);
                 if (pIdx >= 0) {
                     if (!db.projects[pIdx].tasks) db.projects[pIdx].tasks = [];
                     db.projects[pIdx].tasks.push({ id: newTask.id, text: newTask.text, done: false });
@@ -1733,6 +1751,113 @@ function executeOpenClawAction(actionName, data, db) {
             });
 
             result = { success: true, task: newTask };
+            break;
+        }
+
+        case 'batch_add_tasks': {
+            const taskList = Array.isArray(data.tasks) ? data.tasks : (Array.isArray(data) ? data : []);
+            const createdTasks = [];
+            const timestamp = Date.now();
+
+            for (let i = 0; i < taskList.length; i++) {
+                const t = taskList[i];
+                const rawText = t.text || t.title || `Tarea ${i+1}`;
+                const rawPriority = (t.priority || 'medium').toLowerCase();
+                const priorityNorm = rawPriority.includes('crit') || rawPriority.includes('urg') ? 'critical' :
+                                     rawPriority.includes('alt') || rawPriority.includes('high') ? 'high' :
+                                     rawPriority.includes('baj') || rawPriority.includes('low') ? 'low' : 'medium';
+                const venue = t.venue || t.category || (rawText.toLowerCase().includes('terraplén') ? 'Terraplén Rooftop' : rawText.toLowerCase().includes('furia') ? 'Furia Panamá' : rawText.toLowerCase().includes('piano') ? 'Piano Bar Casco' : rawText.toLowerCase().includes('primavera') ? 'Primavera Club' : rawText.toLowerCase().includes('wedding') || rawText.toLowerCase().includes('boda') ? 'ARRIVE Services' : rawText.toLowerCase().includes('podcast') ? 'ARRIVE Studio' : 'ARRIVE Agency');
+                const division = t.division || (venue.toLowerCase().includes('terraplén') || venue.toLowerCase().includes('furia') || venue.toLowerCase().includes('piano') || venue.toLowerCase().includes('primavera') ? 'nightlife' : rawText.toLowerCase().includes('boda') || rawText.toLowerCase().includes('wedding') ? 'services' : rawText.toLowerCase().includes('podcast') ? 'studio' : rawText.toLowerCase().includes('modelo') || rawText.toLowerCase().includes('chica') ? 'models' : 'services');
+
+                const newTask = {
+                    id: t.id || `task-${timestamp}-${i+1}`,
+                    text: rawText,
+                    title: rawText,
+                    priority: priorityNorm,
+                    category: venue,
+                    venue: venue,
+                    division: division,
+                    tag: t.tag || `#${venue.replace(/\s+/g, '')}`,
+                    done: false,
+                    status: 'pending',
+                    projectId: t.projectId || (rawText.toLowerCase().includes('podcast') ? 'proj-podcast-live' : rawText.toLowerCase().includes('wedding') || rawText.toLowerCase().includes('boda') ? 'proj-wedding-content' : null),
+                    eventId: t.eventId || null,
+                    assignedTo: t.assignee || t.assignedTo || 'Mateo L. (Operations Lead)',
+                    assignee: t.assignee || t.assignedTo || 'Mateo L. (Operations Lead)',
+                    due: t.due || t.dueDate || null,
+                    dueDate: t.due || t.dueDate || null,
+                    agency: 'arrive',
+                    createdAt: new Date().toISOString()
+                };
+
+                db.tasks.unshift(newTask);
+                createdTasks.push(newTask);
+
+                if (newTask.projectId) {
+                    const pIdx = db.projects.findIndex(p => p.id === newTask.projectId);
+                    if (pIdx >= 0) {
+                        if (!db.projects[pIdx].tasks) db.projects[pIdx].tasks = [];
+                        db.projects[pIdx].tasks.push({ id: newTask.id, text: newTask.text, done: false });
+                    }
+                }
+            }
+
+            db.activityFeed.unshift({
+                id: `act-${Date.now()}`,
+                text: `📋 OpenClaw Super Agent organizó y agregó ${createdTasks.length} tareas operativas`,
+                color: '#06b6d4',
+                timestamp: new Date().toISOString()
+            });
+
+            result = { success: true, count: createdTasks.length, tasks: createdTasks };
+            break;
+        }
+
+        case 'update_task': {
+            const taskId = data.id || data.taskId;
+            let found = null;
+            if (taskId) {
+                found = db.tasks.find(t => t.id === taskId);
+            }
+            if (!found && (data.text || data.query || data.title)) {
+                const q = (data.text || data.query || data.title).toLowerCase();
+                found = db.tasks.find(t => (t.text && t.text.toLowerCase().includes(q)) || (t.title && t.title.toLowerCase().includes(q)));
+            }
+
+            if (found) {
+                if (data.status) {
+                    found.status = data.status;
+                    found.done = (data.status === 'done' || data.status === 'completed');
+                }
+                if (data.done !== undefined) {
+                    found.done = !!data.done;
+                    found.status = found.done ? 'done' : 'pending';
+                }
+                if (data.priority) found.priority = data.priority;
+                if (data.assignee || data.assignedTo) {
+                    found.assignedTo = data.assignee || data.assignedTo;
+                    found.assignee = found.assignedTo;
+                }
+                if (data.due || data.dueDate) {
+                    found.due = data.due || data.dueDate;
+                    found.dueDate = found.due;
+                }
+                if (data.venue) found.venue = data.venue;
+                if (data.newText) {
+                    found.text = data.newText;
+                    found.title = data.newText;
+                }
+
+                db.activityFeed.unshift({
+                    id: `act-${Date.now()}`,
+                    text: `✏️ OpenClaw Super Agent actualizó la tarea: "${found.text || found.title}"`,
+                    color: '#3b82f6',
+                    timestamp: new Date().toISOString()
+                });
+                result = { success: true, task: found, id: found.id };
+            } else {
+                result = { success: false, error: 'Tarea no encontrada para actualizar' };
+            }
             break;
         }
 
@@ -2030,9 +2155,11 @@ async function handleOpenClawChat(req, res) {
     }
 
     // Inyectar Contexto Operativo en Tiempo Real
-    const liveProjects = (db.projects || []).map(p => ({ id: p.id, name: p.name, status: p.status, priority: p.priority }));
+    const liveProjects = (db.projects || []).map(p => ({ id: p.id, name: p.name, status: p.status, priority: p.priority, lead: p.leadAgent || p.lead }));
     const liveEvents = (db.events || []).map(e => ({ id: e.id, name: e.name, date: e.date, status: e.status, location: e.location, budget: e.budget }));
-    const pendingTasks = (db.tasks || []).filter(t => !t.done).slice(0, 20).map(t => ({ id: t.id, text: t.text || t.title, priority: t.priority }));
+    const pendingTasks = (db.tasks || []).filter(t => !t.done).slice(0, 30).map(t => ({ id: t.id, text: t.text || t.title, priority: t.priority, venue: t.venue || t.category, due: t.due || t.dueDate, assignedTo: t.assignedTo || t.assignee }));
+    const activeModels = (db.imageGirls || []).slice(0, 10).map(m => ({ id: m.id, name: m.name, status: m.status, category: m.category }));
+    const activePromoters = (db.promoters || []).slice(0, 10).map(p => ({ id: p.id, name: p.name, venue: p.venue, status: p.status }));
 
     // Inyectar Clientes y Marcas de ARRIVE Agency
     const arriveClients = (db.projects || []).filter(p => p.agency === 'arrive' || p.isClient || p.id?.startsWith('client-')).map(c => ({
@@ -2046,33 +2173,66 @@ async function handleOpenClawChat(req, res) {
         donts: c.brand?.donts || ''
     }));
 
-    const systemMessageContent = `Eres OpenClaw Super Agent, el orquestador autónomo maestro y cerebro central del Command Center & Dashboard de Eventos y ARRIVE Agency.
-Tienes acceso total para gestionar eventos (Terraplén Rooftop, Furia, Piano Bar, etc.), marcas clientes, proyectos, finanzas, tareas, redes sociales, promotores y modelos Image Girls.
+    const systemMessageContent = `Eres el Asistente Ejecutivo Super Pro y Director de Operaciones AI de ARRIVE Agency & Command Center (asistente de confianza de GG).
+Tienes conocimiento total y absoluto de todas las operaciones, eventos, negocios, servicios y equipo de ARRIVE.
 
-[SKILLS Y DIRECTIVAS]:
-${skills || 'Actúa con precisión, proactividad y liderazgo. Responde en español estructurado y ejecuta acciones en el sistema siempre que el usuario lo solicite.'}
+[IDENTIDAD Y ROL]:
+- Actúas como un Chief of Staff de alto nivel: ejecutivo, proactivo, ultra organizado, con pensamiento estratégico y ejecución instantánea.
+- Respondes en español impecable, con tono seguro, moderno, ejecutivo y orientado a resultados.
 
-[BASE DE CONOCIMIENTOS RAG DE OPENCLAW]:
-${ragContext || 'No se requirieron documentos adicionales para esta consulta.'}
+[LOS 4 VENUES Y LOCACIONES CLAVE DE ARRIVE]:
+1. Terraplén Rooftop (Casco Antiguo): Coctelería de autor, sunsets, gastronomía fusión, vibes sofisticadas y exclusivas.
+2. Furia Panamá: High-energy dinner party & nightclub, botellería premium, DJs internacionales y locales, fiesta de alto voltaje.
+3. Primavera Club: Social club chic, terraza, coctelería botánica, atardeceres y eventos lifestyle.
+4. Piano Bar Casco: Speakeasy íntimo en Casco Antiguo, coctelería clásica y jazz/house elegante.
 
-[MARCAS Y CLIENTES ACTIVOS DE ARRIVE AGENCY]:
-${arriveClients.length > 0 ? JSON.stringify(arriveClients) : 'Terraplén Rooftop, Furia Panamá, Piano Bar Casco'}
-Tienes conocimiento de cada marca de ARRIVE Agency. Si el usuario te pide crear un post, Reel, o estrategia para una de estas marcas, adopta fielmente su tono de voz y sus reglas de comunicación (Do's y Don'ts).
+[NUEVAS LÍNEAS DE NEGOCIO Y EXPANSIÓN DE ARRIVE]:
+- Wedding Content Creation: Cobertura de bodas en tiempo real con iPhones/cámaras profesionales, entrega de Reels y TikToks la misma noche, contenido behind-the-scenes para novias exclusivas.
+- Podcast On-The-Go / Live Podcasting: Estudio móvil de podcasting que se traslada a eventos, bodas, marcas y rooftops con micrófonos y cámaras multi-ángulo.
+- ARRIVE Models & Image Girls: Casting, convocatorias de cenas VIP para chicas en restaurantes/rooftops, embajadoras de marca y hospitality VIP.
 
-[ESTADO EN VIVO DEL DASHBOARD]:
-- Eventos Activos (${liveEvents.length}): ${JSON.stringify(liveEvents.slice(0, 10))}
-- Proyectos (${liveProjects.length}): ${JSON.stringify(liveProjects)}
-- Tareas Pendientes (${pendingTasks.length}): ${JSON.stringify(pendingTasks)}
-- Miembros del Equipo Asignables: GG, JOSHUA, MARIO, ANDREA, FANNY, JEIKOB, FIVVR.
+[ESTRUCTURA DEL EQUIPO ASIGNABLE]:
+- GG (Director General de la Agencia / Estrategia Máxima)
+- Mateo L. (Operations Lead / Logística y Planificación de Tareas)
+- Gabriel G. (Director Creativo / Content & Pitch Decks)
+- Andrés V. (Lead Filmmaker / Producción Audiovisual y Podcast On-The-Go)
+- Fanny (Lead de Modelos, Image Girls y Castings)
+- Joshua (Producción Técnica, Montajes y Logística)
+- Mario (Coordinación de Eventos y Hospitalidad de Venues)
+- Andrea (Estrategia Creativa y Redes Sociales)
+- Jeikob (Sonido, Audio y Grabación)
+- Fivvr (Diseño Externo y Edición de Apoyo)
+
+[DIRECTIVA CRÍTICA PARA NOTAS DE VOZ Y TAREAS MÚLTIPLES]:
+Cuando el usuario te hable, te dicte una nota de voz o te escriba una lista de pendientes para la semana (por ejemplo: "Para esta semana necesitamos: 1. Confirmar DJ de Furia, 2. Cotizar flores para Terraplén, 3. Coordinar modelos con Fanny, 4. Grabar tomas para Wedding Content"):
+1. Procesa cada elemento individualmente.
+2. Infiere la prioridad correcta ('critical', 'high', 'medium', 'low').
+3. Identifica la locación o división correspondiente ('Furia Panamá', 'Terraplén Rooftop', 'Primavera Club', 'Piano Bar Casco', 'ARRIVE Services', 'ARRIVE Studio', 'ARRIVE Models').
+4. Asigna al miembro del equipo más adecuado.
+5. Infiere o calcula la fecha límite adecuada (YYYY-MM-DD).
+6. EJECUTA SIEMPRE el tool 'batch_add_tasks' o 'add_task' para que se guarden en la base de datos de inmediato.
+7. Presenta un reporte ejecutivo estructurado confirmando todas las tareas agendadas y los próximos pasos.
+
+[ESTADO EN TIEMPO REAL DEL DASHBOARD]:
+- Eventos Programados (${liveEvents.length}): ${JSON.stringify(liveEvents.slice(0, 8))}
+- Proyectos Activos (${liveProjects.length}): ${JSON.stringify(liveProjects)}
+- Tareas Pendientes en Cola (${pendingTasks.length}): ${JSON.stringify(pendingTasks.slice(0, 15))}
+- Modelos Image Girls (${activeModels.length}): ${JSON.stringify(activeModels.slice(0, 5))}
+- Promotores (${activePromoters.length}): ${JSON.stringify(activePromoters.slice(0, 5))}
+
+[BASE RAG DE CONOCIMIENTO]:
+${ragContext || 'Información de la base de datos local y memoria operativa activa.'}
 
 ${systemRole || ''}`;
 
     // ─── 1. INTEGRACIÓN CON GOOGLE GEMINI (Multi-Model Resiliente con Fast Fallback) ───
     if (geminiApiKey) {
         const candidateModels = [
+            'gemini-3.8-flash',
             'gemini-3.5-flash-lite',
-            'gemini-3.6-flash',
-            'gemini-3.1-flash-lite'
+            'gemini-3.1-flash-lite',
+            'gemini-2.5-flash',
+            'gemini-2.0-flash'
         ];
 
         const geminiContents = [
@@ -2090,19 +2250,30 @@ ${systemRole || ''}`;
             {
                 functionDeclarations: [
                     {
-                        name: "create_client_post",
-                        description: "Programa o propone una publicación, Reel o carrusel para una marca o cliente de ARRIVE Agency",
+                        name: "batch_add_tasks",
+                        description: "Crea múltiples tareas simultáneamente a partir de una nota de voz, lista de pendientes o plan semanal de ARRIVE Agency",
                         parameters: {
                             type: "OBJECT",
                             properties: {
-                                clientName: { type: "STRING", description: "Nombre de la marca o cliente (ej: Terraplén Rooftop, Furia Panamá, Piano Bar)" },
-                                title: { type: "STRING", description: "Título o concepto del post o reel" },
-                                format: { type: "STRING", enum: ["Reel 9:16", "Carrusel HD", "Story Seq", "TikTok / UGC"], description: "Formato de contenido" },
-                                hook: { type: "STRING", description: "Gancho viral de los primeros 3 segundos" },
-                                caption: { type: "STRING", description: "Texto o copy sugerido" },
-                                date: { type: "STRING", description: "Fecha de publicación (YYYY-MM-DD)" }
+                                tasks: {
+                                    type: "ARRAY",
+                                    description: "Lista de tareas estructuradas",
+                                    items: {
+                                        type: "OBJECT",
+                                        properties: {
+                                            text: { type: "STRING", description: "Descripción clara de la tarea" },
+                                            priority: { type: "STRING", enum: ["critical", "high", "medium", "low"], description: "Prioridad" },
+                                            venue: { type: "STRING", description: "Locación o división (ej: Terraplén Rooftop, Furia Panamá, Primavera Club, Piano Bar Casco, ARRIVE Services, ARRIVE Studio, ARRIVE Models)" },
+                                            assignee: { type: "STRING", description: "Responsable asignado (ej: Mateo L., Gabriel G., Andrés V., Fanny, Joshua, Mario, Andrea, Jeikob, GG)" },
+                                            dueDate: { type: "STRING", description: "Fecha límite en formato YYYY-MM-DD" },
+                                            projectId: { type: "STRING", description: "ID del proyecto relacionado si aplica" },
+                                            tag: { type: "STRING", description: "Tag temático (ej: #Nightlife, #Bodas, #Podcast, #Producción)" }
+                                        },
+                                        required: ["text"]
+                                    }
+                                }
                             },
-                            required: ["clientName", "title"]
+                            required: ["tasks"]
                         }
                     },
                     {
@@ -2112,11 +2283,28 @@ ${systemRole || ''}`;
                             type: "OBJECT",
                             properties: {
                                 text: { type: "STRING", description: "Descripción clara de la tarea" },
-                                priority: { type: "STRING", enum: ["high", "medium", "low"], description: "Nivel de prioridad" },
-                                category: { type: "STRING", description: "Categoría o evento (ej: Terraplén, Furia, Piano Bar, General)" },
-                                assignee: { type: "STRING", enum: ["GG", "JOSHUA", "MARIO", "ANDREA", "FANNY", "JEIKOB", "FIVVR"], description: "Usuario responsable de la tarea: GG, JOSHUA, MARIO, ANDREA, FANNY, JEIKOB, o FIVVR" }
+                                priority: { type: "STRING", enum: ["critical", "high", "medium", "low"], description: "Nivel de prioridad" },
+                                venue: { type: "STRING", description: "Locación o división (ej: Terraplén Rooftop, Furia Panamá, Piano Bar, Wedding Content, Podcast On-The-Go)" },
+                                assignee: { type: "STRING", description: "Responsable asignado: Mateo L., Gabriel G., Andrés V., Fanny, Joshua, Mario, Andrea, Jeikob, GG" },
+                                dueDate: { type: "STRING", description: "Fecha límite (YYYY-MM-DD)" },
+                                projectId: { type: "STRING", description: "ID de proyecto opcional" }
                             },
                             required: ["text"]
+                        }
+                    },
+                    {
+                        name: "update_task",
+                        description: "Actualiza el estado, prioridad, fecha límite o responsable de una tarea existente",
+                        parameters: {
+                            type: "OBJECT",
+                            properties: {
+                                query: { type: "STRING", description: "Nombre o palabra clave de la tarea a actualizar" },
+                                status: { type: "STRING", enum: ["pending", "in_progress", "done"], description: "Nuevo estado" },
+                                priority: { type: "STRING", enum: ["critical", "high", "medium", "low"], description: "Nueva prioridad" },
+                                assignee: { type: "STRING", description: "Nuevo responsable" },
+                                dueDate: { type: "STRING", description: "Nueva fecha límite (YYYY-MM-DD)" }
+                            },
+                            required: ["query"]
                         }
                     },
                     {
@@ -2138,7 +2326,7 @@ ${systemRole || ''}`;
                             properties: {
                                 name: { type: "STRING", description: "Nombre del evento" },
                                 date: { type: "STRING", description: "Fecha en formato YYYY-MM-DD" },
-                                location: { type: "STRING", description: "Ubicación del evento" },
+                                location: { type: "STRING", description: "Ubicación del evento (Terraplén, Furia, Primavera, Piano Bar, etc.)" },
                                 budget: { type: "STRING", description: "Presupuesto estimado en USD" },
                                 description: { type: "STRING", description: "Detalles del evento" }
                             },
@@ -2153,9 +2341,24 @@ ${systemRole || ''}`;
                             properties: {
                                 name: { type: "STRING", description: "Nombre del proyecto" },
                                 description: { type: "STRING", description: "Objetivo y descripción del proyecto" },
-                                category: { type: "STRING", description: "software, business, marketing o eventos" }
+                                category: { type: "STRING", description: "agency, software, business, marketing o eventos" }
                             },
                             required: ["name"]
+                        }
+                    },
+                    {
+                        name: "create_client_post",
+                        description: "Programa o propone una publicación o Reel para una marca de ARRIVE Agency",
+                        parameters: {
+                            type: "OBJECT",
+                            properties: {
+                                clientName: { type: "STRING", description: "Nombre de la marca (ej: Terraplén Rooftop, Furia Panamá, Piano Bar)" },
+                                title: { type: "STRING", description: "Concepto del post o reel" },
+                                format: { type: "STRING", enum: ["Reel 9:16", "Carrusel HD", "Story Seq", "TikTok / UGC"], description: "Formato" },
+                                hook: { type: "STRING", description: "Gancho viral" },
+                                caption: { type: "STRING", description: "Copy sugerido" }
+                            },
+                            required: ["clientName", "title"]
                         }
                     }
                 ]
@@ -2180,7 +2383,7 @@ ${systemRole || ''}`;
                         tools: toolsDeclaration,
                         generationConfig: {
                             temperature: 0.7,
-                            maxOutputTokens: 1200
+                            maxOutputTokens: 1600
                         }
                     })
                 });
@@ -2205,7 +2408,8 @@ ${systemRole || ''}`;
                         }
 
                         if (!replyText && executedTools.length > 0) {
-                            replyText = `✅ **OpenClaw Super Agent (${modelName})** ejecutó ${executedTools.length} acción(es) solicitada(s) correctamente.`;
+                            const taskCount = executedTools.reduce((acc, t) => acc + (t.name === 'batch_add_tasks' ? (t.result?.count || 1) : 1), 0);
+                            replyText = `✅ **OpenClaw Super Copilot (${modelName})** ejecutó ${executedTools.length} acción(es) operativa(s), registrando ${taskCount} elemento(s) en la base de datos de ARRIVE.`;
                         }
 
                         // Sincronizar en historial compartido
@@ -2238,94 +2442,219 @@ ${systemRole || ''}`;
                 } else {
                     const errStatus = geminiRes.status;
                     const errText = await geminiRes.text();
-                    console.warn(`[Gemini API] Modelo ${modelName} devolvió ${errStatus}, intentando siguiente fallback...`, errText.slice(0, 150));
+                    console.warn(`[Gemini API] Modelo ${modelName} devolvió ${errStatus}:`, errText.slice(0, 120));
+                    // Si la clave es inválida o no autorizada, no iterar todos los modelos para no demorar la respuesta
+                    if (errStatus === 400 || errStatus === 401 || errStatus === 403) {
+                        break;
+                    }
                 }
             } catch (modelErr) {
-                console.warn(`[Gemini API] Excepción en ${modelName}, intentando siguiente fallback...`, modelErr.message);
+                console.warn(`[Gemini API] Excepción en ${modelName}:`, modelErr.message);
             }
         }
     }
 
-    // ─── 2. MODO AUTÓNOMO EMBEBIDO OPENCLAW (Fallback 100% Funcional) ───
+    // ─── 2. MODO AUTÓNOMO EMBEBIDO OPENCLAW (Orquestador Super Pro 100% Autónomo) ───
     const executedTools = [];
     const pLower = prompt.toLowerCase();
     let replyText = '';
 
-    if (pLower.includes('crea') && (pLower.includes('proyecto') || pLower.includes('project'))) {
+    // Helper: Extraer lista de tareas si el texto contiene múltiples instrucciones o nota de voz
+    const isMultiTaskPrompt = (
+        (prompt.includes('\n') && (prompt.includes('- ') || prompt.includes('• ') || prompt.includes('* ') || /\d+\.\s/.test(prompt))) ||
+        pLower.includes('nota de voz') ||
+        pLower.includes('organizar tareas') ||
+        pLower.includes('agregar tareas') ||
+        pLower.includes('plan de la semana') ||
+        pLower.includes('lista de tareas') ||
+        (pLower.includes('furia') && pLower.includes('terraplén')) ||
+        (prompt.split(/(?:;|\n|\. |\d+\.\s)/).filter(s => s.trim().length > 15).length >= 2 && (pLower.includes('necesit') || pLower.includes('tarea') || pLower.includes('hacer') || pLower.includes('coordinar') || pLower.includes('confirmar')))
+    );
+
+    if (isMultiTaskPrompt) {
+        // Parser inteligente de tareas para notas de voz o dictados
+        const rawLines = prompt
+            .replace(/nota de voz:?/gi, '')
+            .split(/(?:\r?\n|;|\d+[\.\)]\s+)/)
+            .map(l => l.replace(/^[-*•\s\d\.\)]+/, '').trim())
+            .filter(l => l.length > 8 && !l.toLowerCase().startsWith('para esta semana') && !l.toLowerCase().startsWith('vamos a organizar') && !l.toLowerCase().startsWith('hola'));
+
+        const parsedTasks = [];
+        const baseDate = new Date();
+
+        for (let i = 0; i < rawLines.length; i++) {
+            const line = rawLines[i];
+            const lineLower = line.toLowerCase();
+
+            // Detectar venue / división
+            let venue = 'ARRIVE Agency';
+            let division = 'services';
+            if (lineLower.includes('terraplén') || lineLower.includes('terraplen')) {
+                venue = 'Terraplén Rooftop';
+                division = 'nightlife';
+            } else if (lineLower.includes('furia')) {
+                venue = 'Furia Panamá';
+                division = 'nightlife';
+            } else if (lineLower.includes('piano bar') || lineLower.includes('pianobar') || lineLower.includes('piano')) {
+                venue = 'Piano Bar Casco';
+                division = 'nightlife';
+            } else if (lineLower.includes('primavera')) {
+                venue = 'Primavera Club';
+                division = 'nightlife';
+            } else if (lineLower.includes('boda') || lineLower.includes('wedding')) {
+                venue = 'ARRIVE Services';
+                division = 'services';
+            } else if (lineLower.includes('podcast')) {
+                venue = 'ARRIVE Studio';
+                division = 'studio';
+            } else if (lineLower.includes('modelo') || lineLower.includes('chica') || lineLower.includes('casting')) {
+                venue = 'ARRIVE Models';
+                division = 'models';
+            }
+
+            // Detectar responsable
+            let assignee = 'Mateo L. (Operations Lead)';
+            if (lineLower.includes('fanny') || division === 'models') assignee = 'Fanny (Models & Castings)';
+            else if (lineLower.includes('andrés') || lineLower.includes('andres') || lineLower.includes('video') || division === 'studio') assignee = 'Andrés V. (Lead Filmmaker)';
+            else if (lineLower.includes('gabriel') || lineLower.includes('deck') || lineLower.includes('creativ')) assignee = 'Gabriel G. (Director Creativo)';
+            else if (lineLower.includes('joshua') || lineLower.includes('sonido') || lineLower.includes('montaje')) assignee = 'Joshua (Producción & Tech)';
+            else if (lineLower.includes('mario') || lineLower.includes('hospitalidad')) assignee = 'Mario (Event Coordination)';
+            else if (lineLower.includes('andrea') || lineLower.includes('redes') || lineLower.includes('post')) assignee = 'Andrea (Creative Strategy)';
+            else if (lineLower.includes('jeikob') || lineLower.includes('audio')) assignee = 'Jeikob (Audio Lead)';
+            else if (lineLower.includes('gg')) assignee = 'GG (Director General)';
+
+            // Detectar prioridad
+            let priority = 'medium';
+            if (lineLower.includes('urgente') || lineLower.includes('crític') || lineLower.includes('critic') || lineLower.includes('hoy') || lineLower.includes('asap')) {
+                priority = 'critical';
+            } else if (lineLower.includes('alta') || lineLower.includes('importante') || lineLower.includes('confirmar dj') || lineLower.includes('cerrar')) {
+                priority = 'high';
+            } else if (lineLower.includes('baja') || lineLower.includes('luego')) {
+                priority = 'low';
+            }
+
+            // Estimar fecha límite
+            let dueDate = null;
+            if (lineLower.includes('hoy')) {
+                dueDate = baseDate.toISOString().split('T')[0];
+            } else if (lineLower.includes('mañana')) {
+                dueDate = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+            } else if (lineLower.includes('viernes')) {
+                dueDate = '2026-10-09';
+            } else if (lineLower.includes('sábado') || lineLower.includes('sabado')) {
+                dueDate = '2026-10-10';
+            } else if (lineLower.includes('domingo')) {
+                dueDate = '2026-10-11';
+            }
+
+            parsedTasks.push({
+                text: line,
+                venue,
+                division,
+                assignee,
+                priority,
+                due: dueDate,
+                projectId: lineLower.includes('podcast') ? 'proj-podcast-live' : lineLower.includes('wedding') || lineLower.includes('boda') ? 'proj-wedding-content' : null
+            });
+        }
+
+        if (parsedTasks.length > 0) {
+            const batchResult = executeOpenClawAction('batch_add_tasks', { tasks: parsedTasks }, db);
+            executedTools.push({ name: 'batch_add_tasks', args: { count: parsedTasks.length }, result: batchResult });
+
+            replyText = `🎙️ **Nota de Voz / Directiva Operativa Procesada con Éxito**\n\nHe interpretado y registrado **${parsedTasks.length} tareas operativas** directamente en el Command Center:\n\n` +
+                parsedTasks.map((t, idx) => `**${idx + 1}. ${t.text}**\n   • 📍 Locación: \`${t.venue}\` | 👤 Asignado: **${t.assignee}**\n   • ⚡ Prioridad: **${t.priority.toUpperCase()}** ${t.due ? `| 📅 Entrega: \`${t.due}\`` : ''}`).join('\n\n') +
+                `\n\n✨ *Todas las tareas quedaron sincronizadas en el sistema y listas para el seguimiento de la semana.*`;
+        }
+    }
+
+    if (!replyText && pLower.includes('crea') && (pLower.includes('proyecto') || pLower.includes('project'))) {
         const projNameMatch = prompt.match(/(?:proyecto|project)\s+(?:llamado\s+|de\s+|para\s+|titulado\s+)?["']?([^"',.\n]+)["']?/i);
         const name = projNameMatch ? projNameMatch[1].trim() : 'Nuevo Proyecto OpenClaw';
-        const newProj = executeHermesAction('create_project', {
+        const newProj = executeOpenClawAction('create_project', {
             name,
-            description: `Proyecto planificado por OpenClaw Super Agent en base a la instrucción: "${prompt}"`,
-            category: pLower.includes('software') || pLower.includes('app') ? 'software' : pLower.includes('marketing') ? 'marketing' : 'business',
+            description: `Proyecto planificado por OpenClaw Super Agent: "${prompt}"`,
+            category: pLower.includes('wedding') || pLower.includes('boda') ? 'agency' : pLower.includes('software') ? 'software' : 'business',
             priority: pLower.includes('urgente') || pLower.includes('critico') ? 'critical' : 'high',
-            techStack: ['React', 'Node.js', 'OpenClaw RAG']
+            techStack: ['ARRIVE Agency', 'Command OS', 'React']
         }, db);
         executedTools.push({ name: 'create_project', args: { name }, result: newProj });
-        replyText = `🚀 **Proyecto "${name}" creado exitosamente** en el Command Center. He configurado la estructura inicial, hitos de desarrollo y registrado la actividad en el sistema.`;
+        replyText = `🚀 **Proyecto "${name}" creado exitosamente** en el Command Center. He estructurado sus hitos iniciales y registrado la actividad en el sistema.`;
 
-    } else if (pLower.includes('crea') && (pLower.includes('evento') || pLower.includes('event'))) {
+    } else if (!replyText && pLower.includes('crea') && (pLower.includes('evento') || pLower.includes('event'))) {
         const evMatch = prompt.match(/(?:evento|event)\s+(?:llamado\s+|de\s+|para\s+|titulado\s+)?["']?([^"',.\n]+)["']?/i);
-        const name = evMatch ? evMatch[1].trim() : 'Nuevo Evento OpenClaw';
-        const newEv = executeHermesAction('create_event', {
+        const name = evMatch ? evMatch[1].trim() : 'Nuevo Evento ARRIVE';
+        const newEv = executeOpenClawAction('create_event', {
             name,
             description: `Evento agendado por OpenClaw Super Agent: "${prompt}"`,
-            date: new Date(Date.now() + 86400000 * 7).toISOString().split('T')[0],
+            location: pLower.includes('furia') ? 'Furia Panamá' : pLower.includes('terraplén') ? 'Terraplén Rooftop' : pLower.includes('piano') ? 'Piano Bar Casco' : 'Primavera Club',
+            date: new Date(Date.now() + 86400000 * 5).toISOString().split('T')[0],
             category: 'event'
         }, db);
         executedTools.push({ name: 'create_event', args: { name }, result: newEv });
-        replyText = `🎉 **Evento "${name}" agendado con éxito**. Puedes ver los detalles, fecha y asignación en la pestaña de Eventos y en el Calendario.`;
+        replyText = `🎉 **Evento "${name}" agendado con éxito**. Ubicación y fecha registradas en el Master Calendar de ARRIVE.`;
 
-    } else if (pLower.includes('completa') || pLower.includes('completar') || pLower.includes('terminé') || pLower.includes('marcar como hecha')) {
+    } else if (!replyText && (pLower.includes('completa') || pLower.includes('completar') || pLower.includes('terminé') || pLower.includes('marcar como hecha'))) {
         const matchText = prompt.replace(/(?:completa|completar|terminé|marcar como hecha)\s+(?:la\s+)?(?:tarea\s+)?(?:de\s+|para\s+)?/i, '').trim();
-        const resTask = executeHermesAction('complete_task', { text: matchText }, db);
+        const resTask = executeOpenClawAction('complete_task', { text: matchText }, db);
         if (resTask.success) {
             executedTools.push({ name: 'complete_task', args: { text: matchText }, result: resTask });
-            replyText = `🎯 **Tarea completada exitosamente:** "${resTask.task.text || resTask.task.title}". El progreso en el Dashboard ha sido actualizado.`;
+            replyText = `🎯 **Tarea completada exitosamente:** "${resTask.task.text || resTask.task.title}". El progreso del equipo ha sido actualizado.`;
         } else {
             replyText = `⚠️ No encontré una tarea pendiente que coincida con "${matchText}".`;
         }
 
-    } else if (pLower.includes('resumen') || pLower.includes('estado') || pLower.includes('status') || pLower.includes('reporte') || pLower.includes('operaciones')) {
-        replyText = `📊 **Reporte Ejecutivo de OpenClaw Super Agent**:
-- **Eventos Activos**: ${(db.events || []).length} eventos agendados (incluyendo Terraplén Rooftop, Furia y Piano Bar).
-- **Proyectos Activos**: ${(db.projects || []).length} proyectos registrados en el portfolio.
-- **Tareas Pendientes**: ${(db.tasks || []).filter(t => !t.done).length} tareas en cola de ejecución.
-- **Base de Conocimiento RAG**: ${(db.ragDocuments || []).length} documentos y entidades indexadas en namespace "${namespace}".
+    } else if (!replyText && (pLower.includes('resumen') || pLower.includes('estado') || pLower.includes('status') || pLower.includes('reporte') || pLower.includes('operaciones') || pLower.includes('qué tenemos') || pLower.includes('que tenemos'))) {
+        const totalPending = (db.tasks || []).filter(t => !t.done);
+        const criticalTasks = totalPending.filter(t => t.priority === 'critical' || t.priority === 'high');
+        const nextEvents = (db.events || []).slice(0, 4);
 
-*El sistema está 100% operativo y sincronizado localmente.*`;
+        replyText = `📊 **Reporte Ejecutivo de Operaciones — ARRIVE Agency**:
 
-    } else if (pLower.includes('tarea') || pLower.includes('task') || pLower.includes('todo') || pLower.includes('to-do')) {
-        const taskTextMatch = prompt.match(/(?:tarea|task|agregar\s+tarea)\s+(?:de\s+|para\s+)?["']?([^"',.\n]+)["']?/i);
+🔥 **Tareas Críticas & de Alta Prioridad (${criticalTasks.length} de ${totalPending.length} pendientes)**:
+${criticalTasks.slice(0, 6).map(t => `- **[${(t.venue || 'General').toUpperCase()}]** ${t.text} *(👤 ${t.assignedTo || 'Equipo'} | 📅 ${t.due || 'Pronto'})*`).join('\n')}
+
+🥂 **Próximos Eventos en Calendario**:
+${nextEvents.map(e => `- **${e.name}** | 📍 ${e.location || 'Panamá'} | 📅 ${e.date}`).join('\n')}
+
+💼 **Unidades de Negocio Activas**:
+- **Nightlife & Venues**: Terraplén Rooftop, Furia Panamá, Primavera Club, Piano Bar Casco.
+- **Nuevos Servicios**: Wedding Content Creation (en vivo para bodas) & Podcast On-The-Go.
+- **ARRIVE Models**: ${(db.imageGirls || []).length} perfiles y bookings activos.
+
+*Todos los sistemas y bases de datos están 100% sincronizados.*`;
+
+    } else if (!replyText && (pLower.includes('tarea') || pLower.includes('task') || pLower.includes('anota') || pLower.includes('agregar'))) {
+        const taskTextMatch = prompt.match(/(?:tarea|task|agregar\s+tarea|anota que|anota)\s+(?:de\s+|para\s+)?["']?([^"',.\n]+)["']?/i);
         const text = taskTextMatch ? taskTextMatch[1].trim() : prompt;
-        const newTask = executeHermesAction('add_task', {
+        const newTask = executeOpenClawAction('add_task', {
             text,
-            priority: pLower.includes('alta') || pLower.includes('urgente') ? 'alta' : 'media',
-            assignedTo: 'OpenClaw Super Agent'
+            priority: pLower.includes('alta') || pLower.includes('urgente') ? 'high' : 'medium',
+            assignedTo: 'Mateo L. (Operations Lead)'
         }, db);
         executedTools.push({ name: 'add_task', args: { text }, result: newTask });
-        replyText = `📋 **Tarea registrada**: "${text}". Ha sido agregada a la lista de pendientes y asignada a OpenClaw.`;
+        replyText = `📋 **Tarea registrada**: "${newTask.task.text}". Agregada a la lista de pendientes y asignada al equipo de operaciones.`;
 
-    } else {
+    } else if (!replyText) {
         if (ragSearchResult && ragSearchResult.sources && ragSearchResult.sources.length > 0) {
-            replyText = `🧠 **Consulta RAG en Namespace "${namespace}"**:
-Encontré **${ragSearchResult.count} referencias** en tu base de conocimientos:
+            replyText = `🧠 **Consulta de Inteligencia ARRIVE en Namespace "${namespace}"**:
+Encontré **${ragSearchResult.count} referencias** en tu base de operaciones:
 
 ${ragSearchResult.sources.map(s => `- **${s.title}** (${s.category})`).join('\n')}
 
-**Contexto Extraído**:
+**Contexto**:
 > ${ragSearchResult.context.slice(0, 320)}...`;
         } else {
-            replyText = `⚡ **OpenClaw Super Agent**: He procesado tu solicitud: *"${prompt}"*. 
-Todos los subsistemas del Command Center, base de datos local y motor RAG están activos y listos para ejecutar cualquier comando o plan de acción.`;
+            replyText = `⚡ **ARRIVE Super Copilot**: He recibido tu instrucción: *"${prompt}"*.
+Tengo acceso completo a tus 4 venues (Terraplén, Furia, Primavera, Piano Bar), servicios de Wedding Content y Podcast, modelos y tareas. ¿Deseas que desglosamos tareas, coordinemos un evento o revisemos la estrategia?`;
         }
     }
 
     return res.json({
         reply: replyText,
         executedTools,
-        model: 'openclaw-super-agent-autonomous',
-        provider: 'OpenClaw Autonomous Engine',
+        model: 'arrive-super-agent-autonomous',
+        provider: 'ARRIVE Autonomous Engine',
         usage: { prompt_tokens: prompt.length, completion_tokens: replyText.length, total_tokens: prompt.length + replyText.length }
     });
 }

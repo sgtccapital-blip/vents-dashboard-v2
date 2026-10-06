@@ -2,6 +2,10 @@
   "slug": "elemento",
   "accountId": "social-elemento-techno",
   "handler": "@Elemento.techno",
+  "driveAliases": [
+    "elemento",
+    "elemento techno"
+  ],
   "ig": {
     "bio": [
       "Elemento Techno",

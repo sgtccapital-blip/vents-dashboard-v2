@@ -2,6 +2,11 @@
   "slug": "5amclub",
   "accountId": "social-5amclub-new",
   "handler": "@__5amclub",
+  "driveAliases": [
+    "5am",
+    "5 am club",
+    "5amclub"
+  ],
   "ig": {
     "bio": [
       "5am Club",

@@ -5,7 +5,7 @@ import {
     BarChart3, Eye, Heart, MessageCircle, ArrowRight, Sparkles,
     Globe, Music, Video, Camera, LinkIcon, ArrowLeft, Image,
     Film, CheckCircle2, Clock, Play, FileText, Check, ChevronRight,
-    Search, Filter, Sliders, Copy, Send, FolderGit2, Dna, Palette
+    Search, Filter, Sliders, Copy, Send, FolderGit2, Dna, Palette, FolderOpen, LayoutDashboard
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import ContentCalendarGrid from '../components/ContentCalendarGrid';
@@ -13,6 +13,8 @@ import AccountDnaEditor from '../components/AccountDnaEditor';
 import { dnaCompleteness, normalizeDna } from '../lib/accountDna';
 import { loadBrandIndex, useBrandForAccount } from '../lib/useBrand';
 import BrandLinePanel from '../components/BrandLinePanel';
+import AccountWorkspace from '../components/studio/AccountWorkspace';
+import RawLibrary from '../components/studio/RawLibrary';
 import '../components/SocialEngine.css';
 
 const PLATFORM_META = {
@@ -163,6 +165,7 @@ export default function SocialMedia() {
     });
 
     const [dnaAccount, setDnaAccount] = useState(null);
+    const [workspace, setWorkspace] = useState(null); // { account, tab }
 
     // Líneas gráficas generadas por `npm run brands` (public/brands/index.json), indexadas por cuenta
     const [brandByAccount, setBrandByAccount] = useState({});
@@ -357,6 +360,39 @@ export default function SocialMedia() {
         setShowAccountModal(false);
     };
 
+    // ─── Estudio: idea aprobada desde material raw → pieza en el pipeline ───
+    const handleApproveIdea = (account, idea) => {
+        const dna = normalizeDna(account.dna);
+        const newTask = {
+            id: `ct-${Date.now()}`,
+            createdAt: new Date().toISOString(),
+            title: idea.title,
+            accountId: account.id,
+            accountHandler: account.handler,
+            format: idea.format,
+            pillar: idea.pillar,
+            status: 'idea',
+            hookVerbal: idea.hook,
+            hookVisual: idea.overlayText ? `Texto en pantalla: ${idea.overlayText}` : '',
+            scriptBody: idea.concept,
+            overlayText: idea.overlayText,
+            ideaWhy: idea.why,
+            durationSec: idea.durationSec,
+            cta: idea.cta,
+            caption: idea.caption,
+            hashtags: dna.hashtags,
+            rawAssetIds: idea.assetIds,
+            assignee: '',
+            shootingLocation: '',
+            assetsDriveUrl: '',
+            publishDate: new Date().toISOString().split('T')[0],
+            publishTime: '19:30',
+            source: 'raw',
+        };
+        addContentTask(newTask);
+        if (addActivity) addActivity(`Idea aprobada desde material raw para ${account.handler}: "${idea.title}"`, '#f472b6');
+    };
+
     // ─── Handlers: ADN de cuenta ───
     const handleSaveDna = (dna) => {
         updateSocialMedia(dnaAccount.id, { dna });
@@ -531,6 +567,12 @@ export default function SocialMedia() {
                     onClick={() => setCurrentTab('hooks')}
                 >
                     <Sparkles size={15} style={{ color: '#fbbf24' }} /> 🎯 Banco de Hooks Virales
+                </button>
+                <button 
+                    className={`social-tab-btn ${currentTab === 'raw' ? 'active' : ''}`}
+                    onClick={() => setCurrentTab('raw')}
+                >
+                    <FolderOpen size={15} style={{ color: '#f472b6' }} /> 📥 Material raw
                 </button>
                 <button 
                     className={`social-tab-btn ${currentTab === 'accounts' ? 'active' : ''}`}
@@ -801,6 +843,12 @@ export default function SocialMedia() {
             {/* ═══════════════════════════════════════════════════════════════════
                TAB 4: ACCOUNTS & METRICS PROFILES
                ═══════════════════════════════════════════════════════════════════ */}
+            {currentTab === 'raw' && (
+                <div className="animate-in">
+                    <RawLibrary accounts={accounts} />
+                </div>
+            )}
+
             {currentTab === 'accounts' && (
                 <div className="animate-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '18px' }}>
                     {accounts.map(acc => {
@@ -864,9 +912,25 @@ export default function SocialMedia() {
                                     <button 
                                         className="social-btn-primary" 
                                         style={{ flex: 1, padding: '7px', fontSize: '12px', justifyContent: 'center' }}
+                                        onClick={() => setWorkspace({ account: acc, tab: 'brandbook' })}
+                                    >
+                                        <LayoutDashboard size={13} /> Abrir cuenta
+                                    </button>
+                                    <button 
+                                        className="social-btn-secondary" 
+                                        style={{ padding: '7px 12px', fontSize: '12px' }}
+                                        title="Material raw e ideas"
+                                        onClick={() => setWorkspace({ account: acc, tab: 'raw' })}
+                                    >
+                                        <FolderOpen size={13} />
+                                    </button>
+                                    <button 
+                                        className="social-btn-secondary" 
+                                        style={{ padding: '7px 12px', fontSize: '12px' }}
+                                        title={dnaPct ? 'Editar ADN' : 'Definir ADN'}
                                         onClick={() => setDnaAccount(acc)}
                                     >
-                                        <Dna size={13} /> {dnaPct ? 'Editar ADN' : 'Definir ADN'}
+                                        <Dna size={13} />
                                     </button>
                                     <button 
                                         className="social-btn-secondary" 
@@ -1238,6 +1302,21 @@ export default function SocialMedia() {
                         </form>
                     </div>
                 </div>
+            )}
+
+            {workspace && (
+                <AccountWorkspace
+                    key={workspace.account.id}
+                    account={accounts.find(a => a.id === workspace.account.id) || workspace.account}
+                    accounts={accounts}
+                    tasks={contentTasks || []}
+                    initialTab={workspace.tab}
+                    onClose={() => setWorkspace(null)}
+                    onApproveIdea={handleApproveIdea}
+                    onTaskChange={task => updateContentTask(task.id, task)}
+                    onOpenTask={handleOpenEditTask}
+                    onEditDna={acc => setDnaAccount(acc)}
+                />
             )}
 
             {dnaAccount && (

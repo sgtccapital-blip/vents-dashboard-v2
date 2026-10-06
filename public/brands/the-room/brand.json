@@ -2,6 +2,11 @@
   "slug": "the-room",
   "accountId": "social-theroom-social",
   "handler": "@theroom.social",
+  "driveAliases": [
+    "the room",
+    "theroom",
+    "room social club"
+  ],
   "ig": {
     "bio": [
       "The Room Social Club ®",

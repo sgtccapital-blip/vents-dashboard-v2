@@ -2,6 +2,11 @@
   "slug": "udp",
   "accountId": "social-udp-pa",
   "handler": "@UDP.PA",
+  "driveAliases": [
+    "casco peatonal",
+    "urban development project",
+    "urban development"
+  ],
   "ig": {
     "bio": [
       "Urban Development Project 🎭",

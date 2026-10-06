@@ -2,6 +2,10 @@
   "slug": "hangout",
   "accountId": "social-hangout-panama",
   "handler": "@hangout.panama",
+  "driveAliases": [
+    "hang out",
+    "hangout panama"
+  ],
   "ig": {
     "bio": [
       "Hang Out Panama ®",

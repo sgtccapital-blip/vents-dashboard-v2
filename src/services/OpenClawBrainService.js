@@ -210,6 +210,15 @@ class OpenClawBrainService {
                         contextCallbacks.addEvent(tool.result?.event || tool.args);
                     } else if (tool.name === 'add_task' && contextCallbacks.addTask) {
                         contextCallbacks.addTask(tool.result?.task || tool.args);
+                    } else if (tool.name === 'batch_add_tasks' && contextCallbacks.addTask) {
+                        const list = tool.result?.tasks || tool.args?.tasks || [];
+                        for (const t of list) {
+                            contextCallbacks.addTask(t);
+                        }
+                    } else if (tool.name === 'update_task' && contextCallbacks.updateTask) {
+                        if (tool.result?.task?.id) {
+                            contextCallbacks.updateTask(tool.result.task.id, tool.result.task);
+                        }
                     } else if ((tool.name === 'complete_task' || tool.name === 'toggle_task') && contextCallbacks.toggleTask) {
                         contextCallbacks.toggleTask(tool.result?.id || tool.args?.taskId);
                     }
@@ -217,10 +226,10 @@ class OpenClawBrainService {
             }
 
             return {
-                reply: data.reply || data.content || 'Acción procesada por OpenClaw Super Agent.',
+                reply: data.reply || data.content || 'Acción procesada por ARRIVE Super Agent.',
                 executedTools: data.executedTools || [],
-                model: data.model || (geminiApiKey ? 'gemini-3.6-flash' : 'openclaw-agent'),
-                provider: data.provider || (geminiApiKey ? 'Google Gemini 3.6 Flash' : 'OpenClaw Embedded'),
+                model: data.model || (geminiApiKey ? 'gemini-3.8-flash' : 'arrive-super-agent-autonomous'),
+                provider: data.provider || (geminiApiKey ? 'Google Gemini 3.8 Flash' : 'ARRIVE Autonomous Engine'),
                 usage: data.usage || null
             };
 
