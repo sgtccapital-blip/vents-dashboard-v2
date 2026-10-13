@@ -2,6 +2,8 @@ import { Search, Menu, Database } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { taskStats, eventStats } from '../../lib/status';
+import { useCurrentUser } from '../../lib/currentUser';
+import NotificationBell from '../NotificationBell';
 
 const ProgressRing = ({ percent, size = 36, stroke = 3 }) => {
     const radius = (size - stroke) / 2;
@@ -37,6 +39,7 @@ const pageTitles = {
     '/': 'Command Center',
     '/arrive': 'ARRIVE Agency',
     '/portfolio': 'Portfolio OS',
+    '/finanzas': 'Finanzas & Analítica',
     '/workspace': 'Workspace 2.0',
     '/contactos': 'Contactos',
     '/whatsapp-agent': 'Agente WhatsApp',
@@ -50,6 +53,7 @@ export default function Topbar({ collapsed, searchQuery, onSearchChange, onMobil
     const location = useLocation();
     const navigate = useNavigate();
     const { tasks, events, contacts, supabaseStatus } = useApp();
+    const { user, logout } = useCurrentUser();
 
     // Resultados del buscador: eventos, tareas y contactos que contienen el texto
     const searchResults = (() => {
@@ -196,6 +200,18 @@ export default function Topbar({ collapsed, searchQuery, onSearchChange, onMobil
                         </div>
                     )}
                 </div>
+
+                {user && <NotificationBell />}
+                {user && (
+                    <button
+                        type="button"
+                        className="topbar-user"
+                        title={`Sesión de ${user} · toca para salir`}
+                        onClick={() => { if (window.confirm(`¿Cerrar la sesión de ${user}?`)) logout(); }}
+                    >
+                        {user.slice(0, 2)}
+                    </button>
+                )}
             </div>
         </header>
     );

@@ -7,6 +7,7 @@ import {
     Target, AlertTriangle, AlarmClock, Gavel
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { useCurrentUser } from '../lib/currentUser';
 import ArriveAgencyBox from '../components/ArriveAgencyBox';
 import ArriveTasksBox from '../components/ArriveTasksBox';
 import { isActiveEvent, isDone } from '../lib/status';
@@ -33,6 +34,8 @@ export default function Home() {
         activityFeed, addActivity, subscriptions
     } = useApp();
     const navigate = useNavigate();
+    const { user } = useCurrentUser();
+    const [taskScope, setTaskScope] = useState(null); // null = automático (mías si tengo)
     const [newNote, setNewNote] = useState('');
     const [now, setNow] = useState(() => new Date());
 
@@ -77,6 +80,10 @@ export default function Home() {
             .sort((a, b) => (a.daysLeft ?? 9999) - (b.daysLeft ?? 9999));
     }, [safeTasks, todayKey]);
     const overdueCount = pendingTasks.filter(t => t.daysLeft != null && t.daysLeft < 0).length;
+    const isMine = (t) => user && (t.assignee || t.assignedTo) === user;
+    const myPendingCount = pendingTasks.filter(isMine).length;
+    const scope = taskScope || (myPendingCount > 0 ? 'mine' : 'all');
+    const visibleTasks = scope === 'mine' ? pendingTasks.filter(isMine) : pendingTasks;
     const doneCount = safeTasks.length - pendingTasks.length;
 
     const pulse = useMemo(
@@ -293,7 +300,7 @@ export default function Home() {
                     <div className="cc-metric-value">{formatNumber(totalAudience)}</div>
                     <div className="cc-metric-sub">{socialMedia?.length || 0} cuentas activas</div>
                 </div>
-                <div className="cc-metric-card">
+                <div className="cc-metric-card" onClick={() => navigate('/finanzas')} style={{ cursor: 'pointer' }}>
                     <div className="cc-metric-label"><DollarSign size={14} style={{ color: 'var(--accent-green)' }} /> Gasto Mensual</div>
                     <div className="cc-metric-value">{formatMoney(subs.monthlyBurn)}</div>
                     <div className="cc-metric-sub" title={subs.upcomingRenewals.map(r => `${r.name} (${dueLabel(r.daysLeft)})`).join(', ')}>
@@ -349,15 +356,24 @@ export default function Home() {
                 <div className="widget widget-md">
                     <div className="widget-header">
                         <div className="widget-title"><CheckSquare size={16} /> Tareas Pendientes</div>
-                        <button className="btn btn-ghost" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => navigate('/workspace')}>
-                            Workspace <ArrowRight size={12} />
-                        </button>
+                        {user && (
+                            <div className="task-scope" role="tablist" aria-label="Filtrar tareas">
+                                <button type="button" role="tab" aria-selected={scope === 'mine'} className={scope === 'mine' ? 'active' : ''} onClick={() => setTaskScope('mine')}>
+                                    Mías {myPendingCount > 0 && <span>{myPendingCount}</span>}
+                                </button>
+                                <button type="button" role="tab" aria-selected={scope === 'all'} className={scope === 'all' ? 'active' : ''} onClick={() => setTaskScope('all')}>
+                                    Equipo <span>{pendingTasks.length}</span>
+                                </button>
+                            </div>
+                        )}
                     </div>
                     <div className="widget-body">
-                        {pendingTasks.length === 0 && (
-                            <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '13px' }}>Todo al día ✅</div>
+                        {visibleTasks.length === 0 && (
+                            <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '13px' }}>
+                                {scope === 'mine' ? `${user}, no tienes tareas pendientes ✅` : 'Todo al día ✅'}
+                            </div>
                         )}
-                        {pendingTasks.slice(0, 8).map(task => {
+                        {visibleTasks.slice(0, 8).map(task => {
                             const label = dueLabel(task.daysLeft);
                             const dueClass = task.daysLeft == null ? '' : task.daysLeft < 0 ? 'is-overdue' : task.daysLeft === 0 ? 'is-today' : '';
                             const owner = task.assignee || task.assignedTo;
@@ -377,9 +393,9 @@ export default function Home() {
                                 </div>
                             );
                         })}
-                        {pendingTasks.length > 8 && (
-                            <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '8px' }}>+{pendingTasks.length - 8} más en Workspace</div>
-                        )}
+                        <button type="button" className="btn btn-ghost" style={{ fontSize: '12px', padding: '4px 8px', marginTop: '8px' }} onClick={() => navigate('/workspace')}>
+                            {visibleTasks.length > 8 ? `+${visibleTasks.length - 8} más en Workspace` : 'Abrir Workspace'} <ArrowRight size={12} />
+                        </button>
                     </div>
                 </div>
 
@@ -578,7 +594,10 @@ export default function Home() {
                                             background: activity.color || 'var(--accent-primary)', flexShrink: 0, marginTop: '6px'
                                         }} />
                                         <div style={{ flex: 1, minWidth: 0 }}>
-                                            <div style={{ fontSize: '13px', lineHeight: 1.4, wordBreak: 'break-word' }}>{activity.text}</div>
+                                            <div style={{ fontSize: '13px', lineHeight: 1.4, wordBreak: 'break-word' }}>
+                                                {activity.user && <strong style={{ color: 'var(--text-primary)', marginRight: '4px' }}>{activity.user}</strong>}
+                                                {activity.text}
+                                            </div>
                                             <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '2px' }}>{timeStr}</div>
                                         </div>
                                     </div>

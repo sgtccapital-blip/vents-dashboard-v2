@@ -6213,3 +6213,59 @@ a:hover {
 .chat-md code { font-size: 0.85em; padding: 1px 4px; border-radius: 4px; background: rgba(255, 255, 255, 0.08); }
 .chat-md a { color: #7dd3fc; }
 .chat-md h1, .chat-md h2, .chat-md h3 { font-size: 1em; margin: 6px 0 4px; }
+
+/* ─── Aviso de datos no persistentes ─── */
+.persistence-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: calc(var(--topbar-height) + 12px) var(--space-2xl) 0;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: var(--accent-red-dim);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: var(--text-primary);
+  font-size: 13px;
+}
+/* La página que sigue al aviso ya no necesita dejar el hueco de la barra superior */
+.persistence-banner ~ .page-content,
+.persistence-banner ~ .page-container { margin-top: 0 !important; }
+.persistence-banner-icon { color: var(--accent-red); flex-shrink: 0; }
+.persistence-banner-text { flex: 1; min-width: 220px; line-height: 1.4; }
+.persistence-banner-actions { display: flex; gap: 6px; align-items: center; }
+.persistence-banner-actions .btn { font-size: 12px; padding: 6px 10px; display: inline-flex; align-items: center; gap: 4px; text-decoration: none; }
+@media (max-width: 768px) {
+  .persistence-banner { margin: calc(var(--topbar-height) + env(safe-area-inset-top, 0px) + 8px) 10px 0; }
+  .persistence-banner-actions { width: 100%; }
+  .persistence-banner-actions .btn:not(.persistence-banner-close) { flex: 1; justify-content: center; }
+}
+
+/* ─── Pantalla de acceso ─── */
+.auth-gate { min-height: 100vh; min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: 16px; background: var(--bg-primary); color: var(--text-primary); }
+.auth-card { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 16px; padding: 28px; border-radius: 16px; background: var(--bg-secondary); border: 1px solid var(--border-subtle); }
+.auth-label { font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; }
+.auth-team { display: flex; flex-wrap: wrap; gap: 8px; }
+.auth-member { min-height: 40px; padding: 8px 14px; border-radius: var(--radius-full); border: 1px solid var(--border-default); background: var(--bg-input); color: var(--text-secondary); font-weight: 700; font-size: 13px; letter-spacing: 0.03em; cursor: pointer; }
+.auth-member.active { background: var(--accent-primary); border-color: var(--accent-primary); color: #fff; }
+
+.topbar-user {
+  width: 34px; height: 34px; min-width: 34px; margin-left: 10px;
+  border-radius: 50%; border: 1px solid var(--border-accent, rgba(139, 92, 246, 0.4));
+  background: var(--accent-primary-dim); color: var(--accent-primary);
+  font-size: 11px; font-weight: 800; letter-spacing: 0.02em; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+
+.task-scope { display: inline-flex; gap: 2px; padding: 2px; border-radius: var(--radius-full); background: var(--bg-tertiary); }
+.task-scope button { border: none; background: transparent; color: var(--text-tertiary); font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: var(--radius-full); cursor: pointer; display: inline-flex; gap: 4px; align-items: center; }
+.task-scope button span { font-size: 10px; opacity: 0.8; }
+.task-scope button.active { background: var(--accent-primary); color: #fff; }
+
+.topbar-bell {
+  width: 34px; height: 34px; min-width: 34px; margin-left: 8px; border-radius: 50%;
+  border: 1px solid var(--border-subtle); background: rgba(255, 255, 255, 0.04); color: var(--text-secondary);
+  display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.topbar-bell.on { color: var(--accent-green); border-color: rgba(16, 185, 129, 0.4); }
+.topbar-bell.denied { color: var(--text-tertiary); }

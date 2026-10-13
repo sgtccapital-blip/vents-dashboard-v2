@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { X, CloudLightning, DatabaseZap, CloudOff, RefreshCw, Key, ShieldCheck, Database, Save, HelpCircle, CheckCircle2, AlertTriangle, AlertCircle } from 'lucide-react';
+import { X, Download, Upload, CloudLightning, DatabaseZap, CloudOff, RefreshCw, Key, ShieldCheck, Database, Save, HelpCircle, CheckCircle2, AlertTriangle, AlertCircle } from 'lucide-react';
 
 export default function CloudSyncPanel({ isOpen, onClose }) {
-    const { supabaseStatus, manualSync, saveSupabaseConfig } = useApp();
+    const { supabaseStatus, manualSync, saveSupabaseConfig, refreshData } = useApp();
+    const [restoring, setRestoring] = useState(false);
+    const [restoreResult, setRestoreResult] = useState(null);
     const [dbUrl, setDbUrl] = useState('');
     const [dbKey, setDbKey] = useState('');
     const [syncing, setSyncing] = useState(false);
@@ -21,6 +23,32 @@ export default function CloudSyncPanel({ isOpen, onClose }) {
     }, [supabaseStatus, isOpen]);
 
     if (!isOpen) return null;
+
+    const handleRestore = async (e) => {
+        const file = e.target.files?.[0];
+        e.target.value = '';
+        if (!file) return;
+        if (!window.confirm(`¿Reemplazar TODOS los datos actuales con "${file.name}"? Se guarda una copia de lo actual en el servidor antes.`)) return;
+        setRestoring(true);
+        setRestoreResult(null);
+        try {
+            const data = JSON.parse(await file.text());
+            const res = await fetch('/api/backup/restore', {
+                method: 'POST', credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const body = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(body.error || `Error ${res.status}`);
+            const c = body.counts || {};
+            setRestoreResult({ success: true, message: `Restaurado: ${c.events || 0} eventos, ${c.tasks || 0} tareas, ${c.projects || 0} proyectos, ${c.contacts || 0} contactos.` });
+            if (refreshData) refreshData();
+        } catch (err) {
+            setRestoreResult({ success: false, message: err instanceof SyntaxError ? 'El archivo no es un JSON válido.' : err.message });
+        } finally {
+            setRestoring(false);
+        }
+    };
 
     const handleSave = async (e) => {
         e.preventDefault();
@@ -249,6 +277,30 @@ export default function CloudSyncPanel({ isOpen, onClose }) {
                             )}
                         </div>
                     )}
+
+                    {/* Respaldo manual: descargar o restaurar todo el dashboard */}
+                    <div>
+                        <h3 style={{ fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)', marginBottom: '8px', fontWeight: 600 }}>
+                            Respaldo
+                        </h3>
+                        <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '0 0 10px', lineHeight: 1.4 }}>
+                            Descarga todo (eventos, tareas, proyectos, contactos, documentos del RAG) en un archivo. Las claves no se incluyen.
+                        </p>
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                            <a className="btn btn-primary" href="/api/backup" download style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', textDecoration: 'none', fontSize: '12px' }}>
+                                <Download size={14} /> Descargar respaldo
+                            </a>
+                            <label className="btn btn-ghost" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', cursor: 'pointer' }}>
+                                <Upload size={14} /> {restoring ? 'Restaurando…' : 'Restaurar desde archivo'}
+                                <input type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={handleRestore} disabled={restoring} />
+                            </label>
+                        </div>
+                        {restoreResult && (
+                            <div style={{ marginTop: '8px', fontSize: '12px', color: restoreResult.success ? 'var(--accent-green)' : 'var(--accent-red)' }}>
+                                {restoreResult.message}
+                            </div>
+                        )}
+                    </div>
 
                     {/* Supabase Configuration Form */}
                     <div>

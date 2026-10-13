@@ -317,7 +317,9 @@ export const AGENT_ACTIONS = [
  * Ejecuta una acción del agente mutando `db`. Devuelve { success, ... }.
  * Una acción desconocida o con datos insuficientes devuelve success:false (nunca un éxito falso).
  */
-export function executeAgentAction(actionName, rawData, db, { source = 'OpenClaw Super Agent', today = new Date() } = {}) {
+export function executeAgentAction(actionName, rawData, db, { source: sourceOpt, today = new Date(), user = null } = {}) {
+    // Quién pidió la acción queda en la actividad ("OpenClaw · MARIO")
+    const source = sourceOpt || (user ? `OpenClaw · ${user}` : 'OpenClaw Super Agent');
     const data = rawData && typeof rawData === 'object' ? rawData : {};
     ['projects', 'events', 'tasks', 'notes'].forEach(k => { db[k] = list(db[k]); });
     const todayKey = toDateKey(today);
@@ -404,7 +406,7 @@ export function executeAgentAction(actionName, rawData, db, { source = 'OpenClaw
         case 'add_task': {
             const text = String(data.text || data.title || '').trim();
             if (!text) return { success: false, error: 'Falta la descripción de la tarea' };
-            const assignee = normalizeMember(data.assignee || data.assignedTo) || 'GG';
+            const assignee = normalizeMember(data.assignee || data.assignedTo) || (TEAM_MEMBERS.includes(user) ? user : 'GG');
             const due = data.due || data.dueDate ? (parseSpanishDate(String(data.due || data.dueDate), today) || String(data.due || data.dueDate)) : null;
             let projectId = data.projectId || null;
             let eventId = data.eventId || null;
@@ -645,7 +647,7 @@ export const GEMINI_TOOLS = [{
 
 // ─── Contexto del sistema ────────────────────────────────────
 
-export function buildSystemPrompt(db, { ragContext = '', skills = '', systemRole = '', today = new Date() } = {}) {
+export function buildSystemPrompt(db, { ragContext = '', skills = '', systemRole = '', today = new Date(), user = null } = {}) {
     const todayKey = toDateKey(today);
     const events = list(db.events)
         .filter(e => e.category !== 'project')
@@ -663,7 +665,7 @@ export function buildSystemPrompt(db, { ragContext = '', skills = '', systemRole
         .map(c => ({ name: c.name, industry: c.industry, tone: c.brand?.toneOfVoice, dos: c.brand?.dos, donts: c.brand?.donts }));
 
     return `Eres OpenClaw, el agente operativo del Command Center de GG: agencia ARRIVE (clientes, contenido, talento), venues y eventos de nightlife en Panamá, y el portafolio de proyectos.
-Hoy es ${todayKey} (zona America/Panama). Responde en español, directo y accionable, usando markdown breve (listas, negritas). No inventes datos: si algo no está en el contexto, dilo o usa search_knowledge.
+Hoy es ${todayKey} (zona America/Panama).${user ? ` Hablas con ${user} (miembro del equipo): "mis tareas" son las asignadas a ${user} y, si no dice responsable, asigna a ${user}.` : ''} Responde en español, directo y accionable, usando markdown breve (listas, negritas). No inventes datos: si algo no está en el contexto, dilo o usa search_knowledge.
 
 Reglas de herramientas:
 - Ejecuta acciones (crear tarea/evento/proyecto, completar tarea, notas, posts) SOLO cuando el usuario lo pida explícitamente. Para preguntas, responde sin crear nada.
@@ -754,7 +756,7 @@ export function expandSlashCommand(prompt) {
  * Agente sin LLM: entiende consultas y órdenes frecuentes en español, ejecuta acciones
  * sobre `db` y responde con datos reales. Nunca crea nada a partir de una pregunta.
  */
-export function runLocalAgent(prompt, db, { today = new Date(), namespace = 'default' } = {}) {
+export function runLocalAgent(prompt, db, { today = new Date(), namespace = 'default', user = null } = {}) {
     const expanded = expandSlashCommand(prompt);
     const raw = expanded.prompt;
     if (expanded.forceKnowledge) {
@@ -770,7 +772,7 @@ export function runLocalAgent(prompt, db, { today = new Date(), namespace = 'def
     const p = normalizeText(raw);
     const executedTools = [];
     const run = (name, args) => {
-        const result = executeAgentAction(name, args, db, { today });
+        const result = executeAgentAction(name, args, db, { today, user });
         executedTools.push({ name, args, result });
         return result;
     };
@@ -808,7 +810,7 @@ export function runLocalAgent(prompt, db, { today = new Date(), namespace = 'def
         const { member, rest } = extractMember(body);
         body = stripDatePhrases(rest);
         if (!body) return { reply: '✏️ ¿Cuál es la tarea? Ej: "crea una tarea para MARIO: confirmar DJ el viernes".', executedTools };
-        const res = run('add_task', { text: body.charAt(0).toUpperCase() + body.slice(1), assignee: member || 'GG', due, priority });
+        const res = run('add_task', { text: body.charAt(0).toUpperCase() + body.slice(1), assignee: member || (TEAM_MEMBERS.includes(user) ? user : 'GG'), due, priority });
         const t = res.task;
         return { reply: `📋 Tarea creada: **${t.text}**\n- Responsable: **${t.assignee}**\n- Prioridad: ${PRIORITY_LABELS[t.priority] || t.priority}${t.due ? `\n- Vence: ${fmtDate(t.due)}` : ''}`, executedTools };
     }
@@ -850,7 +852,8 @@ export function runLocalAgent(prompt, db, { today = new Date(), namespace = 'def
     }
 
     // ── Consultas sobre datos ──
-    const member = TEAM_MEMBERS.find(m => new RegExp(`\\b${m}\\b`, 'i').test(raw));
+    // "mis tareas" / "mis pendientes" = las del usuario que pregunta
+    const member = TEAM_MEMBERS.find(m => new RegExp(`\\b${m}\\b`, 'i').test(raw)) || (/\b(mis|mias|me toca|tengo)\b/.test(p) && TEAM_MEMBERS.includes(user) ? user : null);
     if (/\btareas?|pendientes?|to-?dos?|vencid/.test(p)) {
         let tasks = list(db.tasks).filter(t => !isTaskDone(t));
         let label = 'pendientes';
@@ -964,7 +967,7 @@ async function callGemini(model, apiKey, body, timeoutMs) {
  * y se le devuelven los resultados hasta que responde con texto (máx. maxSteps rondas).
  * Devuelve null si ningún modelo respondió (el caller usa el agente local).
  */
-export async function runGeminiAgent({ apiKey, model, systemPrompt, history = [], prompt, db, namespace = 'default', today = new Date(), maxSteps = 4, timeoutMs = 30000, onError = () => {} }) {
+export async function runGeminiAgent({ apiKey, model, systemPrompt, history = [], prompt, db, namespace = 'default', today = new Date(), user = null, maxSteps = 4, timeoutMs = 30000, onError = () => {} }) {
     const contents = [
         ...history.slice(-10)
             .filter(h => (h.content || h.text))
@@ -1031,7 +1034,7 @@ export async function runGeminiAgent({ apiKey, model, systemPrompt, history = []
                     const found = searchKnowledge(db, args.query || '', { namespace, topK: 5 });
                     result = { results: found.results.map(({ title, category, chunk }) => ({ title, category, text: chunk })) };
                 } else {
-                    result = executeAgentAction(functionCall.name, args, db, { today });
+                    result = executeAgentAction(functionCall.name, args, db, { today, user });
                     executedTools.push({ name: functionCall.name, args, result });
                 }
                 return { functionResponse: { name: functionCall.name, response: { result } } };
@@ -1059,4 +1062,68 @@ export function summarizeTools(executedTools) {
         const item = result.task || result.event || result.project || result.note || result.post || result.milestone || result.entity || result.document;
         return `✅ ${name}: ${item?.text || item?.name || item?.title || 'hecho'}`;
     }).join('\n');
+}
+
+/**
+ * Transcribe una nota de voz con Gemini (audio en base64). Devuelve { text, model } o { error }.
+ */
+export async function transcribeAudio({ apiKey, model, base64, mimeType = 'audio/webm', timeoutMs = 45000 }) {
+    const errors = [];
+    // Gemini identifica el audio por su tipo; los navegadores añaden ";codecs=..." que no hace falta
+    const cleanMime = String(mimeType || 'audio/webm').split(';')[0];
+    for (const candidate of geminiModelCandidates(model)) {
+        try {
+            const r = await callGemini(candidate, apiKey, {
+                contents: [{
+                    role: 'user',
+                    parts: [
+                        { inlineData: { mimeType: cleanMime, data: base64 } },
+                        { text: 'Transcribe esta nota de voz palabra por palabra, en el idioma en que se habla (normalmente español de Panamá). Devuelve SOLO la transcripción, sin comillas ni comentarios. Si no se entiende nada, responde exactamente: [inaudible]' },
+                    ],
+                }],
+                generationConfig: { temperature: 0 },
+            }, timeoutMs);
+            if (!r.ok) {
+                errors.push(`${candidate}: HTTP ${r.status} ${(r.json?.error?.message || '').slice(0, 160)}`);
+                if (r.status === 401 || r.status === 403 || (r.status === 400 && /api key/i.test(r.text))) break;
+                continue;
+            }
+            const text = (r.json?.candidates?.[0]?.content?.parts || []).filter(p => p.text && !p.thought).map(p => p.text).join(' ').trim();
+            if (!text || text === '[inaudible]') return { error: 'No se entendió el audio. Intenta de nuevo más cerca del micrófono.' };
+            lastWorkingModel = candidate;
+            return { text, model: candidate };
+        } catch (e) {
+            errors.push(`${candidate}: ${e.name === 'AbortError' ? 'timeout' : e.message}`);
+        }
+    }
+    return { error: errors.join(' | ') || 'Gemini no respondió' };
+}
+
+/**
+ * Pide a Gemini un JSON (para generadores como las campañas de WhatsApp). Usa los mismos modelos
+ * y fallback que el agente. Devuelve { data, model } o { error }.
+ */
+export async function generateGeminiJSON({ apiKey, model, prompt, timeoutMs = 60000, temperature = 0.8 }) {
+    const errors = [];
+    for (const candidate of geminiModelCandidates(model)) {
+        try {
+            const r = await callGemini(candidate, apiKey, {
+                contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                generationConfig: { temperature, responseMimeType: 'application/json' },
+            }, timeoutMs);
+            if (!r.ok) {
+                errors.push(`${candidate}: HTTP ${r.status} ${(r.json?.error?.message || '').slice(0, 160)}`);
+                if (r.status === 401 || r.status === 403 || (r.status === 400 && /api key/i.test(r.text))) break;
+                continue;
+            }
+            const text = (r.json?.candidates?.[0]?.content?.parts || []).filter(p => p.text && !p.thought).map(p => p.text).join('').trim();
+            const fenced = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+            const data = JSON.parse(fenced ? fenced[1] : text);
+            lastWorkingModel = candidate;
+            return { data, model: candidate };
+        } catch (e) {
+            errors.push(`${candidate}: ${e.name === 'AbortError' ? 'timeout' : e.message}`);
+        }
+    }
+    return { error: errors.join(' | ') || 'Gemini no respondió' };
 }

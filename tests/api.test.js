@@ -43,6 +43,7 @@ before(async () => {
             VAULT_PATH: path.join(tmp, 'vault'),
             BRAIN_VAULT_DIR: path.join(tmp, 'BrainVault'),
             DASHBOARD_PASSWORD: PASSWORD,
+            TEAM_PASSWORDS: 'MARIO:mario-secreto',
             API_TOKEN: TOKEN,
             SUPABASE_URL: '', SUPABASE_KEY: '', VITE_SUPABASE_URL: '', VITE_SUPABASE_KEY: '',
             RENDER: '',
@@ -73,16 +74,47 @@ test('sin credenciales la API privada responde 401', async () => {
     assert.equal(bad.status, 401);
 });
 
-test('login: contraseña mala 401, buena da cookie HttpOnly que funciona', async () => {
-    const bad = await fetch(`${BASE}/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: json({ password: 'x' }) });
-    assert.equal(bad.status, 401);
+const login = (body) => fetch(`${BASE}/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: json(body) });
+const cookieOf = (res) => res.headers.get('set-cookie').split(';')[0];
 
-    const ok = await fetch(`${BASE}/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: json({ password: PASSWORD }) });
+test('login: pide usuario, contraseña mala 401, buena da cookie HttpOnly con el usuario', async () => {
+    assert.equal((await login({ password: PASSWORD })).status, 400, 'sin usuario');
+    assert.equal((await login({ user: 'GG', password: 'x' })).status, 401);
+
+    const ok = await login({ user: 'gg', password: PASSWORD });
     assert.equal(ok.status, 200);
-    const cookie = ok.headers.get('set-cookie');
-    assert.match(cookie, /HttpOnly/);
-    const r = await fetch(`${BASE}/tasks`, { headers: { Cookie: cookie.split(';')[0] } });
-    assert.equal(r.status, 200);
+    assert.match(ok.headers.get('set-cookie'), /HttpOnly/);
+    const cookie = cookieOf(ok);
+    assert.equal((await fetch(`${BASE}/tasks`, { headers: { Cookie: cookie } })).status, 200);
+    const session = await (await fetch(`${BASE}/auth/session`, { headers: { Cookie: cookie } })).json();
+    assert.equal(session.user, 'GG');
+    assert.deepEqual(session.personalPasswords, ['MARIO']);
+});
+
+test('contraseña individual: MARIO entra con la suya, no con la compartida', async () => {
+    assert.equal((await login({ user: 'MARIO', password: PASSWORD })).status, 401);
+    assert.equal((await login({ user: 'MARIO', password: 'mario-secreto' })).status, 200);
+});
+
+test('sesión manipulada (cambiar el usuario) no sirve', async () => {
+    const cookie = cookieOf(await login({ user: 'ANDREA', password: PASSWORD }));
+    const forged = cookie.replace(/\.ANDREA\./, '.MARIO.');
+    assert.equal((await fetch(`${BASE}/tasks`, { headers: { Cookie: forged } })).status, 401);
+});
+
+test('se registra quién crea y completa tareas', async () => {
+    const cookie = cookieOf(await login({ user: 'ANDREA', password: PASSWORD }));
+    const headers = { Cookie: cookie, 'Content-Type': 'application/json' };
+    const created = await (await fetch(`${BASE}/tasks`, { method: 'POST', headers, body: json({ text: 'Con autora', status: 'pending' }) })).json();
+    assert.equal(created.createdBy, 'ANDREA');
+    const done = await (await fetch(`${BASE}/tasks/${created.id}`, { method: 'PUT', headers, body: json({ status: 'done' }) })).json();
+    assert.equal(done.completedBy, 'ANDREA');
+    assert.ok(done.completedAt);
+    const reopened = await (await fetch(`${BASE}/tasks/${created.id}`, { method: 'PUT', headers, body: json({ status: 'pending' }) })).json();
+    assert.equal(reopened.completedAt, undefined);
+    const act = await (await fetch(`${BASE}/activity`, { method: 'POST', headers, body: json({ text: 'hola' }) })).json();
+    assert.equal(act.user, 'ANDREA');
+    await fetch(`${BASE}/tasks/${created.id}`, { method: 'DELETE', headers });
 });
 
 test('CORS no se abre a otros orígenes', async () => {

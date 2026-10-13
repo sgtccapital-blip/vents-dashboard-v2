@@ -29,6 +29,7 @@ class WhatsAppAgentService {
         try {
             const res = await fetch(`${API_BASE}/agent/whatsapp-campaign/generate`, {
                 method: 'POST',
+                credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ weekOffset, startDate, endDate, tone, customInstructions })
             });
@@ -306,7 +307,7 @@ class WhatsAppAgentService {
                         badge: v.badge || (idx === 0 ? '🔥 Mayor Conversión' : idx === 1 ? '💎 Premium Experience' : '⏳ Últimos Cupos'),
                         text: v.copy || v.text || ''
                     }));
-                    return { success: true, variations: normalized };
+                    return { success: true, variations: normalized, source: data.source, model: data.model, aiError: data.aiError, geminiConfigured: data.geminiConfigured };
                 }
             }
         } catch (e) {

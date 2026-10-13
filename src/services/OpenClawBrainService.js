@@ -183,6 +183,25 @@ class OpenClawBrainService {
         };
     }
 
+    /** Transcribe una nota de voz (Blob) con Gemini en el servidor. Devuelve el texto. */
+    static async transcribeAudio(blob) {
+        const base64 = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
+            reader.onerror = () => reject(new Error('No se pudo leer el audio'));
+            reader.readAsDataURL(blob);
+        });
+        const res = await fetch(`${API_BASE}/openclaw/transcribe`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ audio: base64, mimeType: blob.type })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
+        return data.text;
+    }
+
     /**
      * Búsqueda Semántica RAG con OpenClaw Engine
      */

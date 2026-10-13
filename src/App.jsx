@@ -6,6 +6,7 @@ import Sidebar from './components/Layout/Sidebar';
 import Topbar from './components/Layout/Topbar';
 import MobileTabBar from './components/Layout/MobileTabBar';
 import CloudSyncPanel from './components/CloudSyncPanel';
+import PersistenceBanner from './components/PersistenceBanner';
 import { X } from 'lucide-react';
 import React, { lazy, Suspense } from 'react';
 
@@ -21,6 +22,7 @@ const Contactos = lazy(() => import('./pages/Contactos'));
 const PortfolioOS = lazy(() => import('./pages/PortfolioOS'));
 const WhatsAppAgent = lazy(() => import('./pages/WhatsAppAgent'));
 const ArriveAgencyOS = lazy(() => import('./pages/ArriveAgencyOS'));
+const Finanzas = lazy(() => import('./pages/Finanzas'));
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -75,6 +77,7 @@ function AppLayout() {
           onMobileMenuToggle={() => setMobileMenuOpen(true)}
           onCloudSyncToggle={() => setCloudSyncOpen(true)}
         />
+        <PersistenceBanner onOpenCloudSync={() => setCloudSyncOpen(true)} />
         <ErrorBoundary>
           <Suspense fallback={<div style={{ padding: '24px', color: 'var(--text-tertiary)', fontSize: '13px' }}>Cargando…</div>}>
           <Routes>
@@ -89,6 +92,7 @@ function AppLayout() {
             <Route path="/contactos" element={<Contactos />} />
             <Route path="/whatsapp-agent" element={<WhatsAppAgent />} />
             <Route path="/agent-brain" element={<AgentBrain />} />
+            <Route path="/finanzas" element={<Finanzas />} />
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
           </Suspense>

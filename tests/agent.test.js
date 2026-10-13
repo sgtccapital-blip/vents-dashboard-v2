@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import {
-    tokenize, parseSpanishDate, expandSlashCommand, searchKnowledge, executeAgentAction, runLocalAgent, runGeminiAgent, findTask,
+    tokenize, parseSpanishDate, expandSlashCommand, transcribeAudio, searchKnowledge, executeAgentAction, runLocalAgent, runGeminiAgent, findTask,
 } from '../server/agent.js';
 
 const TODAY = new Date(2026, 9, 13, 10, 0); // martes 13 oct 2026
@@ -209,4 +209,18 @@ test('comandos rápidos de la UI funcionan con el agente local', () => {
     assert.match(runLocalAgent('/rag hielo', db, { today: TODAY }).reply, /SOP Operación de Barra/);
     assert.match(runLocalAgent('/reporte', db, { today: TODAY }).reply, /Resumen/);
     assert.equal(runLocalAgent('/evento Noche Latina el 24 de octubre', db, { today: TODAY }).executedTools[0].result.event.date, '2026-10-24');
+});
+
+test('transcribeAudio manda el audio a Gemini con el tipo limpio y devuelve el texto', async () => {
+    const { server, calls } = await fakeGemini(() => ({ json: { candidates: [{ content: { parts: [{ text: 'crea una tarea para MARIO' }] } }] } }));
+    try {
+        const r = await transcribeAudio({ apiKey: 'k', model: 'm', base64: 'QUJD', mimeType: 'audio/webm;codecs=opus' });
+        assert.equal(r.text, 'crea una tarea para MARIO');
+        const part = calls[0].body.contents[0].parts[0].inlineData;
+        assert.equal(part.mimeType, 'audio/webm');
+        assert.equal(part.data, 'QUJD');
+    } finally {
+        server.close();
+        delete process.env.GEMINI_API_BASE;
+    }
 });

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { isActiveEvent } from '../lib/status';
 import WhatsAppAgentService, { CAMPAIGN_TONES, AUDIENCE_TAGS } from '../services/WhatsAppAgentService';
+import OpenClawBrainService from '../services/OpenClawBrainService';
 import {
     MessageSquare, Send, Sparkles, Calendar, Users, Share2, Copy, Check,
     Bot, CheckCircle2, Clock, Play, RefreshCw, Plus, Edit3, Trash2,
@@ -70,6 +71,13 @@ export default function WhatsAppAgent() {
     const [isGenerating, setIsGenerating] = useState(false);
     const [campaign, setCampaign] = useState(null);
     const [, setCampaignSource] = useState(null);
+    // Estado real de Gemini (no un texto fijo) y aviso cuando se usaron plantillas locales
+    const [geminiInfo, setGeminiInfo] = useState({ configured: false, active: false, model: null });
+    const [aiNotice, setAiNotice] = useState(null);
+    useEffect(() => { OpenClawBrainService.getGeminiStatus().then(setGeminiInfo); }, []);
+    const engineLabel = geminiInfo.active
+        ? `Gemini (${geminiInfo.model})`
+        : geminiInfo.configured ? 'Gemini con error → plantillas locales' : 'Plantillas locales (sin Gemini)';
 
     // ─── Active Tab State ───────────────────────────────────────
     const [activeTab, setActiveTab] = useState('schedule'); // 'schedule' | 'references' | 'vip_outreach' | 'groups' | 'simulator' | 'logs'
@@ -262,6 +270,9 @@ export default function WhatsAppAgent() {
             });
             if (result?.variations?.length > 0) {
                 setGeneratedRefVariations(result.variations);
+                setAiNotice(result.source === 'gemini' ? null
+                    : result.aiError ? `Gemini falló (${result.aiError.slice(0, 140)}); variaciones hechas con plantillas.`
+                    : result.geminiConfigured === false ? 'Sin clave de Gemini: variaciones hechas con plantillas locales.' : null);
                 if (addActivity) {
                     addActivity(`✨ Generadas 3 difusiones optimizadas para ${genDay} (${genVenue})`);
                 }
@@ -389,6 +400,10 @@ export default function WhatsAppAgent() {
             if (result.success && result.campaign) {
                 setCampaign(result.campaign);
                 setCampaignSource(result.source || 'ai');
+                setAiNotice(result.source === 'gemini' ? null
+                    : result.aiError ? `Gemini falló (${result.aiError.slice(0, 140)}); se usaron plantillas locales.`
+                    : result.geminiConfigured === false ? 'Sin clave de Gemini: campaña hecha con plantillas locales. Configúrala con la 🔑 del agente para copys con IA.'
+                    : result.source === 'local_cached' ? 'No se pudo contactar al servidor: se muestra la última campaña guardada.' : null);
                 if (result.campaign.weeklySchedule?.length > 0) {
                     setSimulatedDayId(result.campaign.weeklySchedule[0].id);
                 }
@@ -626,12 +641,17 @@ export default function WhatsAppAgent() {
                                     border: '1px solid rgba(37, 211, 102, 0.3)'
                                 }}>
                                     <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#25D366', boxShadow: '0 0 8px #25D366' }}></span>
-                                    ONLINE • Gemini 2.5 + Embedded Engine
+                                    ONLINE • {engineLabel}
                                 </span>
                             </div>
                             <p style={{ margin: '6px 0 0 0', color: 'var(--text-secondary)', fontSize: '14px', maxWidth: '780px' }}>
                                 Orquestador autónomo para la cartelera semanal de eventos. Redacta y despacha mensajes segmentados para clientes VIP, listas de invitados y grupos comunitarios de WhatsApp en 1-click.
                             </p>
+                            {aiNotice && (
+                                <div role="status" style={{ marginTop: '10px', padding: '8px 12px', borderRadius: '8px', fontSize: '12.5px', background: 'rgba(245, 158, 11, 0.12)', border: '1px solid rgba(245, 158, 11, 0.3)', color: 'var(--accent-orange)' }}>
+                                    ⚠️ {aiNotice}
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -2425,7 +2445,7 @@ export default function WhatsAppAgent() {
                         <div style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginBottom: '14px' }}>
                             <div>• Frecuencia: <strong>Semanal (Lunes 09:00 AM)</strong></div>
                             <div>• Estado: <strong style={{ color: '#25D366' }}>Ejecutando en background</strong></div>
-                            <div>• Modelo: <strong>Gemini 2.5 Flash</strong></div>
+                            <div>• Motor: <strong>{engineLabel}</strong></div>
                         </div>
 
                         <button

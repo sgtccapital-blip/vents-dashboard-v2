@@ -37,9 +37,10 @@ async function extractPdfText(buffer) {
 }
 import openCloudEngine from './src/services/openCloudEngine.js';
 import {
-    executeAgentAction, runLocalAgent, runGeminiAgent, searchKnowledge, getKnowledgeDoc, buildSystemPrompt, AGENT_ACTIONS, expandSlashCommand,
-    configuredGeminiModel, activeGeminiModel, resetGeminiModelCache,
+    executeAgentAction, runLocalAgent, TEAM_MEMBERS, runGeminiAgent, searchKnowledge, getKnowledgeDoc, buildSystemPrompt, AGENT_ACTIONS, expandSlashCommand,
+    configuredGeminiModel, activeGeminiModel, resetGeminiModelCache, transcribeAudio, generateGeminiJSON,
 } from './server/agent.js';
+import { ensureVapid, buildDailyBrief, buildEveningReminders, sendToUsers, todayIn } from './server/push.js';
 import { normalizeTaskStatus, normalizeEventStatus, TASK_STATUSES, EVENT_STATUSES } from './src/lib/status.js';
 
 dotenv.config();
@@ -51,6 +52,8 @@ const app = express();
 const PORT = process.env.PORT || 8090;
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'db.json');
 const SEED_PATH = path.join(__dirname, 'db.seed.json');
+// Zona horaria del negocio: los cron (lunes 9am, avisos) se programan en hora de Panamá, no en UTC del servidor
+const APP_TIMEZONE = process.env.APP_TIMEZONE || 'America/Panama';
 const VAULT_PATH = process.env.VAULT_PATH || path.join(__dirname, '_agent_inbox');
 
 // Ensure db.json exists immediately on startup
@@ -126,16 +129,33 @@ function safeEqual(a, b) {
     return crypto.timingSafeEqual(ha, hb);
 }
 
-function signSession(expiresAt) {
-    const sig = crypto.createHmac('sha256', SESSION_SECRET).update(String(expiresAt)).digest('hex');
-    return `${expiresAt}.${sig}`;
+// Contraseñas individuales opcionales: TEAM_PASSWORDS="GG:clave1,MARIO:clave2".
+// Quien no tenga una propia entra con DASHBOARD_PASSWORD.
+const TEAM_PASSWORDS = Object.fromEntries((process.env.TEAM_PASSWORDS || '')
+    .split(',').map(p => p.trim()).filter(Boolean)
+    .map(p => { const i = p.indexOf(':'); return [p.slice(0, i).trim().toUpperCase(), p.slice(i + 1)]; })
+    .filter(([u, pw]) => u && pw));
+
+function passwordMatches(user, password) {
+    if (TEAM_PASSWORDS[user]) return safeEqual(password, TEAM_PASSWORDS[user]);
+    return !!DASHBOARD_PASSWORD && safeEqual(password, DASHBOARD_PASSWORD);
 }
 
-function isValidSession(token) {
-    if (!token || !DASHBOARD_PASSWORD) return false;
-    const [expiresAt] = token.split('.');
-    if (!/^\d+$/.test(expiresAt) || Number(expiresAt) < Date.now()) return false;
-    return safeEqual(token, signSession(expiresAt));
+// Token de sesión: "<expira>.<usuario>.<firma>" (la firma cubre expiración y usuario)
+function signSession(expiresAt, user) {
+    const payload = `${expiresAt}.${user}`;
+    const sig = crypto.createHmac('sha256', SESSION_SECRET).update(payload).digest('hex');
+    return `${payload}.${sig}`;
+}
+
+/** Usuario de una sesión válida, o null. */
+function sessionUser(token) {
+    if (!token || !DASHBOARD_PASSWORD) return null;
+    const parts = token.split('.');
+    if (parts.length !== 3) return null; // sesiones antiguas sin usuario: se pide entrar de nuevo
+    const [expiresAt, user] = parts;
+    if (!/^\d+$/.test(expiresAt) || Number(expiresAt) < Date.now() || !TEAM_MEMBERS.includes(user)) return null;
+    return safeEqual(token, signSession(expiresAt, user)) ? user : null;
 }
 
 function readCookie(req, name) {
@@ -147,11 +167,13 @@ function readCookie(req, name) {
     return null;
 }
 
-function isAuthenticated(req) {
+/** Quién hace la petición: miembro del equipo (cookie), 'API' (token de agentes) o null. */
+function requestUser(req) {
     const bearer = (req.headers.authorization || '').match(/^Bearer\s+(.+)$/i)?.[1];
-    if (bearer && API_TOKEN && safeEqual(bearer, API_TOKEN)) return true;
-    return isValidSession(readCookie(req, SESSION_COOKIE));
+    if (bearer && API_TOKEN && safeEqual(bearer, API_TOKEN)) return 'API';
+    return sessionUser(readCookie(req, SESSION_COOKIE));
 }
+
 
 function sessionCookie(req, value, maxAgeMs) {
     const secure = req.secure ? '; Secure' : '';
@@ -174,13 +196,15 @@ function tooManyAttempts(ip) {
 app.post('/api/auth/login', (req, res) => {
     if (!DASHBOARD_PASSWORD) return res.status(503).json({ error: 'El servidor no tiene DASHBOARD_PASSWORD configurado.' });
     if (tooManyAttempts(req.ip)) return res.status(429).json({ error: 'Demasiados intentos. Espera unos minutos.' });
-    if (!safeEqual(req.body?.password || '', DASHBOARD_PASSWORD)) {
+    const user = String(req.body?.user || '').trim().toUpperCase();
+    if (!TEAM_MEMBERS.includes(user)) return res.status(400).json({ error: 'Elige quién eres' });
+    if (!passwordMatches(user, req.body?.password || '')) {
         loginAttempts.get(req.ip).push(Date.now());
         return res.status(401).json({ error: 'Contraseña incorrecta' });
     }
     loginAttempts.delete(req.ip);
-    res.setHeader('Set-Cookie', sessionCookie(req, signSession(Date.now() + SESSION_TTL_MS), SESSION_TTL_MS));
-    res.json({ authenticated: true });
+    res.setHeader('Set-Cookie', sessionCookie(req, signSession(Date.now() + SESSION_TTL_MS, user), SESSION_TTL_MS));
+    res.json({ authenticated: true, user });
 });
 
 app.post('/api/auth/logout', (req, res) => {
@@ -189,12 +213,30 @@ app.post('/api/auth/logout', (req, res) => {
 });
 
 app.get('/api/auth/session', (req, res) => {
-    res.json({ authenticated: isAuthenticated(req), configured: !!DASHBOARD_PASSWORD });
+    const user = requestUser(req);
+    res.json({
+        authenticated: !!user,
+        user,
+        configured: !!DASHBOARD_PASSWORD,
+        team: TEAM_MEMBERS,
+        personalPasswords: Object.keys(TEAM_PASSWORDS),
+    });
+});
+
+// Restaurar desde Supabase ANTES de atender la API: si no, tras un reinicio en Render los primeros
+// segundos se servían (y se podían editar) los datos de ejemplo del disco recién creado.
+// (Perezoso: se inicia en app.listen o en la primera petición, cuando el módulo ya cargó entero.)
+let supabaseReadyPromise = null;
+const supabaseReady = () => (supabaseReadyPromise ||= initSupabaseSync().catch(err => console.error('Supabase init:', err.message)));
+app.use('/api', (req, res, next) => {
+    if (req.path === '/health') return next();
+    supabaseReady().then(() => next());
 });
 
 app.use('/api', (req, res, next) => {
     if (PUBLIC_API_PREFIXES.some(p => req.originalUrl.startsWith(p))) return next();
-    if (isAuthenticated(req)) return next();
+    req.user = requestUser(req);
+    if (req.user) return next();
     res.status(401).json({ error: 'No autenticado' });
 });
 
@@ -512,12 +554,20 @@ function createCRUDRoutes(entityName) {
     router.post('/', (req, res) => {
         const db = readDB();
         const list = getCollection(db, entityName);
-        const newItem = validateEntity(entityName, { ...req.body, id: req.body?.id || newId(entityName) });
+        const createdBy = req.body?.createdBy || (req.user && req.user !== 'API' ? req.user : undefined);
+        const newItem = validateEntity(entityName, { ...req.body, id: req.body?.id || newId(entityName), ...(createdBy ? { createdBy } : {}), createdAt: req.body?.createdAt || new Date().toISOString() });
         if (list.some(i => i.id === newItem.id)) {
             return res.status(409).json({ error: `Ya existe un registro con id ${newItem.id}` });
         }
         list.push(newItem);
         writeDB(db);
+
+        // Avisar a quien le asignan una tarea (si se la asigna otra persona)
+        const assignee = entityName === 'tasks' && (newItem.assignee || newItem.assignedTo);
+        if (assignee && assignee !== req.user && TEAM_MEMBERS.includes(assignee)) {
+            pushToUsers([{ user: assignee, title: `${req.user && req.user !== 'API' ? req.user : 'OpenClaw'} te asignó una tarea`, body: `${newItem.text}${newItem.due ? ` · vence ${newItem.due}` : ''}`, url: '/workspace', tag: `task-${newItem.id}` }])
+                .catch(err => console.warn('[Push] asignación:', err.message));
+        }
 
         // Auto-Upsert
         const RAGEngine = req.app.get('ragEngine');
@@ -533,7 +583,19 @@ function createCRUDRoutes(entityName) {
         const idx = list.findIndex(i => i.id === req.params.id);
         if (idx === -1) return res.status(404).json({ error: `${entityName} not found` });
         const changes = validateEntity(entityName, { ...req.body }, list[idx]);
+        const wasDone = entityName === 'tasks' && normalizeTaskStatus(list[idx].status) === 'done';
         list[idx] = { ...list[idx], ...changes, id: list[idx].id };
+        if (entityName === 'tasks') {
+            // Registrar cuándo y quién la completó (alimenta "tareas completadas por semana")
+            const nowDone = normalizeTaskStatus(list[idx].status) === 'done' || (list[idx].status === undefined && list[idx].done);
+            if (nowDone && !wasDone) {
+                list[idx].completedAt = list[idx].completedAt || new Date().toISOString();
+                if (req.user && req.user !== 'API') list[idx].completedBy = req.user;
+            } else if (!nowDone && wasDone) {
+                delete list[idx].completedAt;
+                delete list[idx].completedBy;
+            }
+        }
         writeDB(db);
 
         // Auto-Upsert
@@ -850,7 +912,8 @@ app.post('/api/activity', (req, res) => {
     const newActivity = {
         id: `act-${Date.now()}`,
         timestamp: new Date().toISOString(),
-        ...req.body
+        ...req.body,
+        user: req.user && req.user !== 'API' ? req.user : (req.body?.user || null),
     };
     if (!db.activityFeed) db.activityFeed = [];
     db.activityFeed.unshift(newActivity);
@@ -1240,7 +1303,7 @@ app.post(['/api/openclaw/action', '/api/openclaw/webhook', '/api/hermes/action',
 
     const db = readDB();
     try {
-        const result = executeOpenClawAction(actionName, data, db);
+        const result = executeOpenClawAction(actionName, data, db, { user: req.user !== 'API' ? req.user : null });
         // 422: la acción se entendió pero no se pudo ejecutar (datos faltantes, tarea no encontrada…)
         return res.status(result.success ? 200 : 422).json({ status: result.success ? 'ok' : 'error', agent: 'OpenClaw Super Agent', action: actionName, result, error: result.success ? undefined : result.error });
     } catch (err) {
@@ -1250,8 +1313,8 @@ app.post(['/api/openclaw/action', '/api/openclaw/webhook', '/api/hermes/action',
 });
 
 // Ejecuta una acción del agente (implementación única en server/agent.js), la registra en el log y guarda.
-function executeOpenClawAction(actionName, data, db, { persist = true } = {}) {
-    const result = executeAgentAction(actionName, data, db);
+function executeOpenClawAction(actionName, data, db, { persist = true, user = null } = {}) {
+    const result = executeAgentAction(actionName, data, db, { user });
     db.openclawLogs = Array.isArray(db.openclawLogs) ? db.openclawLogs : [];
     db.openclawLogs.unshift({
         id: `olog-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -1408,7 +1471,8 @@ async function handleOpenClawChat(req, res) {
     const apiKey = geminiKeyFor(db);
 
     if (apiKey) {
-        const systemPrompt = buildSystemPrompt(db, { ragContext: rag.context, skills, systemRole });
+        const user = req.user && req.user !== 'API' ? req.user : null;
+        const systemPrompt = buildSystemPrompt(db, { ragContext: rag.context, skills, systemRole, user });
         const result = await runGeminiAgent({
             apiKey,
             model: db.openclawConfig?.model,
@@ -1417,11 +1481,13 @@ async function handleOpenClawChat(req, res) {
             prompt: geminiPrompt,
             db,
             namespace,
+            user,
             onError: (errors) => console.warn('[OpenClaw] Gemini no respondió:', errors.join(' | ')),
         });
         if (result?.executedTools?.length) {
             result.executedTools.forEach(t => logAgentTool(db, t));
             writeDB(db);
+            notifyAgentAssignments(result.executedTools, user);
         }
         if (result && !result.error) {
             lastGeminiError = null;
@@ -1441,10 +1507,11 @@ async function handleOpenClawChat(req, res) {
         }
     }
 
-    const local = runLocalAgent(text, db, { namespace });
+    const local = runLocalAgent(text, db, { namespace, user: req.user && req.user !== 'API' ? req.user : null });
     if (local.executedTools.length) {
         local.executedTools.forEach(t => logAgentTool(db, t));
         writeDB(db);
+        notifyAgentAssignments(local.executedTools, req.user !== 'API' ? req.user : null);
     }
     const warning = apiKey && lastGeminiError
         ? `\n\n_⚠️ Gemini no respondió (${lastGeminiError.message.slice(0, 140)}); respondí con el motor local._`
@@ -1459,6 +1526,20 @@ async function handleOpenClawChat(req, res) {
     });
 }
 
+// Si el agente creó tareas para otra persona, avisarle por push
+function notifyAgentAssignments(executedTools = [], actor) {
+    const messages = executedTools
+        .filter(t => t.name === 'add_task' && t.result?.success && t.result.task?.assignee && t.result.task.assignee !== actor)
+        .map(({ result: { task } }) => ({
+            user: task.assignee,
+            title: `${actor ? `${actor} (vía OpenClaw)` : 'OpenClaw'} te asignó una tarea`,
+            body: `${task.text}${task.due ? ` · vence ${task.due}` : ''}`,
+            url: '/workspace',
+            tag: `task-${task.id}`,
+        }));
+    if (messages.length) pushToUsers(messages).catch(err => console.warn('[Push] agente:', err.message));
+}
+
 // Registra en el log del agente las herramientas que ya ejecutó executeAgentAction
 function logAgentTool(db, { name, args, result }) {
     db.openclawLogs = Array.isArray(db.openclawLogs) ? db.openclawLogs : [];
@@ -1470,6 +1551,19 @@ function logAgentTool(db, { name, args, result }) {
     db.openclawLogs = db.openclawLogs.slice(0, 50);
     db.hermesLogs = db.openclawLogs;
 }
+
+// Nota de voz → texto (Gemini). El navegador luego envía el texto al chat como cualquier mensaje.
+app.post('/api/openclaw/transcribe', async (req, res) => {
+    const { audio, mimeType } = req.body || {};
+    if (!audio || typeof audio !== 'string') return res.status(400).json({ error: 'Falta el audio' });
+    if (audio.length > 9_000_000) return res.status(413).json({ error: 'La nota es muy larga (máx. ~5 minutos)' });
+    const db = readDB();
+    const apiKey = geminiKeyFor(db);
+    if (!apiKey) return res.status(503).json({ error: 'Para entender notas de voz hace falta una clave de Gemini (configúrala con la 🔑 del agente). Mientras tanto usa el dictado 🎤.' });
+    const result = await transcribeAudio({ apiKey, model: db.openclawConfig?.model, base64: audio, mimeType });
+    if (result.error) return res.status(502).json({ error: result.error });
+    res.json(result);
+});
 
 app.post('/api/openclaw/chat', handleOpenClawChat);
 app.post('/api/hermes/chat', handleOpenClawChat);
@@ -1727,7 +1821,7 @@ Sé claro, completo y usa markdown para formatear.`;
         let finalResult;
         try {
             const { GoogleGenAI } = await import('@google/genai');
-            const genai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+            const genai = new GoogleGenAI({ apiKey: geminiKeyFor(readDB()) });
             const response = await genai.models.generateContent({
                 model: modelId,
                 contents: fullPrompt,
@@ -1884,7 +1978,7 @@ app.post('/api/orch/chat', async (req, res) => {
         let aiText = '';
 
         try {
-            const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+            const genAI = new GoogleGenerativeAI(geminiKeyFor(readDB()));
             const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
             const db = readDB(); // Refresh DB context if needed
@@ -2184,6 +2278,89 @@ function updateEnvFile(url, key) {
 // ─── Supabase Sync & Config Endpoints ─────────────────────────
 
 // Get connection status and configuration
+// ─── Notificaciones push ──────────────────────────────────────
+function vapidKeys() {
+    const db = readDB();
+    const keys = ensureVapid(db);
+    if (keys.created) writeDB(db);
+    return keys;
+}
+
+async function pushToUsers(messages) {
+    if (!messages.length) return { sent: 0, removed: 0 };
+    const keys = vapidKeys();
+    const db = readDB();
+    const result = await sendToUsers(db, messages, keys);
+    if (result.removed) writeDB(db);
+    return result;
+}
+
+app.get('/api/push/public-key', (req, res) => {
+    res.json({ publicKey: vapidKeys().publicKey });
+});
+
+app.post('/api/push/subscribe', (req, res) => {
+    const subscription = req.body?.subscription;
+    if (!subscription?.endpoint || !subscription?.keys?.p256dh) return res.status(400).json({ error: 'Suscripción inválida' });
+    if (!req.user || req.user === 'API') return res.status(403).json({ error: 'Inicia sesión como miembro del equipo' });
+    const db = readDB();
+    db.pushSubscriptions = (db.pushSubscriptions || []).filter(s => s.subscription.endpoint !== subscription.endpoint);
+    db.pushSubscriptions.push({ user: req.user, subscription, userAgent: String(req.headers['user-agent'] || '').slice(0, 120), createdAt: new Date().toISOString() });
+    writeDB(db);
+    res.json({ success: true, user: req.user });
+});
+
+app.post('/api/push/unsubscribe', (req, res) => {
+    const endpoint = req.body?.endpoint;
+    const db = readDB();
+    db.pushSubscriptions = (db.pushSubscriptions || []).filter(s => s.subscription.endpoint !== endpoint);
+    writeDB(db);
+    res.json({ success: true });
+});
+
+app.post('/api/push/test', async (req, res) => {
+    if (!req.user || req.user === 'API') return res.status(403).json({ error: 'Inicia sesión como miembro del equipo' });
+    const result = await pushToUsers([{ user: req.user, title: '🔔 Notificaciones activas', body: `Listo, ${req.user}. Te avisaré de tus tareas y eventos.`, url: '/' }]);
+    res.json(result);
+});
+
+// ─── Respaldo completo (descargar / restaurar) ────────────────
+// Las claves (Gemini, push, etc.) nunca salen en el respaldo.
+const SECRET_PATHS = [['openclawConfig', 'geminiApiKey'], ['openclawConfig', 'apiKey'], ['hermesConfig', 'geminiApiKey'], ['hermesConfig', 'apiKey'], ['pushConfig', 'privateKey']];
+
+function stripSecrets(data) {
+    const copy = JSON.parse(JSON.stringify(data));
+    for (const [obj, key] of SECRET_PATHS) if (copy[obj]) delete copy[obj][key];
+    delete copy._syncRev;
+    return copy;
+}
+
+app.get('/api/backup', (req, res) => {
+    const data = stripSecrets(readDB());
+    const stamp = new Date().toISOString().slice(0, 10);
+    res.setHeader('Content-Disposition', `attachment; filename="command-center-respaldo-${stamp}.json"`);
+    res.json({ ...data, _backup: { createdAt: new Date().toISOString(), app: 'command-center', version: 1 } });
+});
+
+app.post('/api/backup/restore', (req, res) => {
+    const incoming = req.body;
+    if (!incoming || typeof incoming !== 'object' || Array.isArray(incoming) || !hasContent(incoming)) {
+        return res.status(400).json({ error: 'El archivo no parece un respaldo válido (no tiene eventos, tareas, contactos ni proyectos).' });
+    }
+    const current = readDB();
+    lastBackupAt = 0;
+    backupDBFile(); // copia de seguridad de lo actual antes de reemplazar
+    const restored = { ...incoming };
+    delete restored._backup; // metadatos del archivo, no se guardan
+    delete restored._syncRev;
+    // Conservar las claves actuales (el respaldo no las trae)
+    for (const [obj, key] of SECRET_PATHS) {
+        if (current[obj]?.[key]) restored[obj] = { ...(restored[obj] || {}), [key]: current[obj][key] };
+    }
+    writeDB(restored);
+    res.json({ success: true, counts: ['events', 'tasks', 'projects', 'contacts', 'notes'].reduce((acc, k) => ({ ...acc, [k]: (restored[k] || []).length }), {}) });
+});
+
 app.get('/api/supabase/status', async (req, res) => {
     const isConfigured = SUPABASE_URL && SUPABASE_KEY && 
                         !SUPABASE_URL.includes('tu-proyecto') && 
@@ -2943,31 +3120,31 @@ function generateLocalWhatsAppCampaign(events, start, end, tone = 'nightlife_vip
 }
 
 // Generate campaign endpoint
-app.post('/api/agent/whatsapp-campaign/generate', async (req, res) => {
-    try {
-        const { weekOffset = 0, startDate, endDate, tone = 'nightlife_vip', customInstructions = '' } = req.body;
-        const db = readDB();
-        const { events, start, end } = getWeekEventsForBroadcast(db, parseInt(weekOffset) || 0, startDate, endDate);
+// Genera (y guarda) la campaña semanal: Gemini si hay clave, si no el generador local.
+// La usan el botón "Generar" y el cron de los lunes.
+async function generateWeeklyCampaign({ weekOffset = 0, startDate, endDate, tone = 'nightlife_vip', customInstructions = '' } = {}) {
+    const db = readDB();
+    const { events, start, end } = getWeekEventsForBroadcast(db, parseInt(weekOffset) || 0, startDate, endDate);
 
-        // Try AI generation with Gemini if configured
-        if (process.env.GEMINI_API_KEY) {
-            try {
-                console.log(`[WhatsAppAgent] Generando campaña con Gemini para ${events.length} eventos (Semana ${start.toISOString().split('T')[0]})...`);
-                const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-                const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    // Gemini (clave del entorno o del dashboard, mismos modelos que el agente); si falla, generador local
+    const apiKey = geminiKeyFor(db);
+    let aiError = null;
+    if (apiKey) {
+        try {
+            console.log(`[WhatsAppAgent] Generando campaña con Gemini para ${events.length} eventos (Semana ${start.toISOString().split('T')[0]})...`);
 
-                const eventsContext = events.map(e => ({
-                    nombre: e.name,
-                    fecha: e.activeDate || e.date,
-                    lugar: e.location,
-                    tipo: e.type,
-                    descripcion: e.description,
-                    artistas: e.instances?.[0]?.artists?.map(a => a.name) || [],
-                    mesas: e.tables?.length || 0,
-                    promos: e.instances?.[0]?.checklist?.promo || []
-                }));
+            const eventsContext = events.map(e => ({
+                nombre: e.name,
+                fecha: e.activeDate || e.date,
+                lugar: e.location,
+                tipo: e.type,
+                descripcion: e.description,
+                artistas: e.instances?.[0]?.artists?.map(a => a.name) || [],
+                mesas: e.tables?.length || 0,
+                promos: e.instances?.[0]?.checklist?.promo || []
+            }));
 
-                const prompt = `Eres "Pulse", el agente de inteligencia artificial especializado en comunicación, difusión de eventos y Community Management de WhatsApp para centros nocturnos, eventos masivos (Casco Peatonal) y hospitalidad VIP en Panamá.
+            const prompt = `Eres "Pulse", el agente de inteligencia artificial especializado en comunicación, difusión de eventos y Community Management de WhatsApp para centros nocturnos, eventos masivos (Casco Peatonal) y hospitalidad VIP en Panamá.
 
 Tus tareas son:
 1. Analizar los siguientes eventos programados para la semana del ${start.toISOString().split('T')[0]} al ${end.toISOString().split('T')[0]}:
@@ -2983,103 +3160,103 @@ Devuelve ÚNICAMENTE un objeto JSON con este formato exacto:
 {
   "summary": "Resumen ejecutivo de la estrategia de la semana",
   "weeklySchedule": [
-    {
-      "id": "sch-1",
-      "day": "Lunes",
-      "date": "${start.toISOString().split('T')[0]}",
-      "title": "Título de la publicación del día",
-      "type": "Cartelera Semanal",
-      "targetAudience": "Grupos de WhatsApp & Comunidades",
-      "status": "ready",
-      "whatsappCopy": "Texto formateado para WhatsApp con emojis y *negrita* listo para enviar..."
-    }
-    // ... genera exactamente los 7 días de Lunes a Domingo
+{
+  "id": "sch-1",
+  "day": "Lunes",
+  "date": "${start.toISOString().split('T')[0]}",
+  "title": "Título de la publicación del día",
+  "type": "Cartelera Semanal",
+  "targetAudience": "Grupos de WhatsApp & Comunidades",
+  "status": "ready",
+  "whatsappCopy": "Texto formateado para WhatsApp con emojis y *negrita* listo para enviar..."
+}
+// ... genera exactamente los 7 días de Lunes a Domingo
   ],
   "vipDirectMessages": [
-    {
-      "id": "vip-1",
-      "audience": "Clientes VIP Mesas",
-      "title": "Invitación Personalizada de Mesa",
-      "whatsappCopy": "Mensaje 1 a 1 usando {{nombre}} para personalizar..."
-    },
-    {
-      "id": "vip-2",
-      "audience": "Invitados Listas Free / Chicas",
-      "title": "Acceso Free Pass",
-      "whatsappCopy": "Mensaje para invitar a listas..."
-    },
-    {
-      "id": "vip-3",
-      "audience": "Promotores & RRPP",
-      "title": "Directiva de Ventas",
-      "whatsappCopy": "Mensaje con metas para promotores..."
-    }
+{
+  "id": "vip-1",
+  "audience": "Clientes VIP Mesas",
+  "title": "Invitación Personalizada de Mesa",
+  "whatsappCopy": "Mensaje 1 a 1 usando {{nombre}} para personalizar..."
+},
+{
+  "id": "vip-2",
+  "audience": "Invitados Listas Free / Chicas",
+  "title": "Acceso Free Pass",
+  "whatsappCopy": "Mensaje para invitar a listas..."
+},
+{
+  "id": "vip-3",
+  "audience": "Promotores & RRPP",
+  "title": "Directiva de Ventas",
+  "whatsappCopy": "Mensaje con metas para promotores..."
+}
   ],
   "communityBroadcasts": [
-    {
-      "id": "cb-1",
-      "groupCategory": "VIP & Clientes Frecuentes",
-      "title": "Anuncio Exclusivo para Comunidad VIP",
-      "whatsappCopy": "Texto de broadcast para comunidad VIP..."
-    },
-    {
-      "id": "cb-2",
-      "groupCategory": "Comunidad General",
-      "title": "Cartelera General para Canales de WhatsApp",
-      "whatsappCopy": "Texto de broadcast para todos los grupos..."
-    }
+{
+  "id": "cb-1",
+  "groupCategory": "VIP & Clientes Frecuentes",
+  "title": "Anuncio Exclusivo para Comunidad VIP",
+  "whatsappCopy": "Texto de broadcast para comunidad VIP..."
+},
+{
+  "id": "cb-2",
+  "groupCategory": "Comunidad General",
+  "title": "Cartelera General para Canales de WhatsApp",
+  "whatsappCopy": "Texto de broadcast para todos los grupos..."
+}
   ]
 }`;
 
-                const result = await model.generateContent(prompt);
-                const text = result.response.text();
-                
-                // Parse JSON
-                let parsed = null;
-                const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-                if (jsonMatch) {
-                    parsed = JSON.parse(jsonMatch[1]);
-                } else {
-                    parsed = JSON.parse(text);
-                }
+            const ai = await generateGeminiJSON({ apiKey, model: db.openclawConfig?.model, prompt });
+            if (ai.error) throw new Error(ai.error);
+            const parsed = ai.data;
 
-                if (parsed && parsed.weeklySchedule) {
-                    const campaign = {
-                        id: `camp-${Date.now()}`,
-                        name: `Campaña IA Semanal (${start.toISOString().split('T')[0]} al ${end.toISOString().split('T')[0]})`,
-                        startDate: start.toISOString().split('T')[0],
-                        endDate: end.toISOString().split('T')[0],
-                        tone,
-                        customInstructions,
-                        summary: parsed.summary || 'Campaña generada con Gemini 2.5',
-                        weeklySchedule: parsed.weeklySchedule,
-                        vipDirectMessages: parsed.vipDirectMessages || [],
-                        communityBroadcasts: parsed.communityBroadcasts || [],
-                        createdAt: new Date().toISOString(),
-                        model: 'gemini-2.5-flash'
-                    };
+            if (parsed && Array.isArray(parsed.weeklySchedule)) {
+                const campaign = {
+                    id: `camp-${Date.now()}`,
+                    name: `Campaña IA Semanal (${start.toISOString().split('T')[0]} al ${end.toISOString().split('T')[0]})`,
+                    startDate: start.toISOString().split('T')[0],
+                    endDate: end.toISOString().split('T')[0],
+                    tone,
+                    customInstructions,
+                    summary: parsed.summary || `Campaña generada con ${ai.model}`,
+                    weeklySchedule: parsed.weeklySchedule,
+                    vipDirectMessages: parsed.vipDirectMessages || [],
+                    communityBroadcasts: parsed.communityBroadcasts || [],
+                    createdAt: new Date().toISOString(),
+                    model: ai.model
+                };
 
-                    // Guardar automáticamente en db
-                    if (!db.whatsappCampaigns) db.whatsappCampaigns = [];
-                    db.whatsappCampaigns.unshift(campaign);
-                    db.whatsappCampaigns = db.whatsappCampaigns.slice(0, 10);
-                    writeDB(db);
+                // Guardar automáticamente en db
+                if (!db.whatsappCampaigns) db.whatsappCampaigns = [];
+                db.whatsappCampaigns.unshift(campaign);
+                db.whatsappCampaigns = db.whatsappCampaigns.slice(0, 10);
+                writeDB(db);
 
-                    return res.json({ success: true, campaign, eventsCount: events.length, source: 'gemini' });
-                }
-            } catch (aiErr) {
-                console.warn('[WhatsAppAgent] Error con Gemini, recurriendo a generador determinístico:', aiErr.message);
+                return { campaign, eventsCount: events.length, source: 'gemini', model: ai.model };
             }
+            throw new Error('Gemini no devolvió el formato esperado');
+        } catch (aiErr) {
+            aiError = aiErr.message;
+            console.warn('[WhatsAppAgent] Error con Gemini, recurriendo a generador determinístico:', aiErr.message);
         }
+    }
 
-        // Local deterministic fallback
-        const localCampaign = generateLocalWhatsAppCampaign(events, start, end, tone, customInstructions);
-        if (!db.whatsappCampaigns) db.whatsappCampaigns = [];
-        db.whatsappCampaigns.unshift(localCampaign);
-        db.whatsappCampaigns = db.whatsappCampaigns.slice(0, 10);
-        writeDB(db);
+    // Local deterministic fallback
+    const localCampaign = generateLocalWhatsAppCampaign(events, start, end, tone, customInstructions);
+    if (!db.whatsappCampaigns) db.whatsappCampaigns = [];
+    db.whatsappCampaigns.unshift(localCampaign);
+    db.whatsappCampaigns = db.whatsappCampaigns.slice(0, 10);
+    writeDB(db);
 
-        res.json({ success: true, campaign: localCampaign, eventsCount: events.length, source: 'local_engine' });
+    return { campaign: localCampaign, eventsCount: events.length, source: 'local_engine', aiError, geminiConfigured: !!apiKey };
+}
+
+app.post('/api/agent/whatsapp-campaign/generate', async (req, res) => {
+    try {
+        const result = await generateWeeklyCampaign(req.body || {});
+        res.json({ success: true, ...result });
     } catch (err) {
         console.error('[WhatsAppAgent] Error en generate:', err);
         res.status(500).json({ error: err.message });
@@ -3329,12 +3506,12 @@ app.post('/api/agent/whatsapp-references/generate', async (req, res) => {
         else if (objective === 'hombres_sushi_party') objectiveDesc = 'Vender paquetes de Sushi Party, reservas de mesas VIP, botellas y consumo para hombres/grupos.';
         else if (objective === 'spam_tickets') objectiveDesc = 'Difusión masiva directa para venta de tickets, preventas, enlaces de compra y accesos al evento.';
 
-        const apiKey = process.env.GEMINI_API_KEY || '';
+        const db = readDB();
+        const apiKey = geminiKeyFor(db);
+        let aiError = null;
         if (apiKey) {
             try {
-                const genAI = new GoogleGenerativeAI(apiKey);
-                const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-                
+
                 const prompt = `Eres el redactor maestro de WhatsApp y Community Manager de ARRIVE Agency para centros nocturnos y rooftops en Panamá (Furia, Terraplén Rooftop, Piano Bar).
                 
 OBJETIVO:
@@ -3380,14 +3557,14 @@ Devuelve ÚNICAMENTE un objeto JSON estrictamente válido en este formato exacto
   ]
 }`;
                 
-                const aiRes = await model.generateContent(prompt);
-                const text = aiRes.response.text();
-                const match = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-                const parsed = JSON.parse(match ? match[1] : text);
-                if (parsed.variations && parsed.variations.length > 0) {
-                    return res.json({ success: true, variations: parsed.variations, source: 'gemini' });
+                const ai = await generateGeminiJSON({ apiKey, model: db.openclawConfig?.model, prompt });
+                if (ai.error) throw new Error(ai.error);
+                if (Array.isArray(ai.data?.variations) && ai.data.variations.length > 0) {
+                    return res.json({ success: true, variations: ai.data.variations, source: 'gemini', model: ai.model });
                 }
+                throw new Error('Gemini no devolvió variaciones');
             } catch (err) {
+                aiError = err.message;
                 console.warn('[WhatsAppReferences] Error en IA Gemini, usando fallback determinístico:', err.message);
             }
         }
@@ -3412,7 +3589,7 @@ Devuelve ÚNICAMENTE un objeto JSON estrictamente válido en este formato exacto
             }
         ];
         
-        res.json({ success: true, variations, source: 'deterministic' });
+        res.json({ success: true, variations, source: 'deterministic', aiError, geminiConfigured: !!apiKey });
     } catch (err) {
         console.error('[WhatsAppReferences] Error general en generación:', err);
         res.status(500).json({ error: err.message });
@@ -3424,13 +3601,8 @@ try {
     cron.schedule('0 9 * * 1', async () => {
         console.log('\n⏰ [Pulse WhatsApp Agent] Ejecutando compilación semanal programada (Lunes 09:00 AM)...');
         try {
+            const { campaign, eventsCount, source } = await generateWeeklyCampaign({ weekOffset: 0 });
             const db = readDB();
-            const { events, start, end } = getWeekEventsForBroadcast(db, 0);
-            const campaign = generateLocalWhatsAppCampaign(events, start, end);
-            
-            if (!db.whatsappCampaigns) db.whatsappCampaigns = [];
-            db.whatsappCampaigns.unshift(campaign);
-            
             if (!db.whatsappLogs) db.whatsappLogs = [];
             db.whatsappLogs.unshift({
                 id: `wlog-cron-${Date.now()}`,
@@ -3439,15 +3611,28 @@ try {
                 channel: 'agent_cron',
                 timestamp: new Date().toISOString(),
                 status: 'ready',
-                copyPreview: `Campaña semanal compilada automáticamente para ${events.length} eventos.`
+                copyPreview: `Campaña "${campaign.name}" (${source === 'gemini' ? 'Gemini' : 'plantillas locales'}) para ${eventsCount} eventos.`
             });
-
             writeDB(db);
-            console.log(`✅ [Pulse WhatsApp Agent] Campaña semanal compilada para ${events.length} eventos.`);
+            console.log(`✅ [Pulse WhatsApp Agent] Campaña semanal compilada (${source}) para ${eventsCount} eventos.`);
         } catch (cronErr) {
             console.error('❌ [Pulse WhatsApp Agent] Error en cron semanal:', cronErr.message);
         }
-    });
+    }, { timezone: APP_TIMEZONE });
+
+    // Resumen de la mañana (8:00) y recordatorio de eventos de mañana (18:00), hora de Panamá
+    cron.schedule('0 8 * * *', async () => {
+        try {
+            const r = await pushToUsers(buildDailyBrief(readDB(), todayIn(APP_TIMEZONE)));
+            console.log(`🔔 [Push] Resumen diario enviado (${r.sent})`);
+        } catch (err) { console.error('[Push] resumen diario:', err.message); }
+    }, { timezone: APP_TIMEZONE });
+    cron.schedule('0 18 * * *', async () => {
+        try {
+            const r = await pushToUsers(buildEveningReminders(readDB(), todayIn(APP_TIMEZONE)));
+            if (r.sent) console.log(`🔔 [Push] Recordatorio de eventos enviado (${r.sent})`);
+        } catch (err) { console.error('[Push] recordatorio:', err.message); }
+    }, { timezone: APP_TIMEZONE });
 } catch (e) {
     console.warn('[Cron] No se pudo inicializar cron job:', e.message);
 }
@@ -3487,14 +3672,23 @@ app.use((err, req, res, next) => {
 
 // ─── Start ────────────────────────────────────────────────────
 
+// Mantener despierto el plan gratis de Render: se hace ping a la URL pública cada 10 min
+// (solo si KEEP_ALIVE=true y Render da RENDER_EXTERNAL_URL). Con un plan pago no hace falta.
+if (process.env.KEEP_ALIVE === 'true' && process.env.RENDER_EXTERNAL_URL) {
+    setInterval(() => {
+        fetch(`${process.env.RENDER_EXTERNAL_URL.replace(/\/$/, '')}/api/health`).catch(() => {});
+    }, 10 * 60 * 1000).unref();
+    console.log('   ⏰ Keep-alive activo: ping cada 10 min a', process.env.RENDER_EXTERNAL_URL);
+}
+
 app.listen(PORT, '0.0.0.0', async () => {
     console.log(`\n⚡ Command Center API & Frontend running on http://localhost:${PORT}`);
     console.log(`   Health: http://localhost:${PORT}/api/health`);
     console.log(`   OpenClaw Chat Proxy: POST http://localhost:${PORT}/api/openclaw/chat`);
     console.log(`   OpenClaw Health: GET http://localhost:${PORT}/api/openclaw/health`);
     
-    // Sincronizar datos con Supabase antes de cualquier consulta RAG o peticiones de clientes
-    await initSupabaseSync();
+    // La restauración desde Supabase arrancó al cargar el módulo; las peticiones /api la esperan
+    await supabaseReady();
     
     // Initialize db.json if it doesn't exist
     if (!fs.existsSync(DB_PATH)) {

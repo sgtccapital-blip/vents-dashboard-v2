@@ -202,10 +202,11 @@ export default function DashboardCopilot() {
             };
 
             mediaRecorder.onstop = () => {
-                const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+                // iPhone graba en audio/mp4 y Chrome en audio/webm: usar el formato real
+                const audioBlob = new Blob(audioChunksRef.current, { type: mediaRecorder.mimeType || 'audio/webm' });
                 const audioUrl = URL.createObjectURL(audioBlob);
                 stream.getTracks().forEach(track => track.stop());
-                handleSendVoiceNote(audioUrl, currentNoteTranscriptRef.current);
+                handleSendVoiceNote(audioUrl, currentNoteTranscriptRef.current, audioBlob);
             };
 
             mediaRecorder.start();
@@ -278,35 +279,41 @@ export default function DashboardCopilot() {
     };
 
     // Process Voice Note message
-    const handleSendVoiceNote = (audioUrl, transcript) => {
+    const handleSendVoiceNote = async (audioUrl, transcript, audioBlob) => {
         const cleanTranscript = (transcript || '').trim();
         const durationFormatted = `${Math.floor(recordDuration / 60)}:${(recordDuration % 60).toString().padStart(2, '0')}`;
+        const noteId = `vn-${Date.now()}`;
 
-        const userMsg = {
-            id: `vn-${Date.now()}`,
+        setMessages(prev => [...prev, {
+            id: noteId,
             role: 'user',
             type: 'voice_note',
             audioUrl,
             duration: durationFormatted,
-            text: cleanTranscript || '(Nota de voz enviada)',
+            text: cleanTranscript || '🎙️ Transcribiendo nota de voz…',
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        };
+        }]);
 
-        setMessages(prev => [...prev, userMsg]);
-
+        // 1) El navegador ya la transcribió mientras grababas
         if (cleanTranscript) {
             executeSuperAgentPipeline(cleanTranscript);
-        } else {
-            setTimeout(() => {
-                const replyText = `🎙️ He recibido tu nota de voz (${durationFormatted}). Puedes dictarme una instrucción con el micrófono o escribirla.`;
-                setMessages(prev => [...prev, {
-                    id: `bot-${Date.now()}`,
-                    role: 'copilot',
-                    text: replyText,
-                    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                }]);
-                speakText(replyText);
-            }, 600);
+            return;
+        }
+
+        // 2) Si no, la transcribe Gemini en el servidor
+        try {
+            if (!audioBlob || audioBlob.size === 0) throw new Error('La grabación quedó vacía.');
+            const text = await OpenClawBrainService.transcribeAudio(audioBlob);
+            setMessages(prev => prev.map(m => m.id === noteId ? { ...m, text } : m));
+            executeSuperAgentPipeline(text);
+        } catch (err) {
+            setMessages(prev => prev.map(m => m.id === noteId ? { ...m, text: '🎙️ Nota de voz' } : m).concat({
+                id: `bot-${Date.now()}`,
+                role: 'copilot',
+                text: `⚠️ No pude transcribir la nota de voz: ${err.message}`,
+                error: true,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            }));
         }
     };
 
