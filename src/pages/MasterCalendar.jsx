@@ -149,25 +149,71 @@ export default function MasterCalendar() {
         }
     }, [gcalToken, daysToDisplay, fetchGoogleCalendarEvents]);
 
+    const [selectedDivision, setSelectedDivision] = useState('all'); // 'all', 'nightlife', 'services', 'talent', 'content'
+
     // Merge and map all items to their dates
     const unifiedItems = useMemo(() => {
         const items = [];
 
         tasks.forEach(t => {
-            const dueDate = parseDueDate(t.due);
+            const dueDate = parseDueDate(t.due || t.dueDate);
             if (!dueDate) return;
+
+            const text = t.title || t.text || 'Tarea sin título';
+            const lowerText = text.toLowerCase();
+            const lowerVenue = (t.venue || '').toLowerCase();
+            const lowerTag = (t.tag || '').toLowerCase();
+
+            // 1. Resolve division with smart normalization
+            let div = t.division;
+            if (div === 'models' || div === 'talento') div = 'talent';
+            if (div === 'studio') {
+                if (lowerVenue.includes('podcast') || lowerText.includes('podcast') || lowerTag.includes('podcast')) {
+                    div = 'services';
+                } else {
+                    div = 'content';
+                }
+            }
+
+            if (!div || div === 'all') {
+                if (lowerVenue.includes('boda') || lowerVenue.includes('wedding') || lowerText.includes('boda') || lowerText.includes('wedding')) {
+                    div = 'services';
+                } else if (lowerVenue.includes('podcast') || lowerText.includes('podcast') || lowerTag.includes('podcast')) {
+                    div = 'services';
+                } else if (lowerText.includes('modelo') || lowerText.includes('cena') || lowerText.includes('image girl') || lowerText.includes('promotor') || lowerTag.includes('talent')) {
+                    div = 'talent';
+                } else if (lowerText.includes('reel') || lowerText.includes('post') || lowerText.includes('tiktok') || lowerText.includes('diseño') || lowerTag.includes('rrss') || lowerTag.includes('redes') || lowerText.includes('edición') || lowerText.includes('producción')) {
+                    div = 'content';
+                } else {
+                    div = 'nightlife';
+                }
+            }
+
+            // 2. Resolve assignee
+            const rawAssignee = t.assignee || t.assignedTo || '';
+            const cleanAssignee = rawAssignee.replace(/\s*\([^)]*\)/, '').trim();
+
             items.push({
                 id: `task-${t.id}`,
                 type: 'task',
-                title: t.text,
+                title: text,
                 dateObj: dueDate,
                 done: t.done,
                 priority: t.priority || 'medium',
+                division: div,
+                venue: t.venue || '',
+                assignee: cleanAssignee,
                 fullItem: t
             });
         });
 
         (events || []).forEach(e => {
+            const eName = (e.name || '').toLowerCase();
+            let div = 'nightlife';
+            if (eName.includes('boda') || eName.includes('wedding')) div = 'services';
+            else if (eName.includes('podcast')) div = 'services';
+            else if (eName.includes('cena') || eName.includes('modelo') || eName.includes('chicas')) div = 'talent';
+
             // 1. Map all instances of recurring events / venues
             if (e.instances && Array.isArray(e.instances)) {
                 e.instances.forEach(inst => {
@@ -177,6 +223,8 @@ export default function MasterCalendar() {
                             id: `evt-inst-${inst.id || Math.random()}`,
                             eventId: e.id,
                             type: 'event',
+                            division: div,
+                            venue: e.name,
                             title: `${e.icon || '🍸'} ${e.name}: ${inst.name || inst.day || ''}`.trim(),
                             dateObj: evtDate,
                             color: e.color || '#ef4444',
@@ -195,6 +243,8 @@ export default function MasterCalendar() {
                         id: `evt-${e.id}`,
                         eventId: e.id,
                         type: 'event',
+                        division: div,
+                        venue: e.name,
                         title: `${e.icon || '📅'} ${e.name}`,
                         dateObj: evtDate,
                         color: e.color || '#10b981',
@@ -212,6 +262,8 @@ export default function MasterCalendar() {
                             id: `evt-ag-${ag.id || Math.random()}`,
                             eventId: e.id,
                             type: 'agenda',
+                            division: div,
+                            venue: e.name,
                             title: `⏱️ ${e.name}: ${ag.title || ag.name || 'Actividad'}`,
                             dateObj: agDate,
                             color: e.color || '#8b5cf6',
@@ -227,6 +279,7 @@ export default function MasterCalendar() {
             items.push({
                 id: `content-${c.id}`,
                 type: 'content',
+                division: 'content',
                 title: `${c.contentType} - ${c.topic || 'Sin tema'}`,
                 dateObj: contentDate,
                 status: c.status,
@@ -238,6 +291,7 @@ export default function MasterCalendar() {
             items.push({
                 id: g.id,
                 type: 'google-event',
+                division: 'all',
                 title: g.title,
                 dateObj: evtDate,
                 color: '#4285f4',
@@ -247,6 +301,25 @@ export default function MasterCalendar() {
 
         return items;
     }, [tasks, events, contentEntries, googleCalendarEvents]);
+
+    const filteredItems = useMemo(() => {
+        if (selectedDivision === 'all') return unifiedItems;
+        return unifiedItems.filter(item => {
+            if (item.type === 'google-event') return true;
+            return item.division === selectedDivision;
+        });
+    }, [unifiedItems, selectedDivision]);
+
+    // Live count of deliverables per division
+    const divisionCounts = useMemo(() => {
+        const counts = { all: unifiedItems.length, nightlife: 0, services: 0, talent: 0, content: 0 };
+        unifiedItems.forEach(item => {
+            if (item.division && counts[item.division] !== undefined) {
+                counts[item.division]++;
+            }
+        });
+        return counts;
+    }, [unifiedItems]);
 
     // MAIN ARROWS ALWAYS JUMP BY MONTH
     const prevMonth = () => {
@@ -304,10 +377,10 @@ export default function MasterCalendar() {
     const visibleItemsCount = useMemo(() => {
         let count = 0;
         daysToDisplay.forEach(day => {
-            if (day) count += unifiedItems.filter(i => isSameDay(i.dateObj, day)).length;
+            if (day) count += filteredItems.filter(i => isSameDay(i.dateObj, day)).length;
         });
         return count;
-    }, [daysToDisplay, unifiedItems]);
+    }, [daysToDisplay, filteredItems]);
 
     const PRIORITY_BG = { 'critical': 'rgba(239,68,68,0.25)', 'high': 'rgba(239,68,68,0.15)', 'medium': 'rgba(99,102,241,0.15)', 'low': 'rgba(34,197,94,0.15)' };
     const PRIORITY_BORDER = { 'critical': 'rgba(239,68,68,0.5)', 'high': 'rgba(239,68,68,0.3)', 'medium': 'rgba(99,102,241,0.3)', 'low': 'rgba(34,197,94,0.3)' };
@@ -419,6 +492,56 @@ export default function MasterCalendar() {
                     </div>
                 </div>
 
+                {/* Agency Division Filter Bar */}
+                <div className="calendar-division-bar" style={{ padding: '8px 24px', background: 'rgba(255, 255, 255, 0.02)', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flexShrink: 0 }}>
+                    <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)', marginRight: '4px' }}>
+                        División:
+                    </span>
+                    {[
+                        { id: 'all', label: 'Todo el Ecosistema', icon: '🌐' },
+                        { id: 'nightlife', label: 'Nightlife Venues', icon: '🍸' },
+                        { id: 'services', label: 'Bodas & Podcast', icon: '🎙️' },
+                        { id: 'talent', label: 'ARRIVE Models & Talento', icon: '👑' },
+                        { id: 'content', label: 'Social Media RRSS', icon: '📱' },
+                    ].map(div => {
+                        const active = selectedDivision === div.id;
+                        const count = divisionCounts[div.id] || 0;
+                        return (
+                            <button
+                                key={div.id}
+                                onClick={() => setSelectedDivision(div.id)}
+                                style={{
+                                    padding: '5px 12px',
+                                    borderRadius: '7px',
+                                    fontSize: '11.5px',
+                                    fontWeight: active ? 700 : 500,
+                                    border: active ? '1px solid var(--accent-primary)' : '1px solid var(--border-subtle)',
+                                    background: active ? 'rgba(99,102,241,0.18)' : 'var(--bg-canvas)',
+                                    color: active ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    transition: 'all 0.15s ease'
+                                }}
+                            >
+                                <span>{div.icon}</span>
+                                <span>{div.label}</span>
+                                <span style={{
+                                    fontSize: '10px',
+                                    padding: '1px 6px',
+                                    borderRadius: '10px',
+                                    background: active ? 'var(--accent-primary)' : 'rgba(255, 255, 255, 0.08)',
+                                    color: active ? '#ffffff' : 'var(--text-tertiary)',
+                                    fontWeight: 700
+                                }}>
+                                    {count}
+                                </span>
+                            </button>
+                        );
+                    })}
+                </div>
+
                 {/* Filters / Legend */}
                 <div className="calendar-legend-bar" style={{ padding: '8px 24px', background: 'var(--bg-canvas)', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: '16px', fontSize: '11px', fontWeight: 600, flexShrink: 0 }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><CheckSquare size={14} color="var(--accent-primary)" /> Tareas</span>
@@ -503,7 +626,7 @@ export default function MasterCalendar() {
                                 return <div key={`blank-${i}`} style={{ background: 'var(--bg-canvas)' }} />;
                             }
 
-                            const dayItems = unifiedItems.filter(item => isSameDay(item.dateObj, dayDate));
+                            const dayItems = filteredItems.filter(item => isSameDay(item.dateObj, dayDate));
                             const isToday = isSameDay(dayDate, today);
 
                             return (
@@ -567,7 +690,24 @@ export default function MasterCalendar() {
                                                         display: 'flex', alignItems: 'center', gap: '4px',
                                                         cursor: 'pointer'
                                                     }}>
-                                                        <CheckSquare size={10} /> {item.title}
+                                                        <CheckSquare size={10} style={{ flexShrink: 0 }} />
+                                                        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title}</span>
+                                                        {item.assignee && (
+                                                            <span 
+                                                                title={`Responsable: ${item.assignee}`}
+                                                                style={{ 
+                                                                    fontSize: '8.5px', 
+                                                                    padding: '1px 5px', 
+                                                                    borderRadius: '3px', 
+                                                                    background: 'rgba(99,102,241,0.25)', 
+                                                                    color: 'var(--accent-primary)', 
+                                                                    fontWeight: 700, 
+                                                                    flexShrink: 0 
+                                                                }}
+                                                            >
+                                                                👤 {item.assignee.length <= 11 ? item.assignee : item.assignee.split(' ')[0]}
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 );
                                             }

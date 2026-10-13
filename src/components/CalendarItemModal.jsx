@@ -11,21 +11,32 @@ export default function CalendarItemModal({ item, onClose }) {
     // Copy the full item to local state for editing
     const [formData, setFormData] = useState(() => {
         if (!item || !item.fullItem) return {};
-        // Deep copy to safely edit arrays
-        return JSON.parse(JSON.stringify(item.fullItem));
+        const data = JSON.parse(JSON.stringify(item.fullItem));
+        if (!data.assignee && (data.assignedTo || item.assignee)) {
+            data.assignee = data.assignedTo || item.assignee;
+        }
+        if (!data.text && (data.title || item.title)) {
+            data.text = data.title || item.title;
+        }
+        return data;
     });
 
     if (!item) return null;
 
     const handleSave = () => {
         if (item.type === 'task') {
-            updateTask(item.fullItem.id, formData);
+            const payload = {
+                ...formData,
+                assignee: formData.assignee || '',
+                assignedTo: formData.assignee || formData.assignedTo || '',
+                text: formData.text || formData.title || ''
+            };
+            updateTask(item.fullItem.id, payload);
         } else if (item.type === 'event') {
             updateEvent(item.fullItem.id, formData);
         }
-        // content entries... we need to see if updateContentEntry exists in useApp
         setIsEditing(false);
-        onClose(); // Optional: close or just stop editing
+        onClose();
     };
 
     const handleGoToDetail = () => {
@@ -92,6 +103,44 @@ export default function CalendarItemModal({ item, onClose }) {
                     {formData.done ? 'Completada' : 'Pendiente'}
                 </div>
             </div>
+
+            {(formData.assignee || isEditing) && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <label style={{ fontSize: '12px', color: 'var(--text-secondary)', width: '60px' }}>Responsable</label>
+                    {isEditing ? (
+                        <input 
+                            type="text" 
+                            placeholder="Ej. Mateo L., Gabriel G., Fanny" 
+                            value={formData.assignee || ''} 
+                            onChange={e => setFormData({...formData, assignee: e.target.value})}
+                            style={{ padding: '6px 10px', background: 'var(--bg-canvas)', border: '1px solid var(--border-subtle)', borderRadius: '6px', color: 'var(--text-primary)', flex: 1 }}
+                        />
+                    ) : (
+                        <span style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--accent-primary)', background: 'rgba(99,102,241,0.12)', padding: '3px 8px', borderRadius: '4px' }}>
+                            👤 {formData.assignee}
+                        </span>
+                    )}
+                </div>
+            )}
+
+            {(formData.venue || isEditing) && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <label style={{ fontSize: '12px', color: 'var(--text-secondary)', width: '60px' }}>Venue / Área</label>
+                    {isEditing ? (
+                        <input 
+                            type="text" 
+                            placeholder="Ej. Terraplén, Furia, Primavera, Wedding" 
+                            value={formData.venue || ''} 
+                            onChange={e => setFormData({...formData, venue: e.target.value})}
+                            style={{ padding: '6px 10px', background: 'var(--bg-canvas)', border: '1px solid var(--border-subtle)', borderRadius: '6px', color: 'var(--text-primary)', flex: 1 }}
+                        />
+                    ) : (
+                        <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)', background: 'var(--bg-canvas)', padding: '3px 8px', borderRadius: '4px', border: '1px solid var(--border-subtle)' }}>
+                            📍 {formData.venue}
+                        </span>
+                    )}
+                </div>
+            )}
         </div>
     );
 
