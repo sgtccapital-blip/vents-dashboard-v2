@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AppProvider, useApp } from './context/AppContext';
+import { AppProvider } from './context/AppContext';
 import AuthGate from './components/AuthGate';
 import Sidebar from './components/Layout/Sidebar';
 import Topbar from './components/Layout/Topbar';

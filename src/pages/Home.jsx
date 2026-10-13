@@ -1,19 +1,40 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     CheckSquare, FolderKanban, StickyNote,
-    Clock, Plus, DollarSign, Rocket, Lightbulb, UserPlus,
-    Instagram, Users, CalendarDays, MapPin, Timer, ArrowRight, ChevronRight
+    Clock, Plus, DollarSign, Rocket, UserPlus, Briefcase,
+    Instagram, CalendarDays, MapPin, Timer, ArrowRight, ChevronRight,
+    Target, AlertTriangle, AlarmClock, Gavel
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import ArriveAgencyBox from '../components/ArriveAgencyBox';
 import ArriveTasksBox from '../components/ArriveTasksBox';
+import { isActiveEvent, isDone } from '../lib/status';
+import {
+    buildDailyPriorityPanel, buildDecisionInbox, buildPortfolioPulse,
+    summarizeSubscriptions, localDateKey, daysUntil
+} from '../lib/dashboardIntel';
+
+const PRIORITY_COLORS = { critical: 'var(--accent-red)', high: 'var(--accent-orange)', medium: 'var(--accent-blue)', low: 'var(--text-tertiary)' };
+
+const formatMoney = (num) => `$${Math.round(num).toLocaleString('es-PA')}`;
+
+const dueLabel = (days) => {
+    if (days == null) return null;
+    if (days < 0) return `vencida ${Math.abs(days)}d`;
+    if (days === 0) return 'hoy';
+    if (days === 1) return 'mañana';
+    return `en ${days}d`;
+};
 
 export default function Home() {
-    const { events, socialMedia, tasks, toggleTask, notes, addNote: cxAddNote, activityFeed, addActivity, subscriptions } = useApp();
+    const {
+        events, projects, socialMedia, tasks, toggleTask, notes, addNote: cxAddNote,
+        activityFeed, addActivity, subscriptions
+    } = useApp();
     const navigate = useNavigate();
     const [newNote, setNewNote] = useState('');
-    const [now, setNow] = useState(new Date());
+    const [now, setNow] = useState(() => new Date());
 
     // Live clock for countdown
     useEffect(() => {
@@ -21,23 +42,64 @@ export default function Home() {
         return () => clearInterval(timer);
     }, []);
 
+    // Cambia una vez al día: los cálculos pesados no se rehacen con cada tic del reloj
+    const todayKey = localDateKey(now);
+
     const handleAddNote = () => {
         if (!newNote.trim()) return;
-        cxAddNote({ id: `note-${Date.now()}`, text: newNote, date: new Date().toISOString().split('T')[0] });
-        addActivity(`Added quick note: "${newNote.substring(0, 20)}${newNote.length > 20 ? '...' : ''}"`, 'var(--accent-yellow)');
+        cxAddNote({ id: `note-${Date.now()}`, text: newNote, date: localDateKey() });
+        addActivity(`Nota rápida: "${newNote.substring(0, 20)}${newNote.length > 20 ? '...' : ''}"`, 'var(--accent-yellow)');
         setNewNote('');
     };
 
     const handleToggleTask = (task) => {
+        const completing = !isDone(task);
         toggleTask(task.id);
-        const action = !task.done ? 'Completed' : 'Reopened';
-        const color = !task.done ? 'var(--accent-green)' : 'var(--text-secondary)';
-        addActivity(`${action} dashboard task: "${task.text.substring(0, 30)}${task.text.length > 30 ? '...' : ''}"`, color);
+        const color = completing ? 'var(--accent-green)' : 'var(--text-secondary)';
+        addActivity(`${completing ? 'Completada' : 'Reabierta'}: "${task.text.substring(0, 30)}${task.text.length > 30 ? '...' : ''}"`, color);
     };
 
-    const activeEvents = events?.filter(e => ['planeacion', 'planificacion', 'ejecucion', 'activo', 'upcoming', 'ongoing'].includes(e.status)) || [];
-    const todaysTasks = tasks.filter(t => !t.done).sort((a, b) => new Date(a.due || '2099') - new Date(b.due || '2099')).slice(0, 15);
-    const completedTasks = tasks.filter(t => t.done).slice(0, 5);
+    const safeEvents = useMemo(() => events || [], [events]);
+    const safeTasks = useMemo(() => tasks || [], [tasks]);
+    const safeProjects = useMemo(() => projects || [], [projects]);
+
+    const activeEvents = useMemo(
+        () => safeEvents.filter(isActiveEvent),
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- todayKey hace que la vigencia se recalcule al cambiar de día
+        [safeEvents, todayKey]
+    );
+
+    const pendingTasks = useMemo(() => {
+        const today = new Date(`${todayKey}T00:00:00`);
+        return safeTasks
+            .filter(t => !isDone(t))
+            .map(t => ({ ...t, daysLeft: daysUntil(t.due, today) }))
+            .sort((a, b) => (a.daysLeft ?? 9999) - (b.daysLeft ?? 9999));
+    }, [safeTasks, todayKey]);
+    const overdueCount = pendingTasks.filter(t => t.daysLeft != null && t.daysLeft < 0).length;
+    const doneCount = safeTasks.length - pendingTasks.length;
+
+    const pulse = useMemo(
+        () => buildDailyPriorityPanel({ events: safeEvents, tasks: safeTasks }),
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- recalcular al cambiar de día
+        [safeEvents, safeTasks, todayKey]
+    );
+    const decisions = useMemo(
+        () => buildDecisionInbox({ events: safeEvents, tasks: safeTasks }).slice(0, 4),
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- recalcular al cambiar de día
+        [safeEvents, safeTasks, todayKey]
+    );
+    const portfolio = useMemo(
+        () => buildPortfolioPulse({ projects: safeProjects, tasks: safeTasks }, new Date(`${todayKey}T00:00:00`)),
+        [safeProjects, safeTasks, todayKey]
+    );
+    const avgProgress = portfolio.length > 0
+        ? Math.round(portfolio.reduce((acc, p) => acc + p.progress, 0) / portfolio.length)
+        : 0;
+    const subs = useMemo(
+        () => summarizeSubscriptions(subscriptions || [], new Date(`${todayKey}T00:00:00`)),
+        [subscriptions, todayKey]
+    );
 
     const totalAudience = socialMedia ? socialMedia.reduce((acc, account) => {
         let count = 0;
@@ -48,8 +110,6 @@ export default function Home() {
         return acc + (isNaN(count) ? 0 : count);
     }, 0) : 0;
 
-    const totalMonthlyCost = subscriptions ? subscriptions.reduce((acc, sub) => acc + (sub.cost || 0), 0) : 0;
-
     const formatNumber = (num) => {
         if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
         if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
@@ -57,12 +117,13 @@ export default function Home() {
     };
 
     // --- Next Event Countdown ---
-    const allDates = (events || []).flatMap(e => {
+    const allDates = safeEvents.flatMap(e => {
         if (e.date) return [{ name: e.name, date: e.date, icon: e.icon, color: e.color, location: e.location, id: e.id }];
         if (e.instances) return e.instances.map(inst => ({ name: e.name, date: inst.date, icon: e.icon, color: e.color, location: e.location || '', id: e.id }));
         return [];
-    }).filter(e => new Date(e.date + 'T23:59') >= now).sort((a, b) => new Date(a.date) - new Date(b.date));
+    }).filter(e => e.date && new Date(e.date + 'T23:59') >= now).sort((a, b) => new Date(a.date) - new Date(b.date));
     const nextEvent = allDates[0] || null;
+    const accentColor = nextEvent?.color || '#8b5cf6';
 
     const getCountdown = (dateStr) => {
         const target = new Date(dateStr + 'T00:00');
@@ -76,23 +137,50 @@ export default function Home() {
         };
     };
 
-    // --- Mini Calendar (next 7 days) ---
+    // --- Mini Calendar (next 7 days, en fecha local) ---
     const next7Days = Array.from({ length: 7 }, (_, i) => {
-        const d = new Date(); d.setDate(d.getDate() + i);
-        const dateStr = d.toISOString().split('T')[0];
+        const d = new Date(now); d.setDate(d.getDate() + i);
+        const dateStr = localDateKey(d);
         const dayEvents = allDates.filter(e => e.date === dateStr);
         return { date: d, dateStr, events: dayEvents, isToday: i === 0 };
     });
 
     // --- Tasks by Event ---
     const tasksByEvent = activeEvents.map(ev => {
-        const evTasks = tasks.filter(t => t.eventId === ev.id);
-        const pending = evTasks.filter(t => !t.done).length;
-        const done = evTasks.filter(t => t.done).length;
-        return { ...ev, pending, done, total: evTasks.length };
+        const evTasks = safeTasks.filter(t => t.eventId === ev.id);
+        const done = evTasks.filter(isDone).length;
+        return { ...ev, pending: evTasks.length - done, done, total: evTasks.length };
     }).filter(ev => ev.total > 0);
 
     const countdown = nextEvent ? getCountdown(nextEvent.date) : null;
+
+    const openDecision = (d) => {
+        if (d.id.startsWith('event-')) navigate(`/eventos/${d.linkedId}`);
+        else navigate('/workspace');
+    };
+
+    const pulseColumns = [
+        {
+            key: 'priorities', icon: Target, label: 'Prioridades', color: 'var(--accent-primary)',
+            items: pulse.topPriorities.map(p => ({ id: p.id, title: p.title, sub: p.subtitle, onClick: () => navigate(`/eventos/${p.id}`) })),
+            empty: 'Sin eventos activos'
+        },
+        {
+            key: 'risks', icon: AlertTriangle, label: 'Riesgos', color: 'var(--accent-orange)',
+            items: pulse.topRisks.map(r => ({ id: r.id, title: r.title, sub: r.subtitle, onClick: () => navigate(`/eventos/${r.id.replace(/^risk-(overdue-)?/, '')}`) })),
+            empty: 'Nada en riesgo 👌'
+        },
+        {
+            key: 'overdue', icon: AlarmClock, label: 'Vencidas', color: 'var(--accent-red)',
+            items: pulse.overdue.map(o => ({ id: o.id, title: o.title, sub: o.subtitle, onClick: () => navigate('/workspace') })),
+            empty: 'Cero tareas vencidas'
+        },
+        {
+            key: 'decisions', icon: Gavel, label: 'Decisiones', color: 'var(--accent-cyan)',
+            items: decisions.map(d => ({ id: d.id, title: d.title, sub: `${d.priority} · ${d.summary}`, onClick: () => openDecision(d) })),
+            empty: 'Nada por decidir'
+        },
+    ];
 
     return (
         <div className="page-content animate-in">
@@ -100,30 +188,30 @@ export default function Home() {
                 <div>
                     <h1>⚡ Command Center</h1>
                     <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginTop: '4px' }}>
-                        Tu sistema operativo personal
+                        Agencia, proyectos y eventos en un solo lugar
                     </p>
                 </div>
                 <div className="page-header-actions" style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <span style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>
-                        {new Date().toLocaleDateString('es-PA', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                        {now.toLocaleDateString('es-PA', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                     </span>
                 </div>
             </div>
 
             {/* ══════ NEXT EVENT COUNTDOWN HERO ══════ */}
             {nextEvent && countdown && (
-                <div onClick={() => navigate('/eventos')} className="cc-countdown-hero" style={{
-                    background: `linear-gradient(135deg, ${nextEvent.color}18, ${nextEvent.color}08, transparent)`,
-                    borderColor: `${nextEvent.color}30`
+                <div onClick={() => navigate(`/eventos/${nextEvent.id}`)} className="cc-countdown-hero" style={{
+                    background: `linear-gradient(135deg, ${accentColor}18, ${accentColor}08, transparent)`,
+                    borderColor: `${accentColor}30`
                 }}>
                     <div className="cc-countdown-bg" style={{
-                        background: `radial-gradient(circle at 100% 50%, ${nextEvent.color}10, transparent 70%)`
+                        background: `radial-gradient(circle at 100% 50%, ${accentColor}10, transparent 70%)`
                     }} />
                     <div className="cc-countdown-icon" style={{
-                        background: `${nextEvent.color}25`, borderColor: `${nextEvent.color}40`
+                        background: `${accentColor}25`, borderColor: `${accentColor}40`
                     }}>{nextEvent.icon || '📅'}</div>
                     <div className="cc-countdown-info">
-                        <div className="cc-countdown-label" style={{ color: nextEvent.color }}>
+                        <div className="cc-countdown-label" style={{ color: accentColor }}>
                             <Timer size={12} style={{ marginRight: '4px', verticalAlign: 'middle' }} /> Próximo Evento
                         </div>
                         <div className="cc-countdown-title">{nextEvent.name}</div>
@@ -146,7 +234,7 @@ export default function Home() {
                             { val: countdown.secs, label: 'Seg' }
                         ].map(({ val, label }) => (
                             <div key={label} className="cc-countdown-time-box">
-                                <div className="cc-countdown-time-val" style={{ color: nextEvent.color }}>{String(val).padStart(2, '0')}</div>
+                                <div className="cc-countdown-time-val" style={{ color: accentColor }}>{String(val).padStart(2, '0')}</div>
                                 <div className="cc-countdown-time-lbl">{label}</div>
                             </div>
                         ))}
@@ -155,25 +243,64 @@ export default function Home() {
                 </div>
             )}
 
+            {/* ══════ PULSO DEL DÍA ══════ */}
+            <div className="cc-pulse-grid">
+                {pulseColumns.map(({ key, icon, label, color, items, empty }) => {
+                    const Icon = icon;
+                    return (
+                    <div key={key} className="cc-pulse-col">
+                        <div className="cc-pulse-title" style={{ color }}>
+                            <span><Icon size={13} /> {label}</span>
+                            <span className="tag" style={{ background: 'var(--bg-tertiary)', color }}>{items.length}</span>
+                        </div>
+                        {items.length === 0 ? (
+                            <div className="cc-pulse-empty">{empty}</div>
+                        ) : items.map(item => (
+                            <button key={item.id} type="button" className="cc-pulse-item" onClick={item.onClick} title={item.title}>
+                                <div className="cc-pulse-item-title">{item.title}</div>
+                                {item.sub && <div className="cc-pulse-item-sub">{item.sub}</div>}
+                            </button>
+                        ))}
+                    </div>
+                    );
+                })}
+            </div>
+
             {/* ══════ ARRIVE AGENCY EXECUTIVE HUB ══════ */}
             <ArriveAgencyBox />
 
             {/* ══════ METRICS BANNER ══════ */}
-            <div className="cc-metrics-banner">
-                <div className="cc-metric-card">
+            <div className="cc-metrics-banner cc-metrics-wide">
+                <div className="cc-metric-card" onClick={() => navigate('/eventos')} style={{ cursor: 'pointer' }}>
                     <div className="cc-metric-label"><FolderKanban size={14} style={{ color: 'var(--accent-primary)' }} /> Eventos Activos</div>
                     <div className="cc-metric-value">{activeEvents.length}</div>
-                    <div className="cc-metric-sub">En ejecución o planificación</div>
+                    <div className="cc-metric-sub">{pulse.topRisks.length > 0 ? `${pulse.topRisks.length} en riesgo` : 'En ejecución o planificación'}</div>
                 </div>
-                <div className="cc-metric-card">
+                <div className="cc-metric-card" onClick={() => navigate('/portfolio')} style={{ cursor: 'pointer' }}>
+                    <div className="cc-metric-label"><Briefcase size={14} style={{ color: 'var(--accent-cyan)' }} /> Proyectos</div>
+                    <div className="cc-metric-value">{portfolio.length}</div>
+                    <div className="cc-metric-sub">{avgProgress}% avance promedio</div>
+                </div>
+                <div className="cc-metric-card" onClick={() => navigate('/workspace')} style={{ cursor: 'pointer' }}>
                     <div className="cc-metric-label"><CheckSquare size={14} style={{ color: 'var(--accent-yellow)' }} /> Tareas Pendientes</div>
-                    <div className="cc-metric-value">{todaysTasks.length}</div>
-                    <div className="cc-metric-sub">{completedTasks.length} completadas recientemente</div>
+                    <div className="cc-metric-value">{pendingTasks.length}</div>
+                    <div className="cc-metric-sub" style={overdueCount > 0 ? { color: 'var(--accent-red)' } : undefined}>
+                        {overdueCount > 0 ? `${overdueCount} vencidas · ${doneCount} hechas` : `${doneCount} completadas`}
+                    </div>
                 </div>
-                <div className="cc-metric-card">
+                <div className="cc-metric-card" onClick={() => navigate('/social')} style={{ cursor: 'pointer' }}>
                     <div className="cc-metric-label"><Instagram size={14} style={{ color: '#E1306C' }} /> Audiencia Total</div>
                     <div className="cc-metric-value">{formatNumber(totalAudience)}</div>
                     <div className="cc-metric-sub">{socialMedia?.length || 0} cuentas activas</div>
+                </div>
+                <div className="cc-metric-card">
+                    <div className="cc-metric-label"><DollarSign size={14} style={{ color: 'var(--accent-green)' }} /> Gasto Mensual</div>
+                    <div className="cc-metric-value">{formatMoney(subs.monthlyBurn)}</div>
+                    <div className="cc-metric-sub" title={subs.upcomingRenewals.map(r => `${r.name} (${dueLabel(r.daysLeft)})`).join(', ')}>
+                        {subs.upcomingRenewals.length > 0
+                            ? `${subs.upcomingRenewals.length} renovación(es) esta semana`
+                            : `${subs.activeCount} suscripciones activas`}
+                    </div>
                 </div>
             </div>
 
@@ -218,6 +345,89 @@ export default function Home() {
             {/* ══════ MAIN GRID ══════ */}
             <div className="dashboard-grid">
 
+                {/* Pending Tasks Widget */}
+                <div className="widget widget-md">
+                    <div className="widget-header">
+                        <div className="widget-title"><CheckSquare size={16} /> Tareas Pendientes</div>
+                        <button className="btn btn-ghost" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => navigate('/workspace')}>
+                            Workspace <ArrowRight size={12} />
+                        </button>
+                    </div>
+                    <div className="widget-body">
+                        {pendingTasks.length === 0 && (
+                            <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '13px' }}>Todo al día ✅</div>
+                        )}
+                        {pendingTasks.slice(0, 8).map(task => {
+                            const label = dueLabel(task.daysLeft);
+                            const dueClass = task.daysLeft == null ? '' : task.daysLeft < 0 ? 'is-overdue' : task.daysLeft === 0 ? 'is-today' : '';
+                            const owner = task.assignee || task.assignedTo;
+                            return (
+                                <div key={task.id} className="task-item">
+                                    <label className="checkbox">
+                                        <input type="checkbox" checked={false} onChange={() => handleToggleTask(task)} aria-label={`Completar ${task.text}`} />
+                                    </label>
+                                    <span className="task-text" style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={task.text}>
+                                        {['critical', 'high'].includes(task.priority) && (
+                                            <span style={{ color: PRIORITY_COLORS[task.priority], marginRight: '6px' }}>●</span>
+                                        )}
+                                        {task.text}
+                                    </span>
+                                    {owner && <span className="tag tag-purple" style={{ fontSize: '10px', padding: '2px 8px' }}>{owner}</span>}
+                                    {label && <span className={`cc-task-due ${dueClass}`}>{label}</span>}
+                                </div>
+                            );
+                        })}
+                        {pendingTasks.length > 8 && (
+                            <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '8px' }}>+{pendingTasks.length - 8} más en Workspace</div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Portfolio Projects Widget */}
+                <div className="widget widget-md">
+                    <div className="widget-header">
+                        <div className="widget-title"><Briefcase size={16} /> Portafolio de Proyectos</div>
+                        <button className="btn btn-ghost" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => navigate('/portfolio')}>
+                            Portfolio OS <ArrowRight size={12} />
+                        </button>
+                    </div>
+                    <div className="widget-body">
+                        {portfolio.length === 0 && (
+                            <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '13px' }}>No hay proyectos activos</div>
+                        )}
+                        {portfolio.slice(0, 6).map(p => {
+                            const deadline = dueLabel(p.daysLeft);
+                            return (
+                                <div key={p.id} style={{ marginBottom: '14px', cursor: 'pointer' }} onClick={() => navigate('/portfolio')}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                                        <span style={{ fontSize: '13px', fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.name}>
+                                            <span style={{ color: PRIORITY_COLORS[p.priority] || PRIORITY_COLORS.medium, marginRight: '6px' }}>●</span>
+                                            {p.name}
+                                        </span>
+                                        <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>{p.progress}%</span>
+                                    </div>
+                                    <div className="cc-progress-track">
+                                        <div className="cc-progress-fill" style={{
+                                            width: `${p.progress}%`,
+                                            background: p.progress >= 100 ? 'var(--accent-green)' : 'var(--accent-primary)'
+                                        }} />
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px' }}>
+                                        <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                            {p.nextMilestone ? `Siguiente: ${p.nextMilestone}` : `${p.openTasks} tareas abiertas`}
+                                        </span>
+                                        {deadline && (
+                                            <span className={`cc-task-due ${p.daysLeft < 0 ? 'is-overdue' : p.daysLeft <= 7 ? 'is-today' : ''}`}>
+                                                deadline {deadline}
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
                 {/* Active Events Widget */}
                 <div className="widget widget-md">
                     <div className="widget-header">
@@ -229,7 +439,7 @@ export default function Home() {
                             <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '13px' }}>No hay eventos activos</div>
                         )}
                         {activeEvents.map(event => (
-                            <div key={event.id} className="quick-link" style={{ justifyContent: 'space-between', cursor: 'pointer' }} onClick={() => navigate('/eventos')}>
+                            <div key={event.id} className="quick-link" style={{ justifyContent: 'space-between', cursor: 'pointer' }} onClick={() => navigate(`/eventos/${event.id}`)}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                     <span style={{ fontSize: '18px' }}>{event.icon || '📅'}</span>
                                     <div>
@@ -242,7 +452,7 @@ export default function Home() {
                                     </div>
                                 </div>
                                 <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
-                                    {tasks.filter(t => !t.done && t.eventId === event.id).length} tareas
+                                    {safeTasks.filter(t => !isDone(t) && t.eventId === event.id).length} tareas
                                 </span>
                             </div>
                         ))}
@@ -267,11 +477,10 @@ export default function Home() {
                                             </div>
                                             <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>{ev.done}/{ev.total} ({pct}%)</span>
                                         </div>
-                                        <div style={{ height: '6px', background: 'var(--bg-canvas)', borderRadius: '3px', overflow: 'hidden' }}>
-                                            <div style={{
-                                                width: `${pct}%`, height: '100%', borderRadius: '3px',
-                                                background: pct >= 100 ? 'var(--accent-green)' : (ev.color || 'var(--accent-primary)'),
-                                                transition: 'width 0.8s ease'
+                                        <div className="cc-progress-track">
+                                            <div className="cc-progress-fill" style={{
+                                                width: `${pct}%`,
+                                                background: pct >= 100 ? 'var(--accent-green)' : (ev.color || 'var(--accent-primary)')
                                             }} />
                                         </div>
                                     </div>
@@ -331,7 +540,10 @@ export default function Home() {
                                 <Plus size={14} />
                             </button>
                         </div>
-                        {notes.map(note => (
+                        {notes.length === 0 && (
+                            <div style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>Sin notas todavía</div>
+                        )}
+                        {notes.slice(0, 6).map(note => (
                             <div key={note.id} className="note-item">
                                 <div className="note-text">{note.text}</div>
                                 <div className="note-date">{note.date}</div>

@@ -9,12 +9,11 @@ export default function EventFocusMode() {
     const pendingTasks = tasks.filter(t => !t.done);
     const [selectedTask, setSelectedTask] = useState(pendingTasks[0] || tasks[0]);
 
-    // Ensure selected task exists
-    useEffect(() => {
-        if (!tasks.find(t => t.id === selectedTask?.id)) {
-            setSelectedTask(pendingTasks[0] || tasks[0]);
-        }
-    }, [tasks]);
+    // Ensure selected task exists (adjusted during render instead of in an effect)
+    if (!tasks.find(t => t.id === selectedTask?.id)) {
+        const fallbackTask = pendingTasks[0] || tasks[0];
+        if (fallbackTask !== selectedTask) setSelectedTask(fallbackTask);
+    }
 
     useEffect(() => {
         let interval = null;
@@ -23,6 +22,7 @@ export default function EventFocusMode() {
                 setTimeLeft(time => time - 1);
             }, 1000);
         } else if (timeLeft === 0) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- stops the timer once the countdown reaches zero
             setIsActive(false);
         }
         return () => clearInterval(interval);

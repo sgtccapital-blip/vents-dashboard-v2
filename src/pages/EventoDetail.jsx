@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
     ArrowLeft, Edit3, Calendar, MapPin, Clock, Users, DollarSign,
@@ -28,7 +28,7 @@ export default function EventoDetail() {
     const {
         events, updateEvent, deleteEvent,
         projects, updateProject, deleteProject,
-        tasks, updateTask, addTask,
+        tasks,
         triggerOpenClawAction, openclawLogs,
         promoters, addPromoter, updatePromoter, deletePromoter,
         imageGirls, socialMedia, gcalToken, googleCalendarEvents,
@@ -82,7 +82,6 @@ export default function EventoDetail() {
     );
     const [showModal, setShowModal] = useState(false);
     const [selectedInstanceId, setSelectedInstanceId] = useState(null);
-    const [contentSubTab, setContentSubTab] = useState('all');
     
     // Project Specific States & Handlers
     const [newMilestoneText, setNewMilestoneText] = useState('');
@@ -296,6 +295,7 @@ export default function EventoDetail() {
         
         const instance = event.instances.find(i => i.id === instanceId);
         if (!instance) return;
+        // eslint-disable-next-line react-hooks/purity -- se ejecuta en un manejador de eventos, no durante el render
         const newLead = { id: `lead-${Date.now()}`, name, phone, promoter, interest, status: 'Contactado' };
         updateInstance(instanceId, { leads: [...(instance.leads || []), newLead] });
     };
@@ -309,6 +309,7 @@ export default function EventoDetail() {
         
         const instance = event.instances.find(i => i.id === instanceId);
         if (!instance) return;
+        // eslint-disable-next-line react-hooks/purity -- se ejecuta en un manejador de eventos, no durante el render
         const newGirl = { id: `ag-${Date.now()}`, name, phone, role, time }; 
         updateInstance(instanceId, { assignedGirls: [...(instance.assignedGirls || []), newGirl] });
     };
@@ -336,6 +337,7 @@ export default function EventoDetail() {
         if (item) setEditingAgenda({ ...item });
         else {
             const todayStr = defaultDate || event.date || new Date().toISOString().split('T')[0];
+            // eslint-disable-next-line react-hooks/purity -- se ejecuta en un manejador de eventos, no durante el render
             setEditingAgenda({ id: `ag-${Date.now()}`, date: todayStr, time: '20:00', title: '', speaker: '', description: '' });
         }
     };
@@ -356,9 +358,6 @@ export default function EventoDetail() {
         });
         updateEvent(event.id, { agenda: updated });
         closeAgendaEdit();
-    };
-    const deleteAgenda = (id) => {
-        updateEvent(event.id, { agenda: agenda.filter(a => a.id !== id) });
     };
 
     // === Activity Organization ===
@@ -830,43 +829,6 @@ export default function EventoDetail() {
         const currentArtes = event.artes || [];
         updateEvent(event.id, { artes: currentArtes.filter(a => a.id !== id) });
         closeArtEdit();
-    };
-
-    // Map logic
-    const getCoordinates = (name) => {
-        const mapCoordinates = {
-            'Plaza V Centenario': { top: '26%', left: '32%' },
-            'Playa Prieta': { top: '24%', left: '43%' },
-            'Casco Viejo': { top: '38%', left: '35%' },
-            'Plaza Simón Bolívar': { top: '41%', left: '57%' },
-            'Plaza De La Independencia': { top: '50%', left: '41%' },
-            'Plaza Catedral': { top: '50%', left: '41%' }, // alias
-            'La Fishería Seafood': { top: '47%', left: '27%' },
-            'Plaza Herrera': { top: '59%', left: '29%' },
-            'Arco Chato': { top: '63%', left: '58%' },
-            'Playa Malecón': { top: '50%', left: '67%' },
-            'Fuente Casco Antiguo': { top: '58%', left: '66%' },
-            'Playa Santo Domingo': { top: '73%', left: '58%' },
-            'Playa Punta Chiriquí': { top: '66%', left: '73%' },
-            'Plaza de Francia': { top: '84%', left: '69%' },
-            'Viewpoint on Cinta Costera': { top: '30%', left: '92%' },
-            'Cinta Costera 3': { top: '59%', left: '98%' },
-            // Keep aliases and existing ones as fallback
-            'Plaza Bolívar': { top: '41%', left: '57%' },
-            'Compañía de Jesús': { top: '60%', left: '45%' },
-            'Mercado San Felipe Neri': { top: '20%', left: '20%' },
-            'Playita Las Garzas': { top: '15%', left: '80%' },
-            'Calle de la Mola': { top: '50%', left: '85%' },
-        };
-        if (mapCoordinates[name]) return mapCoordinates[name];
-        
-        let hash = 0;
-        for (let i = 0; i < name.length; i++) {
-            hash = name.charCodeAt(i) + ((hash << 5) - hash);
-        }
-        const top = 20 + (Math.abs(hash) % 60);
-        const left = 20 + (Math.abs(hash * 3) % 60);
-        return { top: `${top}%`, left: `${left}%` };
     };
 
     const uniqueLocations = agenda.reduce((acc, item) => {
@@ -4377,7 +4339,6 @@ export default function EventoDetail() {
 
             {/* 212 CLUB EXTRAS TAB */}
             {event.type === 'local' && activeTab === 'extras' && event.id === 'ev-casco-lounge' && (() => {
-                const activeInstance = event.instances?.[0]; // Fallback to first instance
                 return (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
                         

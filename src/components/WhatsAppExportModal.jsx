@@ -6,7 +6,7 @@ export default function WhatsAppExportModal({ events = [], tasks = [], isOpen, o
     const [includeDates, setIncludeDates] = useState(true);
     const [includeStaff, setIncludeStaff] = useState(true);
     const [customHeader, setCustomHeader] = useState('🔥 CARTELERA EXCLUSIVA CASCO & NIGHTLIFE 🔥');
-    const [customFooter, setCustomFooter] = useState('📲 Listas VIP & Reservas de Mesas: Directo por WhatsApp');
+    const [customFooter] = useState('📲 Listas VIP & Reservas de Mesas: Directo por WhatsApp');
     const [copied, setCopied] = useState(false);
 
     // Extract upcoming events

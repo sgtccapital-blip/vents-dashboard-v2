@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { 
     X, Plus, Image as ImageIcon, Calendar, ChevronLeft, ChevronRight, Clock, Hash, AtSign, 
     Sparkles, FileText, Linkedin, MessageSquare, Layers, Target, Type, Trash2, ChevronDown, 
@@ -47,8 +47,6 @@ export default function ContentCalendarGrid({
     companies = [],
     initialAccounts = [],
     initialCompanies = [],
-    onEntriesChange,
-    initialEntries
 }) {
     const activeAccounts = (accounts && accounts.length > 0) ? accounts : (initialAccounts && initialAccounts.length > 0 ? initialAccounts : []);
     const activeCompanies = (companies && companies.length > 0) ? companies : (initialCompanies && initialCompanies.length > 0 ? initialCompanies : []);
@@ -68,7 +66,7 @@ export default function ContentCalendarGrid({
                 }
                 return parsed;
             }
-        } catch (e) { /* ignore */ }
+        } catch { /* ignore */ }
         localStorage.setItem('os_contentCalendar', JSON.stringify(PANAMERICAN_SEED));
         return PANAMERICAN_SEED;
     });
@@ -107,7 +105,7 @@ export default function ContentCalendarGrid({
         try { 
             localStorage.setItem('os_contentCalendar', JSON.stringify(newEntries)); 
             window.dispatchEvent(new Event('contentCalendarUpdated'));
-        } catch (e) { /* ignore */ }
+        } catch { /* ignore */ }
     };
 
     const getEntry = (accountId, contentType, dayIndex) => {
@@ -125,6 +123,7 @@ export default function ContentCalendarGrid({
             setSelectedEntry(existing);
         } else {
             const newEntry = {
+                // eslint-disable-next-line react-hooks/purity -- se ejecuta en un manejador de click, no durante el render
                 id: `ce-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
                 accountId, contentType, dayIndex, weekOffset,
                 topic: '', format: '', status: 'idea',
@@ -151,7 +150,7 @@ export default function ContentCalendarGrid({
         setShowDetail(false);
     };
 
-    const handleFileUpload = useCallback((files) => {
+    const handleFileUpload = (files) => {
         if (!selectedEntry) return;
         const currentMedia = selectedEntry.mediaFiles || [];
         Array.from(files).forEach(file => {
@@ -170,14 +169,14 @@ export default function ContentCalendarGrid({
             };
             reader.readAsDataURL(file);
         });
-    }, [selectedEntry]);
+    };
 
-    const removeMediaFile = useCallback((entryId, mediaId) => {
+    const removeMediaFile = (entryId, mediaId) => {
         const entry = entries.find(e => e.id === entryId);
         if (!entry) return;
         const updatedMedia = (entry.mediaFiles || []).filter(m => m.id !== mediaId);
         updateEntry(entryId, 'mediaFiles', updatedMedia);
-    }, [entries]);
+    };
 
     const ACCOUNT_COLORS = ['#E1306C', '#579bfc', '#a25ddc', '#fdab3d', '#e2445c', '#00d2d3'];
 

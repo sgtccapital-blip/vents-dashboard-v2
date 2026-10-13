@@ -106,8 +106,6 @@ export default function SocialMedia() {
         return s + (n * mult);
     }, 0);
 
-    const getEventName = (id) => events.find(e => e.id === id)?.name || id;
-
     // ── DETAIL VIEW FOR SELECTED ACCOUNT ──
     let pageContent = null;
     if (selectedAccount) {

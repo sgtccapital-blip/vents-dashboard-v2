@@ -80,7 +80,7 @@ function extractTaskText(prompt) {
 
 // ─── Main Engine ────────────────────────────────────────────────
 class OpenCloudEngine {
-    async executeOrchestration(prompt, ragEngine, historyContext = []) {
+    async executeOrchestration(prompt) {
         console.log(`[OpenCloudEngine] Processing: "${prompt}"`);
         
         const intent = detectIntent(prompt);

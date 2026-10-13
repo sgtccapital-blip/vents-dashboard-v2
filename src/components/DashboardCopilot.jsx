@@ -12,15 +12,9 @@ import {
 export default function DashboardCopilot() {
     const navigate = useNavigate();
     const {
-        events = [],
         projects = [],
-        tasks = [],
         addTask,
-        updateTask,
         toggleTask,
-        addActivity,
-        imageGirls = [],
-        promoters = [],
         openclawMessages = [],
         setOpenclawMessages,
         clearOpenclawChat
@@ -97,7 +91,7 @@ export default function DashboardCopilot() {
                         active: data.active || !!geminiApiKey
                     });
                 }
-            } catch (e) {}
+            } catch { /* ignore */ }
         };
         checkStatus();
     }, [geminiApiKey]);
@@ -223,7 +217,7 @@ export default function DashboardCopilot() {
                 try {
                     recognitionRef.current.lang = 'es-PA';
                     recognitionRef.current.start();
-                } catch (e) {}
+                } catch { /* ignore */ }
             }
         } catch (err) {
             console.error('[Copilot Audio] Mic access denied:', err);
@@ -243,7 +237,7 @@ export default function DashboardCopilot() {
         if (recognitionRef.current) {
             try {
                 recognitionRef.current.stop();
-            } catch (e) {}
+            } catch { /* ignore */ }
         }
     };
 
@@ -259,7 +253,7 @@ export default function DashboardCopilot() {
         if (recognitionRef.current) {
             try {
                 recognitionRef.current.stop();
-            } catch (e) {}
+            } catch { /* ignore */ }
         }
         audioChunksRef.current = [];
         currentNoteTranscriptRef.current = '';
@@ -430,11 +424,6 @@ export default function DashboardCopilot() {
         } finally {
             setIsThinking(false);
         }
-    };
-
-    const handleQuickAction = (text) => {
-        setInput(text);
-        executeSuperAgentPipeline(text);
     };
 
     return (

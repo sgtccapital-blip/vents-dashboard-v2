@@ -42,14 +42,14 @@ export default function EventCanvas({
         try {
             const saved = localStorage.getItem('ws_canvas_nodes');
             if (saved) return JSON.parse(saved);
-        } catch (e) { /* ignore */ }
+        } catch { /* ignore */ }
         return initialNodes;
     });
     const [connections, setConnections] = useState(() => {
         try {
             const saved = localStorage.getItem('ws_canvas_connections');
             if (saved) return JSON.parse(saved);
-        } catch (e) { /* ignore */ }
+        } catch { /* ignore */ }
         return initialConnections;
     });
 
@@ -129,12 +129,14 @@ export default function EventCanvas({
             const x = (e.clientX - rect.left - offset.x) / zoom;
             const y = (e.clientY - rect.top - offset.y) / zoom;
             const newNode = {
+                // eslint-disable-next-line react-hooks/purity -- runs inside a click handler, not during render
                 id: `n-${Date.now()}`,
                 type: tool,
                 x, y,
                 w: tool === 'sticky' ? 200 : 300,
                 h: tool === 'sticky' ? 160 : 40,
                 text: tool === 'sticky' ? 'New note...' : 'Title text',
+                // eslint-disable-next-line react-hooks/purity -- runs inside a click handler, not during render
                 colorIdx: tool === 'sticky' ? Math.floor(Math.random() * STICKY_COLORS.length) : 0,
             };
             setNodes(prev => [...prev, newNode]);

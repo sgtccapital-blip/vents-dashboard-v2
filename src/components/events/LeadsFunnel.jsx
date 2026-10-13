@@ -1,23 +1,12 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Users, UserCheck, PartyPopper, Phone, MessageCircle, MoreVertical, Star, Ticket, Plus } from 'lucide-react';
 
-export default function LeadsFunnel({ leads = [], updateLeadStatus, onManageLeads, onManageGirls }) {
-    const statuses = ['Contactado', 'Respondió', 'Confirmado', 'No llegó', 'Llegó'];
-
+export default function LeadsFunnel({ leads = [], onManageLeads, onManageGirls }) {
     // Funnel Calculations
     const ticketsTotales = leads.filter(l => l.interest && (l.interest.toLowerCase().includes('ticket') || l.interest.toLowerCase().includes('general') || l.interest.toLowerCase().includes('mesa'))).length;
     const promotoresCount = new Set(leads.map(l => l.promoter).filter(Boolean)).size;
     const listaCount = leads.length;
 
-    const estimatedRevenue = ticketsTotales * 25; // Estimación base $25 por ticket
-
-    const promoterStats = leads.reduce((acc, lead) => {
-        if (!lead.promoter) return acc;
-        if (!acc[lead.promoter]) acc[lead.promoter] = 0;
-        acc[lead.promoter]++;
-        return acc;
-    }, {});
-    const topPromoter = Object.keys(promoterStats).sort((a, b) => promoterStats[b] - promoterStats[a])[0];
 
     return (
         <div className="glass-panel" style={{ padding: '24px', animation: 'slideUp 0.3s ease-out' }}>

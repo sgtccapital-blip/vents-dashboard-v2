@@ -15,7 +15,7 @@ import {
 
 export default function AgentBrain() {
     const appContext = useApp();
-    const { refreshData, activityFeed, addActivity, openclawLogs, triggerOpenClawAction, projects, events, tasks, notes } = appContext;
+    const { refreshData, activityFeed, addActivity, openclawLogs, triggerOpenClawAction, projects, events } = appContext;
 
     // --- Active Tab State ---
     const [activeTab, setActiveTab] = useState('chat'); // 'chat' | 'rag_inspector' | 'topology' | 'skills_market' | 'openclaw_bridge'
@@ -41,8 +41,7 @@ export default function AgentBrain() {
     const chatEndRef = useRef(null);
 
     // --- Sessions State ---
-    const [savedSessions, setSavedSessions] = useState([]);
-    const [activeSessionId, setActiveSessionId] = useState(null);
+    const [, setSavedSessions] = useState([]);
 
     // --- Telemetry & Autopilot State ---
     const { autopilotActive, toggleAutopilot } = useAutopilotEngine(openclawStatus.online, addActivity);
@@ -63,7 +62,7 @@ export default function AgentBrain() {
     
     // --- Document Viewer Modal ---
     const [previewDoc, setPreviewDoc] = useState(null);
-    const [loadingPreview, setLoadingPreview] = useState(false);
+    const [, setLoadingPreview] = useState(false);
     const [copiedDoc, setCopiedDoc] = useState(false);
 
     // --- Settings State ---
@@ -101,11 +100,13 @@ export default function AgentBrain() {
         loadSessions();
         const interval = setInterval(checkOpenClawHealth, 6000);
         return () => clearInterval(interval);
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- carga inicial solo al montar; los loaders no son estables entre renders
     }, []);
 
     // Reload RAG documents when namespace changes
     useEffect(() => {
         loadRagDocuments(namespace);
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- solo debe recargar al cambiar el namespace; loadRagDocuments se recrea en cada render
     }, [namespace]);
 
     // Fetch OpenClaw tools
@@ -121,7 +122,7 @@ export default function AgentBrain() {
         try {
             const health = await OpenClawBrainService.checkHealth();
             setOpenClawStatus(health);
-        } catch (err) {
+        } catch {
             setOpenClawStatus({ online: true, mode: 'embedded_orchestrator', baseUrl: 'http://127.0.0.1:8642/v1' });
         }
     };
@@ -164,14 +165,14 @@ export default function AgentBrain() {
                     return found ? { ...p, enabled: found.enabled } : p;
                 }));
             }
-        } catch (e) {}
+        } catch { /* ignore */ }
     };
 
     const loadSessions = async () => {
         try {
             const sess = await OpenClawBrainService.getSessions();
             setSavedSessions(sess || []);
-        } catch (e) {}
+        } catch { /* ignore */ }
     };
 
     // ─── Chat & Slash Commands ─────────────────────────────────────────
@@ -260,21 +261,6 @@ export default function AgentBrain() {
         }
     };
 
-    const handleSaveCurrentSession = async () => {
-        const title = prompt('Nombre de la sesión:', `Sesión ${new Date().toLocaleDateString()}`);
-        if (!title) return;
-        const session = {
-            id: activeSessionId || `sess-${Date.now()}`,
-            title,
-            messages,
-            mode: selectedMode,
-            namespace
-        };
-        await OpenClawBrainService.saveSession(session);
-        await loadSessions();
-        setActiveSessionId(session.id);
-    };
-
     const handleExportChat = () => {
         const text = messages.map(m => `### ${m.role === 'user' ? 'OPERADOR' : 'OPENCLAW AGENT'}\n${m.text}\n`).join('\n---\n\n');
         const blob = new Blob([text], { type: 'text/markdown' });
@@ -304,7 +290,7 @@ export default function AgentBrain() {
         try {
             const doc = await OpenClawBrainService.getRAGDocument(docId);
             setPreviewDoc(doc);
-        } catch (e) {
+        } catch {
             // fallback from list
             const found = ragDocsList.find(d => d.id === docId);
             if (found) setPreviewDoc(found);
@@ -399,10 +385,10 @@ export default function AgentBrain() {
             let parsed = {};
             try {
                 parsed = JSON.parse(openclawActionPayload);
-            } catch (err) {
+            } catch {
                 throw new Error('El JSON del payload no es válido.');
             }
-            const res = await triggerOpenClawAction(openclawActionType, parsed);
+            await triggerOpenClawAction(openclawActionType, parsed);
             setOpenClawDispatchStatus({ success: true, msg: `Acción "${openclawActionType}" ejecutada con éxito.` });
             if (refreshData) refreshData();
         } catch (err) {

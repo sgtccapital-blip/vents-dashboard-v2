@@ -10,6 +10,7 @@ import {
     Eye, Sliders, CheckSquare, MessageCircle, AlertCircle, Bookmark, FileText, Target
 } from 'lucide-react';
 
+// eslint-disable-next-line react-refresh/only-export-components -- constante compartida con otros módulos
 export const WEEKLY_FIXED_SCHEDULE = [
     { id: 'wed_furia', day: 'Miércoles', venue: 'Furia', label: 'Miércoles Furia', color: '#ec4899', icon: '🔥', desc: 'Ladies Night, Sushi & VIP Party' },
     { id: 'thu_terraplen', day: 'Jueves', venue: 'Terraplén', label: 'Jueves Terraplén', color: '#8b5cf6', icon: '🍸', desc: 'Rooftop, Open Bar & Vibe Casco' },
@@ -18,6 +19,7 @@ export const WEEKLY_FIXED_SCHEDULE = [
     { id: 'sun_terraplen', day: 'Domingo', venue: 'Terraplén', label: 'Domingo Terraplén', color: '#10b981', icon: '🌅', desc: 'Sunset Chill, Drinks & After Party' }
 ];
 
+// eslint-disable-next-line react-refresh/only-export-components -- constante compartida con otros módulos
 export const BROADCAST_OBJECTIVES = [
     { 
         id: 'chicas_sushi', 
@@ -58,17 +60,16 @@ export default function WhatsAppAgent() {
 
     // ─── Week & Navigation State ────────────────────────────────
     const [weekOffset, setWeekOffset] = useState(0);
-    const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
-    const [customRange, setCustomRange] = useState(false);
-    const [startDateInput, setStartDateInput] = useState('');
-    const [endDateInput, setEndDateInput] = useState('');
+    const [customRange] = useState(false);
+    const [startDateInput] = useState('');
+    const [endDateInput] = useState('');
 
     // ─── Generator State ────────────────────────────────────────
     const [selectedTone, setSelectedTone] = useState('nightlife_vip');
     const [customInstructions, setCustomInstructions] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
     const [campaign, setCampaign] = useState(null);
-    const [campaignSource, setCampaignSource] = useState(null);
+    const [, setCampaignSource] = useState(null);
 
     // ─── Active Tab State ───────────────────────────────────────
     const [activeTab, setActiveTab] = useState('schedule'); // 'schedule' | 'references' | 'vip_outreach' | 'groups' | 'simulator' | 'logs'
@@ -128,7 +129,6 @@ export default function WhatsAppAgent() {
     const [selectedVipTemplateId, setSelectedVipTemplateId] = useState('vip-msg-1');
 
     // ─── Autopilot & Settings State ─────────────────────────────
-    const [autonomyMode, setAutonomyMode] = useState('assisted'); // 'manual' | 'assisted' | 'autopilot'
 
     // ─── Calculate Current Week Range ───────────────────────────
     const weekRange = useMemo(() => {
@@ -231,10 +231,12 @@ export default function WhatsAppAgent() {
 
     // ─── Load Initial Data ──────────────────────────────────────
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- carga asíncrona de datos al montar/cambiar de semana
         loadCampaign();
         loadGroups();
         loadLogs();
         loadReferences();
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- los loaders se recrean en cada render; solo debe recargar al cambiar de semana
     }, [weekOffset]);
 
     // ─── Reference Messages Handlers ────────────────────────────

@@ -118,7 +118,7 @@ export default function MasterChecklist({ event, onUpdateChecklist }) {
     const [searchTerm, setSearchTerm] = useState('');
 
     // Load checklist state from event data
-    const checkedItems = event.masterChecklist || {};
+    const checkedItems = useMemo(() => event.masterChecklist || {}, [event.masterChecklist]);
 
     const toggleItem = (key) => {
         const updated = { ...checkedItems, [key]: !checkedItems[key] };

@@ -14,6 +14,7 @@ export default function CloudSyncPanel({ isOpen, onClose }) {
     // Initialize inputs when state changes
     useEffect(() => {
         if (supabaseStatus) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- reinicia el formulario al abrir el panel o cambiar el estado de Supabase
             setDbUrl(supabaseStatus.url || '');
             setDbKey('');
         }

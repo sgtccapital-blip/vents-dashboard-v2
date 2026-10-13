@@ -8,10 +8,7 @@ export default function OpenCloudChat({ onClose }) {
         sendOpenclawMessage,
         isOpenclawThinking,
         clearOpenclawChat,
-        openclawMode,
-        setOpenclawMode,
-        events = [],
-        projects = []
+        events = []
     } = useApp();
 
     const [input, setInput] = useState('');

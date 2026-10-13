@@ -156,8 +156,6 @@ export default function PortfolioOS() {
         updateRoadmapItem,
         deleteRoadmapItem,
         openclawLogs,
-        activityFeed,
-        triggerOpenClawAction,
         refreshData
     } = useApp();
 

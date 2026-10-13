@@ -8,9 +8,9 @@ import {
 import { useApp } from '../context/AppContext';
 import './ArriveAgency.css';
 
-export default function ArriveAgencyBox({ onFilterCategory }) {
+export default function ArriveAgencyBox() {
     const navigate = useNavigate();
-    const { events, imageGirls, socialMedia, tasks } = useApp();
+    const { events, imageGirls, tasks } = useApp();
 
     // Calculate real-time agency metrics
     const totalTalent = imageGirls?.length || 8;
@@ -20,11 +20,7 @@ export default function ArriveAgencyBox({ onFilterCategory }) {
     );
     const activeVenuesCount = weeklyEvents.length > 0 ? weeklyEvents.length : 3;
 
-    // Count tasks related to arrive / dinners / posts
-    const dinnerTasks = (tasks || []).filter(t => 
-        !t.done && (t.division === 'models' || t.tag === '#CenaChicas' || (t.text && t.text.toLowerCase().includes('cena')))
-    ).length;
-
+    // Count tasks related to arrive / posts
     const contentTasksCount = (tasks || []).filter(t => 
         !t.done && (t.division === 'services' || t.tag === '#SocialMedia' || t.tag === '#Reels' || (t.text && t.text.toLowerCase().includes('post') || t.text?.toLowerCase().includes('reel')))
     ).length;

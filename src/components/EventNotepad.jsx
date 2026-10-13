@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Plus, FileText, Search, Clock, Trash2, Tag, Book, Star, ChevronLeft } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
@@ -10,13 +10,11 @@ export default function EventNotepad() {
 
     const selectedNote = notes.find(n => n.id === selectedNoteId) || null;
 
-    // Auto-select first note if current selection is deleted
-    useEffect(() => {
-        if (selectedNoteId && !notes.find(n => n.id === selectedNoteId)) {
-            setSelectedNoteId(notes[0]?.id || null);
-            setShowEditorOnMobile(false);
-        }
-    }, [notes, selectedNoteId]);
+    // Auto-select first note if current selection is deleted (adjusted during render)
+    if (selectedNoteId && !selectedNote) {
+        setSelectedNoteId(notes[0]?.id || null);
+        setShowEditorOnMobile(false);
+    }
 
     const filteredNotes = notes.filter(n => {
         const title = n.title || n.text || '';

@@ -1,9 +1,8 @@
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import {
     LayoutDashboard, FolderKanban, Brain, Server,
     Lightbulb, User, ChevronLeft, ChevronRight, Zap, Share2, BrainCircuit, Sparkles, BookOpen, MessageSquare, Building2, DatabaseZap, LayoutTemplate, Network, MessageCircle, Monitor, Cpu, CalendarDays, Calendar, Briefcase
 } from 'lucide-react';
-import { useState } from 'react';
 
 const navItems = [
     { path: '/', icon: LayoutDashboard, label: 'Command Center', section: 'AGENCIA' },
@@ -19,8 +18,6 @@ const navItems = [
 ];
 
 export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }) {
-    const location = useLocation();
-
     // Group items by section
     const sections = {};
     navItems.forEach(item => {

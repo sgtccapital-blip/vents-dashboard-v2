@@ -359,7 +359,7 @@ const DEFAULT_CLIENTS_DATA = [
 ];
 
 export default function ArriveClientManager() {
-    const { projects, addProject, updateProject, deleteProject, tasks, addTask, toggleTask, addActivity } = useApp();
+    const { addProject, updateProject, deleteProject, tasks, addTask, toggleTask, addActivity } = useApp();
 
     // ─── Local Clients State synced with Projects ───
     const [clientsList, setClientsList] = useState(() => {
@@ -478,21 +478,6 @@ export default function ArriveClientManager() {
         return clientsList.find(c => c.id === selectedClientId) || clientsList[0] || null;
     }, [clientsList, selectedClientId]);
 
-    // Synchronize RAG inputs when active client changes
-    useEffect(() => {
-        if (activeClient) {
-            setEditOverview(activeClient.rag?.overview || '');
-            setEditAudience(activeClient.rag?.targetAudience || '');
-            setEditPillars(activeClient.rag?.knowledgeNotes || '');
-            setEditNoGos(activeClient.rag?.aiRulePrompt || '');
-            setEditCompetitors(activeClient.rag?.competitors || '');
-            setEditFaqs(activeClient.rag?.faqPrompt || '');
-            setRagPromptResult('');
-            setFileUploadStatus(null);
-            fetchRagDocs(activeClient.id);
-        }
-    }, [selectedClientId]);
-
     // Fetch RAG documents for this client namespace
     const fetchRagDocs = async (clientId) => {
         const targetId = clientId || activeClient?.id;
@@ -510,6 +495,23 @@ export default function ArriveClientManager() {
             setLoadingRagDocs(false);
         }
     };
+
+    // Synchronize RAG inputs when active client changes
+    useEffect(() => {
+        if (activeClient) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- reinicia los campos editables solo al cambiar de cliente; derivarlo en render requeriría reestructurar el formulario
+            setEditOverview(activeClient.rag?.overview || '');
+            setEditAudience(activeClient.rag?.targetAudience || '');
+            setEditPillars(activeClient.rag?.knowledgeNotes || '');
+            setEditNoGos(activeClient.rag?.aiRulePrompt || '');
+            setEditCompetitors(activeClient.rag?.competitors || '');
+            setEditFaqs(activeClient.rag?.faqPrompt || '');
+            setRagPromptResult('');
+            setFileUploadStatus(null);
+            fetchRagDocs(activeClient.id);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- solo debe reiniciarse al cambiar de cliente, no en cada edición de activeClient
+    }, [selectedClientId]);
 
     // Filtered clients list
     const filteredClients = useMemo(() => {

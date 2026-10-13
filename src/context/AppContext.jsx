@@ -22,6 +22,19 @@ const AppContext = createContext();
 const API_BASE = '/api';
 const POLL_INTERVAL = 3000; // ms — how often to check for external changes
 
+// Guarda en localStorage sin romper si se llena la cuota
+const safeSetLocal = (key, data) => {
+    try {
+        localStorage.setItem(key, JSON.stringify(data));
+    } catch (error) {
+        console.warn(`LocalStorage quota exceeded or error saving ${key}:`, error);
+    }
+};
+
+// IDs basados en tiempo, fuera del componente para que React Compiler no los marque como impuros
+const timeId = (prefix) => `${prefix}-${Date.now()}`;
+
+// eslint-disable-next-line react-refresh/only-export-components -- el hook vive junto a su provider
 export const useApp = () => {
     const context = useContext(AppContext);
     if (!context) {
@@ -47,7 +60,6 @@ export const AppProvider = ({ children }) => {
 
     // Track if API is available
     const [apiOnline, setApiOnline] = useState(false);
-    const lastPollRef = useRef(0);
 
     const [supabaseStatus, setSupabaseStatus] = useState({
         configured: false,
@@ -299,20 +311,13 @@ export const AppProvider = ({ children }) => {
 
     useEffect(() => {
         const interval = setInterval(poll, POLL_INTERVAL);
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- sincronización inicial con el servidor (red), no estado derivado
         poll(); // initial sync
         checkSupabaseStatus().catch(() => null);
         return () => clearInterval(interval);
     }, [poll, checkSupabaseStatus]);
 
     // ─── Save to localStorage (always, as backup) ─────────────────
-
-    const safeSetLocal = (key, data) => {
-        try {
-            localStorage.setItem(key, JSON.stringify(data));
-        } catch (error) {
-            console.warn(`LocalStorage quota exceeded or error saving ${key}:`, error);
-        }
-    };
 
     useEffect(() => { safeSetLocal('os_live_ideas', ideas); }, [ideas]);
     useEffect(() => { safeSetLocal('os_live_socialMedia', socialMedia); }, [socialMedia]);
@@ -394,18 +399,13 @@ export const AppProvider = ({ children }) => {
 
     // Home (Tasks & Notes)
     const toggleTask = async (taskId) => {
-        let updatedTask = null;
-        setTasks(prev => prev.map(t => {
-            if (t.id === taskId) {
-                const status = isDone(t) ? 'pending' : 'done';
-                updatedTask = { ...t, status, done: status === 'done' };
-                return updatedTask;
-            }
-            return t;
-        }));
-        if (updatedTask) {
-            await apiFetch(`/tasks/${taskId}`, { method: 'PUT', body: { status: updatedTask.status } });
-        }
+        // El estado nuevo se calcula fuera del updater: React puede ejecutar el updater
+        // después, y entonces el PUT nunca se enviaba.
+        const current = tasks.find(t => t.id === taskId);
+        if (!current) return;
+        const status = isDone(current) ? 'pending' : 'done';
+        setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status, done: status === 'done' } : t));
+        await apiFetch(`/tasks/${taskId}`, { method: 'PUT', body: { status } });
     };
 
     const addTask = async (task) => {
@@ -446,7 +446,7 @@ export const AppProvider = ({ children }) => {
 
 
     // Activity Feed
-    const addActivity = async (text, color, projectId = null) => {
+    const addActivity = async (text, color) => {
         const newActivity = {
             id: `act-${Date.now()}`,
             text,
@@ -519,23 +519,15 @@ export const AppProvider = ({ children }) => {
 
     // ─── OpenClaw Super Agent Dispatcher ───
     const triggerOpenClawAction = async (actionName, payload = {}) => {
-        try {
-            let res = await apiFetch('/openclaw/action', {
-                method: 'POST',
-                body: { action: actionName, payload }
-            });
-            if (!res || res.status === 404) {
-                res = await apiFetch('/hermes/action', {
-                    method: 'POST',
-                    body: { action: actionName, payload }
-                });
-            }
-            await poll();
-            return res;
-        } catch (e) {
-            console.error('Error triggering OpenClaw action:', e);
-            return { status: 'error', error: e.message };
-        }
+        // apiFetch devuelve null si el servidor rechaza la acción: lo convertimos en error
+        // para que las pantallas no muestren "éxito" cuando no se ejecutó nada.
+        const res = await apiFetch('/openclaw/action', {
+            method: 'POST',
+            body: { action: actionName, payload }
+        });
+        if (!res) throw new Error(`OpenClaw no pudo ejecutar "${actionName}". Revisa la conexión con el servidor.`);
+        await poll();
+        return res;
     };
     const triggerHermesAction = triggerOpenClawAction;
 
@@ -544,7 +536,7 @@ export const AppProvider = ({ children }) => {
         if (!userText && !audioData) return null;
         
         const userMsg = {
-            id: `usr-${Date.now()}`,
+            id: timeId('usr'),
             role: 'user',
             text: userText || (audioData ? '🎙️ [Nota de voz grabada]' : ''),
             audio: audioData ? audioData.url : undefined,
@@ -596,7 +588,7 @@ export const AppProvider = ({ children }) => {
                         });
                     } else if (tool.name === 'create_event' && (tool.args?.name || tool.result?.event)) {
                         const ev = tool.result?.event || {
-                            id: `ev-${Date.now()}`,
+                            id: timeId('ev'),
                             name: tool.args.name,
                             date: tool.args.date || new Date().toISOString().split('T')[0],
                             location: tool.args.location || 'Casco Antiguo',
@@ -609,7 +601,7 @@ export const AppProvider = ({ children }) => {
                         await addEvent(ev);
                     } else if (tool.name === 'create_project' && (tool.args?.name || tool.result?.project)) {
                         const pr = tool.result?.project || {
-                            id: `proj-${Date.now()}`,
+                            id: timeId('proj'),
                             name: tool.args.name,
                             description: tool.args.description || '',
                             category: tool.args.category || 'business',
@@ -626,7 +618,7 @@ export const AppProvider = ({ children }) => {
             }
 
             const botMsg = {
-                id: `bot-${Date.now()}`,
+                id: timeId('bot'),
                 role: 'copilot',
                 text: res.reply || 'Acción procesada por OpenClaw Super Agent.',
                 model: res.model || 'gemini-3.6-flash',
@@ -645,7 +637,7 @@ export const AppProvider = ({ children }) => {
         } catch (err) {
             console.error('[OpenClaw Chat Error]:', err);
             const errMsg = {
-                id: `bot-err-${Date.now()}`,
+                id: timeId('bot-err'),
                 role: 'copilot',
                 text: `⚠️ No pude procesar tu solicitud: ${err.message}`,
                 timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -718,21 +710,21 @@ export const AppProvider = ({ children }) => {
         setPromoters(prev => [...prev, newP]);
         try {
             await apiFetch('/promoters', { method: 'POST', body: newP });
-        } catch (e) {}
+        } catch { /* apiFetch ya registra el error */ }
     };
 
     const updatePromoter = async (pId, updatedData) => {
         setPromoters(prev => prev.map(p => p.id === pId ? { ...p, ...updatedData } : p));
         try {
             await apiFetch(`/promoters/${pId}`, { method: 'PUT', body: updatedData });
-        } catch (e) {}
+        } catch { /* apiFetch ya registra el error */ }
     };
 
     const deletePromoter = async (pId) => {
         setPromoters(prev => prev.filter(p => p.id !== pId));
         try {
             await apiFetch(`/promoters/${pId}`, { method: 'DELETE' });
-        } catch (e) {}
+        } catch { /* apiFetch ya registra el error */ }
     };
 
     // Contacts

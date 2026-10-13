@@ -134,6 +134,7 @@ export function useAutopilotEngine(apiOnline, addActivityOverride) {
         return () => {
             if (loopRef.current) clearInterval(loopRef.current);
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- addActivity no es estable (se recrea en cada render del contexto); incluirlo reiniciaría el intervalo y el ciclo de auditoría en cada render
     }, [autopilotActive, events, tasks, projects]);
 
     return { autopilotActive, toggleAutopilot, lastScanResult };

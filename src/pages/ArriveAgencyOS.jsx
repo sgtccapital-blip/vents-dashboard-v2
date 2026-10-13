@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import {
     Sparkles, Briefcase, Users, Flame, Film,
     CheckSquare, GlassWater, ExternalLink, Calendar,
@@ -14,10 +14,9 @@ import '../components/ArriveAgency.css';
 
 export default function ArriveAgencyOS() {
     const [searchParams, setSearchParams] = useSearchParams();
-    const navigate = useNavigate();
     const currentTab = searchParams.get('tab') || 'clients';
 
-    const { events, imageGirls, socialMedia, tasks, addTask, addActivity } = useApp();
+    const { imageGirls, addActivity } = useApp();
 
     // ─── Local State for Dinner Guestlists ───
     const [selectedDinnerVenue, setSelectedDinnerVenue] = useState('Terraplén Rooftop');

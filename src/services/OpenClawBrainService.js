@@ -144,7 +144,7 @@ class OpenClawBrainService {
                 const data = await res.json();
                 return { ...data, geminiActive: !!geminiKey };
             }
-        } catch (e) {
+        } catch {
             // fallback
         }
 
@@ -268,7 +268,7 @@ class OpenClawBrainService {
         try {
             const res = await fetch(`${API_BASE}/openclaw/sessions`);
             if (res.ok) return await res.json();
-        } catch (e) {}
+        } catch { /* ignore */ }
         const local = localStorage.getItem('__openclaw_sessions');
         return local ? JSON.parse(local) : [];
     }
@@ -286,7 +286,7 @@ class OpenClawBrainService {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(session)
             });
-        } catch (e) {}
+        } catch { /* ignore */ }
         return session;
     }
 
@@ -299,7 +299,7 @@ class OpenClawBrainService {
         localStorage.setItem('__openclaw_sessions', JSON.stringify(updated));
         try {
             await fetch(`${API_BASE}/openclaw/sessions/${id}`, { method: 'DELETE' });
-        } catch (e) {}
+        } catch { /* ignore */ }
         return true;
     }
 
@@ -310,7 +310,7 @@ class OpenClawBrainService {
         try {
             const res = await fetch(`${API_BASE}/openclaw/skills/presets`);
             if (res.ok) return await res.json();
-        } catch (e) {}
+        } catch { /* ignore */ }
         return [
             { id: '1', name: 'Gestión de Eventos', description: 'Coordinación completa de Terraplén Rooftop, Furia y Piano Bar' },
             { id: '2', name: 'Planificación WBS', description: 'Desglose estructurado de tareas, fechas y responsables' },
@@ -326,7 +326,7 @@ class OpenClawBrainService {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ presets })
             });
-        } catch (e) {}
+        } catch { /* ignore */ }
         return presets;
     }
 }

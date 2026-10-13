@@ -2290,7 +2290,7 @@ app.post('/api/hermes/chat', handleOpenClawChat);
 
 // ─── Orchestrator Engine (Auto-Delegation & Cron) ────────────────
 app.post('/api/orchestrator/delegate', (req, res) => {
-    const { task, priority } = req.body;
+    const { task } = req.body;
     let { description } = req.body;
     if (!task) return res.status(400).json({ error: 'Falta tarea' });
     
@@ -2489,7 +2489,7 @@ app.post('/api/orch/execute-task', async (req, res) => {
             } else {
                 console.log(`[Execute] ⚠️ No SOP found for ${safeAgentName}, using default`);
             }
-        } catch (e) { console.warn(`[Execute] Could not load SOP for ${safeAgentName}`); }
+        } catch { console.warn(`[Execute] Could not load SOP for ${safeAgentName}`); }
 
         // 2. Fetch RAG Context from the correct namespace
         console.log(`[Execute] Querying RAG namespace "${namespace}"...`);
@@ -2504,7 +2504,7 @@ app.post('/api/orch/execute-task', async (req, res) => {
         try {
             const ecoResult = await RAGEngine.query(`Información general del ecosistema relevante para: ${task}`, 2);
             ecosystemContext = ecoResult.answer || '';
-        } catch (e) { /* silent */ }
+        } catch { /* silent */ }
 
         // 4. Build the full execution prompt
         const fullPrompt = `INSTRUCCIONES DEL SISTEMA (SOP DEL AGENTE):
@@ -2610,7 +2610,7 @@ app.get('/api/skills', (req, res) => {
                     parameters: skillModule.parameters || {},
                     filename: f
                 };
-            } catch(e) { return null; }
+            } catch { return null; }
         }).filter(Boolean);
         res.json(skills);
     } catch (e) {
@@ -2658,9 +2658,9 @@ app.post('/api/orch/chat', async (req, res) => {
                         loadedSkills[skillModule.name] = skillModule;
                         skillsForPrompt.push(`- ${skillModule.name}: ${skillModule.description}. Payload Params: ${JSON.stringify(skillModule.parameters)}`);
                     }
-                } catch(e) { console.warn("Failed loading skill", f); }
+                } catch { console.warn("Failed loading skill", f); }
             }
-        } catch (e) {}
+        } catch { /* sin skills locales */ }
 
         const db = readDB();
         let ragContext = '';
@@ -3332,6 +3332,7 @@ const EmbeddedRAGEngine = {
         return { success: true, indexed: count, total: db.ragDocuments.length };
     },
 
+    // eslint-disable-next-line no-unused-vars -- historyContext se mantiene por compatibilidad con /api/brain/query
     async query(question, topK = 5, historyContext = [], namespace = 'default') {
         const db = readDB();
         const allDocs = (db.ragDocuments || []).concat(db.customDocuments || []);
@@ -3407,7 +3408,7 @@ app.post('/api/rag/sync', async (req, res) => {
 });
 
 // Detalle completo de un documento específico
-app.get('/api/rag-doc/:id', (req, res) => {
+app.get(['/api/rag-doc/:id', '/api/rag/documents/:id'], (req, res) => {
     const db = readDB();
     const allDocs = (db.ragDocuments || []).concat(db.customDocuments || []);
     const doc = allDocs.find(d => d.id === req.params.id);
@@ -3529,12 +3530,12 @@ app.delete('/api/rag/:namespace/:id', (req, res) => {
 });
 
 // ─── Hermes Chat Sessions Persistence ─────────────────────────
-app.get('/api/hermes/sessions', (req, res) => {
+app.get(['/api/hermes/sessions', '/api/openclaw/sessions'], (req, res) => {
     const db = readDB();
     res.json(db.hermesSessions || []);
 });
 
-app.post('/api/hermes/sessions', (req, res) => {
+app.post(['/api/hermes/sessions', '/api/openclaw/sessions'], (req, res) => {
     const db = readDB();
     if (!db.hermesSessions) db.hermesSessions = [];
     
@@ -3558,7 +3559,7 @@ app.post('/api/hermes/sessions', (req, res) => {
     res.json({ success: true, session });
 });
 
-app.delete('/api/hermes/sessions/:id', (req, res) => {
+app.delete(['/api/hermes/sessions/:id', '/api/openclaw/sessions/:id'], (req, res) => {
     const db = readDB();
     if (db.hermesSessions) {
         db.hermesSessions = db.hermesSessions.filter(s => s.id !== req.params.id);
@@ -3568,7 +3569,7 @@ app.delete('/api/hermes/sessions/:id', (req, res) => {
 });
 
 // ─── Hermes Skill Presets ─────────────────────────────────────
-app.get('/api/hermes/skills/presets', (req, res) => {
+app.get(['/api/hermes/skills/presets', '/api/openclaw/skills/presets'], (req, res) => {
     const db = readDB();
     res.json(db.hermesSkillPresets || [
         { id: 'budget_calc', name: 'Presupuestos & Costos', icon: '💰', enabled: true, prompt: 'Calcula siempre presupuestos detallados con contingencia del 10%.' },
@@ -3578,7 +3579,7 @@ app.get('/api/hermes/skills/presets', (req, res) => {
     ]);
 });
 
-app.post('/api/hermes/skills/presets', (req, res) => {
+app.post(['/api/hermes/skills/presets', '/api/openclaw/skills/presets'], (req, res) => {
     const db = readDB();
     db.hermesSkillPresets = req.body.presets || [];
     writeDB(db);
@@ -3737,7 +3738,7 @@ function getWeekEventsForBroadcast(db, weekOffset = 0, startDateStr = null, endD
     return { events: matched, start, end, isGeneralLineup: false };
 }
 
-function generateLocalWhatsAppCampaign(events, start, end, tone = 'nightlife_vip', customInstructions = '', contacts = [], groups = []) {
+function generateLocalWhatsAppCampaign(events, start, end, tone = 'nightlife_vip', customInstructions = '') {
     const startStr = start.toLocaleDateString('es-PA', { day: 'numeric', month: 'short' });
     const endStr = end.toLocaleDateString('es-PA', { day: 'numeric', month: 'short', year: 'numeric' });
     
@@ -3883,9 +3884,7 @@ app.post('/api/agent/whatsapp-campaign/generate', async (req, res) => {
     try {
         const { weekOffset = 0, startDate, endDate, tone = 'nightlife_vip', customInstructions = '' } = req.body;
         const db = readDB();
-        const { events, start, end, isGeneralLineup } = getWeekEventsForBroadcast(db, parseInt(weekOffset) || 0, startDate, endDate);
-        const contacts = db.contacts || [];
-        const groups = db.whatsappGroups || [];
+        const { events, start, end } = getWeekEventsForBroadcast(db, parseInt(weekOffset) || 0, startDate, endDate);
 
         // Try AI generation with Gemini if configured
         if (process.env.GEMINI_API_KEY) {
@@ -4011,7 +4010,7 @@ Devuelve ÚNICAMENTE un objeto JSON con este formato exacto:
         }
 
         // Local deterministic fallback
-        const localCampaign = generateLocalWhatsAppCampaign(events, start, end, tone, customInstructions, contacts, groups);
+        const localCampaign = generateLocalWhatsAppCampaign(events, start, end, tone, customInstructions);
         if (!db.whatsappCampaigns) db.whatsappCampaigns = [];
         db.whatsappCampaigns.unshift(localCampaign);
         db.whatsappCampaigns = db.whatsappCampaigns.slice(0, 10);

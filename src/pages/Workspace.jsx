@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
     Columns3, PenTool, LayoutTemplate, BookOpen, CheckCircle2,
     Clock, CalendarDays, BarChart3, Focus, Bot, Plus,
@@ -20,27 +20,6 @@ import EventFocusMode from '../components/EventFocusMode';
 import EventCalendar from '../components/EventCalendar';
 import OpenCloudChat from '../components/OpenCloudChat';
 import EventDmSpam from '../components/EventDmSpam';
-
-// ─── Helpers ──────────────────────────────────────────────────────────
-
-function formatTime(seconds) {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-}
-
-function timeAgo(timestamp) {
-    const now = new Date();
-    const date = new Date(timestamp);
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHrs = Math.floor(diffMins / 60);
-    const diffDays = Math.floor(diffHrs / 24);
-    if (diffDays > 0) return `${diffDays}d`;
-    if (diffHrs > 0) return `${diffHrs}h`;
-    if (diffMins > 0) return `${diffMins}m`;
-    return 'now';
-}
 
 // ─── Tab Definitions ──────────────────────────────────────────────────
 const TABS = [
@@ -86,7 +65,7 @@ function ProgressRing({ percent, size = 52, stroke = 4, color = 'var(--accent-pr
 // ─── WORKSPACE 2.0 ───────────────────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════════════
 export default function Workspace() {
-    const { events, projects, activityFeed, addActivity, tasks, toggleTask, addTask, notes, addNote } = useApp();
+    const { events, projects, addActivity, tasks, addTask, addNote } = useApp();
 
     // ─── State ─────────────────────────────────────────────
     const [boardView, setBoardView] = useState(() => {
@@ -112,20 +91,18 @@ export default function Workspace() {
     const completedCount = completedTasks.length;
     const totalTasks = safeTasks.length;
     const completionPercent = totalTasks > 0 ? (completedCount / totalTasks) * 100 : 0;
-    const highPriorityTasks = pendingTasks.filter(t => t.priority === 'high').slice(0, 5);
-    const focusTasks = pendingTasks.slice(0, 5);
     const activeEvents = (events || []).filter(isActiveEvent);
 
     // ─── Save last view ────────────────────────────────────
     useEffect(() => {
         try { localStorage.setItem('ws2_lastView', boardView); }
-        catch {}
+        catch { /* ignore */ }
     }, [boardView]);
 
     // ─── Save sidebar state ────────────────────────────────
     useEffect(() => {
         try { localStorage.setItem('ws2_sidebar', showSidebar.toString()); }
-        catch {}
+        catch { /* ignore */ }
     }, [showSidebar]);
 
     // ─── Keyboard shortcuts ────────────────────────────────

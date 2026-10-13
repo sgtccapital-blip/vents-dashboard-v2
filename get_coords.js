@@ -26,7 +26,7 @@ function fetchCoords(place) {
           } else {
             resolve({ place, lat: null, lon: null });
           }
-        } catch (e) {
+        } catch {
           resolve({ place, lat: null, lon: null });
         }
       });

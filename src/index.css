@@ -6068,3 +6068,134 @@ a:hover {
   .widget-sm { grid-column: span 3 !important; }
   .widget-md { grid-column: span 6 !important; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   ⚡ COMMAND CENTER — Pulso del día, portafolio y tareas en Home
+   ═══════════════════════════════════════════════════════════════════ */
+
+@media (min-width: 1025px) {
+  .cc-metrics-banner.cc-metrics-wide {
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  }
+}
+
+.cc-pulse-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-lg);
+  margin-bottom: var(--space-2xl);
+}
+
+.cc-pulse-col {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md) var(--space-lg);
+  min-width: 0;
+}
+
+.cc-pulse-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: var(--space-sm);
+}
+
+.cc-pulse-title span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cc-pulse-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--border-subtle);
+  padding: 8px 0;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+.cc-pulse-item:first-of-type {
+  border-top: none;
+}
+
+.cc-pulse-item:hover .cc-pulse-item-title {
+  color: var(--text-primary);
+}
+
+.cc-pulse-item-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cc-pulse-item-sub {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cc-pulse-empty {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  padding: 8px 0;
+}
+
+.cc-progress-track {
+  height: 6px;
+  background: var(--bg-tertiary);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.cc-progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.8s ease;
+}
+
+.cc-task-due {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+.cc-task-due.is-overdue {
+  color: var(--accent-red);
+  font-weight: 600;
+}
+
+.cc-task-due.is-today {
+  color: var(--accent-orange);
+  font-weight: 600;
+}
+
+@media (max-width: 1024px) {
+  .cc-pulse-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .cc-pulse-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-md);
+    margin-bottom: var(--space-xl);
+  }
+}

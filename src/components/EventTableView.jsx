@@ -232,6 +232,7 @@ export default function EventTableView({ events, filterEventId }) {
             }
         }
         addTask({
+            // eslint-disable-next-line react-hooks/purity -- runs inside an event handler, not during render
             id: `k-${Date.now()}`,
             text: 'Nueva tarea...',
             status: 'pending',
@@ -459,7 +460,7 @@ export default function EventTableView({ events, filterEventId }) {
                         <h4 style={{ margin: 0, fontSize: '15px', color: 'var(--text-primary)' }}>No se encontraron tareas con los filtros seleccionados</h4>
                         <p style={{ margin: '6px 0 0 0', fontSize: '12.5px', color: 'var(--text-tertiary)' }}>Prueba seleccionando otro responsable, venue o limpiando la búsqueda.</p>
                     </div>
-                ) : Object.entries(grouped).map(([groupKey, group], groupIndex) => {
+                ) : Object.entries(grouped).map(([groupKey, group]) => {
                     const isCollapsed = collapsedGroups[groupKey];
                     const gColor = group.color;
                     const doneCount = group.tasks.filter(t => t.status === 'done' || t.done).length;

@@ -11,6 +11,7 @@ import {
 import { useApp } from '../context/AppContext';
 
 // --- DEFINICIÓN DE PLANTILLAS PARA PROYECTOS & EVENTOS ---
+// eslint-disable-next-line react-refresh/only-export-components -- plantillas compartidas con otros módulos
 export const PROJECT_AND_EVENT_TEMPLATES = {
     // ─── PROYECTOS ───
     project_software: {
@@ -192,7 +193,7 @@ export default function Eventos() {
     const {
         events, addEvent, updateEvent, deleteEvent, reorderEvents,
         projects, addProject, updateProject, deleteProject, reorderProjects,
-        triggerOpenClawAction, openclawLogs
+        triggerOpenClawAction
     } = useApp();
     const navigate = useNavigate();
 
@@ -298,7 +299,7 @@ export default function Eventos() {
             const date = new Date(dateStr + 'T12:00');
             const formatted = date.toLocaleDateString('es-PA', { weekday: 'short', day: 'numeric', month: 'short' });
             return formatted.charAt(0).toUpperCase() + formatted.slice(1);
-        } catch (e) {
+        } catch {
             return dateStr;
         }
     };

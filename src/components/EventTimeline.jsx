@@ -40,8 +40,11 @@ export default function EventTimeline() {
     const [offsetWeeks, setOffsetWeeks] = useState(0);
 
     const today = new Date();
-    const startDate = new Date(today);
-    startDate.setDate(startDate.getDate() - startDate.getDay() + (offsetWeeks * 7)); // Start of week (Sunday)
+    const startDate = useMemo(() => {
+        const d = new Date();
+        d.setDate(d.getDate() - d.getDay() + (offsetWeeks * 7)); // Start of week (Sunday)
+        return d;
+    }, [offsetWeeks]);
 
     // Generate 28 days (4 weeks)
     const days = Array.from({ length: 28 }, (_, i) => {
