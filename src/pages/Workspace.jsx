@@ -389,11 +389,11 @@ export default function Workspace() {
             </div>
 
             {/* ═══ Side Drawer: OpenClaw Chat (Synced with DashboardCopilot) ══════ */}
-            <div style={{
+            <div className={`ws-chat-drawer ${showChat ? 'open' : ''}`} aria-hidden={!showChat} style={{
                 position: 'fixed',
                 top: 0, right: 0, bottom: 0,
                 width: '400px',
-                background: 'var(--bg-canvas)',
+                background: 'var(--bg-primary)',
                 borderLeft: '1px solid var(--border-subtle)',
                 boxShadow: '-8px 0 32px rgba(0,0,0,0.5)',
                 zIndex: 50,

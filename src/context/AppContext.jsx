@@ -310,11 +310,22 @@ export const AppProvider = ({ children }) => {
     }, [checkSupabaseStatus]);
 
     useEffect(() => {
-        const interval = setInterval(poll, POLL_INTERVAL);
+        // Con la app en segundo plano (pantalla bloqueada, otra app) no se consulta al servidor:
+        // ahorra batería y datos en el teléfono. Al volver, se sincroniza al instante.
+        const interval = setInterval(() => {
+            if (document.visibilityState === 'visible') poll();
+        }, POLL_INTERVAL);
+        const onVisible = () => { if (document.visibilityState === 'visible') poll(); };
+        document.addEventListener('visibilitychange', onVisible);
+        window.addEventListener('online', onVisible);
         // eslint-disable-next-line react-hooks/set-state-in-effect -- sincronización inicial con el servidor (red), no estado derivado
         poll(); // initial sync
         checkSupabaseStatus().catch(() => null);
-        return () => clearInterval(interval);
+        return () => {
+            clearInterval(interval);
+            document.removeEventListener('visibilitychange', onVisible);
+            window.removeEventListener('online', onVisible);
+        };
     }, [poll, checkSupabaseStatus]);
 
     // El agente guarda sus cambios en el servidor: recargar en cuanto termina una acción

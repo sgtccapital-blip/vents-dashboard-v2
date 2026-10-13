@@ -4,6 +4,7 @@ import OpenClawBrainService, { OPENCLAW_MODES, SLASH_COMMANDS } from '../service
 import RagIndexer from '../services/RagIndexer';
 import { useAutopilotEngine } from '../hooks/useAutopilotEngine';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
     Bot, Send, Sparkles, Database, UploadCloud, FolderSync,
     BrainCircuit, CheckCircle2, AlertCircle, RefreshCw, Zap,
@@ -12,6 +13,7 @@ import {
     FileText, CheckSquare, Search, Eye, Download, BookOpen, Sliders, ChevronRight,
     SlidersHorizontal, Compass, PieChart, Wrench, Shield, FileCheck
 } from 'lucide-react';
+import { scrollToBottom } from '../lib/scrollToBottom';
 
 export default function AgentBrain() {
     const appContext = useApp();
@@ -87,14 +89,14 @@ export default function AgentBrain() {
 
     // Auto-scroll chat
     useEffect(() => {
-        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        scrollToBottom(chatEndRef.current);
     }, [messages, isThinking, thinkingStep]);
 
     // Load initial telemetry and config
     useEffect(() => {
         loadTelemetry();
         loadSkillPresets();
-        const interval = setInterval(checkOpenClawHealth, 6000);
+        const interval = setInterval(() => { if (document.visibilityState === 'visible') checkOpenClawHealth(); }, 6000);
         return () => clearInterval(interval);
         // eslint-disable-next-line react-hooks/exhaustive-deps -- carga inicial solo al montar; los loaders no son estables entre renders
     }, []);
@@ -714,13 +716,13 @@ export default function AgentBrain() {
                             </div>
 
                             {/* Message List */}
-                            <div style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px', background: 'rgba(0,0,0,0.1)' }}>
+                            <div className="agent-chat-list" style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px', background: 'rgba(0,0,0,0.1)' }}>
                                 {messages.map(msg => (
                                     <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start', gap: '6px' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--text-secondary)' }}>
                                             {msg.role === 'user' ? 'OPERADOR' : '🤖 OPENCLAW AGENT'}
                                         </div>
-                                        <div style={{
+                                        <div className="agent-chat-bubble" style={{
                                             maxWidth: '78%',
                                             padding: '14px 20px',
                                             borderRadius: '12px',
@@ -731,8 +733,8 @@ export default function AgentBrain() {
                                             lineHeight: '1.6'
                                         }}>
                                             {msg.role === 'bot' ? (
-                                                <div style={{ background: 'transparent' }}>
-                                                    <ReactMarkdown>{msg.text}</ReactMarkdown>
+                                                <div className="chat-md" style={{ background: 'transparent' }}>
+                                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.text}</ReactMarkdown>
                                                 </div>
                                             ) : msg.text}
                                         </div>

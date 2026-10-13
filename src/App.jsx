@@ -96,7 +96,7 @@ function AppLayout() {
       </div>
 
       {/* Navegación inferior en móvil */}
-      <MobileTabBar onMenu={() => setMobileMenuOpen(true)} />
+      <MobileTabBar />
 
       {/* Cloud Sync Side-over Modal */}
       <CloudSyncPanel isOpen={cloudSyncOpen} onClose={() => setCloudSyncOpen(false)} />

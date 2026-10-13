@@ -1,9 +1,10 @@
 import { NavLink } from 'react-router-dom';
-import { Home, CalendarDays, CalendarCheck, ListChecks, Menu } from 'lucide-react';
+import { Home, CalendarDays, CalendarCheck, ListChecks, Bot } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { taskStats } from '../../lib/status';
 
-// Barra inferior solo para móvil: las 4 pantallas que más se usan en producción + menú completo.
+// Barra inferior solo para móvil: las 4 pantallas que más se usan + el agente.
+// El menú completo está en el ☰ de la barra superior.
 const TABS = [
     { to: '/', label: 'Inicio', icon: Home, end: true },
     { to: '/eventos', label: 'Eventos', icon: CalendarCheck },
@@ -11,7 +12,7 @@ const TABS = [
     { to: '/calendar', label: 'Calendario', icon: CalendarDays },
 ];
 
-export default function MobileTabBar({ onMenu }) {
+export default function MobileTabBar() {
     const { tasks } = useApp();
     const pending = taskStats(tasks).pending;
 
@@ -31,9 +32,9 @@ export default function MobileTabBar({ onMenu }) {
                     <span className="mobile-tab-label">{tab.label}</span>
                 </NavLink>
             ))}
-            <button type="button" className="mobile-tab" onClick={onMenu}>
-                <span className="mobile-tab-icon"><Menu size={22} /></span>
-                <span className="mobile-tab-label">Más</span>
+            <button type="button" className="mobile-tab mobile-tab-agent" onClick={() => window.dispatchEvent(new Event('openclaw:open'))}>
+                <span className="mobile-tab-icon"><Bot size={22} /></span>
+                <span className="mobile-tab-label">Agente</span>
             </button>
         </nav>
     );

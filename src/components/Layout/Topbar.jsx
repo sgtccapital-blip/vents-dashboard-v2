@@ -35,8 +35,11 @@ const ProgressRing = ({ percent, size = 36, stroke = 3 }) => {
 
 const pageTitles = {
     '/': 'Command Center',
-    '/arrive': 'ARRIVE Agency OS — Creative, Talent & Experiences',
+    '/arrive': 'ARRIVE Agency',
+    '/portfolio': 'Portfolio OS',
     '/workspace': 'Workspace 2.0',
+    '/contactos': 'Contactos',
+    '/whatsapp-agent': 'Agente WhatsApp',
     '/calendar': 'Master Calendar',
     '/eventos': 'Eventos',
     '/social': 'Redes Sociales',

@@ -3,6 +3,7 @@ import { Bot, Send, Mic, MicOff, X, Sparkles, Trash2, Cpu, CheckCircle2, Volume2
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useApp } from '../context/AppContext';
+import { scrollToBottom } from '../lib/scrollToBottom';
 
 export default function OpenCloudChat({ onClose }) {
     const {
@@ -20,7 +21,7 @@ export default function OpenCloudChat({ onClose }) {
 
     // Auto-scroll to bottom of chat
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        scrollToBottom(messagesEndRef.current);
     }, [openclawMessages, isOpenclawThinking]);
 
     // Live Voice Dictation (Speech-to-Text) using Web Speech API

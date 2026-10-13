@@ -1416,3 +1416,104 @@
     display: none !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   📱 MOBILE PASS 2 — agente en la barra, áreas táctiles, Home compacto
+   ═══════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* El agente se abre desde la pestaña "Agente": el botón flotante tapaba contenido */
+  .dashboard-copilot-container:not(:has(.copilot-window)) {
+    display: none !important;
+  }
+
+  .mobile-tab-agent .mobile-tab-icon {
+    color: #a78bfa;
+  }
+
+  /* Áreas táctiles mínimas (~36px) sin cambiar el aspecto: muchos botones traen padding 0 en línea */
+  .page-content button,
+  .page-content select,
+  .modal button {
+    min-height: 36px;
+  }
+
+  .page-content button:has(> svg:only-child),
+  .modal button:has(> svg:only-child),
+  .btn-icon {
+    min-width: 36px;
+    min-height: 36px;
+    justify-content: center;
+  }
+
+  /* Filtros tipo "chip" que se desplazan en horizontal: que no se partan en dos líneas */
+  .page-content button {
+    touch-action: manipulation;
+  }
+
+  /* Pulso del día: carrusel deslizable en vez de 4 bloques apilados */
+  .cc-pulse-grid {
+    display: flex !important;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    gap: 10px;
+    margin: 0 -10px var(--space-xl);
+    padding: 0 10px 4px;
+    scrollbar-width: none;
+  }
+
+  .cc-pulse-grid::-webkit-scrollbar {
+    display: none;
+  }
+
+  .cc-pulse-col {
+    flex: 0 0 82%;
+    scroll-snap-align: start;
+    scroll-margin-left: 10px;
+  }
+
+  .cc-pulse-item {
+    padding: 10px 0;
+  }
+
+  /* Tareas del Home: fila completa táctil */
+  .task-item {
+    min-height: 44px;
+  }
+
+  .task-item .checkbox input[type="checkbox"] {
+    width: 22px;
+    height: 22px;
+  }
+}
+
+@media (max-width: 768px) {
+  /* Consola OpenClaw: burbujas a lo ancho y menos relleno */
+  .agent-chat-list {
+    padding: 12px !important;
+    gap: 14px !important;
+  }
+
+  .agent-chat-bubble {
+    max-width: 94% !important;
+    padding: 10px 14px !important;
+    font-size: 14px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  /* Chat de OpenClaw en Workspace: pantalla completa, por encima de las barras */
+  .ws-chat-drawer {
+    width: 100vw !important;
+    z-index: 1100 !important;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .ws-chat-drawer:not(.open) {
+    visibility: hidden;
+  }
+
+  body:has(.ws-chat-drawer.open) .mobile-tabbar {
+    display: none !important;
+  }
+}

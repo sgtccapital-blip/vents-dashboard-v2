@@ -10,6 +10,7 @@ import {
     Play, Pause, RotateCcw, AlertCircle, Database, Search, MessageSquare, ExternalLink,
     Sliders, Settings, Key, Cpu, ShieldCheck, Building2
 } from 'lucide-react';
+import { scrollToBottom } from '../lib/scrollToBottom';
 
 export default function DashboardCopilot() {
     const navigate = useNavigate();
@@ -61,8 +62,14 @@ export default function DashboardCopilot() {
                 setIsMinimized(false);
             }
         };
+        // En móvil se abre desde la pestaña "Agente" de la barra inferior
+        const handleOpen = () => { setIsOpen(true); setIsMinimized(false); };
         window.addEventListener('openclaw:focus-brand', handleFocusBrand);
-        return () => window.removeEventListener('openclaw:focus-brand', handleFocusBrand);
+        window.addEventListener('openclaw:open', handleOpen);
+        return () => {
+            window.removeEventListener('openclaw:focus-brand', handleFocusBrand);
+            window.removeEventListener('openclaw:open', handleOpen);
+        };
     }, []);
 
     // Shared Messages State (Synced with Workspace OpenClaw drawer & AppContext)
@@ -74,7 +81,7 @@ export default function DashboardCopilot() {
     // Auto-scroll
     useEffect(() => {
         if (isOpen && !isMinimized) {
-            chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+            scrollToBottom(chatEndRef.current);
         }
     }, [messages, isThinking, isOpen, isMinimized]);
 

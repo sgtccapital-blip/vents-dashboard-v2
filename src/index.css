@@ -20,6 +20,8 @@ html, body, #root {
   --bg-primary: #0a0a0f;
   --bg-secondary: #11111a;
   --bg-tertiary: #1a1a2e;
+  /* Usada en 38 sitios (modales, inputs, drawer) pero nunca se había definido: quedaban transparentes */
+  --bg-canvas: #0e0e16;
   --bg-card: rgba(22, 22, 35, 0.7);
   --bg-card-hover: rgba(30, 30, 50, 0.85);
   --bg-surface: rgba(255, 255, 255, 0.03);
