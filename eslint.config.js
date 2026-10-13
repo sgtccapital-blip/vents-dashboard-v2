@@ -28,7 +28,7 @@ export default defineConfig([
   },
   {
     // Código que corre en Node (servidor y scripts), no en el navegador
-    files: ['server.js', 'server/**/*.js', '*.cjs', 'seed-db.js', 'tests/**/*.js', 'src/services/openCloudEngine.js'],
+    files: ['server.js', 'server/**/*.js', '*.cjs', 'seed-db.js', 'tests/**/*.js'],
     languageOptions: {
       globals: { ...globals.node },
     },

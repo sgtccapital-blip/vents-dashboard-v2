@@ -1517,3 +1517,28 @@
     display: none !important;
   }
 }
+
+@media (max-width: 768px) {
+  /* Alta rápida de tareas ARRIVE: los controles en columna no deben salirse de la tarjeta */
+  .arrive-quickadd-bar > * {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    margin-left: 0 !important;
+  }
+
+  .arrive-quickadd-btn {
+    justify-content: center;
+    min-height: 40px;
+  }
+}
+
+@media (max-width: 768px) {
+  /* Barra superior: título se recorta, los botones de la derecha siempre caben */
+  .topbar-left { min-width: 0; flex: 1 1 auto; }
+  .topbar-right { flex: 0 0 auto; gap: 4px; }
+  .topbar .page-title { max-width: none !important; min-width: 0; }
+  .topbar .cloud-sync-badge { margin-right: 2px !important; padding: 5px 8px !important; }
+  .topbar-bell, .topbar-user { width: 32px; height: 32px; min-width: 32px; margin-left: 4px; }
+}
