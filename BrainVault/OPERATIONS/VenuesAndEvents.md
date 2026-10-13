@@ -67,3 +67,15 @@ Ubicación/Venue: Casco Antiguo
 Presupuesto: $0
 Descripción: Evento The Room.
 
+## Primavera Party
+Fecha: Por definir | Estado: activo
+Ubicación/Venue: Primavera Club / Casco Antiguo, Panamá
+Presupuesto: $2500
+Descripción: Noche de fiesta y takeover en Primavera. Party de viernes de alta energía con curaduría de música chic, invitados VIP y mesas exclusivas.
+
+## Sunday Sunset Dinner & Closing Party
+Fecha: Por definir | Estado: activo
+Ubicación/Venue: Casco Antiguo / Rooftop Venue, Panamá
+Presupuesto: $2000
+Descripción: Cena VIP de chicas y fiesta de cierre de fin de semana. Menú maridaje, coctelería y fiesta para culminar la semana.
+
