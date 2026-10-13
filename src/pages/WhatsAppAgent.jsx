@@ -13,9 +13,13 @@ import {
 export const WEEKLY_FIXED_SCHEDULE = [
     { id: 'wed_furia', day: 'Miércoles', venue: 'Furia', label: 'Miércoles Furia', color: '#ec4899', icon: '🔥', desc: 'Ladies Night, Sushi & VIP Party' },
     { id: 'thu_terraplen', day: 'Jueves', venue: 'Terraplén', label: 'Jueves Terraplén', color: '#8b5cf6', icon: '🍸', desc: 'Rooftop, Open Bar & Vibe Casco' },
+    { id: 'thu_primavera', day: 'Jueves / Sábado', venue: 'Primavera Club', label: 'Primavera Social Club', color: '#f43f5e', icon: '🌸', desc: 'Sunset sessions, coctelería botánica y terraza lifestyle' },
     { id: 'fri_furia', day: 'Viernes', venue: 'Furia', label: 'Viernes Furia', color: '#ef4444', icon: '⚡', desc: 'La noche cumbre de la semana' },
-    { id: 'sat_varies', day: 'Sábado', venue: 'Furia / Terraplén / Piano Bar', venues: ['Furia', 'Terraplén', 'Piano Bar'], label: 'Sábado Rotativo', color: '#f59e0b', icon: '✨', desc: 'Varía: Furia, Terraplén o Piano Bar' },
-    { id: 'sun_terraplen', day: 'Domingo', venue: 'Terraplén', label: 'Domingo Terraplén', color: '#10b981', icon: '🌅', desc: 'Sunset Chill, Drinks & After Party' }
+    { id: 'sat_varies', day: 'Sábado', venue: 'Furia / Terraplén / Piano Bar', venues: ['Furia', 'Terraplén', 'Piano Bar', 'Primavera Club'], label: 'Sábado Rotativo', color: '#f59e0b', icon: '✨', desc: 'Varía: Furia, Terraplén, Primavera o Piano Bar' },
+    { id: 'sun_terraplen', day: 'Domingo', venue: 'Terraplén', label: 'Domingo Terraplén', color: '#10b981', icon: '🌅', desc: 'Sunset Chill, Drinks & After Party' },
+    { id: 'sun_dinner', day: 'Domingo Noche', venue: 'Furia / Terraplén', label: 'Domingo Dinner Party', color: '#d946ef', icon: '🥂', desc: 'Cena exclusiva, música lounge y cierre VIP' },
+    { id: 'weddings_studio', day: 'Flexible / Fines de Semana', venue: 'Bodas & Eventos Privados', label: 'Wedding Content', color: '#fb7185', icon: '💍', desc: 'Cobertura TikTok/Reels novias entrega misma noche' },
+    { id: 'podcast_onthego', day: 'Jueves a Domingo', venue: 'Casco & Rooftops', label: 'Podcast On-The-Go', color: '#06b6d4', icon: '🎙️', desc: 'Estudio de grabación móvil interactivo con micrófonos wireless' }
 ];
 
 export const BROADCAST_OBJECTIVES = [
@@ -50,6 +54,22 @@ export const BROADCAST_OBJECTIVES = [
         badge: 'Tickets & Preventa',
         color: '#10b981',
         desc: 'Enlaces directos de compra de tickets, preventas de cover y accesos prioritarios.' 
+    },
+    { 
+        id: 'wedding_content', 
+        label: '💍 Wedding Content Creation (Novias)', 
+        short: 'Wedding Content',
+        badge: 'Bodas & Novias',
+        color: '#f43f5e',
+        desc: 'Difusión de servicio exclusivo para novias: Reels y TikToks de la boda entregados la misma noche.' 
+    },
+    { 
+        id: 'podcast_live', 
+        label: '🎙️ Podcast On-The-Go (Eventos & Bodas)', 
+        short: 'Podcast Móvil',
+        badge: 'Podcast On-The-Go',
+        color: '#06b6d4',
+        desc: 'Promoción de cabina de podcast móvil para marcas, eventos privados, bodas y rooftops.' 
     }
 ];
 
@@ -521,6 +541,8 @@ export default function WhatsAppAgent() {
     const normalizeObjKey = (obj) => {
         if (!obj) return '';
         const lower = obj.toLowerCase();
+        if (lower.includes('wedding') || lower.includes('novia') || lower.includes('boda')) return 'wedding_content';
+        if (lower.includes('podcast') || lower.includes('onthego') || lower.includes('on-the-go')) return 'podcast_live';
         if (lower.includes('sushi') && (lower.includes('chica') || lower.includes('ladies') || lower.includes('women'))) return 'chicas_sushi';
         if (lower.includes('drink') && lower.includes('chica') || lower.includes('party_drinks')) return 'drinks_chicas';
         if (lower.includes('hombre') || lower.includes('hombres_sushi') || lower.includes('mesas')) return 'hombres_sushi_mesas';
@@ -1426,10 +1448,12 @@ export default function WhatsAppAgent() {
                                             style={{ padding: '8px 12px', fontSize: '13px' }}
                                         >
                                             <option value="Miércoles">Miércoles (Furia)</option>
-                                            <option value="Jueves">Jueves (Terraplén)</option>
+                                            <option value="Jueves">Jueves (Terraplén / Primavera)</option>
                                             <option value="Viernes">Viernes (Furia)</option>
-                                            <option value="Sábado">Sábado (Furia/Terraplén/Piano Bar)</option>
-                                            <option value="Domingo">Domingo (Terraplén)</option>
+                                            <option value="Sábado">Sábado (Furia/Terraplén/Piano Bar/Primavera)</option>
+                                            <option value="Domingo">Domingo (Terraplén / Furia Dinner)</option>
+                                            <option value="Flexible / Fines de Semana">Flexible / Fines de Semana (Bodas & Coberturas)</option>
+                                            <option value="Jueves a Domingo">Jueves a Domingo (Podcast & Activaciones)</option>
                                         </select>
                                     </div>
 
@@ -1444,6 +1468,9 @@ export default function WhatsAppAgent() {
                                             <option value="Furia">Furia</option>
                                             <option value="Terraplén">Terraplén</option>
                                             <option value="Piano Bar">Piano Bar</option>
+                                            <option value="Primavera Club">Primavera Club</option>
+                                            <option value="Bodas & Eventos Privados">Bodas & Eventos Privados</option>
+                                            <option value="Casco & Rooftops">Casco & Rooftops</option>
                                         </select>
                                     </div>
                                 </div>
@@ -1461,6 +1488,8 @@ export default function WhatsAppAgent() {
                                             <option value="drinks_chicas">🍸 Drinks Chicas (Llenar)</option>
                                             <option value="hombres_sushi_mesas">🍾 Venta Hombres Mesas VIP</option>
                                             <option value="spam_tickets">🎟️ Spam Tickets / Preventas</option>
+                                            <option value="wedding_content">💍 Wedding Content Creation (Novias)</option>
+                                            <option value="podcast_live">🎙️ Podcast On-The-Go (Eventos & Bodas)</option>
                                         </select>
                                     </div>
 
@@ -2608,6 +2637,8 @@ export default function WhatsAppAgent() {
                                         <option value="Viernes">Viernes</option>
                                         <option value="Sábado">Sábado</option>
                                         <option value="Domingo">Domingo</option>
+                                        <option value="Jueves / Sábado">Jueves / Sábado</option>
+                                        <option value="Flexible / Fines de Semana">Flexible / Fines de Semana</option>
                                         <option value="General">General / Cualquier Día</option>
                                     </select>
                                 </div>
@@ -2622,6 +2653,9 @@ export default function WhatsAppAgent() {
                                         <option value="Furia">Furia</option>
                                         <option value="Terraplén">Terraplén</option>
                                         <option value="Piano Bar">Piano Bar</option>
+                                        <option value="Primavera Club">Primavera Club</option>
+                                        <option value="Bodas & Eventos Privados">Bodas & Eventos Privados</option>
+                                        <option value="Casco & Rooftops">Casco & Rooftops</option>
                                         <option value="General">General / Multi-Venue</option>
                                     </select>
                                 </div>
@@ -2649,6 +2683,8 @@ export default function WhatsAppAgent() {
                                 <option value="drinks_chicas">🍸 Drinks de las Chicas (Llenar la fiesta)</option>
                                 <option value="hombres_sushi_mesas">🍾 Venta Sushi Party & Mesas VIP (Hombres)</option>
                                 <option value="spam_tickets">🎟️ Spam de Tickets / Cover de cada Evento</option>
+                                <option value="wedding_content">💍 Wedding Content Creation (Novias)</option>
+                                <option value="podcast_live">🎙️ Podcast On-The-Go (Eventos & Bodas)</option>
                                 <option value="general">⚡ Difusión General / Cartelera</option>
                             </select>
 

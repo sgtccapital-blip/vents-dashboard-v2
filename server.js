@@ -868,7 +868,7 @@ app.use('/api/socialMedia', (req, res, next) => {
     next();
 });
 
-const entities = ['agents', 'projects', 'companies', 'events', 'tasks', 'agentTasks', 'agentMemory', 'agentKPIs', 'circuitBreakers', 'notes', 'ideas', 'subscriptions', 'socialMedia', 'contentTasks', 'orders', 'contacts', 'decisionLog', 'portfolioRoadmap', 'promoters', 'imageGirls'];
+const entities = ['agents', 'projects', 'companies', 'events', 'tasks', 'agentTasks', 'agentMemory', 'agentKPIs', 'circuitBreakers', 'notes', 'ideas', 'subscriptions', 'socialMedia', 'contentTasks', 'orders', 'contacts', 'decisionLog', 'portfolioRoadmap', 'promoters', 'imageGirls', 'dinnerGuestlist'];
 
 entities.forEach(entity => {
     app.use(`/api/${entity}`, createCRUDRoutes(entity));
@@ -1013,6 +1013,7 @@ app.get('/api/state', (req, res) => {
             portfolioRoadmap: db.portfolioRoadmap || [],
             promoters: db.promoters || [],
             imageGirls: db.imageGirls || [],
+            dinnerGuestlist: db.dinnerGuestlist || [],
             agents: db.agents || [],
         }
     });
@@ -2227,13 +2228,13 @@ ${systemRole || ''}`;
 
     // ─── 1. INTEGRACIÓN CON GOOGLE GEMINI (Multi-Model Resiliente con Fast Fallback) ───
     if (geminiApiKey) {
+        const preferredModel = process.env.GEMINI_MODEL || db.openclawConfig?.model;
         const candidateModels = [
+            ...(preferredModel ? [preferredModel] : []),
             'gemini-3.8-flash',
             'gemini-3.5-flash-lite',
-            'gemini-3.1-flash-lite',
-            'gemini-2.5-flash',
-            'gemini-2.0-flash'
-        ];
+            'gemini-3.1-flash-lite'
+        ].filter((m, i, arr) => arr.indexOf(m) === i);
 
         const geminiContents = [
             ...history.slice(-8).map(h => ({
@@ -4219,6 +4220,24 @@ function generateLocalWhatsAppCampaign(events, start, end, tone = 'nightlife_vip
             audience: 'Cumpleañeros del Mes / Semana',
             title: 'Paquete de Cumpleaños & Bottle Free',
             whatsappCopy: `🎉 ¡Feliz cumpleaños {{nombre}}! Queremos celebrarte en grande: te regalamos 1 botella de espumante + mesa reservada + entradas free para tus invitados este fin de semana. Responde aquí para activar tu paquete de cumple. 🎂🍾`
+        },
+        {
+            id: 'vip-msg-wedding',
+            audience: 'Novias & Wedding Planners',
+            title: '💍 Propuesta Wedding Content Creator (Misma Noche)',
+            whatsappCopy: `¡Hola {{nombre}}! 💍 Felicitaciones por la boda que se aproxima. En ARRIVE contamos con un servicio exclusivo de Wedding Content Creators para capturar cada momento íntimo y espontáneo en video 4K vertical (Reels y TikToks) con entrega la misma noche en tu WhatsApp. ¿Te gustaría ver nuestro reel de bodas y paquetes? ✨📲`
+        },
+        {
+            id: 'vip-msg-podcast',
+            audience: 'Marcas & Eventos Privados',
+            title: '🎙️ Cabina Móvil Podcast On-The-Go',
+            whatsappCopy: `Hola {{nombre}}, ¿cómo estás? Te saluda el equipo de ARRIVE. Activamos nuestro formato de 'Podcast On-The-Go' para eventos, bodas y activaciones: estudio móvil interactivo, micrófonos inalámbricos y entrega de cápsulas verticales para redes en 24h. ¿Tienes algún evento próximo donde podamos integrarlo? 🎙️⚡`
+        },
+        {
+            id: 'vip-msg-dinner-girls',
+            audience: 'Chicas VIP & Embajadoras',
+            title: '🍣 Invitación Mesa Imperial Sushi & Drinks',
+            whatsappCopy: `¡Hola {{nombre}}! 🍣 Este fin de semana tenemos mesa imperial reservada de cena para nuestro grupo de chicas en {{venue}}. Incluye sushi de autor y welcome drinks de cortesía para ti y tus amigas. ¿Cuántas amigas van contigo para asegurar sus puestos en la lista de puerta? 🥂✨`
         }
     ];
 
@@ -4572,6 +4591,42 @@ const DEFAULT_WHATSAPP_REFERENCES = [
         objective: 'hombres_sushi_party',
         objectiveLabel: '🍾 Venta Sushi Party & Mesas Hombres',
         copy: `🎹 *SATURDAY LIVE SESSIONS @ PIANO BAR CASCO* 🍸✨\n\nUna noche diferente, exclusiva y con la mejor atmósfera musical de la ciudad.\n\n🥂 *PARA RESERVAS DE GRUPO & MESAS:*\n• Coctelería de autor premium\n• Pianistas y cantantes en vivo con los mejores clásicos\n• Espacios VIP íntimos para compartir con amigos o pareja\n\n📍 *Piano Bar* (Casco Antiguo)\nResponde *PIANO* para separar tu mesa con anticipación. Cupos estrictamente limitados. 🎶✨`
+    },
+    {
+        id: 'ref-wed-content-creation',
+        title: 'Bodas — 💍 Wedding Content Creation (Misma Noche)',
+        venue: 'Bodas & Eventos Privados',
+        day: 'Flexible / Fines de Semana',
+        objective: 'wedding_content',
+        objectiveLabel: '💍 Wedding Content Creation (Novias)',
+        copy: `💍 *WEDDING CONTENT CREATION BY ARRIVE* 📱✨\n\n¿Te casas pronto o estás coordinando una boda? Despreocúpate del teléfono y deja que capturemos cada instante detrás de escena.\n\n✨ *NUESTRO SERVICIO INCLUYE:*\n• Cobertura continua con iPhones de última generación en video 4K vertical\n• 3 a 5 Reels / TikToks editados con audio tendencia y transiciones prémium\n• *ENTREGA LA MISMA NOCHE:* Todo el contenido crudo (fotos + videos) listo en un drive privado antes de que termine la fiesta\n• Coordinación directa con fotógrafos y wedding planners sin estorbar su trabajo\n\n👰 *Cupos limitados por mes:* Responde *BODA* con la fecha del evento para enviarte disponibilidad y propuesta personalizada. 🥂💐`
+    },
+    {
+        id: 'ref-podcast-live-onthego',
+        title: 'Eventos & Marcas — 🎙️ Podcast On-The-Go (Cabina Móvil)',
+        venue: 'Casco & Rooftops',
+        day: 'Jueves a Domingo',
+        objective: 'podcast_live',
+        objectiveLabel: '🎙️ Podcast On-The-Go (Eventos & Bodas)',
+        copy: `🎙️ *PODCAST ON-THE-GO | ESTUDIO MÓVIL EN VIVO* ⚡🎧\n\nConvierte tu evento, boda o fiesta en un episodio viral.\n\n🔥 *EXPERIENCIA INTERACTIVA:*\n• Cabina y mesa de entrevistas móvil montada directamente en el venue o rooftop\n• 2 a 4 micrófonos inalámbricos broadcast con aislamiento de ruido ambiental\n• Entrevistas espontáneas a invitados VIP, novios o personalidades\n• Grabación multitrack + clips verticales listos para stories, Reels y Spotify\n\n📍 Disponible para Casco Antiguo, venues privados y activaciones de marca.\n\nResponde *PODCAST* para coordinar fecha y formato técnico para tu evento. 🚀`
+    },
+    {
+        id: 'ref-jue-primavera-sunset',
+        title: 'Jueves / Sábado Primavera Club — 🌸 Sunset & Botanical Cocktails',
+        venue: 'Primavera Club',
+        day: 'Jueves',
+        objective: 'chicas_party_drinks',
+        objectiveLabel: '🌸 Primavera Social Club Sunset',
+        copy: `🌸 *PRIMAVERA SOCIAL CLUB | SUNSET SESSIONS & COCKTAILS* 🍸🌿\n\nUna vibra fresca, botánica y elegante en el corazón de la ciudad.\n\n✨ *LA EXPERIENCIA INCLUYE:*\n• Coctelería de autor botánica & mezclas refrescantes\n• Sunset beats por DJs residentes y terraza al aire libre\n• Mesa reservada con cortesía especial para grupos de chicas temprano\n\n⏰ *Hora recomendada:* 06:30 PM para disfrutar el atardecer\n📍 *Primavera Social Club*\n\n¿Quieres tu nombre y el de tus amigas en la lista de cortesía? Escribe *PRIMAVERA* 🌺🥂`
+    },
+    {
+        id: 'ref-dom-dinner-party',
+        title: 'Domingo Noche — 🥂 Sunday Dinner Party & Closing Session',
+        venue: 'Furia / Terraplén',
+        day: 'Domingo',
+        objective: 'chicas_sushi_drinks',
+        objectiveLabel: '🥂 Sunday Dinner Party',
+        copy: `🥂 *SUNDAY DINNER PARTY | CIERRE DE SEMANA VIP* 🍣✨\n\nTermina el fin de semana con la mejor cena social de la ciudad.\n\n🍱 *EXPERIENCIA DE CENA:*\n• Menú exclusivo para mesa imperial de invitadas\n• Maridaje de vino blanco, cócteles de bienvenida y buena música lounge\n• Acceso prioritario y ambiente relajado para despedir el domingo\n\n📍 *Lugar:* Terraplén / Furia\n⏰ *Hora:* 08:00 PM puntual\n\nCupos estrictamente limitados en mesa. Responde *CENA DOMINGO* con tu confirmación. 🌟`
     }
 ];
 
@@ -4581,6 +4636,16 @@ app.get('/api/agent/whatsapp-references', (req, res) => {
     if (!db.whatsappReferences || db.whatsappReferences.length === 0) {
         db.whatsappReferences = DEFAULT_WHATSAPP_REFERENCES;
         writeDB(db);
+    } else {
+        // Asegurar que plantillas por defecto recién agregadas existan sin sobrescribir las personalizadas
+        let changed = false;
+        for (const defRef of DEFAULT_WHATSAPP_REFERENCES) {
+            if (!db.whatsappReferences.some(r => r.id === defRef.id)) {
+                db.whatsappReferences.push(defRef);
+                changed = true;
+            }
+        }
+        if (changed) writeDB(db);
     }
     res.json(db.whatsappReferences);
 });
@@ -4636,10 +4701,13 @@ app.post('/api/agent/whatsapp-references/generate', async (req, res) => {
         const { venue = 'Furia', day = 'Miércoles', objective = 'chicas_sushi_drinks', referenceMessage = '', customNotes = '', eventName = '' } = req.body;
         
         let objectiveDesc = '';
-        if (objective === 'chicas_sushi_drinks') objectiveDesc = 'Invitar exclusivamente a grupos de chicas a cena de sushi + drinks de bienvenida de cortesía.';
-        else if (objective === 'chicas_party_drinks') objectiveDesc = 'Open bar / drinks gratis para chicas para que la fiesta se llene de mujeres desde temprano.';
-        else if (objective === 'hombres_sushi_party') objectiveDesc = 'Vender paquetes de Sushi Party, reservas de mesas VIP, botellas y consumo para hombres/grupos.';
+        if (objective === 'chicas_sushi_drinks' || objective === 'chicas_sushi') objectiveDesc = 'Invitar exclusivamente a grupos de chicas a cena de sushi + drinks de bienvenida de cortesía.';
+        else if (objective === 'chicas_party_drinks' || objective === 'drinks_chicas') objectiveDesc = 'Open bar / drinks gratis para chicas para que la fiesta se llene de mujeres desde temprano.';
+        else if (objective === 'hombres_sushi_party' || objective === 'hombres_sushi_mesas') objectiveDesc = 'Vender paquetes de Sushi Party, reservas de mesas VIP, botellas y consumo para hombres/grupos.';
         else if (objective === 'spam_tickets') objectiveDesc = 'Difusión masiva directa para venta de tickets, preventas, enlaces de compra y accesos al evento.';
+        else if (objective === 'wedding_content') objectiveDesc = 'Propuesta de Wedding Content Creator exclusiva para novias y wedding planners: entrega de Reels, TikToks y contenido crudo sin editar en menos de 24 horas para revivir la boda al instante.';
+        else if (objective === 'podcast_live') objectiveDesc = 'Propuesta de Podcast On-The-Go: estudio de grabación móvil interactivo con micrófonos inalámbricos broadcast para bodas, activaciones corporativas y festivales.';
+        else objectiveDesc = 'Difusión de evento, cartelera VIP y reservas.';
 
         const apiKey = process.env.GEMINI_API_KEY || '';
         if (apiKey) {
@@ -4647,7 +4715,7 @@ app.post('/api/agent/whatsapp-references/generate', async (req, res) => {
                 const genAI = new GoogleGenerativeAI(apiKey);
                 const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
                 
-                const prompt = `Eres el redactor maestro de WhatsApp y Community Manager de ARRIVE Agency para centros nocturnos y rooftops en Panamá (Furia, Terraplén Rooftop, Piano Bar).
+                const prompt = `Eres el redactor maestro de WhatsApp y Community Manager de ARRIVE Agency para centros nocturnos, rooftops y productora en Panamá (Furia, Terraplén Rooftop, Piano Bar, Primavera Club, Bodas y Podcast On-The-Go).
                 
 OBJETIVO:
 Generar 3 variaciones de mensajes de WhatsApp de alta conversión adaptados al venue, día de la semana y objetivo estratégico, tomando como inspiración y estilo el mensaje de referencia proporcionado.
