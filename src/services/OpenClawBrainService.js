@@ -56,40 +56,33 @@ class OpenClawBrainService {
     static defaultConfig = {
         baseUrl: 'http://localhost:18789/v1',
         chatUrl: '/api/openclaw/chat',
-        model: 'gemini-3.6-flash',
-        apiKey: '',
-        geminiApiKey: ''
+        model: '',
+        apiKey: ''
     };
 
     /**
-     * Obtiene la API Key de Gemini desde almacenamiento local o entorno
+     * Guarda la API Key de Gemini en el servidor. Nunca se guarda en el navegador:
+     * el servidor la usa para llamar a Gemini y solo devuelve si existe.
      */
-    static getGeminiApiKey() {
-        // La clave del servidor (GEMINI_API_KEY) nunca se expone al navegador.
-        return localStorage.getItem('__gemini_api_key') || '';
+    static async saveGeminiApiKey(key, model) {
+        // Limpia claves que versiones anteriores dejaban en localStorage
+        localStorage.removeItem('__gemini_api_key');
+        const res = await fetch(`${API_BASE}/openclaw/gemini/config`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ geminiApiKey: (key || '').trim(), ...(model !== undefined ? { model } : {}) })
+        });
+        if (!res.ok) throw new Error('No se pudo guardar la clave en el servidor');
+        return res.json();
     }
 
-    /**
-     * Guarda la API Key de Gemini en localStorage y notifica al backend
-     */
-    static async saveGeminiApiKey(key) {
-        const cleanKey = (key || '').trim();
-        if (cleanKey) {
-            localStorage.setItem('__gemini_api_key', cleanKey);
-        } else {
-            localStorage.removeItem('__gemini_api_key');
-        }
-
+    /** Estado de Gemini en el servidor: { configured, active, model, source, lastError } */
+    static async getGeminiStatus() {
         try {
-            await fetch(`${API_BASE}/openclaw/gemini/config`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ geminiApiKey: cleanKey })
-            });
-        } catch (e) {
-            console.warn('[OpenClawService] Fallback guardado local de Gemini:', e);
-        }
-        return cleanKey;
+            const res = await fetch(`${API_BASE}/openclaw/gemini/status`);
+            if (res.ok) return await res.json();
+        } catch { /* sin conexión */ }
+        return { configured: false, active: false, model: null };
     }
 
     /**
@@ -100,25 +93,26 @@ class OpenClawBrainService {
             const res = await fetch(`${API_BASE}/openclaw/config`);
             if (res.ok) {
                 const data = await res.json();
-                return { ...this.defaultConfig, ...data, geminiApiKey: this.getGeminiApiKey() };
+                return { ...this.defaultConfig, ...data };
             }
         } catch (e) {
             console.warn('[OpenClawService] Backend config no disponible, usando local:', e);
         }
         
         const local = localStorage.getItem('__openclaw_config') || localStorage.getItem('__hermes_config');
-        return local ? { ...this.defaultConfig, ...JSON.parse(local), geminiApiKey: this.getGeminiApiKey() } : { ...this.defaultConfig, geminiApiKey: this.getGeminiApiKey() };
+        return local ? { ...this.defaultConfig, ...JSON.parse(local) } : { ...this.defaultConfig };
     }
 
     /**
      * Guarda la configuración de conexión de OpenClaw
      */
     static async saveConfig(newConfig) {
-        const merged = { ...this.defaultConfig, ...newConfig };
-        localStorage.setItem('__openclaw_config', JSON.stringify(merged));
-        
-        if (newConfig.geminiApiKey !== undefined) {
-            this.saveGeminiApiKey(newConfig.geminiApiKey);
+        // Las claves van solo al servidor, nunca a localStorage
+        const { geminiApiKey, ...merged } = { ...this.defaultConfig, ...newConfig };
+        localStorage.setItem('__openclaw_config', JSON.stringify({ ...merged, apiKey: '' }));
+
+        if (geminiApiKey) {
+            await this.saveGeminiApiKey(geminiApiKey).catch(e => console.warn('[OpenClawService] No se pudo guardar la clave de Gemini:', e));
         }
 
         try {
@@ -137,97 +131,56 @@ class OpenClawBrainService {
      * Verifica la salud de la conexión con el servidor OpenClaw / Gemini
      */
     static async checkHealth() {
-        const geminiKey = this.getGeminiApiKey();
         try {
             const res = await fetch(`${API_BASE}/openclaw/health`);
-            if (res.ok) {
-                const data = await res.json();
-                return { ...data, geminiActive: !!geminiKey };
-            }
+            if (res.ok) return await res.json();
         } catch {
-            // fallback
+            // servidor caído
         }
-
-        return {
-            online: true,
-            mode: geminiKey ? 'gemini_3.6_flash' : 'embedded_orchestrator',
-            model: geminiKey ? 'gemini-3.6-flash' : 'openclaw-agent',
-            status: 'ready',
-            geminiActive: !!geminiKey
-        };
+        return { online: false, mode: 'offline', model: null, status: 'offline', geminiActive: false, label: 'Servidor no disponible' };
     }
 
     /**
      * Envía un mensaje al OpenClaw Super Agent con contexto en vivo + RAG + Modo + Gemini
      */
-    static async sendCommand(prompt, historyContext = [], systemRole = '', skills = '', namespace = 'default', modeId = 'ejecutivo', contextCallbacks = null) {
-        try {
-            const modeObj = OPENCLAW_MODES.find(m => m.id === modeId) || OPENCLAW_MODES[0];
-            const combinedSystemRole = `${modeObj.systemPrompt}\n\n${systemRole || ''}`;
-            const geminiApiKey = this.getGeminiApiKey();
-
-            // Llamar a /api/openclaw/chat (o /api/hermes/chat como fallback)
-            const endpoint = `${API_BASE}/openclaw/chat`;
-            const payload = {
-                prompt,
-                history: historyContext.map(msg => ({
+    static async sendCommand(prompt, historyContext = [], systemRole = '', skills = '', namespace = 'default', modeId = 'ejecutivo') {
+        const modeObj = OPENCLAW_MODES.find(m => m.id === modeId) || OPENCLAW_MODES[0];
+        const payload = {
+            prompt,
+            history: historyContext
+                .filter(msg => !msg.error && (msg.text || msg.content))
+                .map(msg => ({
                     role: msg.role === 'bot' || msg.role === 'copilot' || msg.role === 'assistant' ? 'assistant' : 'user',
                     content: msg.text || msg.content || ''
                 })),
-                systemRole: combinedSystemRole,
-                skills,
-                namespace,
-                geminiApiKey: geminiApiKey || undefined
-            };
+            systemRole: `${modeObj.systemPrompt}\n\n${systemRole || ''}`,
+            skills,
+            namespace
+        };
 
-            let res = await fetch(endpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
+        const res = await fetch(`${API_BASE}/openclaw/chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(payload)
+        });
+        if (res.status === 401) window.dispatchEvent(new Event('auth:required'));
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || `El servidor respondió ${res.status}`);
 
-            // Si 404 intentar /api/hermes/chat
-            if (res.status === 404) {
-                res = await fetch(`${API_BASE}/hermes/chat`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-            }
-
-            const data = await res.json();
-
-            if (!res.ok) {
-                throw new Error(data.error || 'Error procesando solicitud con OpenClaw Super Agent.');
-            }
-
-            // Ejecución de callbacks locales en frontend si hubo tools ejecutadas
-            if (data.executedTools && data.executedTools.length > 0 && contextCallbacks) {
-                for (const tool of data.executedTools) {
-                    if (tool.name === 'create_project' && contextCallbacks.addProject) {
-                        contextCallbacks.addProject(tool.result?.project || tool.args);
-                    } else if (tool.name === 'create_event' && contextCallbacks.addEvent) {
-                        contextCallbacks.addEvent(tool.result?.event || tool.args);
-                    } else if (tool.name === 'add_task' && contextCallbacks.addTask) {
-                        contextCallbacks.addTask(tool.result?.task || tool.args);
-                    } else if ((tool.name === 'complete_task' || tool.name === 'toggle_task') && contextCallbacks.toggleTask) {
-                        contextCallbacks.toggleTask(tool.result?.id || tool.args?.taskId);
-                    }
-                }
-            }
-
-            return {
-                reply: data.reply || data.content || 'Acción procesada por OpenClaw Super Agent.',
-                executedTools: data.executedTools || [],
-                model: data.model || (geminiApiKey ? 'gemini-3.6-flash' : 'openclaw-agent'),
-                provider: data.provider || (geminiApiKey ? 'Google Gemini 3.6 Flash' : 'OpenClaw Embedded'),
-                usage: data.usage || null
-            };
-
-        } catch (error) {
-            console.error('[OpenClawService] Error en sendCommand:', error);
-            throw error;
+        // El servidor ya guardó lo que hizo el agente: solo avisamos al dashboard que recargue
+        if (Array.isArray(data.executedTools) && data.executedTools.some(t => t.result?.success)) {
+            window.dispatchEvent(new CustomEvent('openclaw:data-changed', { detail: data.executedTools }));
         }
+
+        return {
+            reply: data.reply || 'Sin respuesta.',
+            executedTools: data.executedTools || [],
+            sources: data.sources || [],
+            model: data.model || 'openclaw-local',
+            provider: data.provider || 'OpenClaw',
+            usage: data.usage || null
+        };
     }
 
     /**

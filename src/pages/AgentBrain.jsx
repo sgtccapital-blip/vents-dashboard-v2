@@ -25,8 +25,8 @@ export default function AgentBrain() {
     const currentModeObj = useMemo(() => OPENCLAW_MODES.find(m => m.id === selectedMode) || OPENCLAW_MODES[0], [selectedMode]);
 
     // --- OpenClaw Master Agent State ---
-    const [openclawStatus, setOpenClawStatus] = useState({ online: true, mode: 'embedded_orchestrator', baseUrl: 'http://127.0.0.1:8642/v1', model: 'openclaw-agent' });
-    const [openclawConfig, setOpenClawConfig] = useState({ baseUrl: 'http://127.0.0.1:8642/v1', chatUrl: 'http://127.0.0.1:8642/v1/chat/completions', model: 'openclaw-agent', apiKey: '' });
+    const [openclawStatus, setOpenClawStatus] = useState({ online: true, status: 'ready', label: 'OpenClaw' });
+    const [openclawConfig, setOpenClawConfig] = useState({ model: '', hasGeminiApiKey: false });
     const [testConnectionLoading, setTestConnectionLoading] = useState(false);
     const [testConnectionResult, setTestConnectionResult] = useState(null);
 
@@ -39,9 +39,6 @@ export default function AgentBrain() {
     const [thinkingStep, setThinkingStep] = useState(null); // 'rag' | 'tool' | 'sync' | null
     const [showSlashMenu, setShowSlashMenu] = useState(false);
     const chatEndRef = useRef(null);
-
-    // --- Sessions State ---
-    const [, setSavedSessions] = useState([]);
 
     // --- Telemetry & Autopilot State ---
     const { autopilotActive, toggleAutopilot } = useAutopilotEngine(openclawStatus.online, addActivity);
@@ -97,7 +94,6 @@ export default function AgentBrain() {
     useEffect(() => {
         loadTelemetry();
         loadSkillPresets();
-        loadSessions();
         const interval = setInterval(checkOpenClawHealth, 6000);
         return () => clearInterval(interval);
         // eslint-disable-next-line react-hooks/exhaustive-deps -- carga inicial solo al montar; los loaders no son estables entre renders
@@ -123,7 +119,7 @@ export default function AgentBrain() {
             const health = await OpenClawBrainService.checkHealth();
             setOpenClawStatus(health);
         } catch {
-            setOpenClawStatus({ online: true, mode: 'embedded_orchestrator', baseUrl: 'http://127.0.0.1:8642/v1' });
+            setOpenClawStatus({ online: false, mode: 'offline', label: 'Servidor no disponible' });
         }
     };
 
@@ -138,9 +134,9 @@ export default function AgentBrain() {
 
             setMetrics({
                 agents: 1,
-                projects: (projects || []).length || 8,
-                completedTasks: (openclawLogs || []).length || 15,
-                ragCount: ragStat.indexed || 30
+                projects: (projects || []).length,
+                completedTasks: (openclawLogs || []).filter(l => l.status !== 'error').length,
+                ragCount: ragStat.indexed || 0
             });
         } catch (err) {
             console.error('Error fetching telemetry:', err);
@@ -165,13 +161,6 @@ export default function AgentBrain() {
                     return found ? { ...p, enabled: found.enabled } : p;
                 }));
             }
-        } catch { /* ignore */ }
-    };
-
-    const loadSessions = async () => {
-        try {
-            const sess = await OpenClawBrainService.getSessions();
-            setSavedSessions(sess || []);
         } catch { /* ignore */ }
     };
 
@@ -212,38 +201,37 @@ export default function AgentBrain() {
         setTimeout(() => setThinkingStep('tool'), 400);
 
         try {
-            const contextCallbacks = {
-                addTask: appContext.addTask,
-                addEvent: appContext.addEvent,
-                addProject: appContext.addProject,
-                addActivity: appContext.addActivity
-            };
-
             // Build active skills text from presets
             const activePresetPrompts = skillPresets.filter(p => p.enabled).map(p => `- ${p.name}: ${p.desc}`).join('\n');
-            const fullSkills = `${agentSkills}\n\n[HABILIDADES ACTIVAS EN MERCADO]:\n${activePresetPrompts}`;
+            const fullSkills = `${agentSkills}\n\n[HABILIDADES ACTIVAS]:\n${activePresetPrompts}`;
 
             const result = await OpenClawBrainService.sendCommand(
-                userText, messages, systemRole, fullSkills, namespace, selectedMode, contextCallbacks
+                userText, messages, systemRole, fullSkills, namespace, selectedMode
             );
-            
+
             setThinkingStep('sync');
 
-            let executedFeedback = '';
-            if (result.executedTools && result.executedTools.length > 0) {
-                executedFeedback = '\n\n' + result.executedTools.map(t => {
-                    if (t.name === 'create_project') return `> 🚀 **Proyecto Creado**: \`${t.args?.name}\``;
-                    if (t.name === 'create_event') return `> 🎉 **Evento Agendado**: \`${t.args?.name}\` (${t.args?.date})`;
-                    if (t.name === 'add_task') return `> 📋 **Tarea Añadida**: \`${t.args?.text}\``;
-                    if (t.name === 'add_milestone') return `> 🗺️ **Hito Registrado**: \`${t.args?.title}\``;
-                    return `> ⚡ **Acción Ejecutada**: \`${t.name}\``;
-                }).join('\n');
-            }
+            // Resumen de lo que el servidor ejecutó de verdad (con su resultado)
+            const executedFeedback = (result.executedTools || []).length
+                ? '\n\n' + result.executedTools.map(t => {
+                    const r = t.result || {};
+                    if (!r.success) return `> ⚠️ **${t.name}** no se ejecutó: ${r.error || 'error'}`;
+                    if (t.name === 'create_project') return `> 🚀 **Proyecto creado**: \`${r.project?.name}\``;
+                    if (t.name === 'create_event') return `> 🎉 **Evento agendado**: \`${r.event?.name}\` (${r.event?.date})`;
+                    if (t.name === 'add_task') return `> 📋 **Tarea añadida**: \`${r.task?.text}\` → ${r.task?.assignee}`;
+                    if (t.name === 'complete_task') return `> 🎯 **Tarea completada**: \`${r.task?.text}\``;
+                    if (t.name === 'add_milestone') return `> 🗺️ **Hito registrado**: \`${r.milestone?.title}\``;
+                    return `> ⚡ **Acción ejecutada**: \`${t.name}\``;
+                }).join('\n')
+                : '';
+            const sourcesFeedback = (result.sources || []).length
+                ? `\n\n_📚 Fuentes: ${result.sources.slice(0, 4).map(s => s.title).join(' · ')} · 🧠 ${result.provider}_`
+                : `\n\n_🧠 ${result.provider}_`;
 
             setMessages(prev => [...prev, {
                 id: (Date.now() + 1).toString(),
                 role: 'bot',
-                text: (result.reply || 'Acción procesada por OpenClaw Super Agent.') + executedFeedback
+                text: result.reply + executedFeedback + sourcesFeedback
             }]);
 
             if (refreshData) refreshData();
@@ -289,11 +277,7 @@ export default function AgentBrain() {
         setLoadingPreview(true);
         try {
             const doc = await OpenClawBrainService.getRAGDocument(docId);
-            setPreviewDoc(doc);
-        } catch {
-            // fallback from list
-            const found = ragDocsList.find(d => d.id === docId);
-            if (found) setPreviewDoc(found);
+            setPreviewDoc(doc || ragDocsList.find(d => d.id === docId) || null);
         } finally {
             setLoadingPreview(false);
         }
@@ -313,7 +297,7 @@ export default function AgentBrain() {
         try {
             const res = await RagIndexer.processFile(selectedFile, namespace);
             if (res.success) {
-                setRagStatus({ type: 'success', msg: `Documento "${selectedFile.name}" indexado en "${namespace}"` });
+                setRagStatus({ type: 'success', msg: `Documento "${selectedFile.name}" indexado en "${namespace}" (${(res.characters || 0).toLocaleString('es-PA')} caracteres)` });
                 setSelectedFile(null);
                 await loadRagDocuments(namespace);
                 if (refreshData) refreshData();
@@ -325,14 +309,14 @@ export default function AgentBrain() {
     };
 
     const handleSyncObsidian = async () => {
-        if (!obsidianPath.trim()) return;
         setUploading(true);
         setRagStatus(null);
         try {
             const res = await fetch('/api/brain/sync-vault', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ path: obsidianPath.trim(), namespace })
+                // Sin ruta: el servidor indexa el BrainVault y /docs del proyecto
+                body: JSON.stringify({ path: obsidianPath.trim() || undefined, namespace })
             });
             const data = await res.json();
             if (res.ok) {
@@ -353,7 +337,8 @@ export default function AgentBrain() {
         try {
             const res = await fetch('/api/rag/sync', { method: 'POST' });
             const data = await res.json();
-            setRagStatus({ type: 'success', msg: `Índice RAG reconstruido exitosamente (${data.total || data.indexed || 0} entidades indexadas).` });
+            if (!res.ok) throw new Error(data.error || 'No se pudo reconstruir el índice');
+            setRagStatus({ type: 'success', msg: `Índice al día: ${data.documents} documentos + ${data.liveEntities} registros en vivo (proyectos, eventos, tareas, notas, contactos).` });
             await loadRagDocuments(namespace);
         } catch (err) {
             setRagStatus({ type: 'error', msg: err.message });
@@ -403,6 +388,9 @@ export default function AgentBrain() {
         setTimeout(() => setCopiedTools(false), 2000);
     };
 
+    // Verde: listo · Naranja: Gemini con error (responde el motor local) · Rojo: servidor caído
+    const statusColor = !openclawStatus?.online ? '#ef4444' : openclawStatus?.status === 'degraded' ? '#f59e0b' : '#22c55e';
+
     // Filtered documents in RAG list
     const filteredRagDocs = useMemo(() => {
         if (selectedCategoryFilter === 'all') return ragDocsList;
@@ -441,21 +429,21 @@ export default function AgentBrain() {
                         gap: '8px',
                         padding: '7px 14px',
                         borderRadius: '20px',
-                        background: 'rgba(34, 197, 94, 0.12)',
-                        color: '#4ade80',
+                        background: `${statusColor}1f`,
+                        color: statusColor,
                         fontSize: '12.5px',
                         fontWeight: 700,
-                        border: '1px solid rgba(34, 197, 94, 0.3)',
+                        border: `1px solid ${statusColor}4d`,
                         cursor: 'pointer'
-                    }} onClick={() => setShowApiModal(true)}>
+                    }} onClick={() => setShowApiModal(true)} title={openclawStatus?.lastError?.message || 'Configurar OpenClaw'}>
                         <div style={{
                             width: '8px',
                             height: '8px',
                             borderRadius: '50%',
-                            background: '#22c55e',
-                            boxShadow: '0 0 8px #22c55e'
+                            background: statusColor,
+                            boxShadow: `0 0 8px ${statusColor}`
                         }} />
-                        {openclawStatus?.mode === 'llm_service' ? `OPENCLAW LLM` : `OPENCLAW ORQUESTADOR & RAG (Activo)`}
+                        {openclawStatus?.label || 'OpenClaw'}
                     </span>
                 </div>
             </div>
@@ -473,64 +461,37 @@ export default function AgentBrain() {
                         </div>
                         <div className="modal-body">
                             <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-                                Configura el endpoint local o remoto de OpenClaw. Si el servidor externo no está disponible, el orquestador autónomo embebido asumirá el control de forma nativa.
+                                OpenClaw corre dentro de este servidor. Con una clave de Gemini responde con IA y ejecuta acciones; sin clave usa el motor local (consultas, tareas, eventos, notas y RAG).
                             </p>
-
-                            <div className="form-group" style={{ marginBottom: '12px' }}>
-                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '6px' }}>Base URL de OpenClaw</label>
-                                <input 
-                                    className="form-input" 
-                                    placeholder="http://127.0.0.1:8642/v1"
-                                    value={openclawConfig.baseUrl}
-                                    onChange={e => setOpenClawConfig({ ...openclawConfig, baseUrl: e.target.value, chatUrl: `${e.target.value.replace(/\/+$/, '')}/chat/completions` })}
-                                />
-                            </div>
-
-                            <div className="form-group" style={{ marginBottom: '12px' }}>
-                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '6px' }}>Endpoint Chat Completions</label>
-                                <input 
-                                    className="form-input" 
-                                    placeholder="http://127.0.0.1:8642/v1/chat/completions"
-                                    value={openclawConfig.chatUrl}
-                                    onChange={e => setOpenClawConfig({ ...openclawConfig, chatUrl: e.target.value })}
-                                />
-                            </div>
-
-                            <div className="form-group" style={{ marginBottom: '12px' }}>
-                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '6px' }}>Nombre del Modelo</label>
-                                <input 
-                                    className="form-input" 
-                                    placeholder="openclaw-agent"
-                                    value={openclawConfig.model}
-                                    onChange={e => setOpenClawConfig({ ...openclawConfig, model: e.target.value })}
-                                />
-                            </div>
 
                             <div className="form-group" style={{ marginBottom: '16px', background: 'rgba(56, 189, 248, 0.08)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(56, 189, 248, 0.25)' }}>
                                 <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 700, color: '#38bdf8', marginBottom: '6px' }}>
-                                    <span>✨ Google Gemini API Key (Gemini 3.6 Flash)</span>
+                                    <span>✨ Google Gemini API Key</span>
+                                    {openclawConfig.hasGeminiApiKey && <span className="tag tag-active" style={{ fontSize: '10px' }}>guardada</span>}
                                 </label>
-                                <input 
+                                <input
                                     type="password"
-                                    className="form-input" 
-                                    placeholder="AIzaSy..."
+                                    className="form-input"
+                                    placeholder={openclawConfig.hasGeminiApiKey ? '•••••• (escribe una nueva para reemplazarla)' : 'AIzaSy...'}
                                     value={openclawConfig.geminiApiKey || ''}
                                     onChange={e => setOpenClawConfig({ ...openclawConfig, geminiApiKey: e.target.value })}
                                 />
                                 <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px', display: 'block' }}>
-                                    Al ingresar tu key, OpenClaw Super Agent operará impulsado por <strong>Gemini 3.6 Flash</strong> tanto en esta consola como en el Copilot flotante.
+                                    Se guarda solo en el servidor. Si el servidor tiene GEMINI_API_KEY en su entorno, esa tiene prioridad.
                                 </span>
                             </div>
 
                             <div className="form-group" style={{ marginBottom: '12px' }}>
-                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '6px' }}>API Key / Bearer Token Externo (Opcional)</label>
-                                <input 
-                                    type="password"
-                                    className="form-input" 
-                                    placeholder="Bearer token para OpenClaw server..."
-                                    value={openclawConfig.apiKey}
-                                    onChange={e => setOpenClawConfig({ ...openclawConfig, apiKey: e.target.value })}
+                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '6px' }}>Modelo de Gemini</label>
+                                <input
+                                    className="form-input"
+                                    placeholder="gemini-2.5-flash"
+                                    value={openclawConfig.model || ''}
+                                    onChange={e => setOpenClawConfig({ ...openclawConfig, model: e.target.value })}
                                 />
+                                <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px', display: 'block' }}>
+                                    Si este modelo no existe o falla, el servidor prueba gemini-2.5-flash y gemini-flash-latest.
+                                </span>
                             </div>
 
                             {testConnectionResult && (
@@ -552,9 +513,15 @@ export default function AgentBrain() {
                                         setTestConnectionResult(null);
                                         try {
                                             await OpenClawBrainService.saveConfig(openclawConfig);
+                                            // Prueba real: un mensaje al agente (no crea nada)
+                                            const probe = await OpenClawBrainService.sendCommand('Responde solo "ok" para verificar la conexión.', [], '', '', 'default');
                                             const health = await OpenClawBrainService.checkHealth();
                                             setOpenClawStatus(health);
-                                            setTestConnectionResult({ success: true, msg: `Conexión verificada: ${health.label || 'Orquestador Listo'}` });
+                                            setOpenClawConfig(await OpenClawBrainService.getConfig());
+                                            const geminiFailed = health.geminiActive && probe.model === 'openclaw-local';
+                                            setTestConnectionResult(geminiFailed
+                                                ? { error: true, msg: `Gemini no respondió: ${health.lastError?.message || 'error desconocido'}. El motor local sigue funcionando.` }
+                                                : { success: true, msg: `Conexión verificada: ${probe.provider}` });
                                         } catch (err) {
                                             setTestConnectionResult({ error: true, msg: err.message });
                                         } finally {
@@ -573,6 +540,7 @@ export default function AgentBrain() {
                             <button className="btn btn-ghost" onClick={() => setShowApiModal(false)}>Cerrar</button>
                             <button className="btn btn-primary" onClick={async () => {
                                 await OpenClawBrainService.saveConfig(openclawConfig);
+                                setOpenClawConfig(await OpenClawBrainService.getConfig());
                                 checkOpenClawHealth();
                                 setShowApiModal(false);
                             }}>Guardar Configuración</button>
@@ -1024,7 +992,7 @@ export default function AgentBrain() {
                                     <h4 style={{ margin: 0, fontSize: '15px' }}>Sincronizar Vault Obsidian</h4>
                                 </div>
                                 <p style={{ color: 'var(--text-secondary)', fontSize: '12.5px', lineHeight: '1.5', marginBottom: '16px' }}>
-                                    Ingresa la ruta absoluta a tu bóveda local de notas markdown en Obsidian.
+                                    Déjalo vacío para indexar el BrainVault y los docs del proyecto, o escribe la ruta de una carpeta de notas markdown en el servidor.
                                 </p>
 
                                 <div className="form-group" style={{ marginBottom: '16px' }}>
@@ -1032,14 +1000,14 @@ export default function AgentBrain() {
                                         type="text"
                                         value={obsidianPath}
                                         onChange={(e) => setObsidianPath(e.target.value)}
-                                        placeholder="Ej. /Users/admin/Documents/MiVault"
+                                        placeholder="Vacío = BrainVault + docs del proyecto"
                                         style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-subtle)', color: 'white', padding: '9px 12px', borderRadius: '8px', width: '100%', fontSize: '13px' }}
                                     />
                                 </div>
 
                                 <button
                                     onClick={handleSyncObsidian}
-                                    disabled={!obsidianPath.trim() || uploading}
+                                    disabled={uploading}
                                     style={{ width: '100%', padding: '10px', borderRadius: '8px', fontWeight: 600, background: 'var(--accent-cyan)', border: 'none', color: 'white', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', fontSize: '13px' }}
                                 >
                                     {uploading ? <RefreshCw size={16} className="spin" /> : <FolderSync size={16} />}

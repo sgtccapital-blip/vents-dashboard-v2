@@ -23,8 +23,23 @@ import crypto from 'crypto';
 import cron from 'node-cron';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 const require = createRequire(import.meta.url);
-const pdf = require('pdf-parse');
+const { PDFParse } = require('pdf-parse');
+
+// pdf-parse v2: la API es una clase, ya no una función
+async function extractPdfText(buffer) {
+    const parser = new PDFParse({ data: buffer });
+    try {
+        const result = await parser.getText();
+        return { text: result.text || '', pages: result.total || result.pages?.length || 0 };
+    } finally {
+        await parser.destroy().catch(() => {});
+    }
+}
 import openCloudEngine from './src/services/openCloudEngine.js';
+import {
+    executeAgentAction, runLocalAgent, runGeminiAgent, searchKnowledge, getKnowledgeDoc, buildSystemPrompt, AGENT_ACTIONS, expandSlashCommand,
+    configuredGeminiModel, activeGeminiModel, resetGeminiModelCache,
+} from './server/agent.js';
 import { normalizeTaskStatus, normalizeEventStatus, TASK_STATUSES, EVENT_STATUSES } from './src/lib/status.js';
 
 dotenv.config();
@@ -749,7 +764,7 @@ app.post('/api/vault/upload', upload.single('file'), async (req, res) => {
 
         // 1. Read the PDF binary
         const pdfBuffer = fs.readFileSync(req.file.path);
-        const pdfData = await pdf(pdfBuffer);
+        const pdfData = await extractPdfText(pdfBuffer);
         const extractedText = pdfData.text;
 
         if (!extractedText || extractedText.trim().length < 10) {
@@ -758,7 +773,7 @@ app.post('/api/vault/upload', upload.single('file'), async (req, res) => {
             return res.status(400).json({ error: 'No se pudo extraer texto del PDF. Puede estar escaneado o protegido.' });
         }
 
-        console.log(`[Vault] Texto extraído: ${extractedText.length} caracteres, ${pdfData.numpages} páginas`);
+        console.log(`[Vault] Texto extraído: ${extractedText.length} caracteres, ${pdfData.pages} páginas`);
 
         // 2. Save the PDF permanently inside the vault
         const safeName = req.file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
@@ -779,23 +794,19 @@ app.post('/api/vault/upload', upload.single('file'), async (req, res) => {
             content: extractedText.substring(0, 50000), // cap at 50k chars
             category,
             filename: safeName,
-            pages: pdfData.numpages,
+            pages: pdfData.pages,
             uploadedAt: new Date().toISOString()
         });
         writeDB(db);
 
-        // 4. Index into Pinecone via RAG Engine
-        const RAGEngine = req.app.get('ragEngine');
-        if (RAGEngine) {
-            await RAGEngine.indexCustomDocument(docId, title, extractedText.substring(0, 50000), category);
-        }
+        // 4. customDocuments ya forma parte del corpus del RAG (searchKnowledge)
 
         // 5. Log activity
         const dbAfter = readDB();
         if (!dbAfter.activityFeed) dbAfter.activityFeed = [];
         dbAfter.activityFeed.unshift({
             id: `act-${Date.now()}`,
-            text: `📄 PDF "${title}" subido al Vault e indexado en el cerebro RAG (${pdfData.numpages} páginas)`,
+            text: `📄 PDF "${title}" subido al Vault e indexado en el cerebro RAG (${pdfData.pages} páginas)`,
             color: '#3b82f6',
             timestamp: new Date().toISOString()
         });
@@ -1222,646 +1233,42 @@ app.delete(['/api/openclaw/logs', '/api/hermes/logs'], (req, res) => {
 
 // 4. OpenClaw Action / Webhook handler
 app.post(['/api/openclaw/action', '/api/openclaw/webhook', '/api/hermes/action', '/api/hermes/webhook'], (req, res) => {
-    const db = readDB();
-    if (!db.openclawLogs) db.openclawLogs = [];
-    if (!db.hermesLogs) db.hermesLogs = db.openclawLogs;
-    if (!db.activityFeed) db.activityFeed = [];
-    if (!db.projects) db.projects = [];
-    if (!db.events) db.events = [];
-    if (!db.tasks) db.tasks = [];
-    if (!db.notes) db.notes = [];
-
-    const { action, payload, tool, arguments: toolArgs } = req.body;
-    const actionName = action || tool || req.body.name;
+    const { action, payload, tool, arguments: toolArgs } = req.body || {};
+    const actionName = action || tool || req.body?.name;
+    if (!actionName) return res.status(400).json({ status: 'error', error: 'Falta "action"', availableActions: AGENT_ACTIONS });
     const data = payload || toolArgs || req.body.data || req.body;
 
-    const logEntry = {
-        id: `olog-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-        action: actionName || 'general_interaction',
-        timestamp: new Date().toISOString(),
-        source: 'OpenClaw Super Agent',
-        data: data,
-        status: 'success'
-    };
-
+    const db = readDB();
     try {
-        let result = {};
-
-        switch (actionName) {
-            case 'create_project': {
-                const category = data.category || 'software';
-                const newProject = {
-                    id: data.id || `proj-${Date.now()}`,
-                    name: data.name || 'Nuevo Proyecto Hermes',
-                    description: data.description || '',
-                    category: category,
-                    type: data.type || (category === 'software' ? 'software' : category === 'business' ? 'business' : category === 'ai_pipeline' ? 'ai_pipeline' : 'project'),
-                    templateKey: data.templateKey || (category === 'software' ? 'project_software' : category === 'business' ? 'project_business' : category === 'ai_pipeline' ? 'project_hermes' : 'project_custom'),
-                    status: data.status || 'active',
-                    priority: data.priority || 'high',
-                    deadline: data.deadline || '',
-                    budget: data.budget || '0',
-                    techStack: Array.isArray(data.techStack) ? data.techStack : (typeof data.techStack === 'string' ? data.techStack.split(',').map(s => s.trim()) : ['Hermes Agent', 'React', 'Node.js']),
-                    githubRepo: data.githubRepo || '',
-                    leadAgent: data.leadAgent || 'Hermes Agent',
-                    milestones: Array.isArray(data.milestones) ? data.milestones.map((m, i) => ({ id: `m-${i+1}`, title: m.title || m.name || m, deadline: m.deadline || '', done: !!m.done, deliverables: m.deliverables || [] })) : [
-                        { id: 'm-1', title: 'Definición de arquitectura y roadmap', done: true, deadline: '' },
-                        { id: 'm-2', title: 'Desarrollo del Core MVP', done: false, deadline: data.deadline || '' },
-                        { id: 'm-3', title: 'Pruebas y despliegue inicial', done: false, deadline: '' }
-                    ],
-                    tasks: Array.isArray(data.tasks) ? data.tasks : [],
-                    tags: Array.isArray(data.tags) ? data.tags : ['Hermes', 'Proyecto'],
-                    activityLog: [
-                        { id: `log-${Date.now()}`, text: `🚀 Proyecto creado e inicializado por Hermes Agent`, time: new Date().toLocaleTimeString(), type: 'created' }
-                    ],
-                    createdAt: new Date().toISOString()
-                };
-
-                db.projects.unshift(newProject);
-                
-                // Also duplicate to db.events for unified Hub rendering if needed
-                const mirrorEvent = {
-                    id: newProject.id,
-                    name: newProject.name,
-                    description: newProject.description,
-                    category: 'project',
-                    type: newProject.type,
-                    templateKey: newProject.templateKey,
-                    status: newProject.status,
-                    priority: newProject.priority,
-                    date: newProject.deadline || new Date().toISOString().split('T')[0],
-                    budget: newProject.budget,
-                    estimatedBudget: newProject.budget,
-                    organizer: newProject.leadAgent,
-                    techStack: newProject.techStack,
-                    githubRepo: newProject.githubRepo,
-                    milestones: newProject.milestones,
-                    color: category === 'software' ? '#6366f1' : category === 'business' ? '#10b981' : category === 'ai_pipeline' ? '#8b5cf6' : '#ec4899',
-                    icon: category === 'software' ? '💻' : category === 'business' ? '💼' : category === 'ai_pipeline' ? '🤖' : '🚀',
-                    agenda: newProject.milestones.map((m, i) => ({ id: `ag-${i+1}`, time: '09:00', title: m.title, speaker: newProject.leadAgent, description: 'Hito del proyecto' })),
-                    requirements: (newProject.techStack || []).map((t, i) => ({ id: `req-${i+1}`, name: `Configuración: ${t}`, done: false }))
-                };
-                
-                const existingEvIdx = db.events.findIndex(e => e.id === mirrorEvent.id);
-                if (existingEvIdx >= 0) db.events[existingEvIdx] = mirrorEvent;
-                else db.events.unshift(mirrorEvent);
-
-                db.activityFeed.unshift({
-                    id: `act-${Date.now()}`,
-                    text: `🤖 Hermes Agent creó el proyecto "${newProject.name}"`,
-                    color: '#8b5cf6',
-                    timestamp: new Date().toISOString()
-                });
-
-                result = { success: true, project: newProject, mirrorEvent };
-                break;
-            }
-
-            case 'create_event': {
-                const newEvent = {
-                    id: data.id || `ev-${Date.now()}`,
-                    name: data.name || 'Nuevo Evento Hermes',
-                    date: data.date || new Date().toISOString().split('T')[0],
-                    time: data.time || '20:00',
-                    location: data.location || '',
-                    type: data.type || 'eventos',
-                    templateKey: data.templateKey || data.type || 'eventos',
-                    category: 'event',
-                    status: data.status || 'planning',
-                    description: data.description || '',
-                    budget: data.budget || '0',
-                    estimatedBudget: data.budget || '0',
-                    capacity: data.capacity || '',
-                    organizer: data.organizer || 'Hermes Agent',
-                    color: data.color || '#f43f5e',
-                    icon: data.icon || '🎉',
-                    agenda: Array.isArray(data.agenda) ? data.agenda : [
-                        { id: 'ag-1', time: '20:00', title: 'Inicio del evento', speaker: 'Hermes / Staff', description: 'Apertura' }
-                    ],
-                    requirements: Array.isArray(data.requirements) ? data.requirements : []
-                };
-
-                db.events.unshift(newEvent);
-
-                db.activityFeed.unshift({
-                    id: `act-${Date.now()}`,
-                    text: `🎉 Hermes Agent agendó el evento "${newEvent.name}" (${newEvent.date})`,
-                    color: '#f43f5e',
-                    timestamp: new Date().toISOString()
-                });
-
-                result = { success: true, event: newEvent };
-                break;
-            }
-
-            case 'add_task': {
-                const newTask = {
-                    id: data.id || `task-${Date.now()}`,
-                    text: data.text || 'Nueva tarea creada por Hermes',
-                    priority: data.priority || 'media',
-                    done: false,
-                    projectId: data.projectId || null,
-                    eventId: data.eventId || null,
-                    assignedTo: data.assignee || data.assignedTo || 'GG',
-                    assignee: data.assignee || data.assignedTo || 'GG',
-                    dueDate: data.dueDate || null,
-                    createdAt: new Date().toISOString()
-                };
-
-                db.tasks.unshift(newTask);
-
-                if (data.projectId) {
-                    const pIdx = db.projects.findIndex(p => p.id === data.projectId);
-                    if (pIdx >= 0) {
-                        if (!db.projects[pIdx].tasks) db.projects[pIdx].tasks = [];
-                        db.projects[pIdx].tasks.push({ id: newTask.id, text: newTask.text, done: false });
-                    }
-                }
-
-                db.activityFeed.unshift({
-                    id: `act-${Date.now()}`,
-                    text: `📋 Hermes Agent añadió tarea: "${newTask.text}"`,
-                    color: '#06b6d4',
-                    timestamp: new Date().toISOString()
-                });
-
-                result = { success: true, task: newTask };
-                break;
-            }
-
-            case 'add_milestone': {
-                const { projectId, title, deadline, deliverables } = data;
-                const p = db.projects.find(pr => pr.id === projectId);
-                const ev = db.events.find(e => e.id === projectId);
-
-                const newMilestone = {
-                    id: `m-${Date.now()}`,
-                    title: title || 'Nuevo Hito',
-                    deadline: deadline || '',
-                    done: false,
-                    deliverables: deliverables || []
-                };
-
-                if (p) {
-                    if (!p.milestones) p.milestones = [];
-                    p.milestones.push(newMilestone);
-                }
-                if (ev) {
-                    if (!ev.milestones) ev.milestones = [];
-                    ev.milestones.push(newMilestone);
-                }
-
-                result = { success: true, milestone: newMilestone };
-                break;
-            }
-
-            case 'update_status': {
-                const { entityType, entityId, status, progress, kpiCurrent, notes: updateNotes } = data;
-                let target = null;
-                if (entityType === 'project' || !entityType) {
-                    target = db.projects.find(p => p.id === entityId);
-                }
-                if (!target && (entityType === 'event' || !entityType)) {
-                    target = db.events.find(e => e.id === entityId);
-                }
-
-                if (target) {
-                    if (status) target.status = status;
-                    if (progress !== undefined) target.progress = progress;
-                    if (kpiCurrent !== undefined && target.kpi) target.kpi.current = kpiCurrent;
-                    if (updateNotes) target.notes = (target.notes ? target.notes + '\n' : '') + `\n[Hermes ${new Date().toLocaleTimeString()}]: ${updateNotes}`;
-                    
-                    db.activityFeed.unshift({
-                        id: `act-${Date.now()}`,
-                        text: `🔄 Hermes actualizó estado de "${target.name}" a [${status || 'progreso'}]`,
-                        color: '#3b82f6',
-                        timestamp: new Date().toISOString()
-                    });
-                    result = { success: true, entity: target };
-                } else {
-                    result = { success: false, error: `Entidad ${entityId} no encontrada` };
-                }
-                break;
-            }
-
-            case 'log_thought':
-            case 'log_activity': {
-                const thought = {
-                    id: `th-${Date.now()}`,
-                    message: data.message || data.text || 'Ejecución Hermes',
-                    level: data.level || 'info',
-                    details: data.details || '',
-                    projectId: data.projectId || null,
-                    timestamp: new Date().toISOString()
-                };
-
-                logEntry.thought = thought;
-
-                const colorMap = {
-                    info: '#8b5cf6',
-                    success: '#10b981',
-                    warning: '#f59e0b',
-                    action: '#ec4899',
-                    code: '#3b82f6'
-                };
-
-                db.activityFeed.unshift({
-                    id: `act-${Date.now()}`,
-                    text: `🧠 [Hermes]: ${thought.message}`,
-                    color: colorMap[thought.level] || '#8b5cf6',
-                    timestamp: new Date().toISOString()
-                });
-
-                result = { success: true, log: thought };
-                break;
-            }
-
-            case 'add_note': {
-                const newNote = {
-                    id: data.id || `note-${Date.now()}`,
-                    title: data.title || 'Nota de Hermes',
-                    text: data.text || data.content || '',
-                    category: data.category || 'Hermes AI',
-                    projectId: data.projectId || null,
-                    date: new Date().toISOString().split('T')[0]
-                };
-
-                db.notes.unshift(newNote);
-                result = { success: true, note: newNote };
-                break;
-            }
-
-            default: {
-                db.activityFeed.unshift({
-                    id: `act-${Date.now()}`,
-                    text: `🤖 Hermes Agent ejecutó acción: ${actionName}`,
-                    color: '#8b5cf6',
-                    timestamp: new Date().toISOString()
-                });
-                result = { success: true, message: `Action ${actionName} received and logged`, payload: data };
-                break;
-            }
-        }
-
-        db.activityFeed = db.activityFeed.slice(0, 50);
-        db.hermesLogs.unshift(logEntry);
-        db.hermesLogs = db.hermesLogs.slice(0, 50);
-
-        writeDB(db);
-
-        return res.status(200).json({
-            status: 'ok',
-            agent: 'Hermes Agent',
-            action: actionName,
-            result
-        });
-
+        const result = executeOpenClawAction(actionName, data, db);
+        // 422: la acción se entendió pero no se pudo ejecutar (datos faltantes, tarea no encontrada…)
+        return res.status(result.success ? 200 : 422).json({ status: result.success ? 'ok' : 'error', agent: 'OpenClaw Super Agent', action: actionName, result, error: result.success ? undefined : result.error });
     } catch (err) {
-        console.error('[Hermes Bridge] Error processing action:', err);
-        logEntry.status = 'error';
-        logEntry.error = err.message;
-        db.hermesLogs.unshift(logEntry);
-        writeDB(db);
-        return res.status(500).json({ error: err.message, status: 'error' });
+        console.error('[OpenClaw Bridge] Error procesando acción:', err);
+        return res.status(500).json({ status: 'error', error: err.message });
     }
 });
 
-// Helper para ejecutar acciones de OpenClaw Super Agent reutilizable en API y Chat
-function executeOpenClawAction(actionName, data, db) {
-    if (!db.openclawLogs) db.openclawLogs = [];
-    if (!db.hermesLogs) db.hermesLogs = db.openclawLogs;
-    if (!db.activityFeed) db.activityFeed = [];
-    if (!db.projects) db.projects = [];
-    if (!db.events) db.events = [];
-    if (!db.tasks) db.tasks = [];
-    if (!db.notes) db.notes = [];
-
-    const logEntry = {
-        id: `olog-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+// Ejecuta una acción del agente (implementación única en server/agent.js), la registra en el log y guarda.
+function executeOpenClawAction(actionName, data, db, { persist = true } = {}) {
+    const result = executeAgentAction(actionName, data, db);
+    db.openclawLogs = Array.isArray(db.openclawLogs) ? db.openclawLogs : [];
+    db.openclawLogs.unshift({
+        id: `olog-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         action: actionName,
         timestamp: new Date().toISOString(),
         source: 'OpenClaw Super Agent',
         data: data || {},
-        status: 'success'
-    };
-
-    let result = null;
-
-    switch (actionName) {
-        case 'create_project': {
-            const category = data.category || 'software';
-            const newProject = {
-                id: data.id || `proj-${Date.now()}`,
-                name: data.name || 'Nuevo Proyecto OpenClaw',
-                description: data.description || '',
-                category: category,
-                type: data.type || category,
-                templateKey: `project_${category}`,
-                status: data.status || 'active',
-                priority: data.priority || 'high',
-                deadline: data.deadline || '',
-                budget: data.budget || '0',
-                techStack: Array.isArray(data.techStack) ? data.techStack : (typeof data.techStack === 'string' ? data.techStack.split(',').map(s => s.trim()) : ['OpenClaw Agent', 'React', 'Node.js']),
-                githubRepo: data.githubRepo || '',
-                leadAgent: data.leadAgent || 'OpenClaw Super Agent',
-                milestones: Array.isArray(data.milestones) ? data.milestones.map((m, i) => ({ id: `m-${i+1}`, title: m.title || m.name || m, deadline: m.deadline || '', done: !!m.done, deliverables: m.deliverables || [] })) : [
-                    { id: 'm-1', title: 'Definición de arquitectura y roadmap', done: true, deadline: '' },
-                    { id: 'm-2', title: 'Desarrollo del Core MVP', done: false, deadline: data.deadline || '' },
-                    { id: 'm-3', title: 'Pruebas y despliegue inicial', done: false, deadline: '' }
-                ],
-                tasks: Array.isArray(data.tasks) ? data.tasks : [],
-                tags: Array.isArray(data.tags) ? data.tags : ['OpenClaw', 'Proyecto'],
-                activityLog: [
-                    { id: `log-${Date.now()}`, text: `🚀 Proyecto creado e inicializado por OpenClaw Super Agent`, time: new Date().toLocaleTimeString(), type: 'created' }
-                ],
-                createdAt: new Date().toISOString()
-            };
-
-            db.projects.unshift(newProject);
-            
-            const mirrorEvent = {
-                id: newProject.id,
-                name: newProject.name,
-                description: newProject.description,
-                category: 'project',
-                type: newProject.type,
-                templateKey: newProject.templateKey,
-                status: newProject.status,
-                priority: newProject.priority,
-                date: newProject.deadline || new Date().toISOString().split('T')[0],
-                budget: newProject.budget,
-                estimatedBudget: newProject.budget,
-                organizer: newProject.leadAgent,
-                techStack: newProject.techStack,
-                githubRepo: newProject.githubRepo,
-                milestones: newProject.milestones,
-                color: category === 'software' ? '#6366f1' : category === 'business' ? '#10b981' : category === 'ai_pipeline' ? '#8b5cf6' : '#ec4899',
-                icon: category === 'software' ? '💻' : category === 'business' ? '💼' : category === 'ai_pipeline' ? '🤖' : '🚀',
-                agenda: newProject.milestones.map((m, i) => ({ id: `ag-${i+1}`, time: '09:00', title: m.title, speaker: newProject.leadAgent, description: 'Hito del proyecto' })),
-                requirements: (newProject.techStack || []).map((t, i) => ({ id: `req-${i+1}`, name: `Configuración: ${t}`, done: false }))
-            };
-            
-            const existingEvIdx = db.events.findIndex(e => e.id === mirrorEvent.id);
-            if (existingEvIdx >= 0) db.events[existingEvIdx] = mirrorEvent;
-            else db.events.unshift(mirrorEvent);
-
-            db.activityFeed.unshift({
-                id: `act-${Date.now()}`,
-                text: `🤖 OpenClaw Super Agent creó el proyecto "${newProject.name}"`,
-                color: '#8b5cf6',
-                timestamp: new Date().toISOString()
-            });
-
-            result = { success: true, project: newProject, mirrorEvent };
-            break;
-        }
-
-        case 'create_event': {
-            const newEvent = {
-                id: data.id || `ev-${Date.now()}`,
-                name: data.name || 'Nuevo Evento OpenClaw',
-                date: data.date || new Date().toISOString().split('T')[0],
-                time: data.time || '20:00',
-                location: data.location || '',
-                type: data.type || 'eventos',
-                templateKey: data.templateKey || data.type || 'eventos',
-                category: 'event',
-                status: data.status || 'planning',
-                description: data.description || '',
-                budget: data.budget || '0',
-                estimatedBudget: data.budget || '0',
-                capacity: data.capacity || '',
-                organizer: data.organizer || 'OpenClaw Super Agent',
-                color: data.color || '#f43f5e',
-                icon: data.icon || '🎉',
-                agenda: Array.isArray(data.agenda) ? data.agenda : [
-                    { id: 'ag-1', time: '20:00', title: 'Inicio del evento', speaker: 'OpenClaw / Staff', description: 'Apertura' }
-                ],
-                requirements: Array.isArray(data.requirements) ? data.requirements : []
-            };
-
-            db.events.unshift(newEvent);
-
-            db.activityFeed.unshift({
-                id: `act-${Date.now()}`,
-                text: `🎉 OpenClaw Super Agent agendó el evento "${newEvent.name}" (${newEvent.date})`,
-                color: '#f43f5e',
-                timestamp: new Date().toISOString()
-            });
-
-            result = { success: true, event: newEvent };
-            break;
-        }
-
-        case 'add_task': {
-            const newTask = {
-                id: data.id || `task-${Date.now()}`,
-                text: data.text || data.title || 'Nueva tarea creada por OpenClaw',
-                title: data.text || data.title || 'Nueva tarea creada por OpenClaw',
-                priority: data.priority || 'media',
-                category: data.category || 'General',
-                done: false,
-                status: 'todo',
-                projectId: data.projectId || null,
-                eventId: data.eventId || null,
-                assignedTo: data.assignee || data.assignedTo || 'GG',
-                assignee: data.assignee || data.assignedTo || 'GG',
-                dueDate: data.dueDate || null,
-                createdAt: new Date().toISOString()
-            };
-
-            db.tasks.unshift(newTask);
-
-            if (data.projectId) {
-                const pIdx = db.projects.findIndex(p => p.id === data.projectId);
-                if (pIdx >= 0) {
-                    if (!db.projects[pIdx].tasks) db.projects[pIdx].tasks = [];
-                    db.projects[pIdx].tasks.push({ id: newTask.id, text: newTask.text, done: false });
-                }
-            }
-
-            db.activityFeed.unshift({
-                id: `act-${Date.now()}`,
-                text: `📋 OpenClaw Super Agent añadió tarea: "${newTask.text}"`,
-                color: '#06b6d4',
-                timestamp: new Date().toISOString()
-            });
-
-            result = { success: true, task: newTask };
-            break;
-        }
-
-        case 'create_client_post': {
-            const newPost = {
-                id: `post-${Date.now()}`,
-                project: data.clientName || 'ARRIVE Client',
-                format: data.format || 'Reel 9:16',
-                title: data.title || 'Nueva Publicación',
-                hook: data.hook || 'Producido por ARRIVE Agency',
-                caption: data.caption || '',
-                date: data.date || new Date().toISOString().split('T')[0],
-                status: 'Listo para Publicar'
-            };
-            if (!db.socialMedia) db.socialMedia = [];
-            db.socialMedia.unshift(newPost);
-            db.activityFeed.unshift({
-                id: `act-${Date.now()}`,
-                text: `🎬 Post/Reel programado por Agente para ${newPost.project}: "${newPost.title}"`,
-                color: '#fbbf24',
-                timestamp: new Date().toISOString()
-            });
-            result = { success: true, post: newPost };
-            break;
-        }
-
-        case 'update_client_rag': {
-            const ns = data.clientId || data.namespace || 'default';
-            if (!db.ragDocuments) db.ragDocuments = [];
-            const doc = {
-                id: `rag-doc-${Date.now()}`,
-                filename: data.title || `Intel de ${data.clientName || 'Cliente'}`,
-                title: data.title || `Intel de ${data.clientName || 'Cliente'}`,
-                content: data.content || '',
-                category: 'client_intel',
-                namespace: ns,
-                addedAt: new Date().toISOString()
-            };
-            db.ragDocuments.unshift(doc);
-            const RAGEngine = app.get('ragEngine') || EmbeddedRAGEngine;
-            if (RAGEngine) {
-                RAGEngine.indexCustomDocument(doc.id, doc.title, doc.content, 'client_intel', {}, ns).catch(() => null);
-            }
-            db.activityFeed.unshift({
-                id: `act-${Date.now()}`,
-                text: `🧠 Conocimiento RAG indexado para ${data.clientName || ns}: "${doc.title}"`,
-                color: '#c084fc',
-                timestamp: new Date().toISOString()
-            });
-            result = { success: true, document: doc };
-            break;
-        }
-
-        case 'complete_task':
-        case 'toggle_task': {
-            const taskId = data.id || data.taskId;
-            let found = null;
-            if (taskId) {
-                found = db.tasks.find(t => t.id === taskId);
-            }
-            if (!found && (data.text || data.title)) {
-                const q = (data.text || data.title).toLowerCase();
-                found = db.tasks.find(t => (t.text && t.text.toLowerCase().includes(q)) || (t.title && t.title.toLowerCase().includes(q)));
-            }
-
-            if (found) {
-                found.done = true;
-                found.status = 'done';
-                db.activityFeed.unshift({
-                    id: `act-${Date.now()}`,
-                    text: `🎯 OpenClaw Super Agent completó la tarea: "${found.text || found.title}"`,
-                    color: '#10b981',
-                    timestamp: new Date().toISOString()
-                });
-                result = { success: true, task: found, id: found.id };
-            } else {
-                result = { success: false, error: 'Tarea no encontrada' };
-            }
-            break;
-        }
-
-        case 'add_milestone': {
-            const { projectId, title, deadline, deliverables } = data;
-            const newMilestone = {
-                id: `m-${Date.now()}`,
-                title: title || 'Nuevo Hito',
-                deadline: deadline || '',
-                done: false,
-                deliverables: deliverables || []
-            };
-
-            if (projectId) {
-                const pIdx = db.projects.findIndex(p => p.id === projectId);
-                if (pIdx >= 0) {
-                    if (!db.projects[pIdx].milestones) db.projects[pIdx].milestones = [];
-                    db.projects[pIdx].milestones.push(newMilestone);
-                }
-                const eIdx = db.events.findIndex(e => e.id === projectId);
-                if (eIdx >= 0) {
-                    if (!db.events[eIdx].milestones) db.events[eIdx].milestones = [];
-                    db.events[eIdx].milestones.push(newMilestone);
-                }
-            }
-
-            db.activityFeed.unshift({
-                id: `act-${Date.now()}`,
-                text: `🗺️ Hermes Agent añadió hito: "${newMilestone.title}"`,
-                color: '#10b981',
-                timestamp: new Date().toISOString()
-            });
-
-            result = { success: true, milestone: newMilestone };
-            break;
-        }
-
-        case 'log_thought': {
-            const thought = {
-                id: `thought-${Date.now()}`,
-                message: data.message || data.text || 'Pensamiento registrado',
-                level: data.level || 'info',
-                details: data.details || '',
-                projectId: data.projectId || null,
-                timestamp: new Date().toISOString()
-            };
-
-            logEntry.thought = thought;
-            db.activityFeed.unshift({
-                id: `act-${Date.now()}`,
-                text: `🧠 Hermes: ${thought.message}`,
-                color: '#8b5cf6',
-                timestamp: new Date().toISOString()
-            });
-
-            result = { success: true, log: thought };
-            break;
-        }
-
-        case 'add_note': {
-            const newNote = {
-                id: data.id || `note-${Date.now()}`,
-                title: data.title || 'Nota de Hermes',
-                text: data.text || data.content || '',
-                category: data.category || 'Hermes AI',
-                projectId: data.projectId || null,
-                date: new Date().toISOString().split('T')[0]
-            };
-
-            db.notes.unshift(newNote);
-            result = { success: true, note: newNote };
-            break;
-        }
-
-        default: {
-            db.activityFeed.unshift({
-                id: `act-${Date.now()}`,
-                text: `🤖 OpenClaw Agent ejecutó acción: ${actionName}`,
-                color: '#8b5cf6',
-                timestamp: new Date().toISOString()
-            });
-            result = { success: true, message: `Action ${actionName} received and logged`, payload: data };
-            break;
-        }
-    }
-
-    db.activityFeed = db.activityFeed.slice(0, 50);
-    db.openclawLogs.unshift(logEntry);
+        status: result.success ? 'success' : 'error',
+        error: result.success ? undefined : result.error,
+        thought: result.log,
+    });
     db.openclawLogs = db.openclawLogs.slice(0, 50);
     db.hermesLogs = db.openclawLogs;
-    writeDB(db);
-
+    if (persist) writeDB(db);
     return result;
 }
 
-const executeHermesAction = executeOpenClawAction;
 
 // 5. OpenClaw & Gemini Config Endpoints
 app.get('/api/openclaw/config', (req, res) => {
@@ -1869,10 +1276,9 @@ app.get('/api/openclaw/config', (req, res) => {
     const config = db.openclawConfig || db.hermesConfig || {
         baseUrl: 'http://localhost:18789/v1',
         chatUrl: '/api/openclaw/chat',
-        model: 'gemini-3.6-flash',
         apiKey: ''
     };
-    res.json(publicConfig(config));
+    res.json({ ...publicConfig(config), model: geminiModelFor(db) });
 });
 
 // Nunca devolver claves guardadas al navegador; solo si existen.
@@ -1881,10 +1287,21 @@ function publicConfig(config = {}) {
     return { ...rest, hasGeminiApiKey: !!geminiApiKey, hasApiKey: !!apiKey };
 }
 
+// Quita campos de solo lectura y no borra claves guardadas cuando llegan vacías (la UI nunca las recibe)
+function sanitizeConfigUpdate(body = {}) {
+    // eslint-disable-next-line no-unused-vars -- se descartan a propósito
+    const { hasGeminiApiKey, hasApiKey, ...rest } = body;
+    if (!rest.geminiApiKey) delete rest.geminiApiKey;
+    if (!rest.apiKey) delete rest.apiKey;
+    return rest;
+}
+
 app.post('/api/openclaw/config', (req, res) => {
     const db = readDB();
-    db.openclawConfig = { ...(db.openclawConfig || {}), ...req.body };
+    db.openclawConfig = { ...(db.openclawConfig || {}), ...sanitizeConfigUpdate(req.body) };
     writeDB(db);
+    resetGeminiModelCache();
+    lastGeminiError = null;
     res.json({ success: true, config: publicConfig(db.openclawConfig) });
 });
 
@@ -1895,23 +1312,29 @@ app.post('/api/openclaw/gemini/config', (req, res) => {
     if (req.body.geminiApiKey !== undefined) {
         db.openclawConfig.geminiApiKey = (req.body.geminiApiKey || '').trim();
     }
+    if (req.body.model !== undefined) db.openclawConfig.model = String(req.body.model || '').trim();
     writeDB(db);
-    const activeKey = process.env.GEMINI_API_KEY || db.openclawConfig.geminiApiKey;
+    const activeKey = geminiKeyFor(db);
+    lastGeminiError = null;
+    resetGeminiModelCache();
     res.json({
         success: true,
         geminiActive: !!activeKey,
-        model: 'gemini-3.6-flash'
+        model: geminiModelFor(db)
     });
 });
 
 app.get('/api/openclaw/gemini/status', (req, res) => {
     const db = readDB();
-    const activeKey = process.env.GEMINI_API_KEY || db.openclawConfig?.geminiApiKey;
+    const activeKey = geminiKeyFor(db);
     res.json({
         configured: !!activeKey,
-        active: !!activeKey,
-        model: 'gemini-3.6-flash',
-        provider: 'Google Gemini'
+        active: !!activeKey && !lastGeminiError,
+        model: geminiModelFor(db),
+        configuredModel: configuredGeminiModel(db.openclawConfig?.model),
+        provider: 'Google Gemini',
+        source: process.env.GEMINI_API_KEY ? 'env' : activeKey ? 'dashboard' : null,
+        lastError: lastGeminiError
     });
 });
 
@@ -1922,7 +1345,7 @@ app.get('/api/hermes/config', (req, res) => {
 });
 app.post('/api/hermes/config', (req, res) => {
     const db = readDB();
-    db.openclawConfig = { ...(db.openclawConfig || {}), ...req.body };
+    db.openclawConfig = { ...(db.openclawConfig || {}), ...sanitizeConfigUpdate(req.body) };
     db.hermesConfig = db.openclawConfig;
     writeDB(db);
     res.json({ success: true, config: publicConfig(db.openclawConfig) });
@@ -1931,16 +1354,16 @@ app.post('/api/hermes/config', (req, res) => {
 // 6. OpenClaw Health Check Endpoint
 app.get(['/api/openclaw/health', '/api/hermes/health'], async (req, res) => {
     const db = readDB();
-    const geminiKey = process.env.GEMINI_API_KEY || db.openclawConfig?.geminiApiKey;
-    
+    const geminiKey = geminiKeyFor(db);
+    const model = geminiModelFor(db);
     return res.json({
         online: true,
-        mode: geminiKey ? 'gemini_3.6_flash' : 'embedded_orchestrator',
-        latencyMs: 1,
-        model: geminiKey ? 'gemini-3.6-flash' : 'openclaw-agent',
-        status: 'ready',
+        mode: geminiKey ? 'gemini' : 'local',
+        model: geminiKey ? model : 'openclaw-local',
+        status: lastGeminiError ? 'degraded' : 'ready',
         geminiActive: !!geminiKey,
-        label: geminiKey ? 'OpenClaw Super Agent (Gemini 3.6 Flash)' : 'OpenClaw Super Agent (Orquestador Embebido + RAG)'
+        lastError: lastGeminiError,
+        label: geminiKey ? `OpenClaw · Gemini (${model}) + RAG` : 'OpenClaw · motor local + RAG (sin GEMINI_API_KEY)'
     });
 });
 
@@ -1967,322 +1390,85 @@ app.delete('/api/openclaw/chat/history', (req, res) => {
     res.json({ success: true, message: 'OpenClaw chat history cleared' });
 });
 
-// 7. OpenClaw Live Chat with Gemini 3.6 Flash, Tool Calling & RAG Knowledge Injection
+// 7. OpenClaw Chat: Gemini con herramientas + RAG; si no hay clave o Gemini falla, agente local
+const geminiKeyFor = (db) => process.env.GEMINI_API_KEY || db.openclawConfig?.geminiApiKey || '';
+const geminiModelFor = (db) => activeGeminiModel() || configuredGeminiModel(db.openclawConfig?.model);
+let lastGeminiError = null;
+
 async function handleOpenClawChat(req, res) {
     const db = readDB();
-    const { prompt, history = [], systemRole, skills, namespace = 'default' } = req.body;
-    if (!prompt) return res.status(400).json({ error: 'Prompt es requerido' });
+    const { prompt, history = [], systemRole, skills, namespace = 'default' } = req.body || {};
+    if (!prompt || !String(prompt).trim()) return res.status(400).json({ error: 'Prompt es requerido' });
+    const text = String(prompt).trim();
+    // Gemini recibe el comando ya traducido (/tarea x → "crea una tarea: x"); el agente local lo traduce solo
+    const geminiPrompt = expandSlashCommand(text).prompt || text;
 
-    // Determine Gemini API Key
-    const geminiApiKey = req.body.geminiApiKey || process.env.GEMINI_API_KEY || db.openclawConfig?.geminiApiKey || '';
+    const rag = searchKnowledge(db, geminiPrompt, { namespace, topK: 5 });
+    const sources = rag.results.map(({ id, title, category, similarity }) => ({ id, title, category, similarity }));
+    const apiKey = geminiKeyFor(db);
 
-    // Inyectar RAG Knowledge
-    let ragContext = '';
-    const ragEngine = req.app.get('ragEngine') || EmbeddedRAGEngine;
-    const ragSearchResult = ragEngine.query(prompt, namespace, 4);
-    if (ragSearchResult && ragSearchResult.sources && ragSearchResult.sources.length > 0) {
-        ragContext = ragSearchResult.context;
-    }
-
-    // Inyectar Contexto Operativo en Tiempo Real
-    const liveProjects = (db.projects || []).map(p => ({ id: p.id, name: p.name, status: p.status, priority: p.priority }));
-    const liveEvents = (db.events || []).map(e => ({ id: e.id, name: e.name, date: e.date, status: e.status, location: e.location, budget: e.budget }));
-    const pendingTasks = (db.tasks || []).filter(t => !t.done).slice(0, 20).map(t => ({ id: t.id, text: t.text || t.title, priority: t.priority }));
-
-    // Inyectar Clientes y Marcas de ARRIVE Agency
-    const arriveClients = (db.projects || []).filter(p => p.agency === 'arrive' || p.isClient || p.id?.startsWith('client-')).map(c => ({
-        id: c.id,
-        name: c.name,
-        industry: c.industry || 'Marca',
-        slogan: c.slogan || '',
-        lead: c.lead || 'GG',
-        tone: c.brand?.toneOfVoice || '',
-        dos: c.brand?.dos || '',
-        donts: c.brand?.donts || ''
-    }));
-
-    const systemMessageContent = `Eres OpenClaw Super Agent, el orquestador autónomo maestro y cerebro central del Command Center & Dashboard de Eventos y ARRIVE Agency.
-Tienes acceso total para gestionar eventos (Terraplén Rooftop, Furia, Piano Bar, etc.), marcas clientes, proyectos, finanzas, tareas, redes sociales, promotores y modelos Image Girls.
-
-[SKILLS Y DIRECTIVAS]:
-${skills || 'Actúa con precisión, proactividad y liderazgo. Responde en español estructurado y ejecuta acciones en el sistema siempre que el usuario lo solicite.'}
-
-[BASE DE CONOCIMIENTOS RAG DE OPENCLAW]:
-${ragContext || 'No se requirieron documentos adicionales para esta consulta.'}
-
-[MARCAS Y CLIENTES ACTIVOS DE ARRIVE AGENCY]:
-${arriveClients.length > 0 ? JSON.stringify(arriveClients) : 'Terraplén Rooftop, Furia Panamá, Piano Bar Casco'}
-Tienes conocimiento de cada marca de ARRIVE Agency. Si el usuario te pide crear un post, Reel, o estrategia para una de estas marcas, adopta fielmente su tono de voz y sus reglas de comunicación (Do's y Don'ts).
-
-[ESTADO EN VIVO DEL DASHBOARD]:
-- Eventos Activos (${liveEvents.length}): ${JSON.stringify(liveEvents.slice(0, 10))}
-- Proyectos (${liveProjects.length}): ${JSON.stringify(liveProjects)}
-- Tareas Pendientes (${pendingTasks.length}): ${JSON.stringify(pendingTasks)}
-- Miembros del Equipo Asignables: GG, JOSHUA, MARIO, ANDREA, FANNY, JEIKOB, FIVVR.
-
-${systemRole || ''}`;
-
-    // ─── 1. INTEGRACIÓN CON GOOGLE GEMINI (Multi-Model Resiliente con Fast Fallback) ───
-    if (geminiApiKey) {
-        const candidateModels = [
-            'gemini-3.5-flash-lite',
-            'gemini-3.6-flash',
-            'gemini-3.1-flash-lite'
-        ];
-
-        const geminiContents = [
-            ...history.slice(-8).map(h => ({
-                role: h.role === 'assistant' || h.role === 'model' || h.role === 'bot' || h.role === 'copilot' ? 'model' : 'user',
-                parts: [{ text: h.content || h.text || '' }]
-            })),
-            {
-                role: 'user',
-                parts: [{ text: prompt }]
-            }
-        ];
-
-        const toolsDeclaration = [
-            {
-                functionDeclarations: [
-                    {
-                        name: "create_client_post",
-                        description: "Programa o propone una publicación, Reel o carrusel para una marca o cliente de ARRIVE Agency",
-                        parameters: {
-                            type: "OBJECT",
-                            properties: {
-                                clientName: { type: "STRING", description: "Nombre de la marca o cliente (ej: Terraplén Rooftop, Furia Panamá, Piano Bar)" },
-                                title: { type: "STRING", description: "Título o concepto del post o reel" },
-                                format: { type: "STRING", enum: ["Reel 9:16", "Carrusel HD", "Story Seq", "TikTok / UGC"], description: "Formato de contenido" },
-                                hook: { type: "STRING", description: "Gancho viral de los primeros 3 segundos" },
-                                caption: { type: "STRING", description: "Texto o copy sugerido" },
-                                date: { type: "STRING", description: "Fecha de publicación (YYYY-MM-DD)" }
-                            },
-                            required: ["clientName", "title"]
-                        }
-                    },
-                    {
-                        name: "add_task",
-                        description: "Crea una nueva tarea en el Dashboard de eventos y operaciones",
-                        parameters: {
-                            type: "OBJECT",
-                            properties: {
-                                text: { type: "STRING", description: "Descripción clara de la tarea" },
-                                priority: { type: "STRING", enum: ["high", "medium", "low"], description: "Nivel de prioridad" },
-                                category: { type: "STRING", description: "Categoría o evento (ej: Terraplén, Furia, Piano Bar, General)" },
-                                assignee: { type: "STRING", enum: ["GG", "JOSHUA", "MARIO", "ANDREA", "FANNY", "JEIKOB", "FIVVR"], description: "Usuario responsable de la tarea: GG, JOSHUA, MARIO, ANDREA, FANNY, JEIKOB, o FIVVR" }
-                            },
-                            required: ["text"]
-                        }
-                    },
-                    {
-                        name: "complete_task",
-                        description: "Marca una tarea existente como completada",
-                        parameters: {
-                            type: "OBJECT",
-                            properties: {
-                                text: { type: "STRING", description: "Nombre o palabra clave de la tarea a marcar como completada" }
-                            },
-                            required: ["text"]
-                        }
-                    },
-                    {
-                        name: "create_event",
-                        description: "Agenda un nuevo evento en el calendario y base de eventos",
-                        parameters: {
-                            type: "OBJECT",
-                            properties: {
-                                name: { type: "STRING", description: "Nombre del evento" },
-                                date: { type: "STRING", description: "Fecha en formato YYYY-MM-DD" },
-                                location: { type: "STRING", description: "Ubicación del evento" },
-                                budget: { type: "STRING", description: "Presupuesto estimado en USD" },
-                                description: { type: "STRING", description: "Detalles del evento" }
-                            },
-                            required: ["name"]
-                        }
-                    },
-                    {
-                        name: "create_project",
-                        description: "Crea un nuevo proyecto en el Command Center",
-                        parameters: {
-                            type: "OBJECT",
-                            properties: {
-                                name: { type: "STRING", description: "Nombre del proyecto" },
-                                description: { type: "STRING", description: "Objetivo y descripción del proyecto" },
-                                category: { type: "STRING", description: "software, business, marketing o eventos" }
-                            },
-                            required: ["name"]
-                        }
-                    }
-                ]
-            }
-        ];
-
-        for (const modelName of candidateModels) {
-            try {
-                const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiApiKey}`;
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 8000);
-
-                const geminiRes = await fetch(geminiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    signal: controller.signal,
-                    body: JSON.stringify({
-                        contents: geminiContents,
-                        systemInstruction: {
-                            parts: [{ text: systemMessageContent }]
-                        },
-                        tools: toolsDeclaration,
-                        generationConfig: {
-                            temperature: 0.7,
-                            maxOutputTokens: 1200
-                        }
-                    })
-                });
-                clearTimeout(timeoutId);
-
-                if (geminiRes.ok) {
-                    const geminiData = await geminiRes.json();
-                    const candidate = geminiData.candidates && geminiData.candidates[0];
-                    if (candidate && candidate.content && candidate.content.parts) {
-                        const executedTools = [];
-                        let replyText = '';
-
-                        for (const part of candidate.content.parts) {
-                            if (part.text) {
-                                replyText += (replyText ? '\n\n' : '') + part.text;
-                            }
-                            if (part.functionCall) {
-                                const call = part.functionCall;
-                                const toolResult = executeOpenClawAction(call.name, call.args || {}, db);
-                                executedTools.push({ name: call.name, args: call.args || {}, result: toolResult });
-                            }
-                        }
-
-                        if (!replyText && executedTools.length > 0) {
-                            replyText = `✅ **OpenClaw Super Agent (${modelName})** ejecutó ${executedTools.length} acción(es) solicitada(s) correctamente.`;
-                        }
-
-                        // Sincronizar en historial compartido
-                        if (!db.openclawChatHistory) db.openclawChatHistory = [];
-                        db.openclawChatHistory.push({
-                            id: `usr-${Date.now()}`,
-                            role: 'user',
-                            text: prompt,
-                            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                        });
-                        db.openclawChatHistory.push({
-                            id: `bot-${Date.now()}`,
-                            role: 'copilot',
-                            text: replyText,
-                            model: modelName,
-                            provider: `Google ${modelName}`,
-                            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                            executedTools
-                        });
-                        writeDB(db);
-
-                        return res.json({
-                            reply: replyText,
-                            executedTools,
-                            model: modelName,
-                            provider: `Google Gemini (${modelName})`,
-                            usage: geminiData.usageMetadata || null
-                        });
-                    }
-                } else {
-                    const errStatus = geminiRes.status;
-                    const errText = await geminiRes.text();
-                    console.warn(`[Gemini API] Modelo ${modelName} devolvió ${errStatus}, intentando siguiente fallback...`, errText.slice(0, 150));
-                }
-            } catch (modelErr) {
-                console.warn(`[Gemini API] Excepción en ${modelName}, intentando siguiente fallback...`, modelErr.message);
-            }
+    if (apiKey) {
+        const systemPrompt = buildSystemPrompt(db, { ragContext: rag.context, skills, systemRole });
+        const result = await runGeminiAgent({
+            apiKey,
+            model: db.openclawConfig?.model,
+            systemPrompt,
+            history: Array.isArray(history) ? history : [],
+            prompt: geminiPrompt,
+            db,
+            namespace,
+            onError: (errors) => console.warn('[OpenClaw] Gemini no respondió:', errors.join(' | ')),
+        });
+        if (result?.executedTools?.length) {
+            result.executedTools.forEach(t => logAgentTool(db, t));
+            writeDB(db);
+        }
+        if (result && !result.error) {
+            lastGeminiError = null;
+            return res.json({
+                reply: result.reply,
+                executedTools: result.executedTools,
+                sources,
+                model: result.model,
+                provider: `Google Gemini (${result.model})`,
+                usage: result.usage || null,
+            });
+        }
+        lastGeminiError = { at: new Date().toISOString(), message: result?.error || 'sin respuesta' };
+        if (result?.executedTools?.length) {
+            // Ya se ejecutaron acciones: no repetirlas con el agente local
+            return res.json({ reply: result.reply, executedTools: result.executedTools, sources, model: 'openclaw-local', provider: 'OpenClaw (Gemini incompleto)' });
         }
     }
 
-    // ─── 2. MODO AUTÓNOMO EMBEBIDO OPENCLAW (Fallback 100% Funcional) ───
-    const executedTools = [];
-    const pLower = prompt.toLowerCase();
-    let replyText = '';
-
-    if (pLower.includes('crea') && (pLower.includes('proyecto') || pLower.includes('project'))) {
-        const projNameMatch = prompt.match(/(?:proyecto|project)\s+(?:llamado\s+|de\s+|para\s+|titulado\s+)?["']?([^"',.\n]+)["']?/i);
-        const name = projNameMatch ? projNameMatch[1].trim() : 'Nuevo Proyecto OpenClaw';
-        const newProj = executeHermesAction('create_project', {
-            name,
-            description: `Proyecto planificado por OpenClaw Super Agent en base a la instrucción: "${prompt}"`,
-            category: pLower.includes('software') || pLower.includes('app') ? 'software' : pLower.includes('marketing') ? 'marketing' : 'business',
-            priority: pLower.includes('urgente') || pLower.includes('critico') ? 'critical' : 'high',
-            techStack: ['React', 'Node.js', 'OpenClaw RAG']
-        }, db);
-        executedTools.push({ name: 'create_project', args: { name }, result: newProj });
-        replyText = `🚀 **Proyecto "${name}" creado exitosamente** en el Command Center. He configurado la estructura inicial, hitos de desarrollo y registrado la actividad en el sistema.`;
-
-    } else if (pLower.includes('crea') && (pLower.includes('evento') || pLower.includes('event'))) {
-        const evMatch = prompt.match(/(?:evento|event)\s+(?:llamado\s+|de\s+|para\s+|titulado\s+)?["']?([^"',.\n]+)["']?/i);
-        const name = evMatch ? evMatch[1].trim() : 'Nuevo Evento OpenClaw';
-        const newEv = executeHermesAction('create_event', {
-            name,
-            description: `Evento agendado por OpenClaw Super Agent: "${prompt}"`,
-            date: new Date(Date.now() + 86400000 * 7).toISOString().split('T')[0],
-            category: 'event'
-        }, db);
-        executedTools.push({ name: 'create_event', args: { name }, result: newEv });
-        replyText = `🎉 **Evento "${name}" agendado con éxito**. Puedes ver los detalles, fecha y asignación en la pestaña de Eventos y en el Calendario.`;
-
-    } else if (pLower.includes('completa') || pLower.includes('completar') || pLower.includes('terminé') || pLower.includes('marcar como hecha')) {
-        const matchText = prompt.replace(/(?:completa|completar|terminé|marcar como hecha)\s+(?:la\s+)?(?:tarea\s+)?(?:de\s+|para\s+)?/i, '').trim();
-        const resTask = executeHermesAction('complete_task', { text: matchText }, db);
-        if (resTask.success) {
-            executedTools.push({ name: 'complete_task', args: { text: matchText }, result: resTask });
-            replyText = `🎯 **Tarea completada exitosamente:** "${resTask.task.text || resTask.task.title}". El progreso en el Dashboard ha sido actualizado.`;
-        } else {
-            replyText = `⚠️ No encontré una tarea pendiente que coincida con "${matchText}".`;
-        }
-
-    } else if (pLower.includes('resumen') || pLower.includes('estado') || pLower.includes('status') || pLower.includes('reporte') || pLower.includes('operaciones')) {
-        replyText = `📊 **Reporte Ejecutivo de OpenClaw Super Agent**:
-- **Eventos Activos**: ${(db.events || []).length} eventos agendados (incluyendo Terraplén Rooftop, Furia y Piano Bar).
-- **Proyectos Activos**: ${(db.projects || []).length} proyectos registrados en el portfolio.
-- **Tareas Pendientes**: ${(db.tasks || []).filter(t => !t.done).length} tareas en cola de ejecución.
-- **Base de Conocimiento RAG**: ${(db.ragDocuments || []).length} documentos y entidades indexadas en namespace "${namespace}".
-
-*El sistema está 100% operativo y sincronizado localmente.*`;
-
-    } else if (pLower.includes('tarea') || pLower.includes('task') || pLower.includes('todo') || pLower.includes('to-do')) {
-        const taskTextMatch = prompt.match(/(?:tarea|task|agregar\s+tarea)\s+(?:de\s+|para\s+)?["']?([^"',.\n]+)["']?/i);
-        const text = taskTextMatch ? taskTextMatch[1].trim() : prompt;
-        const newTask = executeHermesAction('add_task', {
-            text,
-            priority: pLower.includes('alta') || pLower.includes('urgente') ? 'alta' : 'media',
-            assignedTo: 'OpenClaw Super Agent'
-        }, db);
-        executedTools.push({ name: 'add_task', args: { text }, result: newTask });
-        replyText = `📋 **Tarea registrada**: "${text}". Ha sido agregada a la lista de pendientes y asignada a OpenClaw.`;
-
-    } else {
-        if (ragSearchResult && ragSearchResult.sources && ragSearchResult.sources.length > 0) {
-            replyText = `🧠 **Consulta RAG en Namespace "${namespace}"**:
-Encontré **${ragSearchResult.count} referencias** en tu base de conocimientos:
-
-${ragSearchResult.sources.map(s => `- **${s.title}** (${s.category})`).join('\n')}
-
-**Contexto Extraído**:
-> ${ragSearchResult.context.slice(0, 320)}...`;
-        } else {
-            replyText = `⚡ **OpenClaw Super Agent**: He procesado tu solicitud: *"${prompt}"*. 
-Todos los subsistemas del Command Center, base de datos local y motor RAG están activos y listos para ejecutar cualquier comando o plan de acción.`;
-        }
+    const local = runLocalAgent(text, db, { namespace });
+    if (local.executedTools.length) {
+        local.executedTools.forEach(t => logAgentTool(db, t));
+        writeDB(db);
     }
-
+    const warning = apiKey && lastGeminiError
+        ? `\n\n_⚠️ Gemini no respondió (${lastGeminiError.message.slice(0, 140)}); respondí con el motor local._`
+        : '';
     return res.json({
-        reply: replyText,
-        executedTools,
-        model: 'openclaw-super-agent-autonomous',
-        provider: 'OpenClaw Autonomous Engine',
-        usage: { prompt_tokens: prompt.length, completion_tokens: replyText.length, total_tokens: prompt.length + replyText.length }
+        reply: local.reply + warning,
+        executedTools: local.executedTools,
+        sources: local.sources || sources,
+        model: 'openclaw-local',
+        provider: apiKey ? 'OpenClaw local (Gemini no disponible)' : 'OpenClaw local (sin Gemini)',
+        usage: null,
     });
+}
+
+// Registra en el log del agente las herramientas que ya ejecutó executeAgentAction
+function logAgentTool(db, { name, args, result }) {
+    db.openclawLogs = Array.isArray(db.openclawLogs) ? db.openclawLogs : [];
+    db.openclawLogs.unshift({
+        id: `olog-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        action: name, timestamp: new Date().toISOString(), source: 'OpenClaw Chat', data: args || {},
+        status: result?.success ? 'success' : 'error', error: result?.success ? undefined : result?.error,
+    });
+    db.openclawLogs = db.openclawLogs.slice(0, 50);
+    db.hermesLogs = db.openclawLogs;
 }
 
 app.post('/api/openclaw/chat', handleOpenClawChat);
@@ -2494,16 +1680,16 @@ app.post('/api/orch/execute-task', async (req, res) => {
         // 2. Fetch RAG Context from the correct namespace
         console.log(`[Execute] Querying RAG namespace "${namespace}"...`);
         const ragQuery = `Contexto necesario para la empresa ${companyName || 'del ecosistema'} para realizar la tarea: ${task}. ${description || ''}`;
-        const ragResult = await RAGEngine.query(ragQuery, 5, null, namespace);
-        const memoryContext = ragResult.answer || 'Sin contexto RAG disponible para esta empresa.';
-        const ragSources = (ragResult.sources || []).map(s => `${s.type}: ${s.name}`).join(', ');
+        const ragResult = await RAGEngine.query(ragQuery, 5, namespace);
+        const memoryContext = ragResult.context || 'Sin contexto RAG disponible para esta empresa.';
+        const ragSources = (ragResult.sources || []).map(s => `${s.category}: ${s.title}`).join(', ');
         console.log(`[Execute] ✅ RAG returned context (sources: ${ragSources || 'none'})`);
 
         // 3. Also query root namespace for cross-company ecosystem context
         let ecosystemContext = '';
         try {
             const ecoResult = await RAGEngine.query(`Información general del ecosistema relevante para: ${task}`, 2);
-            ecosystemContext = ecoResult.answer || '';
+            ecosystemContext = ecoResult.context || '';
         } catch { /* silent */ }
 
         // 4. Build the full execution prompt
@@ -2666,8 +1852,8 @@ app.post('/api/orch/chat', async (req, res) => {
         let ragContext = '';
         try {
             if (RAGEngine && message) {
-                const ragResult = await RAGEngine.query(String(message), 5, context || []);
-                ragContext = ragResult?.answer || ragResult?.context || '';
+                const ragResult = await RAGEngine.query(String(message), 5);
+                ragContext = ragResult?.context || '';
             }
         } catch (e) {
             console.warn('[Orchestrator Chat] RAG query failed:', e.message);
@@ -3201,60 +2387,14 @@ app.post('/api/supabase/sync', async (req, res) => {
 
 // ─── Native Embedded OpenClaw RAG Engine ────────────────────────
 const EmbeddedRAGEngine = {
-    async upsertEntity(entityType, entityData, namespace = 'default') {
-        try {
-            const db = readDB();
-            if (!db.ragDocuments) db.ragDocuments = [];
-            const docId = `entity-${entityType}-${entityData.id || Date.now()}`;
-            
-            let title = entityData.name || entityData.title || entityData.text || `${entityType} #${entityData.id}`;
-            let content = '';
-            if (entityType === 'project' || entityType === 'projects') {
-                content = `PROYECTO: ${entityData.name}\nDescripción: ${entityData.description || ''}\nCategoría: ${entityData.category || ''}\nEstado: ${entityData.status || ''}\nPrioridad: ${entityData.priority || ''}\nStack: ${Array.isArray(entityData.techStack) ? entityData.techStack.join(', ') : entityData.techStack || ''}\nLíder: ${entityData.leadAgent || 'Hermes'}\nHitos: ${(entityData.milestones || []).map(m => m.title || m).join(' | ')}`;
-            } else if (entityType === 'event' || entityType === 'events') {
-                content = `EVENTO: ${entityData.name}\nFecha: ${entityData.date}\nHora: ${entityData.time || ''}\nUbicación: ${entityData.location || ''}\nTipo: ${entityData.type || ''}\nDescripción: ${entityData.description || ''}`;
-            } else if (entityType === 'task' || entityType === 'tasks') {
-                content = `TAREA: ${entityData.text}\nPrioridad: ${entityData.priority || ''}\nAsignado: ${entityData.assignedTo || ''}\nEstado: ${entityData.done ? 'Completada' : 'Pendiente'}`;
-            } else if (entityType === 'note' || entityType === 'notes') {
-                content = `NOTA: ${entityData.title || ''}\nContenido: ${entityData.text || entityData.content || ''}\nCategoría: ${entityData.category || ''}`;
-            } else {
-                content = typeof entityData === 'string' ? entityData : JSON.stringify(entityData);
-            }
-
-            const existingIdx = db.ragDocuments.findIndex(d => d.id === docId);
-            const docObj = {
-                id: docId,
-                filename: title,
-                title,
-                content,
-                category: entityType,
-                namespace: namespace || 'default',
-                updatedAt: new Date().toISOString()
-            };
-
-            if (existingIdx >= 0) {
-                db.ragDocuments[existingIdx] = docObj;
-            } else {
-                db.ragDocuments.unshift(docObj);
-            }
-            writeDB(db);
-            return { success: true, documentId: docId };
-        } catch (e) {
-            return { success: false, error: e.message };
-        }
+    // Proyectos, eventos, tareas, notas y contactos se buscan en vivo desde db.json (server/agent.js),
+    // así que ya no hace falta copiarlos al índice: estos ganchos se mantienen por compatibilidad.
+    async upsertEntity() {
+        return { success: true, live: true };
     },
 
-    async deleteEntity(entityId) {
-        try {
-            const db = readDB();
-            if (db.ragDocuments) {
-                db.ragDocuments = db.ragDocuments.filter(d => !d.id.includes(entityId));
-                writeDB(db);
-            }
-            return { success: true };
-        } catch (e) {
-            return { success: false, error: e.message };
-        }
+    async deleteEntity() {
+        return { success: true, live: true };
     },
 
     async indexCustomDocument(docId, title, content, category, extraMetadata, namespace = 'default') {
@@ -3298,7 +2438,7 @@ const EmbeddedRAGEngine = {
         for (const f of files) {
             const content = fs.readFileSync(f, 'utf-8');
             const fname = path.basename(f);
-            const docId = `obsidian-${fname.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+            const docId = `obsidian-${path.relative(vaultPath, f).replace(/[^a-zA-Z0-9_-]/g, '_')}`;
             
             const existing = db.ragDocuments.findIndex(d => d.id === docId);
             const docObj = {
@@ -3320,74 +2460,43 @@ const EmbeddedRAGEngine = {
     },
 
     async indexAllData() {
+        // Limpia los espejos viejos de entidades (ahora se leen en vivo) y reporta el tamaño del corpus
         const db = readDB();
-        if (!db.ragDocuments) db.ragDocuments = [];
-        
-        let count = 0;
-        (db.projects || []).forEach(p => { this.upsertEntity('project', p, 'default'); count++; });
-        (db.events || []).forEach(e => { this.upsertEntity('event', e, 'default'); count++; });
-        (db.tasks || []).forEach(t => { this.upsertEntity('task', t, 'default'); count++; });
-        (db.notes || []).forEach(n => { this.upsertEntity('note', n, 'default'); count++; });
-
-        return { success: true, indexed: count, total: db.ragDocuments.length };
+        const before = (db.ragDocuments || []).length;
+        db.ragDocuments = (db.ragDocuments || []).filter(d => !String(d.id || '').startsWith('entity-'));
+        if (db.ragDocuments.length !== before) writeDB(db);
+        const live = ['projects', 'events', 'tasks', 'notes', 'contacts', 'ideas', 'decisionLog']
+            .reduce((acc, k) => acc + (Array.isArray(db[k]) ? db[k].length : 0), 0);
+        const stored = db.ragDocuments.length + (db.customDocuments || []).length;
+        return { success: true, indexed: stored + live, documents: stored, liveEntities: live, total: stored + live, removedStale: before - db.ragDocuments.length };
     },
 
-    // eslint-disable-next-line no-unused-vars -- historyContext se mantiene por compatibilidad con /api/brain/query
-    async query(question, topK = 5, historyContext = [], namespace = 'default') {
+    async query(question, topK = 5, namespace = 'default') {
         const db = readDB();
-        const allDocs = (db.ragDocuments || []).concat(db.customDocuments || []);
-        const filteredDocs = allDocs.filter(d => !namespace || namespace === 'default' || d.namespace === namespace || !d.namespace);
-
-        if (!question || filteredDocs.length === 0) {
-            return {
-                answer: 'No hay documentos en la base de conocimientos RAG de OpenClaw para este namespace.',
-                sources: [],
-                count: 0
-            };
+        const { results, context } = searchKnowledge(db, question || '', { namespace, topK });
+        if (results.length === 0) {
+            return { answer: 'No encontré información relevante en la base de conocimiento.', context: '', sources: [], count: 0 };
         }
-
-        const terms = question.toLowerCase().split(/\W+/).filter(w => w.length > 2);
-        
-        const scored = filteredDocs.map(doc => {
-            const fullText = `${doc.title || doc.filename || ''} ${doc.content || ''}`.toLowerCase();
-            let score = 0;
-            for (const t of terms) {
-                const matches = (fullText.match(new RegExp(t, 'g')) || []).length;
-                score += matches;
-                if ((doc.title || doc.filename || '').toLowerCase().includes(t)) {
-                    score += 4;
-                }
-            }
-            return { doc, score };
-        });
-
-        scored.sort((a, b) => b.score - a.score);
-        const topMatches = scored.filter(s => s.score > 0).slice(0, topK);
-        const selected = topMatches.length > 0 ? topMatches.map(m => m.doc) : filteredDocs.slice(0, topK);
-
-        const context = selected.map(d => `[Documento: ${d.title || d.filename} (${d.category || 'general'})]:\n${d.content}`).join('\n\n');
-
         return {
-            answer: `Se encontraron ${selected.length} fuentes relevantes en el índice RAG de OpenClaw.`,
+            answer: `Se encontraron ${results.length} fuentes relevantes.`,
             context,
-            sources: selected.map(d => ({
-                id: d.id,
-                title: d.title || d.filename,
-                category: d.category || 'document',
-                namespace: d.namespace || 'default'
-            })),
-            count: selected.length
+            sources: results.map(({ id, title, category, namespace: ns, similarity, snippet }) => ({ id, title, category, namespace: ns, similarity, snippet })),
+            count: results.length,
         };
     },
 
     async getStatus() {
         const db = readDB();
-        const docs = (db.ragDocuments || []).concat(db.customDocuments || []);
+        const docs = (db.ragDocuments || []).concat(db.customDocuments || []).filter(d => !String(d.id || '').startsWith('entity-'));
         const namespaces = [...new Set(docs.map(d => d.namespace || 'default'))];
+        const live = ['projects', 'events', 'tasks', 'notes', 'contacts', 'ideas', 'decisionLog']
+            .reduce((acc, k) => acc + (Array.isArray(db[k]) ? db[k].length : 0), 0);
         return {
             ready: true,
-            provider: 'OpenClaw RAG Engine (Embedded & Vector)',
-            indexed: docs.length,
+            provider: 'OpenClaw RAG (BM25 local sobre documentos + datos en vivo)',
+            indexed: docs.length + live,
+            documents: docs.length,
+            liveEntities: live,
             namespaces,
             lastSync: new Date().toISOString()
         };
@@ -3410,85 +2519,30 @@ app.post('/api/rag/sync', async (req, res) => {
 // Detalle completo de un documento específico
 app.get(['/api/rag-doc/:id', '/api/rag/documents/:id'], (req, res) => {
     const db = readDB();
-    const allDocs = (db.ragDocuments || []).concat(db.customDocuments || []);
-    const doc = allDocs.find(d => d.id === req.params.id);
+    const doc = getKnowledgeDoc(db, req.params.id);
     if (!doc) return res.status(404).json({ error: 'Documento no encontrado' });
     res.json(doc);
 });
 
 // Búsqueda semántica con scoring porcentual y snippets
 app.post('/api/rag/search', async (req, res) => {
-    const { query, namespace = 'default', category, topK = 6 } = req.body;
+    const { query, namespace = 'default', category, topK = 6 } = req.body || {};
     if (!query) return res.status(400).json({ error: 'Falta término de búsqueda' });
-
     const db = readDB();
-    const allDocs = (db.ragDocuments || []).concat(db.customDocuments || []);
-    let filtered = allDocs.filter(d => !namespace || namespace === 'default' || d.namespace === namespace || !d.namespace);
-    
-    if (category && category !== 'all') {
-        filtered = filtered.filter(d => d.category === category);
-    }
-
-    const terms = query.toLowerCase().split(/\W+/).filter(w => w.length > 2);
-    
-    const results = filtered.map(doc => {
-        const fullText = `${doc.title || doc.filename || ''} ${doc.content || ''}`.toLowerCase();
-        let matchScore = 0;
-        let matchedTerms = 0;
-
-        for (const t of terms) {
-            const occurrences = (fullText.match(new RegExp(t, 'g')) || []).length;
-            if (occurrences > 0) matchedTerms++;
-            matchScore += Math.min(occurrences, 10);
-            if ((doc.title || doc.filename || '').toLowerCase().includes(t)) {
-                matchScore += 8;
-            }
-        }
-
-        const coverage = terms.length > 0 ? (matchedTerms / terms.length) : 0;
-        const rawSim = Math.min(100, Math.round((coverage * 60) + (Math.min(matchScore, 20) * 2)));
-        const similarity = terms.length === 0 ? 50 : Math.max(15, rawSim);
-
-        // Extraer snippet representativo
-        let snippet = (doc.content || '').substring(0, 220);
-        if (terms.length > 0 && doc.content) {
-            const firstIdx = doc.content.toLowerCase().indexOf(terms[0]);
-            if (firstIdx >= 0) {
-                const start = Math.max(0, firstIdx - 40);
-                const end = Math.min(doc.content.length, firstIdx + 180);
-                snippet = (start > 0 ? '...' : '') + doc.content.substring(start, end) + (end < doc.content.length ? '...' : '');
-            }
-        }
-
-        return {
-            id: doc.id,
-            title: doc.title || doc.filename,
-            filename: doc.filename,
-            category: doc.category || 'document',
-            namespace: doc.namespace || 'default',
-            similarity,
-            score: matchScore,
-            snippet,
-            textLength: (doc.content || '').length,
-            addedAt: doc.addedAt || doc.updatedAt
-        };
-    });
-
-    results.sort((a, b) => b.similarity - a.similarity || b.score - a.score);
-    const topResults = results.slice(0, topK);
-
+    const { results } = searchKnowledge(db, query, { namespace, topK: Math.min(Number(topK) || 6, 20), category });
     res.json({
         query,
-        count: topResults.length,
-        totalInNamespace: filtered.length,
-        results: topResults
+        count: results.length,
+        results: results.map(({ chunk, ...r }) => ({ ...r, textLength: chunk.length })),
     });
 });
 
 app.get('/api/rag/:namespace', (req, res) => {
     const db = readDB();
     const ns = req.params.namespace || 'default';
-    const docs = (db.ragDocuments || []).filter(d => !ns || ns === 'default' ? true : d.namespace === ns);
+    const docs = (db.ragDocuments || []).concat(db.customDocuments || [])
+        .filter(d => !String(d.id || '').startsWith('entity-'))
+        .filter(d => !ns || ns === 'default' ? true : d.namespace === ns);
     res.json(docs);
 });
 
@@ -3522,11 +2576,12 @@ app.delete('/api/rag/:namespace', (req, res) => {
 
 app.delete('/api/rag/:namespace/:id', (req, res) => {
     const db = readDB();
-    if (db.ragDocuments) {
-        db.ragDocuments = db.ragDocuments.filter(d => d.id !== req.params.id);
-        writeDB(db);
-    }
-    res.json({ success: true });
+    const before = (db.ragDocuments || []).length + (db.customDocuments || []).length;
+    db.ragDocuments = (db.ragDocuments || []).filter(d => d.id !== req.params.id);
+    db.customDocuments = (db.customDocuments || []).filter(d => d.id !== req.params.id);
+    const removed = before - db.ragDocuments.length - db.customDocuments.length;
+    if (removed) writeDB(db);
+    res.status(removed ? 200 : 404).json({ success: !!removed });
 });
 
 // ─── Hermes Chat Sessions Persistence ─────────────────────────
@@ -3590,9 +2645,9 @@ app.post(['/api/hermes/skills/presets', '/api/openclaw/skills/presets'], (req, r
 
 app.post('/api/brain/query', async (req, res) => {
     try {
-        const { question, topK, historyContext, namespace } = req.body;
+        const { question, topK, namespace } = req.body;
         if (!question) return res.status(400).json({ error: 'Missing "question" field' });
-        const result = await EmbeddedRAGEngine.query(question, topK || 5, historyContext, namespace);
+        const result = await EmbeddedRAGEngine.query(question, topK || 5, namespace);
         res.json(result);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -3625,10 +2680,10 @@ app.post('/api/brain/upload', upload.single('file'), async (req, res) => {
         const category = req.body.category || 'document';
 
         if (file) {
-            title = file.originalname;
+            // multer entrega el nombre en latin1: recuperar acentos/ñ
+            title = Buffer.from(file.originalname, 'latin1').toString('utf8');
             if (file.mimetype === 'application/pdf' || file.originalname.toLowerCase().endsWith('.pdf')) {
-                const dataBuffer = fs.readFileSync(file.path);
-                const pdfData = await pdf(dataBuffer);
+                const pdfData = await extractPdfText(fs.readFileSync(file.path));
                 content = pdfData.text;
             } else {
                 content = fs.readFileSync(file.path, 'utf-8');
@@ -3636,11 +2691,13 @@ app.post('/api/brain/upload', upload.single('file'), async (req, res) => {
             fs.unlinkSync(file.path);
         }
 
-        if (!content) return res.status(400).json({ error: 'Missing "content" field or file' });
+        content = String(content || '').split(String.fromCharCode(0)).join('').trim();
+        if (!content) return res.status(400).json({ error: 'No se pudo extraer texto del archivo (¿PDF escaneado o vacío?)' });
+        if (content.length > 300000) content = content.slice(0, 300000);
 
         const docId = `custom-${Date.now()}`;
         const result = await EmbeddedRAGEngine.indexCustomDocument(docId, title, content, category, {}, namespace);
-        res.status(201).json({ success: true, documentId: docId, ...result });
+        res.status(201).json({ ...result, success: true, documentId: docId, title, characters: content.length });
     } catch (err) {
         if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
         res.status(500).json({ error: err.message });
@@ -3649,10 +2706,16 @@ app.post('/api/brain/upload', upload.single('file'), async (req, res) => {
 
 app.post('/api/brain/sync-vault', async (req, res) => {
     try {
-        const vaultPath = req.body.path;
         const namespace = req.body.namespace || 'default';
-        const result = await EmbeddedRAGEngine.indexObsidianVault(vaultPath, namespace);
-        res.json(result);
+        // Sin ruta: indexa el BrainVault y los docs del repo (lo que existe también en Render)
+        const paths = req.body.path ? [req.body.path] : [path.join(__dirname, 'BrainVault'), path.join(__dirname, 'docs')];
+        let processed = 0;
+        for (const p of paths) {
+            const result = await EmbeddedRAGEngine.indexObsidianVault(p, namespace);
+            if (!result.success) return res.status(400).json({ success: false, error: `${result.error}: ${p}`, processed });
+            processed += result.count;
+        }
+        res.json({ success: true, processed, count: processed, paths });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

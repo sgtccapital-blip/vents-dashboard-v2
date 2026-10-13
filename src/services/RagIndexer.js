@@ -41,34 +41,16 @@ class RagIndexer {
     }
 
     /**
-     * Procesa un archivo File (desde un input type="file")
+     * Sube un archivo (PDF, TXT, MD, CSV) al servidor, que extrae el texto y lo indexa.
      */
     static async processFile(file, namespace = 'default') {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-
-            reader.onload = async (e) => {
-                const text = e.target.result;
-                
-                const doc = {
-                    filename: file.name,
-                    content: text.substring(0, 50000), // Límite de seguridad
-                    addedAt: new Date().toISOString()
-                };
-
-                try {
-                    const savedDoc = await this.saveDocument(doc, namespace);
-                    resolve({ success: true, doc: savedDoc });
-                } catch (err) {
-                    reject(err);
-                }
-            };
-
-            reader.onerror = () => reject(new Error('Error leyendo el archivo.'));
-
-            // Leer como texto
-            reader.readAsText(file);
-        });
+        const form = new FormData();
+        form.append('file', file);
+        form.append('namespace', namespace);
+        const res = await fetch(`${API_BASE}/brain/upload`, { method: 'POST', body: form, credentials: 'include' });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || `No se pudo indexar el archivo (${res.status})`);
+        return { success: true, ...data };
     }
 
     /**

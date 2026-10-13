@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Bot, Send, Mic, MicOff, X, Sparkles, Trash2, Cpu, CheckCircle2, Volume2, Play, Pause } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { useApp } from '../context/AppContext';
 
 export default function OpenCloudChat({ onClose }) {
@@ -121,7 +123,7 @@ export default function OpenCloudChat({ onClose }) {
                         </div>
                         <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '1px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <Cpu size={11} color="#06b6d4" />
-                            <span>Gemini 3.6 Flash & RAG Hub • {events.length} Eventos</span>
+                            <span>Agente + RAG • {events.length} eventos en contexto</span>
                         </div>
                     </div>
                 </div>
@@ -193,7 +195,9 @@ export default function OpenCloudChat({ onClose }) {
                                         ))}
                                     </div>
                                 )}
-                                <div>{msg.text}</div>
+                                {isUser
+                                    ? <div style={{ whiteSpace: 'pre-wrap' }}>{msg.text}</div>
+                                    : <div className="chat-md"><ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.text}</ReactMarkdown></div>}
                                 {msg.timestamp && (
                                     <div style={{ fontSize: '10px', opacity: 0.6, marginTop: '4px', textAlign: isUser ? 'right' : 'left' }}>
                                         {msg.timestamp}
@@ -215,7 +219,7 @@ export default function OpenCloudChat({ onClose }) {
                                 <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent-primary)', animation: 'bounce 1s infinite 0.2s' }} />
                                 <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent-primary)', animation: 'bounce 1s infinite 0.3s' }} />
                             </span>
-                            <span>OpenClaw & Gemini pensando...</span>
+                            <span>OpenClaw pensando...</span>
                         </div>
                     </div>
                 )}
@@ -309,7 +313,7 @@ export default function OpenCloudChat({ onClose }) {
                     </button>
                 </div>
                 <div style={{ textAlign: 'center', fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '8px', fontWeight: 500 }}>
-                    Misma memoria que Dashboard Copilot flotante • Gemini 3.6 Flash activo
+                    Misma conversación que el Copilot flotante
                 </div>
             </div>
         </div>

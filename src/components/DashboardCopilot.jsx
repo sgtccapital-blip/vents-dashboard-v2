@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { useApp } from '../context/AppContext';
 import OpenClawBrainService, { OPENCLAW_MODES, SLASH_COMMANDS } from '../services/OpenClawBrainService';
 import {
@@ -13,8 +15,6 @@ export default function DashboardCopilot() {
     const navigate = useNavigate();
     const {
         projects = [],
-        addTask,
-        toggleTask,
         openclawMessages = [],
         setOpenclawMessages,
         clearOpenclawChat
@@ -30,11 +30,10 @@ export default function DashboardCopilot() {
     const [selectedMode, setSelectedMode] = useState('ejecutivo');
     const currentModeObj = useMemo(() => OPENCLAW_MODES.find(m => m.id === selectedMode) || OPENCLAW_MODES[0], [selectedMode]);
 
-    // Gemini API State & Modal
-    const [geminiApiKey, setGeminiApiKey] = useState(() => OpenClawBrainService.getGeminiApiKey());
+    // Gemini: la clave vive solo en el servidor; aquí solo vemos su estado
     const [showGeminiModal, setShowGeminiModal] = useState(false);
-    const [geminiKeyInput, setGeminiKeyInput] = useState(geminiApiKey);
-    const [geminiStatus, setGeminiStatus] = useState({ configured: !!geminiApiKey, active: !!geminiApiKey });
+    const [geminiKeyInput, setGeminiKeyInput] = useState('');
+    const [geminiStatus, setGeminiStatus] = useState({ configured: false, active: false, model: null });
 
     // Live Voice Dictation State (Speech-to-Text)
     const [isListening, setIsListening] = useState(false);
@@ -79,35 +78,32 @@ export default function DashboardCopilot() {
         }
     }, [messages, isThinking, isOpen, isMinimized]);
 
-    // Check Gemini status
+    // Estado de Gemini en el servidor (se refresca al abrir el chat)
     useEffect(() => {
-        const checkStatus = async () => {
-            try {
-                const res = await fetch('/api/openclaw/gemini/status');
-                if (res.ok) {
-                    const data = await res.json();
-                    setGeminiStatus({
-                        configured: data.configured || !!geminiApiKey,
-                        active: data.active || !!geminiApiKey
-                    });
-                }
-            } catch { /* ignore */ }
-        };
-        checkStatus();
-    }, [geminiApiKey]);
+        if (!isOpen) return;
+        OpenClawBrainService.getGeminiStatus().then(setGeminiStatus);
+    }, [isOpen]);
 
     // Handle Save Gemini API Key
-    const handleSaveGeminiKey = async (e) => {
+    const handleSaveGeminiKey = async (e, remove = false) => {
         e?.preventDefault();
-        const saved = await OpenClawBrainService.saveGeminiApiKey(geminiKeyInput);
-        setGeminiApiKey(saved);
-        setGeminiStatus({ configured: !!saved, active: !!saved });
+        const key = remove ? '' : geminiKeyInput.trim();
+        if (!remove && !key) { setShowGeminiModal(false); return; }
+        let notice;
+        try {
+            const saved = await OpenClawBrainService.saveGeminiApiKey(key);
+            const status = await OpenClawBrainService.getGeminiStatus();
+            setGeminiStatus(status);
+            notice = key
+                ? `✨ **Clave de Gemini guardada en el servidor.** OpenClaw usará **${saved.model || status.model}**. Si la clave no es válida te lo diré en la próxima respuesta.`
+                : status.configured
+                    ? 'ℹ️ Se quitó la clave guardada desde el dashboard, pero el servidor tiene GEMINI_API_KEY en su entorno, así que Gemini sigue activo.'
+                    : 'ℹ️ Se quitó la clave de Gemini. OpenClaw responde con el motor local.';
+        } catch (err) {
+            notice = `⚠️ No se pudo guardar la clave: ${err.message}`;
+        }
+        setGeminiKeyInput('');
         setShowGeminiModal(false);
-
-        const notice = saved 
-            ? '✨ **API Key de Gemini configurada con éxito**. OpenClaw Super Agent ahora responderá impulsado por **Gemini 3.6 Flash**.'
-            : 'ℹ️ Se ha removido la API Key de Gemini. OpenClaw operará en modo orquestador local.';
-
         setMessages(prev => [...prev, {
             id: `sys-${Date.now()}`,
             role: 'copilot',
@@ -337,7 +333,7 @@ export default function DashboardCopilot() {
         executeSuperAgentPipeline(text);
     };
 
-    // Unified OpenClaw Super Agent Execution Pipeline (Same as Console + Gemini 3.6 Flash)
+    // Pipeline único: navegación local o /api/openclaw/chat (Gemini o motor local en el servidor)
     const executeSuperAgentPipeline = async (rawQuery) => {
         setIsThinking(true);
         const q = rawQuery.toLowerCase().trim();
@@ -355,7 +351,10 @@ export default function DashboardCopilot() {
             { pattern: /home|inicio|dashboard|command center/, path: '/', name: 'Command Center' }
         ];
 
-        const navMatch = navMap.find(item => item.pattern.test(q) && (q.includes('ir') || q.includes('lleva') || q.includes('abre') || q.includes('ver')));
+        // Solo navega con una orden explícita al inicio ("abre calendario", "llévame a portfolio"),
+        // para no confundir frases como "confirmar DJ para el evento del viernes"
+        const wantsNav = /^(ir a|ve a|vamos a|ll[eé]vame a|abre|abrir|muestra(me)? (la secci[oó]n|la p[aá]gina)|navega a)\b/.test(q);
+        const navMatch = wantsNav && navMap.find(item => item.pattern.test(q));
         if (navMatch) {
             navigate(navMatch.path);
             const reply = `🚀 **Navegando a:** [${navMatch.name}](${navMatch.path})\n\nSección cargada en pantalla. ¿Qué acción deseas realizar aquí?`;
@@ -389,18 +388,17 @@ export default function DashboardCopilot() {
                 }
             }
 
-            // Call the unified OpenClaw Super Agent service (hits /api/openclaw/chat with Gemini 3.6 Flash)
+            // El servidor decide Gemini o motor local y ejecuta las herramientas
             const result = await OpenClawBrainService.sendCommand(
                 rawQuery,
                 messages,
                 `Modo actual del agente: ${currentModeObj.name}.${brandPrompt}`,
                 'Actúa como OpenClaw Super Agent, orquestador autónomo maestro del Command Center y ARRIVE Agency.',
                 targetNamespace,
-                selectedMode,
-                { addTask, toggleTask }
+                selectedMode
             );
 
-            const replyText = result.reply || 'Acción procesada por OpenClaw Super Agent.';
+            const replyText = result.reply;
             const modelTag = result.provider ? `\n\n*(🧠 ${result.provider})*` : '';
 
             setMessages(prev => [...prev, {
@@ -473,7 +471,7 @@ export default function DashboardCopilot() {
                         textTransform: 'uppercase',
                         letterSpacing: '0.05em'
                     }}>
-                        {geminiStatus.active ? 'Gemini 3.6' : 'RAG'}
+                        {geminiStatus.active ? 'Gemini' : geminiStatus.configured ? 'Gemini ⚠️' : 'Local'}
                     </span>
                 </button>
             )}
@@ -538,7 +536,7 @@ export default function DashboardCopilot() {
                                     <span>{currentModeObj.name}</span>
                                     <span>•</span>
                                     <span style={{ color: geminiStatus.active ? '#38bdf8' : '#a78bfa' }}>
-                                        {geminiStatus.active ? '✨ Gemini 3.6 Flash' : 'Modo Local RAG'}
+                                        {geminiStatus.active ? `✨ ${geminiStatus.model}` : geminiStatus.configured ? '⚠️ Gemini con error' : 'Motor local + RAG'}
                                     </span>
                                 </div>
                             </div>
@@ -758,9 +756,11 @@ export default function DashboardCopilot() {
                                                 </div>
                                             )}
 
-                                            <div style={{ whiteSpace: 'pre-wrap' }}>
-                                                {msg.text}
-                                            </div>
+                                            {msg.role === 'user' ? (
+                                                <div style={{ whiteSpace: 'pre-wrap' }}>{msg.text}</div>
+                                            ) : (
+                                                <div className="chat-md"><ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.text}</ReactMarkdown></div>
+                                            )}
 
                                             {/* Executed Tools Badge */}
                                             {msg.executedTools && msg.executedTools.length > 0 && (
@@ -772,12 +772,13 @@ export default function DashboardCopilot() {
                                                                 fontSize: '0.7rem',
                                                                 padding: '2px 6px',
                                                                 borderRadius: 6,
-                                                                background: 'rgba(16, 185, 129, 0.2)',
-                                                                color: '#34d399',
-                                                                border: '1px solid rgba(16, 185, 129, 0.4)'
+                                                                background: t.result?.success === false ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.2)',
+                                                                color: t.result?.success === false ? '#f87171' : '#34d399',
+                                                                border: `1px solid ${t.result?.success === false ? 'rgba(239, 68, 68, 0.4)' : 'rgba(16, 185, 129, 0.4)'}`
                                                             }}
+                                                            title={t.result?.error || ''}
                                                         >
-                                                            ✓ {t.name}
+                                                            {t.result?.success === false ? '✕' : '✓'} {t.name}
                                                         </span>
                                                     ))}
                                                 </div>
@@ -1021,7 +1022,7 @@ export default function DashboardCopilot() {
                                     color: '#666680'
                                 }}>
                                     <span>🎤 Voz & Notas Gratis</span>
-                                    <span>{geminiStatus.active ? '✨ Gemini 3.6 Flash' : 'OpenClaw RAG Engine'}</span>
+                                    <span title={geminiStatus.lastError?.message || ''}>{geminiStatus.active ? `✨ ${geminiStatus.model}` : geminiStatus.configured ? '⚠️ Gemini con error' : 'Motor local + RAG'}</span>
                                 </div>
                             </div>
                         </>
@@ -1043,7 +1044,7 @@ export default function DashboardCopilot() {
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                     <Key size={20} style={{ color: '#38bdf8' }} />
-                                    <h4 style={{ margin: 0, color: '#fff', fontSize: '0.95rem' }}>Configurar Gemini 3.6 Flash</h4>
+                                    <h4 style={{ margin: 0, color: '#fff', fontSize: '0.95rem' }}>Configurar Gemini</h4>
                                 </div>
                                 <button
                                     onClick={() => setShowGeminiModal(false)}
@@ -1054,7 +1055,11 @@ export default function DashboardCopilot() {
                             </div>
 
                             <p style={{ fontSize: '0.78rem', color: '#a0a0b8', marginBottom: 12, lineHeight: 1.4 }}>
-                                Ingresa tu API Key de Google Gemini para activar el razonamiento de última generación (**Gemini 3.6 Flash**). El agente orquestará tus eventos, tareas y RAG con la máxima velocidad e inteligencia.
+                                {geminiStatus.configured
+                                    ? `Gemini está configurado${geminiStatus.source === 'env' ? ' en el entorno del servidor' : ''} (modelo ${geminiStatus.model}). Escribe una clave nueva para reemplazarla.`
+                                    : 'Pega tu API Key de Google AI Studio para que OpenClaw responda con Gemini. Sin clave funciona con el motor local.'}
+                                {' '}La clave se guarda solo en el servidor, nunca en este navegador.
+                                {geminiStatus.lastError && <><br /><span style={{ color: '#f87171' }}>Último error: {geminiStatus.lastError.message}</span></>}
                             </p>
 
                             <form onSubmit={handleSaveGeminiKey}>
@@ -1066,7 +1071,7 @@ export default function DashboardCopilot() {
                                         type="password"
                                         value={geminiKeyInput}
                                         onChange={e => setGeminiKeyInput(e.target.value)}
-                                        placeholder="AIzaSy..."
+                                        placeholder={geminiStatus.configured ? '•••••• (guardada)' : 'AIzaSy...'}
                                         style={{
                                             width: '100%',
                                             padding: '8px 10px',
@@ -1082,6 +1087,15 @@ export default function DashboardCopilot() {
                                 </div>
 
                                 <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                                    {geminiStatus.configured && geminiStatus.source !== 'env' && (
+                                        <button
+                                            type="button"
+                                            onClick={(e) => handleSaveGeminiKey(e, true)}
+                                            style={{ marginRight: 'auto', padding: '6px 12px', borderRadius: 8, background: 'transparent', border: '1px solid rgba(248, 113, 113, 0.4)', color: '#f87171', fontSize: '0.78rem', cursor: 'pointer' }}
+                                        >
+                                            Quitar clave
+                                        </button>
+                                    )}
                                     <button
                                         type="button"
                                         onClick={() => setShowGeminiModal(false)}

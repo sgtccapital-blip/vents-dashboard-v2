@@ -144,7 +144,7 @@ export const AppProvider = ({ children }) => {
             {
                 id: 'welcome',
                 role: 'copilot',
-                text: '⚡ **OpenClaw Super Agent activo**.\n\nSoy el cerebro y orquestador autónomo maestro del Command Center & Dashboard Events. Tengo sincronizados en vivo tus eventos, proyectos, tareas y base RAG.\n\n✨ *Potenciado por Gemini 3.6 Flash, dictado por voz y notas de audio en tiempo real.*',
+                text: '⚡ **OpenClaw Super Agent activo**.\n\nTengo en vivo tus eventos, proyectos, tareas y documentos del RAG. Puedo responder preguntas y crear tareas, eventos, proyectos y notas.\n\nEscribe **ayuda** para ver lo que puedo hacer.',
                 timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             }
         ];
@@ -316,6 +316,13 @@ export const AppProvider = ({ children }) => {
         checkSupabaseStatus().catch(() => null);
         return () => clearInterval(interval);
     }, [poll, checkSupabaseStatus]);
+
+    // El agente guarda sus cambios en el servidor: recargar en cuanto termina una acción
+    useEffect(() => {
+        const onAgentChange = () => { poll(); };
+        window.addEventListener('openclaw:data-changed', onAgentChange);
+        return () => window.removeEventListener('openclaw:data-changed', onAgentChange);
+    }, [poll]);
 
     // ─── Save to localStorage (always, as backup) ─────────────────
 
@@ -549,80 +556,20 @@ export const AppProvider = ({ children }) => {
         setIsOpenclawThinking(true);
 
         try {
-            const liveContextStr = `
-[ESTADO EN TIEMPO REAL DEL DASHBOARD]:
-- EVENTOS ACTIVOS (${(events || []).length}): ${(events || []).slice(0, 10).map(e => `${e.name} (${e.date || 'S/F'}) [${e.status || 'planeado'}]`).join(', ')}
-- PROYECTOS (${(projects || []).length}): ${(projects || []).map(p => `${p.name} [${p.status || 'activo'}] (Lead: ${p.leadAgent || 'OpenClaw'})`).join(', ')}
-- TAREAS PENDIENTES (${(tasks || []).filter(t => !t.done).length}): ${(tasks || []).filter(t => !t.done).slice(0, 15).map(t => t.text || t.title).join(', ')}
-- CONTACTOS: ${(contacts || []).length} registrados
-- MODELOS IMAGE GIRLS: ${(imageGirls || []).length} activas
-`;
-
-            const res = await OpenClawBrainService.sendCommand(
-                userText || 'Nota de voz enviada por el usuario',
-                updatedHistory,
-                liveContextStr,
-                '',
-                'default',
-                openclawMode,
-                {
-                    addTask,
-                    addEvent,
-                    addProject,
-                    updateTask,
-                    toggleTask,
-                    addActivity
-                }
-            );
-
-            // Si se ejecutaron herramientas desde el backend/Gemini
-            if (res.executedTools && res.executedTools.length > 0) {
-                for (const tool of res.executedTools) {
-                    if (tool.name === 'add_task' && (tool.args?.text || tool.args?.name)) {
-                        await addTask({
-                            text: tool.args.text || tool.args.name,
-                            priority: tool.args.priority || 'medium',
-                            category: tool.args.category || 'general',
-                            assignee: tool.args.assignee || tool.args.assignedTo || null,
-                            assignedTo: tool.args.assignee || tool.args.assignedTo || null
-                        });
-                    } else if (tool.name === 'create_event' && (tool.args?.name || tool.result?.event)) {
-                        const ev = tool.result?.event || {
-                            id: timeId('ev'),
-                            name: tool.args.name,
-                            date: tool.args.date || new Date().toISOString().split('T')[0],
-                            location: tool.args.location || 'Casco Antiguo',
-                            budget: tool.args.budget || '0',
-                            description: tool.args.description || '',
-                            status: 'planning',
-                            color: '#ec4899',
-                            icon: '🍸'
-                        };
-                        await addEvent(ev);
-                    } else if (tool.name === 'create_project' && (tool.args?.name || tool.result?.project)) {
-                        const pr = tool.result?.project || {
-                            id: timeId('proj'),
-                            name: tool.args.name,
-                            description: tool.args.description || '',
-                            category: tool.args.category || 'business',
-                            priority: 'high',
-                            status: 'active'
-                        };
-                        await addProject(pr);
-                    } else if (tool.name === 'complete_task' && tool.args?.text) {
-                        const tMatch = (tasks || []).find(t => (t.text || t.title || '').toLowerCase().includes(tool.args.text.toLowerCase()));
-                        if (tMatch) await toggleTask(tMatch.id);
-                    }
-                }
-                await poll();
+            if (!userText) {
+                // Las notas de voz se guardan en el chat, pero el agente solo procesa texto (usa el dictado 🎤)
+                throw new Error('El agente todavía no transcribe notas de voz. Usa el dictado por voz o escribe el mensaje.');
             }
+            // El servidor arma el contexto en vivo y ejecuta las herramientas; aquí solo recargamos
+            const res = await OpenClawBrainService.sendCommand(userText, openclawMessages, '', '', 'default', openclawMode);
 
             const botMsg = {
                 id: timeId('bot'),
                 role: 'copilot',
-                text: res.reply || 'Acción procesada por OpenClaw Super Agent.',
-                model: res.model || 'gemini-3.6-flash',
-                provider: res.provider || 'OpenClaw RAG Engine',
+                text: res.reply,
+                model: res.model,
+                provider: res.provider,
+                sources: res.sources,
                 timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                 executedTools: res.executedTools || []
             };
