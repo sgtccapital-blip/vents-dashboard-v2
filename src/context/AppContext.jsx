@@ -735,6 +735,29 @@ export const AppProvider = ({ children }) => {
         } catch (e) {}
     };
 
+    // Image Girls (ARRIVE Models) CRUD
+    const addImageGirl = async (girlData) => {
+        const newGirl = { id: `girl-${Date.now()}`, rating: 5.0, available: true, ...girlData };
+        setImageGirls(prev => [...prev, newGirl]);
+        try {
+            await apiFetch('/imageGirls', { method: 'POST', body: newGirl });
+        } catch (e) {}
+    };
+
+    const updateImageGirl = async (girlId, updatedData) => {
+        setImageGirls(prev => prev.map(g => g.id === girlId ? { ...g, ...updatedData } : g));
+        try {
+            await apiFetch(`/imageGirls/${girlId}`, { method: 'PUT', body: updatedData });
+        } catch (e) {}
+    };
+
+    const deleteImageGirl = async (girlId) => {
+        setImageGirls(prev => prev.filter(g => g.id !== girlId));
+        try {
+            await apiFetch(`/imageGirls/${girlId}`, { method: 'DELETE' });
+        } catch (e) {}
+    };
+
     // Contacts
     const addContact = async (cData) => {
         const newC = { id: `cnt-${Date.now()}`, ...cData };
@@ -971,6 +994,9 @@ export const AppProvider = ({ children }) => {
         deletePromoter,
         imageGirls,
         setImageGirls,
+        addImageGirl,
+        updateImageGirl,
+        deleteImageGirl,
 
         contacts,
         setContacts,

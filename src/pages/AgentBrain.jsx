@@ -431,7 +431,7 @@ export default function AgentBrain() {
                 <div>
                     <h1 style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <BrainCircuit size={26} style={{ color: 'var(--accent-primary)' }} />
-                        Consola OpenClaw IA & Cerebro RAG
+                        Consola Agent & RAG
                     </h1>
                     <p style={{ color: 'var(--text-secondary)', fontSize: '13.5px', marginTop: '4px' }}>
                         Orquestación central gobernada por <strong>OpenClaw Agent</strong> con base de conocimientos RAG unificada.

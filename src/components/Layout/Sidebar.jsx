@@ -8,14 +8,14 @@ import { useState } from 'react';
 const navItems = [
     { path: '/', icon: Sparkles, label: 'ARRIVE Agency OS (Oficina)', section: 'AGENCIA' },
     { path: '/arrive', icon: Building2, label: 'Clientes & 3 Divisiones', section: 'AGENCIA' },
-    { path: '/portfolio', icon: Briefcase, label: 'Portfolio OS', section: 'STRATEGY' },
+    { path: '/eventos', icon: CalendarDays, label: 'Proyectos & Eventos', section: 'AGENCIA' },
     { path: '/workspace', icon: LayoutTemplate, label: 'Workspace', section: 'OPERATIONS' },
     { path: '/calendar', icon: Calendar, label: 'Master Calendar', section: 'OPERATIONS' },
-    { path: '/eventos', icon: CalendarDays, label: 'Proyectos & Eventos', section: 'OPERATIONS' },
     { path: '/contactos', icon: User, label: 'Contactos', section: 'OPERATIONS' },
     { path: '/social', icon: Share2, label: 'Redes Sociales', section: 'OPERATIONS' },
+    { path: '/portfolio', icon: Briefcase, label: 'Portfolio OS', section: 'OPERATIONS' },
     { path: '/whatsapp-agent', icon: MessageSquare, label: 'Agente WhatsApp & Difusión', section: 'INTELLIGENCE' },
-    { path: '/agent-brain', icon: BrainCircuit, label: 'OpenClaw & Cerebro RAG', section: 'INTELLIGENCE' },
+    { path: '/agent-brain', icon: BrainCircuit, label: 'Agent & RAG', section: 'INTELLIGENCE' },
 ];
 
 export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }) {

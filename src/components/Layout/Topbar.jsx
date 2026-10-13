@@ -36,11 +36,12 @@ const ProgressRing = ({ percent, size = 36, stroke = 3 }) => {
 const pageTitles = {
     '/': 'Command Center',
     '/arrive': 'ARRIVE Agency OS — Creative, Talent & Experiences',
+    '/portfolio': 'Portfolio OS',
     '/workspace': 'Workspace 2.0',
     '/calendar': 'Master Calendar',
-    '/eventos': 'Eventos',
+    '/eventos': 'Proyectos & Eventos',
     '/social': 'Redes Sociales',
-    '/agent-brain': 'OpenClaw & Cerebro RAG',
+    '/agent-brain': 'Agent & RAG',
 };
 
 export default function Topbar({ collapsed, searchQuery, onSearchChange, onMobileMenuToggle, onCloudSyncToggle }) {

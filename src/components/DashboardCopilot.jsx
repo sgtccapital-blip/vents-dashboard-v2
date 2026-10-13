@@ -357,7 +357,7 @@ export default function DashboardCopilot() {
             { pattern: /contactos|promotores|modelos|chicas/, path: '/contactos', name: 'Contactos & Promotores' },
             { pattern: /social|redes|instagram/, path: '/social', name: 'Redes Sociales' },
             { pattern: /whatsapp|difusi[oó]n/, path: '/whatsapp-agent', name: 'Agente WhatsApp' },
-            { pattern: /cerebro|brain|consola|openclaw/, path: '/agent-brain', name: 'Consola OpenClaw' },
+            { pattern: /cerebro|brain|consola|openclaw|agent|rag/, path: '/agent-brain', name: 'Agent & RAG' },
             { pattern: /home|inicio|dashboard|command center/, path: '/', name: 'Command Center' }
         ];
 
@@ -395,15 +395,15 @@ export default function DashboardCopilot() {
                 }
             }
 
-            // Call the unified OpenClaw Super Agent service (hits /api/openclaw/chat with Gemini 3.6 Flash)
+            // Call the unified ARRIVE Super Copilot service (hits /api/openclaw/chat with Gemini API)
             const result = await OpenClawBrainService.sendCommand(
                 rawQuery,
                 messages,
                 `Modo actual del agente: ${currentModeObj.name}.${brandPrompt}`,
-                'Actúa como OpenClaw Super Agent, orquestador autónomo maestro del Command Center y ARRIVE Agency.',
+                'Actúa como el Asistente Ejecutivo Super Pro y Director de Operaciones AI de ARRIVE Agency (asistente de confianza de GG). Tienes control total para organizar y crear tareas por voz o texto.',
                 targetNamespace,
                 selectedMode,
-                { addTask, toggleTask }
+                { addTask, updateTask, toggleTask }
             );
 
             const replyText = result.reply || 'Acción procesada por OpenClaw Super Agent.';
@@ -475,7 +475,7 @@ export default function DashboardCopilot() {
                             boxShadow: geminiStatus.active ? '0 0 8px #38bdf8' : '0 0 8px #10b981'
                         }} />
                     </div>
-                    <span>OpenClaw Agent</span>
+                    <span>ARRIVE Copilot</span>
                     <span style={{
                         fontSize: '0.65rem',
                         background: 'rgba(0, 0, 0, 0.35)',
@@ -484,7 +484,7 @@ export default function DashboardCopilot() {
                         textTransform: 'uppercase',
                         letterSpacing: '0.05em'
                     }}>
-                        {geminiStatus.active ? 'Gemini 3.6' : 'RAG'}
+                        {geminiStatus.active ? 'Gemini AI' : 'ARRIVE OS'}
                     </span>
                 </button>
             )}
@@ -536,7 +536,7 @@ export default function DashboardCopilot() {
                             </div>
                             <div>
                                 <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#f0f0f5', display: 'flex', alignItems: 'center', gap: 6 }}>
-                                    OpenClaw Super Agent
+                                    ARRIVE Super Copilot
                                     <span style={{
                                         width: 7,
                                         height: 7,
@@ -549,7 +549,7 @@ export default function DashboardCopilot() {
                                     <span>{currentModeObj.name}</span>
                                     <span>•</span>
                                     <span style={{ color: geminiStatus.active ? '#38bdf8' : '#a78bfa' }}>
-                                        {geminiStatus.active ? '✨ Gemini 3.6 Flash' : 'Modo Local RAG'}
+                                        {geminiStatus.active ? '✨ Gemini AI Super Pro' : 'Modo Autónomo ARRIVE'}
                                     </span>
                                 </div>
                             </div>
@@ -724,6 +724,78 @@ export default function DashboardCopilot() {
                                 flexDirection: 'column',
                                 gap: 12
                             }}>
+                                {messages.length === 0 && (
+                                    <div style={{
+                                        padding: '16px',
+                                        background: 'rgba(255, 255, 255, 0.03)',
+                                        border: '1px dashed rgba(124, 92, 252, 0.3)',
+                                        borderRadius: 14,
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: 12
+                                    }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                            <div style={{
+                                                width: 32,
+                                                height: 32,
+                                                borderRadius: 8,
+                                                background: 'linear-gradient(135deg, #7c5cfc, #3b82f6)',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                color: '#fff'
+                                            }}>
+                                                <Sparkles size={16} />
+                                            </div>
+                                            <div>
+                                                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#fff' }}>
+                                                    Asistente Ejecutivo Super Pro
+                                                </div>
+                                                <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                                                    Dicta o escribe notas de voz para organizar tareas.
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div style={{ fontSize: '0.75rem', color: '#cbd5e1', lineHeight: '1.4' }}>
+                                            Entiendo tus 4 venues (Terraplén, Furia, Primavera, Piano Bar), Wedding Content, Podcast On-The-Go y al equipo.
+                                        </div>
+
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+                                            {[
+                                                { icon: '🎙️', text: 'Organizar tareas de la semana para Furia y Terraplén' },
+                                                { icon: '📸', text: 'Checklist Wedding Content Creation y Podcast' },
+                                                { icon: '⚡', text: 'Ver resumen ejecutivo de operaciones y tareas' },
+                                                { icon: '🥂', text: 'Próximos eventos en calendario y presupuestos' }
+                                            ].map((action, i) => (
+                                                <button
+                                                    key={i}
+                                                    onClick={() => handleQuickAction(action.text)}
+                                                    style={{
+                                                        textAlign: 'left',
+                                                        padding: '7px 10px',
+                                                        borderRadius: 8,
+                                                        background: 'rgba(255, 255, 255, 0.05)',
+                                                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                                                        color: '#e2e8f0',
+                                                        fontSize: '0.74rem',
+                                                        cursor: 'pointer',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: 8,
+                                                        transition: 'all 0.2s'
+                                                    }}
+                                                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(124, 92, 252, 0.2)'; e.currentTarget.style.borderColor = 'rgba(124, 92, 252, 0.5)'; }}
+                                                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'; e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)'; }}
+                                                >
+                                                    <span>{action.icon}</span>
+                                                    <span>{action.text}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
                                 {messages.map((msg) => (
                                     <div
                                         key={msg.id}
