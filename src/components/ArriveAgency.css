@@ -778,6 +778,704 @@
 /* ═══════════════════════════════════════════════════════════════════
    DINNERS & RESTAURANT GUESTLIST
    ═══════════════════════════════════════════════════════════════════ */
+.arrive-dinners-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Venue Selector Bar */
+.arrive-venue-selector-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: radial-gradient(circle at 10% 0%, rgba(212, 175, 55, 0.1) 0%, transparent 60%),
+              linear-gradient(145deg, rgba(20, 20, 30, 0.95), rgba(12, 12, 18, 0.95));
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  border-radius: 14px;
+  padding: 14px 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+}
+
+.arrive-bar-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #f1f5f9;
+  letter-spacing: 0.02em;
+}
+
+.arrive-venue-pills {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.arrive-venue-pill {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
+}
+
+.arrive-venue-pill:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.arrive-venue-pill.active {
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.25) 0%, rgba(251, 191, 36, 0.15) 100%);
+  border-color: rgba(251, 191, 36, 0.5);
+  color: #fbbf24;
+  box-shadow: 0 0 16px rgba(251, 191, 36, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  font-weight: 700;
+}
+
+/* Stats Row */
+.arrive-dinner-stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.arrive-dstat-card {
+  background: linear-gradient(145deg, rgba(20, 20, 30, 0.85) 0%, rgba(12, 12, 18, 0.85) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  transition: all 0.2s ease;
+}
+
+.arrive-dstat-card:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+  transform: translateY(-1px);
+}
+
+.arrive-dstat-card.highlight {
+  border-color: rgba(52, 211, 153, 0.35);
+  background: radial-gradient(circle at 100% 0%, rgba(52, 211, 153, 0.12) 0%, transparent 70%),
+              linear-gradient(145deg, rgba(20, 20, 30, 0.9), rgba(12, 12, 18, 0.9));
+  box-shadow: 0 4px 20px rgba(52, 211, 153, 0.15);
+}
+
+.dstat-num {
+  font-family: 'Outfit', sans-serif;
+  font-size: 28px;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1.1;
+}
+
+.arrive-dstat-card.highlight .dstat-num {
+  color: #34d399;
+  text-shadow: 0 0 12px rgba(52, 211, 153, 0.4);
+}
+
+.dstat-lbl {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #94a3b8;
+}
+
+/* 2-Column Split Layout for Table & Form */
+.arrive-dinners-split-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) minmax(320px, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.arrive-dinner-table-card {
+  background: linear-gradient(145deg, rgba(20, 20, 30, 0.9) 0%, rgba(13, 13, 20, 0.9) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 22px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.arrive-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.arrive-card-head-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.arrive-dinner-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 540px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.arrive-dinner-list::-webkit-scrollbar,
+.arrive-posts-list::-webkit-scrollbar {
+  width: 6px;
+}
+.arrive-dinner-list::-webkit-scrollbar-track,
+.arrive-posts-list::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 4px;
+}
+.arrive-dinner-list::-webkit-scrollbar-thumb,
+.arrive-posts-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+.arrive-dinner-list::-webkit-scrollbar-thumb:hover,
+.arrive-posts-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.arrive-guest-item {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  transition: all 0.2s ease;
+}
+
+.arrive-guest-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(212, 175, 55, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.guest-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.guest-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.guest-ig {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #ec4899;
+  background: rgba(236, 72, 153, 0.12);
+  border: 1px solid rgba(236, 72, 153, 0.25);
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.guest-type {
+  font-size: 11px;
+  font-weight: 500;
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.guest-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.guest-status-btn {
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.guest-status-btn.status-confirmada {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.35);
+}
+.guest-status-btn.status-confirmada:hover {
+  background: rgba(16, 185, 129, 0.28);
+  border-color: rgba(16, 185, 129, 0.5);
+  transform: translateY(-1px);
+}
+
+.guest-status-btn.status-pendiente {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.35);
+}
+.guest-status-btn.status-pendiente:hover {
+  background: rgba(245, 158, 11, 0.28);
+  border-color: rgba(245, 158, 11, 0.5);
+  transform: translateY(-1px);
+}
+
+.guest-status-btn.status-cancelada {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.35);
+}
+.guest-status-btn.status-cancelada:hover {
+  background: rgba(239, 68, 68, 0.28);
+  border-color: rgba(239, 68, 68, 0.5);
+  transform: translateY(-1px);
+}
+
+.guest-whatsapp-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+  color: #ffffff !important;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 11.5px;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 2px 10px rgba(37, 211, 102, 0.3);
+  transition: all 0.2s ease;
+}
+
+.guest-whatsapp-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(37, 211, 102, 0.5);
+}
+
+.guest-delete-btn {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+}
+
+.guest-delete-btn:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.12);
+}
+
+/* Guest Card Container */
+.arrive-guest-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 14px;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.arrive-guest-card:hover {
+  background: rgba(255, 255, 255, 0.045);
+  border-color: rgba(212, 175, 55, 0.25);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+
+/* Friends Toggle Button */
+.arrive-friends-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #cbd5e1;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.arrive-friends-toggle-btn:hover,
+.arrive-friends-toggle-btn.active {
+  background: rgba(212, 175, 55, 0.15);
+  border-color: rgba(212, 175, 55, 0.4);
+  color: #fbbf24;
+}
+
+.arrive-friends-toggle-btn.has-friends {
+  background: rgba(168, 85, 247, 0.12);
+  border-color: rgba(168, 85, 247, 0.3);
+  color: #c084fc;
+}
+
+.arrive-friends-toggle-btn.has-friends:hover,
+.arrive-friends-toggle-btn.has-friends.active {
+  background: rgba(168, 85, 247, 0.22);
+  border-color: rgba(168, 85, 247, 0.5);
+}
+
+/* Inline preview when collapsed */
+.arrive-friends-inline-preview {
+  padding: 0 18px 12px 18px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  cursor: pointer;
+}
+
+.arrive-friends-inline-preview .preview-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+  margin-right: 2px;
+}
+
+.arrive-friends-inline-preview .preview-chip {
+  font-size: 11px;
+  color: #e2e8f0;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 2px 7px;
+  border-radius: 6px;
+}
+
+/* Expandable Friends Drawer */
+.arrive-friends-drawer {
+  background: rgba(10, 10, 18, 0.75);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.arrive-friends-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.friends-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: #f1f5f9;
+}
+
+.friends-count-pill {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(168, 85, 247, 0.18);
+  color: #c084fc;
+}
+
+.arrive-btn-text {
+  background: none;
+  border: none;
+  color: #38bdf8;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.arrive-btn-text:hover {
+  background: rgba(56, 189, 248, 0.1);
+  color: #7dd3fc;
+}
+
+/* WhatsApp Paste Box */
+.arrive-paste-wa-box {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px dashed rgba(37, 211, 102, 0.4);
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.arrive-paste-wa-box label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #86efac;
+}
+
+.arrive-paste-wa-box textarea {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-family: inherit;
+  resize: vertical;
+  outline: none;
+}
+
+.arrive-paste-wa-box textarea:focus {
+  border-color: #25d366;
+}
+
+.arrive-paste-wa-box .paste-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* Friend Chips */
+.arrive-friends-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 28px;
+}
+
+.arrive-friend-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.friend-chip-name {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.friend-chip-ig {
+  color: #ec4899;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.friend-chip-remove {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 0 2px;
+  font-size: 11px;
+  line-height: 1;
+  transition: color 0.15s;
+}
+
+.friend-chip-remove:hover {
+  color: #f87171;
+}
+
+.arrive-no-friends-hint {
+  font-size: 12px;
+  color: #64748b;
+  font-style: italic;
+  padding: 4px 0;
+}
+
+/* Quick Add Friend Row */
+.arrive-quickadd-friend-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.arrive-quickadd-friend-row input {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  padding: 7px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  outline: none;
+  flex: 1;
+  min-width: 140px;
+  transition: border-color 0.15s ease;
+}
+
+.arrive-quickadd-friend-row input:focus {
+  border-color: #fbbf24;
+}
+
+.arrive-btn-gold-small {
+  background: linear-gradient(135deg, #d4af37 0%, #aa820a 100%);
+  color: #0b0c10;
+  border: none;
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.arrive-btn-gold-small:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 10px rgba(212, 175, 55, 0.4);
+}
+
+/* Door Copy Button in Card Header */
+.arrive-copy-door-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #e2e8f0;
+  padding: 5px 12px;
+  border-radius: 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.arrive-copy-door-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(212, 175, 55, 0.4);
+  color: #fbbf24;
+}
+
+/* Form Card */
+.arrive-dinner-form-card,
+.arrive-post-form-card {
+  background: linear-gradient(145deg, rgba(20, 20, 30, 0.9) 0%, rgba(13, 13, 20, 0.9) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 22px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  position: sticky;
+  top: 80px;
+}
+
+.arrive-form-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 18px 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.arrive-quickadd-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.arrive-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.arrive-field-group label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.arrive-field-group input,
+.arrive-field-group select {
+  background: rgba(10, 10, 15, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: #ffffff;
+  outline: none;
+  transition: all 0.2s ease;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.arrive-field-group input:focus,
+.arrive-field-group select:focus {
+  border-color: #fbbf24;
+  box-shadow: 0 0 14px rgba(251, 191, 36, 0.25);
+  background: rgba(15, 15, 22, 0.95);
+}
+
+.arrive-field-group input::placeholder {
+  color: #64748b;
+}
+
+.arrive-empty-placeholder {
+  text-align: center;
+  padding: 40px 20px;
+  color: #64748b;
+  font-size: 13px;
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+}
+
+/* Legacy Venue Grid for ArriveAgencyOS */
 .arrive-dinner-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -846,8 +1544,142 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   CONTENT POSTS PIPELINE
+   CONTENT POSTS PIPELINE (ARRIVE STUDIO & REDES)
    ═══════════════════════════════════════════════════════════════════ */
+.arrive-posts-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.arrive-posts-split-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) minmax(320px, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.arrive-posts-list-card {
+  background: linear-gradient(145deg, rgba(20, 20, 30, 0.9) 0%, rgba(13, 13, 20, 0.9) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 22px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.arrive-posts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 560px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.arrive-post-row {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 16px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  transition: all 0.2s ease;
+}
+
+.arrive-post-row:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(96, 165, 250, 0.35);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.3);
+}
+
+.arrive-post-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.arrive-post-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.arrive-post-project {
+  font-size: 11px;
+  font-weight: 700;
+  color: #fbbf24;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.arrive-post-format {
+  font-size: 10px;
+  font-weight: 700;
+  background: rgba(96, 165, 250, 0.15);
+  color: #60a5fa;
+  border: 1px solid rgba(96, 165, 250, 0.25);
+  padding: 2px 7px;
+  border-radius: 5px;
+}
+
+.arrive-post-status {
+  font-size: 10px;
+  font-weight: 700;
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  padding: 2px 7px;
+  border-radius: 5px;
+  text-transform: uppercase;
+}
+
+.arrive-post-title {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.arrive-post-hook {
+  font-size: 12.5px;
+  color: #94a3b8;
+  margin: 0;
+  font-style: italic;
+  line-height: 1.4;
+}
+
+.arrive-post-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.arrive-post-channel {
+  font-size: 11px;
+  font-weight: 600;
+  color: #cbd5e1;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 3px 9px;
+  border-radius: 6px;
+}
+
+.arrive-post-date {
+  font-size: 11px;
+  color: #fbbf24;
+  font-weight: 600;
+}
+
+/* Legacy Card Grid for ArriveAgencyOS */
 .arrive-posts-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -877,21 +1709,6 @@
   justify-content: space-between;
 }
 
-.arrive-post-project {
-  font-size: 11px;
-  font-weight: 700;
-  color: #fbbf24;
-}
-
-.arrive-post-format {
-  font-size: 9.5px;
-  font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.06);
-  color: #e2e8f0;
-}
-
 .arrive-post-copy {
   font-size: 12px;
   color: #94a3b8;
@@ -909,6 +1726,25 @@
   border-top: 1px solid rgba(255, 255, 255, 0.05);
   font-size: 10.5px;
   color: #64748b;
+}
+
+.full-width {
+  width: 100% !important;
+  justify-content: center !important;
+}
+
+@media (max-width: 900px) {
+  .arrive-dinners-split-layout,
+  .arrive-posts-split-layout {
+    grid-template-columns: 1fr;
+  }
+  .arrive-dinner-stats-row {
+    grid-template-columns: 1fr;
+  }
+  .arrive-dinner-form-card,
+  .arrive-post-form-card {
+    position: static;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════

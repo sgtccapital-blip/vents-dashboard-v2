@@ -6,7 +6,8 @@ import {
     Share2, Plus, Check, Clock, Phone, Send,
     Instagram, ArrowRight, Layers, ShieldCheck, MapPin,
     Building2, Award, Zap, Monitor, StickyNote,
-    FolderKanban, Rocket, Timer, ChevronRight
+    FolderKanban, Rocket, Timer, ChevronRight,
+    ChevronDown, ChevronUp, Trash2
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import ArriveTeamOffice from '../components/ArriveTeamOffice';
@@ -41,23 +42,124 @@ export default function Home() {
         setSearchParams({ tab: tabId });
     };
 
+    // Helper to parse friends list text (supports "1. Name @ig", "• Name (@ig)", comma separated, etc.)
+    const parseFriendsText = (text) => {
+        if (!text || !text.trim()) return [];
+        const lines = text
+            .split(/[\n,]+/)
+            .map(l => l.trim())
+            .filter(Boolean);
+
+        return lines.map((line, idx) => {
+            let clean = line.replace(/^[\d\.\)\-\*•\s]+/, '').trim();
+            let ig = '';
+            const igMatch = clean.match(/@([\w\.\_]+)/);
+            if (igMatch) {
+                ig = `@${igMatch[1]}`;
+                clean = clean.replace(/\(?@[\w\.\_]+\)?/, '').trim();
+            }
+            return {
+                id: `f-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 6)}`,
+                name: clean || `Acompañante ${idx + 1}`,
+                ig: ig
+            };
+        });
+    };
+
     // ─── Local State for Dinner Guestlists ───
     const [selectedDinnerVenue, setSelectedDinnerVenue] = useState('Terraplén Rooftop');
-    const [dinnerGuestlist, setDinnerGuestlist] = useState([
-        { id: 'g-1', name: 'Sofía M.', ig: '@sofia.pty', phone: '50762114455', type: 'Cena VIP & Cócteles', venue: 'Terraplén Rooftop', day: 'Jueves 8:30 PM', status: 'confirmada' },
-        { id: 'g-2', name: 'Camila R.', ig: '@camila.oficial', phone: '50763901122', type: 'Contenido / Stories', venue: 'Terraplén Rooftop', day: 'Jueves 8:30 PM', status: 'confirmada' },
-        { id: 'g-3', name: 'Valentina D.', ig: '@valen_vibes', phone: '50765558899', type: 'Mesa Anfitriona', venue: 'Terraplén Rooftop', day: 'Jueves 8:30 PM', status: 'confirmada' },
-        { id: 'g-4', name: 'Isabella S.', ig: '@isa.solis', phone: '50767123344', type: 'Cena VIP & Maridaje', venue: 'Terraplén Rooftop', day: 'Jueves 8:30 PM', status: 'pendiente' },
-        { id: 'g-5', name: 'Andrea B.', ig: '@andreab_pty', phone: '50764432211', type: 'Cena VIP & Mesa Furia', venue: 'Furia', day: 'Viernes 9:00 PM', status: 'confirmada' },
-        { id: 'g-6', name: 'Nicole C.', ig: '@nicole.casco', phone: '50768997766', type: 'Rooftop Sunset Hostess', venue: 'Terraplén Rooftop', day: 'Jueves 8:30 PM', status: 'confirmada' },
-        { id: 'g-7', name: 'Mariana T.', ig: '@mariana.t', phone: '50761223399', type: 'Cena VIP & Networking', venue: 'Piano Bar', day: 'Sábado 9:30 PM', status: 'confirmada' },
-        { id: 'g-8', name: 'Daniela G.', ig: '@dani.gomez', phone: '50766338822', type: 'Animación & Shots VIP', venue: 'Furia', day: 'Viernes 9:00 PM', status: 'pendiente' }
-    ]);
+    const [dinnerGuestlist, setDinnerGuestlist] = useState(() => {
+        try {
+            const saved = localStorage.getItem('os_live_dinner_guestlist');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+            }
+        } catch (e) {}
+        return [
+            { 
+                id: 'g-1', 
+                name: 'Sofía M.', 
+                ig: '@sofia.pty', 
+                phone: '50762114455', 
+                type: 'Cena VIP & Cócteles', 
+                venue: 'Terraplén Rooftop', 
+                day: 'Jueves 8:30 PM', 
+                status: 'confirmada',
+                friends: [
+                    { id: 'f-1', name: 'Valeria Ruiz', ig: '@valeria.r' },
+                    { id: 'f-2', name: 'Camila S.', ig: '@cami.s' }
+                ]
+            },
+            { 
+                id: 'g-2', 
+                name: 'Camila R.', 
+                ig: '@camila.oficial', 
+                phone: '50763901122', 
+                type: 'Contenido / Stories', 
+                venue: 'Terraplén Rooftop', 
+                day: 'Jueves 8:30 PM', 
+                status: 'confirmada',
+                friends: [
+                    { id: 'f-3', name: 'Daniela P.', ig: '@dani.p' }
+                ]
+            },
+            { 
+                id: 'g-3', 
+                name: 'Valentina D.', 
+                ig: '@valen_vibes', 
+                phone: '50765558899', 
+                type: 'Mesa Anfitriona', 
+                venue: 'Terraplén Rooftop', 
+                day: 'Jueves 8:30 PM', 
+                status: 'confirmada',
+                friends: [
+                    { id: 'f-4', name: 'Nicole M.', ig: '@nicole.m' },
+                    { id: 'f-5', name: 'Isabella C.', ig: '@isa.c' }
+                ]
+            },
+            { id: 'g-4', name: 'Isabella S.', ig: '@isa.solis', phone: '50767123344', type: 'Cena VIP & Maridaje', venue: 'Terraplén Rooftop', day: 'Jueves 8:30 PM', status: 'pendiente', friends: [] },
+            { 
+                id: 'g-5', 
+                name: 'Andrea B.', 
+                ig: '@andreab_pty', 
+                phone: '50764432211', 
+                type: 'Cena VIP & Mesa Furia', 
+                venue: 'Furia', 
+                day: 'Viernes 9:00 PM', 
+                status: 'confirmada',
+                friends: [
+                    { id: 'f-6', name: 'Mariana Gomez', ig: '@mariana.g' },
+                    { id: 'f-7', name: 'Laura Castillo', ig: '@laura.cast' }
+                ]
+            },
+            { id: 'g-6', name: 'Nicole C.', ig: '@nicole.casco', phone: '50768997766', type: 'Rooftop Sunset Hostess', venue: 'Terraplén Rooftop', day: 'Jueves 8:30 PM', status: 'confirmada', friends: [] },
+            { id: 'g-7', name: 'Mariana T.', ig: '@mariana.t', phone: '50761223399', type: 'Cena VIP & Networking', venue: 'Piano Bar', day: 'Sábado 9:30 PM', status: 'confirmada', friends: [] },
+            { id: 'g-8', name: 'Daniela G.', ig: '@dani.gomez', phone: '50766338822', type: 'Animación & Shots VIP', venue: 'Furia', day: 'Viernes 9:00 PM', status: 'pendiente', friends: [] }
+        ];
+    });
 
+    // Auto-save dinnerGuestlist in localStorage
+    useEffect(() => {
+        try {
+            localStorage.setItem('os_live_dinner_guestlist', JSON.stringify(dinnerGuestlist));
+        } catch (e) {}
+    }, [dinnerGuestlist]);
+
+    // Friends management state
+    const [expandedFriendsGirlId, setExpandedFriendsGirlId] = useState(null);
+    const [showPasteWA, setShowPasteWA] = useState(null);
+    const [waText, setWaText] = useState('');
+    const [newFriendName, setNewFriendName] = useState('');
+    const [newFriendIG, setNewFriendIG] = useState('');
+    const [copiedDoorList, setCopiedDoorList] = useState(false);
+
+    // Form inputs for new host
     const [newGirlName, setNewGirlName] = useState('');
     const [newGirlIG, setNewGirlIG] = useState('');
     const [newGirlPhone, setNewGirlPhone] = useState('');
     const [newGirlType, setNewGirlType] = useState('Cena VIP & Cócteles');
+    const [newGirlFriendsText, setNewGirlFriendsText] = useState('');
 
     // ─── Local State for Production Pipeline ───
     const [posts, setPosts] = useState([
@@ -137,30 +239,144 @@ export default function Home() {
         }));
     };
 
+    // Add single friend to a girl
+    const handleAddSingleFriend = (e, girlId) => {
+        e.preventDefault();
+        if (!newFriendName.trim()) return;
+
+        const friend = {
+            id: `f-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+            name: newFriendName.trim(),
+            ig: newFriendIG.trim() ? (newFriendIG.startsWith('@') ? newFriendIG.trim() : `@${newFriendIG.trim()}`) : ''
+        };
+
+        setDinnerGuestlist(prev => prev.map(girl => {
+            if (girl.id === girlId) {
+                return { ...girl, friends: [...(girl.friends || []), friend] };
+            }
+            return girl;
+        }));
+
+        if (addActivity) {
+            const host = dinnerGuestlist.find(g => g.id === girlId);
+            addActivity(`Añadida amiga (${friend.name}) al grupo de ${host?.name || 'la mesa'}`, '#a855f7');
+        }
+
+        setNewFriendName('');
+        setNewFriendIG('');
+    };
+
+    // Remove single friend from a girl
+    const handleRemoveFriend = (girlId, friendId) => {
+        setDinnerGuestlist(prev => prev.map(girl => {
+            if (girl.id === girlId) {
+                return {
+                    ...girl,
+                    friends: (girl.friends || []).filter(f => f.id !== friendId)
+                };
+            }
+            return girl;
+        }));
+    };
+
+    // Process pasted WhatsApp text
+    const handleProcessWaText = (girlId) => {
+        if (!waText.trim()) return;
+        const parsed = parseFriendsText(waText);
+        if (parsed.length === 0) return;
+
+        setDinnerGuestlist(prev => prev.map(girl => {
+            if (girl.id === girlId) {
+                return {
+                    ...girl,
+                    friends: [...(girl.friends || []), ...parsed]
+                };
+            }
+            return girl;
+        }));
+
+        if (addActivity) {
+            const host = dinnerGuestlist.find(g => g.id === girlId);
+            addActivity(`Procesadas ${parsed.length} amigas de WhatsApp para ${host?.name || 'la mesa'}`, '#10b981');
+        }
+
+        setWaText('');
+        setShowPasteWA(null);
+    };
+
+    // Delete a host girl
+    const handleDeleteGirl = (girlId) => {
+        const host = dinnerGuestlist.find(g => g.id === girlId);
+        if (window.confirm(`¿Seguro que deseas eliminar a ${host?.name || 'esta invitada'} y sus acompañantes de la lista?`)) {
+            setDinnerGuestlist(prev => prev.filter(g => g.id !== girlId));
+            if (addActivity) {
+                addActivity(`Eliminada invitada de cena: ${host?.name || girlId}`, '#ef4444');
+            }
+        }
+    };
+
+    // Copy Door Guestlist for WhatsApp / Concierge
+    const handleCopyDoorList = () => {
+        const venueGuests = dinnerGuestlist.filter(g => g.venue === selectedDinnerVenue);
+        const totalHosts = venueGuests.length;
+        const totalFriends = venueGuests.reduce((acc, g) => acc + (g.friends?.length || 0), 0);
+        const totalPax = totalHosts + totalFriends;
+        const dayLabel = selectedDinnerVenue.includes('Terraplén') ? 'Jueves 8:30 PM' : selectedDinnerVenue.includes('Furia') ? 'Viernes 9:00 PM' : 'Sábado 9:30 PM';
+
+        let text = `🍸 *LISTA OFICIAL DE CENA — ${selectedDinnerVenue.toUpperCase()}*\n`;
+        text += `📅 *Fecha/Hora:* ${dayLabel}\n`;
+        text += `👥 *Total en Mesa:* ${totalPax} Chicas (${totalHosts} Hosts + ${totalFriends} Amigas)\n`;
+        text += `────────────────────────────\n`;
+
+        venueGuests.forEach((girl, i) => {
+            const statusIcon = girl.status === 'confirmada' ? '✅' : girl.status === 'pendiente' ? '⏳' : '❌';
+            text += `${i + 1}. *${girl.name}* (${girl.ig || 'Sin IG'}) [${girl.status.toUpperCase()}] ${statusIcon}\n`;
+            if (girl.friends && girl.friends.length > 0) {
+                girl.friends.forEach(f => {
+                    text += `   ↳ ${f.name}${f.ig ? ` (${f.ig})` : ''}\n`;
+                });
+            }
+        });
+
+        text += `────────────────────────────\n`;
+        text += `✨ *ARRIVE Nightlife & Talent Operations*`;
+
+        navigator.clipboard.writeText(text);
+        setCopiedDoorList(true);
+        if (addActivity) {
+            addActivity(`Copiada lista de puerta para ${selectedDinnerVenue} (${totalPax} pax)`, '#10b981');
+        }
+        setTimeout(() => setCopiedDoorList(false), 3000);
+    };
+
     // Add girl to dinner
     const handleAddGirlToDinner = (e) => {
         e.preventDefault();
         if (!newGirlName.trim()) return;
 
+        const initialFriends = parseFriendsText(newGirlFriendsText);
+
         const newEntry = {
             id: `g-${Date.now()}`,
             name: newGirlName.trim(),
-            ig: newGirlIG.startsWith('@') ? newGirlIG : `@${newGirlIG}`,
+            ig: newGirlIG ? (newGirlIG.startsWith('@') ? newGirlIG : `@${newGirlIG}`) : '',
             phone: newGirlPhone.replace(/[^0-9]/g, ''),
             type: newGirlType,
             venue: selectedDinnerVenue,
             day: selectedDinnerVenue.includes('Terraplén') ? 'Jueves 8:30 PM' : selectedDinnerVenue.includes('Furia') ? 'Viernes 9:00 PM' : 'Sábado 9:30 PM',
-            status: 'pendiente'
+            status: 'pendiente',
+            friends: initialFriends
         };
 
         setDinnerGuestlist([newEntry, ...dinnerGuestlist]);
         if (addActivity) {
-            addActivity(`Agregada invitada a cena (${selectedDinnerVenue}): ${newGirlName}`, '#fbbf24');
+            addActivity(`Agregada invitada a cena (${selectedDinnerVenue}): ${newGirlName}${initialFriends.length > 0 ? ` (+${initialFriends.length} amigas)` : ''}`, '#fbbf24');
         }
 
         setNewGirlName('');
         setNewGirlIG('');
         setNewGirlPhone('');
+        setNewGirlFriendsText('');
     };
 
     // Add post to pipeline
@@ -574,57 +790,236 @@ export default function Home() {
                         </div>
                     </div>
 
-                    <div className="arrive-dinner-stats-row">
-                        <div className="arrive-dstat-card">
-                            <div className="dstat-num">{dinnerGuestlist.filter(g => g.venue === selectedDinnerVenue).length}</div>
-                            <div className="dstat-lbl">Invitadas Registradas</div>
-                        </div>
-                        <div className="arrive-dstat-card highlight">
-                            <div className="dstat-num">{dinnerGuestlist.filter(g => g.venue === selectedDinnerVenue && g.status === 'confirmada').length}</div>
-                            <div className="dstat-lbl">Confirmadas en Mesa</div>
-                        </div>
-                        <div className="arrive-dstat-card">
-                            <div className="dstat-num">{dinnerGuestlist.filter(g => g.venue === selectedDinnerVenue && g.status === 'pendiente').length}</div>
-                            <div className="dstat-lbl">Pendientes WhatsApp</div>
-                        </div>
-                    </div>
+                    {/* Venue Stats Row with Total Pax Breakdown */}
+                    {(() => {
+                        const venueGuests = dinnerGuestlist.filter(g => g.venue === selectedDinnerVenue);
+                        const totalHosts = venueGuests.length;
+                        const totalFriends = venueGuests.reduce((acc, g) => acc + (g.friends?.length || 0), 0);
+                        const totalPax = totalHosts + totalFriends;
+                        const confirmedHosts = venueGuests.filter(g => g.status === 'confirmada').length;
 
-                    <div className="arrive-dinner-grid">
-                        <div className="arrive-dinner-table-card">
-                            <div className="arrive-card-header">
-                                <div className="arrive-card-head-title">
-                                    <Users size={16} /> Lista de Invitadas & Creadoras — {selectedDinnerVenue}
+                        return (
+                            <div className="arrive-dinner-stats-row">
+                                <div className="arrive-dstat-card highlight">
+                                    <div className="dstat-num" style={{ color: '#fbbf24' }}>{totalPax}</div>
+                                    <div className="dstat-lbl">Total en Mesa (Pax)</div>
+                                </div>
+                                <div className="arrive-dstat-card">
+                                    <div className="dstat-num">{totalHosts}</div>
+                                    <div className="dstat-lbl">Hosts Registradas</div>
+                                </div>
+                                <div className="arrive-dstat-card">
+                                    <div className="dstat-num" style={{ color: '#c084fc' }}>+{totalFriends}</div>
+                                    <div className="dstat-lbl">Amigas / +1s</div>
+                                </div>
+                                <div className="arrive-dstat-card">
+                                    <div className="dstat-num" style={{ color: '#34d399' }}>{confirmedHosts}</div>
+                                    <div className="dstat-lbl">Confirmadas</div>
                                 </div>
                             </div>
-                            <div className="arrive-dinner-list">
-                                {dinnerGuestlist.filter(g => g.venue === selectedDinnerVenue).map(girl => (
-                                    <div key={girl.id} className="arrive-guest-item">
-                                        <div className="guest-info">
-                                            <span className="guest-name">{girl.name}</span>
-                                            <span className="guest-ig">{girl.ig}</span>
-                                            <span className="guest-type">{girl.type}</span>
+                        );
+                    })()}
+
+                    <div className="arrive-dinners-split-layout">
+                        <div className="arrive-dinner-table-card">
+                            {(() => {
+                                const venueGuests = dinnerGuestlist.filter(g => g.venue === selectedDinnerVenue);
+                                const totalHosts = venueGuests.length;
+                                const totalFriends = venueGuests.reduce((acc, g) => acc + (g.friends?.length || 0), 0);
+                                const totalPax = totalHosts + totalFriends;
+
+                                return (
+                                    <div className="arrive-card-header">
+                                        <div className="arrive-card-head-title">
+                                            <Users size={16} /> Lista de Invitadas & Creadoras — {selectedDinnerVenue}
                                         </div>
-                                        <div className="guest-actions">
-                                            <button 
-                                                className={`guest-status-btn status-${girl.status}`}
-                                                onClick={() => handleToggleDinnerStatus(girl.id)}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <button
+                                                type="button"
+                                                className="arrive-copy-door-btn"
+                                                onClick={handleCopyDoorList}
+                                                title="Copiar lista oficial para enviar por WhatsApp al venue / cadenero"
                                             >
-                                                {girl.status === 'confirmada' ? '✓ Confirmada' : girl.status === 'pendiente' ? '⏳ Pendiente' : '✕ Cancelada'}
+                                                {copiedDoorList ? <Check size={12} style={{ color: '#34d399' }} /> : <Share2 size={12} />}
+                                                <span>{copiedDoorList ? '✓ Lista Copiada' : '📋 Copiar Lista de Puerta'}</span>
                                             </button>
-                                            {girl.phone && (
-                                                <a 
-                                                    href={`https://wa.me/${girl.phone}`} 
-                                                    target="_blank" 
-                                                    rel="noreferrer"
-                                                    className="guest-whatsapp-btn"
-                                                    title="Enviar WhatsApp"
-                                                >
-                                                    <Send size={12} />
-                                                </a>
-                                            )}
+                                            <span className="arrive-pill arrive-pill-gold">
+                                                {totalPax} Pax ({totalHosts} Hosts + {totalFriends} Amigas)
+                                            </span>
                                         </div>
                                     </div>
-                                ))}
+                                );
+                            })()}
+
+                            <div className="arrive-dinner-list">
+                                {dinnerGuestlist.filter(g => g.venue === selectedDinnerVenue).length === 0 ? (
+                                    <div className="arrive-empty-placeholder">
+                                        No hay invitadas registradas para {selectedDinnerVenue} aún. ¡Usa el formulario a la derecha!
+                                    </div>
+                                ) : (
+                                    dinnerGuestlist.filter(g => g.venue === selectedDinnerVenue).map(girl => {
+                                        const friendsCount = girl.friends?.length || 0;
+                                        const isExpanded = expandedFriendsGirlId === girl.id;
+
+                                        return (
+                                            <div key={girl.id} className="arrive-guest-card">
+                                                <div className="arrive-guest-item">
+                                                    <div className="guest-info">
+                                                        <span className="guest-name">{girl.name}</span>
+                                                        {girl.ig && <span className="guest-ig">{girl.ig}</span>}
+                                                        <span className="guest-type">{girl.type}</span>
+
+                                                        {/* Botón para expandir y gestionar amigas */}
+                                                        <button 
+                                                            type="button"
+                                                            className={`arrive-friends-toggle-btn ${isExpanded ? 'active' : ''} ${friendsCount > 0 ? 'has-friends' : ''}`}
+                                                            onClick={() => setExpandedFriendsGirlId(isExpanded ? null : girl.id)}
+                                                            title="Ver y gestionar lista de amigas acompañantes"
+                                                        >
+                                                            <Users size={12} />
+                                                            <span>{friendsCount > 0 ? `👯‍♀️ ${friendsCount} Amiga${friendsCount > 1 ? 's' : ''}` : '+ Lista de Amigas'}</span>
+                                                            {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                                                        </button>
+                                                    </div>
+
+                                                    <div className="guest-actions">
+                                                        <button 
+                                                            className={`guest-status-btn status-${girl.status}`}
+                                                            onClick={() => handleToggleDinnerStatus(girl.id)}
+                                                            title="Cambiar estado de confirmación"
+                                                        >
+                                                            {girl.status === 'confirmada' ? '✓ Confirmada' : girl.status === 'pendiente' ? '⏳ Pendiente' : '✕ Cancelada'}
+                                                        </button>
+                                                        {girl.phone && (
+                                                            <a 
+                                                                href={`https://wa.me/${girl.phone}`} 
+                                                                target="_blank" 
+                                                                rel="noreferrer"
+                                                                className="guest-whatsapp-btn"
+                                                                title="Enviar WhatsApp directo"
+                                                            >
+                                                                <Send size={12} /> WhatsApp
+                                                            </a>
+                                                        )}
+                                                        <button
+                                                            type="button"
+                                                            className="guest-delete-btn"
+                                                            onClick={() => handleDeleteGirl(girl.id)}
+                                                            title="Eliminar de la lista"
+                                                        >
+                                                            <Trash2 size={13} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                {/* Previsualización rápida de amigas si está cerrado */}
+                                                {!isExpanded && friendsCount > 0 && (
+                                                    <div className="arrive-friends-inline-preview" onClick={() => setExpandedFriendsGirlId(girl.id)}>
+                                                        <span className="preview-label">Acompañantes:</span>
+                                                        {girl.friends.map((f, i) => (
+                                                            <span key={f.id || i} className="preview-chip">
+                                                                {f.name} {f.ig ? `(${f.ig})` : ''}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                )}
+
+                                                {/* Panel Expandible de Lista de Amigas */}
+                                                {isExpanded && (
+                                                    <div className="arrive-friends-drawer animate-in">
+                                                        <div className="arrive-friends-drawer-header">
+                                                            <div className="friends-title">
+                                                                <Sparkles size={13} style={{ color: '#fbbf24' }} />
+                                                                <span>Lista de Amigas de <strong>{girl.name}</strong></span>
+                                                                <span className="friends-count-pill">{friendsCount} Acompañantes</span>
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                className="arrive-btn-text"
+                                                                onClick={() => setShowPasteWA(showPasteWA === girl.id ? null : girl.id)}
+                                                            >
+                                                                <Share2 size={12} /> {showPasteWA === girl.id ? 'Cerrar Pegado' : '⚡ Pegar de WhatsApp'}
+                                                            </button>
+                                                        </div>
+
+                                                        {/* Caja para pegar texto de WhatsApp */}
+                                                        {showPasteWA === girl.id && (
+                                                            <div className="arrive-paste-wa-box">
+                                                                <label>Pega aquí la lista de amigas tal cual te la envió por WhatsApp:</label>
+                                                                <textarea
+                                                                    rows={3}
+                                                                    placeholder={`Ejemplo:\n1. Andrea Castillo @andreac\n2. Sofia Morales @sofi_m\n3. Valentina Diaz`}
+                                                                    value={waText}
+                                                                    onChange={(e) => setWaText(e.target.value)}
+                                                                    autoFocus
+                                                                />
+                                                                <div className="paste-actions">
+                                                                    <button
+                                                                        type="button"
+                                                                        className="arrive-btn-primary small"
+                                                                        onClick={() => handleProcessWaText(girl.id)}
+                                                                    >
+                                                                        ✓ Procesar y Agregar
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        className="arrive-btn-secondary small"
+                                                                        onClick={() => { setShowPasteWA(null); setWaText(''); }}
+                                                                    >
+                                                                        Cancelar
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Chips de amigas agregadas */}
+                                                        <div className="arrive-friends-chips">
+                                                            {friendsCount > 0 ? (
+                                                                girl.friends.map((friend, fIdx) => (
+                                                                    <div key={friend.id || fIdx} className="arrive-friend-chip">
+                                                                        <span className="friend-chip-name">{friend.name}</span>
+                                                                        {friend.ig && <span className="friend-chip-ig">{friend.ig}</span>}
+                                                                        <button
+                                                                            type="button"
+                                                                            className="friend-chip-remove"
+                                                                            onClick={() => handleRemoveFriend(girl.id, friend.id)}
+                                                                            title="Eliminar amiga"
+                                                                        >
+                                                                            ✕
+                                                                        </button>
+                                                                    </div>
+                                                                ))
+                                                            ) : (
+                                                                <div className="arrive-no-friends-hint">
+                                                                    {girl.name} aún no tiene amigas agregadas en esta lista. Escribe sus nombres abajo o pega el texto de WhatsApp.
+                                                                </div>
+                                                            )}
+                                                        </div>
+
+                                                        {/* Formulario rápido para añadir una amiga */}
+                                                        <form onSubmit={(e) => handleAddSingleFriend(e, girl.id)} className="arrive-quickadd-friend-row">
+                                                            <input
+                                                                type="text"
+                                                                placeholder="Nombre de la amiga (ej: Mariana Ruiz)"
+                                                                value={newFriendName}
+                                                                onChange={(e) => setNewFriendName(e.target.value)}
+                                                            />
+                                                            <input
+                                                                type="text"
+                                                                placeholder="@Instagram (opcional)"
+                                                                value={newFriendIG}
+                                                                onChange={(e) => setNewFriendIG(e.target.value)}
+                                                            />
+                                                            <button type="submit" className="arrive-btn-gold-small">
+                                                                <Plus size={12} /> Agregar Amiga
+                                                            </button>
+                                                        </form>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })
+                                )}
                             </div>
                         </div>
 
@@ -633,6 +1028,34 @@ export default function Home() {
                                 <Plus size={16} /> Convocar Nueva Invitada
                             </h3>
                             <form onSubmit={handleAddGirlToDinner} className="arrive-quickadd-form">
+                                {Array.isArray(imageGirls) && imageGirls.length > 0 && (
+                                    <div className="arrive-field-group">
+                                        <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                            <span>⚡ Autocompletar desde Directorio Models</span>
+                                            <span style={{ fontSize: '10.5px', color: '#c084fc', fontWeight: 600 }}>{imageGirls.length} registradas</span>
+                                        </label>
+                                        <select 
+                                            defaultValue=""
+                                            onChange={(e) => {
+                                                const selected = imageGirls.find(g => g.id === e.target.value);
+                                                if (selected) {
+                                                    setNewGirlName(selected.name || '');
+                                                    setNewGirlIG(selected.ig || '');
+                                                    setNewGirlPhone(selected.phone || '');
+                                                    if (selected.type) setNewGirlType(selected.type);
+                                                }
+                                                e.target.value = '';
+                                            }}
+                                        >
+                                            <option value="">-- Seleccionar de ARRIVE Models --</option>
+                                            {imageGirls.map(g => (
+                                                <option key={g.id} value={g.id}>
+                                                    👑 {g.name} {g.ig ? `(${g.ig})` : ''} — {g.type || 'Modelo'}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
                                 <div className="arrive-field-group">
                                     <label>Nombre de la Chica / Modelo</label>
                                     <input 
@@ -670,6 +1093,18 @@ export default function Home() {
                                         <option value="Cena VIP & Maridaje">Cena VIP & Maridaje</option>
                                     </select>
                                 </div>
+                                <div className="arrive-field-group">
+                                    <label>Lista de Amigas / Acompañantes (Opcional)</label>
+                                    <textarea 
+                                        placeholder="Ej: Andrea (@andrea), Sofia Gomez (@sofi) o pega la lista de WhatsApp"
+                                        value={newGirlFriendsText}
+                                        onChange={(e) => setNewGirlFriendsText(e.target.value)}
+                                        rows={2}
+                                    />
+                                    <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
+                                        Separa por comas o saltos de línea. Se agregarán automáticamente a su mesa.
+                                    </span>
+                                </div>
                                 <button type="submit" className="arrive-btn-primary full-width" style={{ marginTop: '10px' }}>
                                     <Plus size={14} /> Registrar en Lista de {selectedDinnerVenue}
                                 </button>
@@ -684,31 +1119,40 @@ export default function Home() {
                ═══════════════════════════════════════════════════════════════════ */}
             {currentTab === 'production' && (
                 <div className="arrive-posts-section animate-in">
-                    <div className="arrive-posts-grid">
+                    <div className="arrive-posts-split-layout">
                         <div className="arrive-posts-list-card">
                             <div className="arrive-card-header">
                                 <div className="arrive-card-head-title">
                                     <Film size={16} /> Pipeline de Contenidos & Reels — ARRIVE Studio
                                 </div>
+                                <span className="arrive-pill arrive-pill-gold">
+                                    {posts.length} Contenidos
+                                </span>
                             </div>
                             <div className="arrive-posts-list">
-                                {posts.map(post => (
-                                    <div key={post.id} className="arrive-post-row">
-                                        <div className="arrive-post-main">
-                                            <div className="arrive-post-top">
-                                                <span className="arrive-post-project">{post.project}</span>
-                                                <span className="arrive-post-format">{post.format}</span>
-                                                <span className="arrive-post-status">{post.status}</span>
-                                            </div>
-                                            <h4 className="arrive-post-title">{post.title}</h4>
-                                            <p className="arrive-post-hook">"{post.hook}"</p>
-                                        </div>
-                                        <div className="arrive-post-meta">
-                                            <span className="arrive-post-channel">{post.channel}</span>
-                                            <span className="arrive-post-date">{post.date}</span>
-                                        </div>
+                                {posts.length === 0 ? (
+                                    <div className="arrive-empty-placeholder">
+                                        No hay contenidos programados en el pipeline aún. ¡Usa el formulario a la derecha!
                                     </div>
-                                ))}
+                                ) : (
+                                    posts.map(post => (
+                                        <div key={post.id} className="arrive-post-row">
+                                            <div className="arrive-post-main">
+                                                <div className="arrive-post-top">
+                                                    <span className="arrive-post-project">{post.project}</span>
+                                                    <span className="arrive-post-format">{post.format}</span>
+                                                    <span className="arrive-post-status">{post.status}</span>
+                                                </div>
+                                                <h4 className="arrive-post-title">{post.title}</h4>
+                                                <p className="arrive-post-hook">"{post.hook}"</p>
+                                            </div>
+                                            <div className="arrive-post-meta">
+                                                <span className="arrive-post-channel">{post.channel}</span>
+                                                <span className="arrive-post-date">📅 {post.date}</span>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
                             </div>
                         </div>
 
