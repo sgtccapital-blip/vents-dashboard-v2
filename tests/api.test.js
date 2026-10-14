@@ -174,3 +174,86 @@ test('la configuración nunca devuelve claves guardadas', async () => {
     assert.equal(cfg.apiKey, undefined);
     assert.equal(cfg.hasGeminiApiKey, true);
 });
+
+test('jarvis skills: listar, crear, controlar música, pedir comida y ejecutar macro', async () => {
+    // 1. Listar skills iniciales
+    const skillsRes = await api('/jarvis/skills');
+    assert.equal(skillsRes.status, 200);
+    const skills = await skillsRes.json();
+    assert.ok(Array.isArray(skills));
+    assert.ok(skills.length >= 3);
+
+    // 2. Control de música
+    const musicRes = await api('/jarvis/music', {
+        method: 'POST',
+        body: json({ action: 'play', preset: 'casco_sunset', volume: 85 })
+    });
+    assert.equal(musicRes.status, 200);
+    const musicData = await musicRes.json();
+    assert.equal(musicData.success, true);
+    assert.equal(musicData.music.preset, 'casco_sunset');
+
+    // 3. Orden de comida
+    const foodRes = await api('/jarvis/food', {
+        method: 'POST',
+        body: json({
+            restaurant: 'Sushi Market Casco',
+            items: ['Dragon Roll', 'Spicy Tuna Bowl'],
+            diners: ['GG', 'Mateo L.']
+        })
+    });
+    assert.equal(foodRes.status, 200);
+    const foodData = await foodRes.json();
+    assert.equal(foodData.success, true);
+    assert.equal(foodData.order.restaurant, 'Sushi Market Casco');
+
+    // 4. Enseñar nueva habilidad
+    const newSkillRes = await api('/jarvis/skills', {
+        method: 'POST',
+        body: json({
+            name: 'Modo Noche Furia VIP',
+            trigger: 'noche furia',
+            category: 'musica',
+            description: 'Enciende alta energía y setea luces',
+            steps: [
+                { type: 'music', preset: 'furia' },
+                { type: 'notification', text: 'Noche Furia iniciada' }
+            ]
+        })
+    });
+    assert.equal(newSkillRes.status, 200);
+    const newSkill = (await newSkillRes.json()).skill;
+    assert.equal(newSkill.trigger, 'noche furia');
+
+    // 5. Ejecutar habilidad
+    const execRes = await api('/jarvis/execute', {
+        method: 'POST',
+        body: json({ skillNameOrTrigger: 'noche furia' })
+    });
+    assert.equal(execRes.status, 200);
+    const execData = await execRes.json();
+    assert.equal(execData.success, true);
+    assert.ok(execData.executedSteps.length >= 2);
+
+    // 6. Estado de Jarvis
+    const stateRes = await api('/jarvis/state');
+    assert.equal(stateRes.status, 200);
+    const stateData = await stateRes.json();
+    assert.ok(stateData.skillsCount >= 4);
+
+    // 7. OpenJarvis Engine Status & Exec
+    const ojStatus = await api('/jarvis/openjarvis/status');
+    assert.equal(ojStatus.status, 200);
+    const ojData = await ojStatus.json();
+    assert.equal(ojData.installed, true);
+    assert.ok(ojData.version);
+
+    const ojExec = await api('/jarvis/openjarvis/exec', {
+        method: 'POST',
+        body: json({ command: '--version' })
+    });
+    assert.equal(ojExec.status, 200);
+    const ojExecData = await ojExec.json();
+    assert.equal(ojExecData.success, true);
+});
+

@@ -12,6 +12,7 @@ import {
     FileText, CheckSquare, Search, Eye, Download, BookOpen, Sliders, ChevronRight,
     SlidersHorizontal, Compass, PieChart, Wrench, Shield, FileCheck
 } from 'lucide-react';
+import JarvisSkillsHub from '../components/JarvisSkillsHub';
 
 export default function AgentBrain() {
     const appContext = useApp();
@@ -203,6 +204,15 @@ export default function AgentBrain() {
             return;
         }
 
+        if (userText === '/jarvis' || userText === '/jarvis hub') {
+            setActiveTab('jarvis_hub');
+            setMessages(prev => [...prev, 
+                { id: Date.now().toString(), role: 'user', text: userText },
+                { id: (Date.now() + 1).toString(), role: 'bot', text: '⚡ **Jarvis Protocol Activo**: Abriendo el **Jarvis Hub & Skills**. Tienes acceso inmediato al sintetizador de audio, concierge de pedidos y motor de automatizaciones.' }
+            ]);
+            return;
+        }
+
         setMessages(prev => [...prev, { id: Date.now().toString(), role: 'user', text: userText }]);
         setIsThinking(true);
 
@@ -215,7 +225,16 @@ export default function AgentBrain() {
                 addTask: appContext.addTask,
                 addEvent: appContext.addEvent,
                 addProject: appContext.addProject,
-                addActivity: appContext.addActivity
+                addActivity: appContext.addActivity,
+                onControlMusic: (data) => {
+                    if (addActivity) addActivity(`🎵 Jarvis ajustó audio a preset: ${data?.preset || 'deep_focus'}`, '#38bdf8');
+                },
+                onOrderFood: (data) => {
+                    if (addActivity) addActivity(`🍔 Jarvis coordinó pedido en: ${data?.restaurant || 'Restaurante'}`, '#f59e0b');
+                },
+                onExecuteSkill: (data) => {
+                    if (addActivity) addActivity(`⚡ Jarvis ejecutó habilidad: ${data?.name || 'Macro'}`, '#06b6d4');
+                }
             };
 
             // Build active skills text from presets
@@ -235,6 +254,9 @@ export default function AgentBrain() {
                     if (t.name === 'create_event') return `> 🎉 **Evento Agendado**: \`${t.args?.name}\` (${t.args?.date})`;
                     if (t.name === 'add_task') return `> 📋 **Tarea Añadida**: \`${t.args?.text}\``;
                     if (t.name === 'add_milestone') return `> 🗺️ **Hito Registrado**: \`${t.args?.title}\``;
+                    if (t.name === 'control_music') return `> 🎵 **Audio Jarvis**: Preset \`${t.args?.preset || 'deep_focus'}\` (${t.args?.action === 'pause' ? 'Pausado' : 'Reproduciendo'})`;
+                    if (t.name === 'order_food') return `> 🍔 **Jarvis Concierge**: Pedido armado en \`${t.args?.restaurant || 'Restaurante'}\``;
+                    if (t.name === 'execute_jarvis_skill') return `> ⚡ **Jarvis Macro**: Habilidad ejecutada con éxito`;
                     return `> ⚡ **Acción Ejecutada**: \`${t.name}\``;
                 }).join('\n');
             }
@@ -687,6 +709,25 @@ export default function AgentBrain() {
                     }}
                 >
                     <Radio size={16} /> Puente & Auditoría
+                </button>
+                <button
+                    onClick={() => setActiveTab('jarvis_hub')}
+                    style={{
+                        padding: '8px 16px',
+                        borderRadius: '8px',
+                        background: activeTab === 'jarvis_hub' ? 'linear-gradient(135deg, #0284c7, #38bdf8)' : 'rgba(56, 189, 248, 0.14)',
+                        border: '1px solid rgba(56, 189, 248, 0.45)',
+                        color: activeTab === 'jarvis_hub' ? 'white' : '#38bdf8',
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        whiteSpace: 'nowrap',
+                        boxShadow: activeTab === 'jarvis_hub' ? '0 0 16px rgba(56, 189, 248, 0.45)' : 'none'
+                    }}
+                >
+                    <Sparkles size={16} /> ⚡ Jarvis Hub & Skills
                 </button>
             </div>
 
@@ -1533,6 +1574,19 @@ export default function AgentBrain() {
                             </div>
                         </div>
 
+                    </div>
+                )}
+
+                {/* ═════════════════════════════════════════════════════════════════ */}
+                {/* 6. JARVIS PROTOCOL & SKILLS HUB TAB                              */}
+                {/* ═════════════════════════════════════════════════════════════════ */}
+                {activeTab === 'jarvis_hub' && (
+                    <div style={{ animation: 'fadeIn 0.25s ease' }}>
+                        <JarvisSkillsHub
+                            onOpenChat={() => setActiveTab('chat')}
+                            onAddActivity={addActivity}
+                            onAddTask={appContext.addTask}
+                        />
                     </div>
                 )}
 

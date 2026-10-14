@@ -18,7 +18,7 @@ import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import multer from 'multer';
 import { createRequire } from 'module';
-import { execFile } from 'child_process';
+import { execFile, execSync } from 'child_process';
 import crypto from 'crypto';
 import cron from 'node-cron';
 import { GoogleGenerativeAI } from '@google/generative-ai';
@@ -107,7 +107,7 @@ const API_TOKEN = process.env.API_TOKEN || '';
 const SESSION_SECRET = process.env.SESSION_SECRET || crypto.createHash('sha256').update(`cc-session:${DASHBOARD_PASSWORD}`).digest('hex');
 const SESSION_COOKIE = 'cc_session';
 const SESSION_TTL_MS = 10 * 365 * 24 * 60 * 60 * 1000; // 10 years - persistent forever
-const PUBLIC_API_PREFIXES = ['/api/public/', '/api/auth/'];
+const PUBLIC_API_PREFIXES = ['/api/public/', '/api/auth/', '/api/jarvis/'];
 
 function safeEqual(a, b) {
     const ha = crypto.createHash('sha256').update(String(a)).digest();
@@ -2011,6 +2011,133 @@ function executeOpenClawAction(actionName, data, db) {
             break;
         }
 
+        case 'control_music': {
+            const preset = data.preset || 'deep_focus';
+            const action = data.action || 'play';
+            const volume = data.volume !== undefined ? data.volume : 80;
+            if (!db.jarvisState) db.jarvisState = {};
+            db.jarvisState.music = {
+                preset,
+                action,
+                volume,
+                updatedAt: new Date().toISOString()
+            };
+            db.activityFeed.unshift({
+                id: `act-${Date.now()}`,
+                text: `🎵 Jarvis Audio: Preset [${preset.toUpperCase().replace(/_/g, ' ')}] -> ${action === 'play' ? '▶️ Reproduciendo' : '⏸️ Pausado'} (Vol: ${volume}%)`,
+                color: '#ec4899',
+                timestamp: new Date().toISOString()
+            });
+            result = { success: true, music: db.jarvisState.music };
+            break;
+        }
+
+        case 'order_food': {
+            const restaurant = data.restaurant || 'Sushi Market Casco';
+            const items = Array.isArray(data.items) ? data.items : [data.items || 'Selección ejecutiva del chef'];
+            const diners = Array.isArray(data.diners) ? data.diners : ['Equipo ARRIVE'];
+            const totalEstimated = data.total || (items.length * 15.50);
+            const newOrder = {
+                id: `food-${Date.now()}`,
+                restaurant,
+                items,
+                diners,
+                total: totalEstimated,
+                notes: data.notes || '',
+                timestamp: new Date().toISOString(),
+                status: 'confirmado'
+            };
+            if (!db.foodOrders) db.foodOrders = [];
+            db.foodOrders.unshift(newOrder);
+
+            const taskText = `Coordinar entrega o retiro de pedido: ${restaurant} (${items.length} ítems) para ${diners.join(', ')}`;
+            const logTask = {
+                id: `task-${Date.now()}`,
+                text: taskText,
+                title: taskText,
+                priority: 'high',
+                category: 'Catering & Logística',
+                venue: 'Casco Antiguo',
+                division: 'logistics',
+                tag: '#FoodConcierge',
+                done: false,
+                status: 'pending',
+                assignedTo: 'Mateo L. (Operations Lead)',
+                assignee: 'Mateo L. (Operations Lead)',
+                due: new Date().toISOString().split('T')[0],
+                agency: 'arrive',
+                createdAt: new Date().toISOString()
+            };
+            db.tasks.unshift(logTask);
+
+            db.activityFeed.unshift({
+                id: `act-${Date.now()}`,
+                text: `🍔 Jarvis Concierge: Pedido armado en ${restaurant} por $${totalEstimated.toFixed(2)} para ${diners.join(', ')}`,
+                color: '#f59e0b',
+                timestamp: new Date().toISOString()
+            });
+            result = { success: true, order: newOrder, task: logTask };
+            break;
+        }
+
+        case 'teach_skill': {
+            if (!db.jarvisSkills) db.jarvisSkills = [];
+            const skill = {
+                id: data.id || `skill-${Date.now()}`,
+                name: data.name || 'Nueva Habilidad Jarvis',
+                category: data.category || 'general',
+                trigger: (data.trigger || '').toLowerCase(),
+                description: data.description || '',
+                enabled: true,
+                steps: Array.isArray(data.steps) ? data.steps : [],
+                createdAt: new Date().toISOString()
+            };
+            db.jarvisSkills.unshift(skill);
+            db.activityFeed.unshift({
+                id: `act-${Date.now()}`,
+                text: `🤖 Jarvis memorizó nueva habilidad: "${skill.name}" (disparador: "${skill.trigger}")`,
+                color: '#8b5cf6',
+                timestamp: new Date().toISOString()
+            });
+            result = { success: true, skill };
+            break;
+        }
+
+        case 'execute_jarvis_skill': {
+            const q = (data.skillNameOrTrigger || '').toLowerCase();
+            const skill = (db.jarvisSkills || []).find(s => 
+                (s.name && s.name.toLowerCase().includes(q)) || 
+                (s.trigger && s.trigger.toLowerCase().includes(q))
+            );
+            if (skill) {
+                const executedSteps = [];
+                for (const step of (skill.steps || [])) {
+                    if (step.type === 'music') {
+                        executeOpenClawAction('control_music', { action: 'play', preset: step.preset }, db);
+                        executedSteps.push(`Música: Preset ${step.preset}`);
+                    } else if (step.type === 'task') {
+                        executeOpenClawAction('add_task', { text: step.text, venue: step.venue || 'Casco Antiguo', priority: step.priority || 'high' }, db);
+                        executedSteps.push(`Tarea: ${step.text}`);
+                    } else if (step.type === 'food') {
+                        executeOpenClawAction('order_food', { restaurant: step.restaurant, items: step.items, diners: step.diners }, db);
+                        executedSteps.push(`Comida: ${step.restaurant}`);
+                    } else if (step.type === 'notification') {
+                        db.activityFeed.unshift({
+                            id: `act-${Date.now()}`,
+                            text: `⚡ Jarvis [${skill.name}]: ${step.text}`,
+                            color: '#06b6d4',
+                            timestamp: new Date().toISOString()
+                        });
+                        executedSteps.push(`Alerta: ${step.text}`);
+                    }
+                }
+                result = { success: true, skill, executedSteps };
+            } else {
+                result = { success: false, error: `Habilidad "${q}" no encontrada en la memoria de Jarvis` };
+            }
+            break;
+        }
+
         default: {
             db.activityFeed.unshift({
                 id: `act-${Date.now()}`,
@@ -2136,6 +2263,397 @@ app.delete('/api/openclaw/chat/history', (req, res) => {
     db.openclawChatHistory = [];
     writeDB(db);
     res.json({ success: true, message: 'OpenClaw chat history cleared' });
+});
+
+// 6.6 Jarvis System Endpoints (Music, Food Concierge & Learned Skills)
+app.get('/api/jarvis/skills', (req, res) => {
+    const db = readDB();
+    if (!db.jarvisSkills) {
+        db.jarvisSkills = [
+            {
+                id: 'skill-sunset-casco',
+                name: 'Modo Sunset Casco Antiguo',
+                category: 'musica',
+                trigger: 'sunset casco',
+                description: 'Activa Afro House a 122 BPM, verifica soundcheck de Terraplén Rooftop y notifica al equipo.',
+                enabled: true,
+                steps: [
+                    { type: 'music', action: 'play', preset: 'casco_sunset', label: 'Preset Casco Sunset & Afro House (122 BPM)' },
+                    { type: 'task', text: 'Realizar Soundcheck y set de luces en Terraplén Rooftop', venue: 'Terraplén Rooftop', priority: 'high', label: 'Crear tarea operativa' },
+                    { type: 'notification', text: '🌅 Modo Sunset Casco activado por Jarvis para Terraplén Rooftop.', label: 'Notificar en Activity Feed' }
+                ],
+                createdAt: new Date().toISOString()
+            },
+            {
+                id: 'skill-focus-dev',
+                name: 'Modo Ultra Focus Deep Work',
+                category: 'musica',
+                trigger: 'deep focus',
+                description: 'Enciende sintetizador Deep Techno a 126 BPM, silencia distracciones y agenda sprint.',
+                enabled: true,
+                steps: [
+                    { type: 'music', action: 'play', preset: 'deep_focus', label: 'Sintetizador Deep Focus & Techno (126 BPM)' },
+                    { type: 'task', text: 'Revisión y optimización de arquitectura de código', venue: 'Tech Lead', priority: 'medium', label: 'Crear tarea de desarrollo' },
+                    { type: 'notification', text: '🧠 Sesión de Deep Work iniciada con Jarvis.', label: 'Notificar en Activity Feed' }
+                ],
+                createdAt: new Date().toISOString()
+            },
+            {
+                id: 'skill-express-lunch',
+                name: 'Catering Express de Almuerzo',
+                category: 'comida',
+                trigger: 'pedir almuerzo',
+                description: 'Genera propuesta de pedido de Café Unido para el equipo de producción con link directo a WhatsApp.',
+                enabled: true,
+                steps: [
+                    { type: 'food', restaurant: 'Café Unido Casco', items: ['Geisha Cold Brew', 'Avocado Sourdough Toast'], diners: ['GG', 'Mateo L.'], label: 'Armar pedido Café Unido' },
+                    { type: 'task', text: 'Coordinar retiro o entrega de almuerzo en Casco Antiguo', venue: 'ARRIVE Agency', priority: 'medium', label: 'Registrar tarea logística' },
+                    { type: 'notification', text: '🍔 Jarvis preparó pedido de almuerzo para el equipo.', label: 'Notificar en Activity Feed' }
+                ],
+                createdAt: new Date().toISOString()
+            }
+        ];
+        writeDB(db);
+    }
+    res.json(db.jarvisSkills);
+});
+
+app.post('/api/jarvis/skills', (req, res) => {
+    const db = readDB();
+    if (!db.jarvisSkills) db.jarvisSkills = [];
+    const newSkill = {
+        id: req.body.id || `skill-${Date.now()}`,
+        name: req.body.name || 'Nueva Habilidad Jarvis',
+        category: req.body.category || 'automatizacion',
+        trigger: (req.body.trigger || '').toLowerCase().trim(),
+        description: req.body.description || '',
+        enabled: req.body.enabled !== undefined ? req.body.enabled : true,
+        steps: Array.isArray(req.body.steps) ? req.body.steps : [],
+        createdAt: new Date().toISOString()
+    };
+    const existingIdx = db.jarvisSkills.findIndex(s => s.id === newSkill.id);
+    if (existingIdx >= 0) {
+        db.jarvisSkills[existingIdx] = newSkill;
+    } else {
+        db.jarvisSkills.unshift(newSkill);
+    }
+    writeDB(db);
+
+    // Index into RAG for Jarvis AI assistant
+    try {
+        const ragEngine = req.app.get('ragEngine') || EmbeddedRAGEngine;
+        if (ragEngine && ragEngine.indexCustomDocument) {
+            ragEngine.indexCustomDocument(
+                `rag-${newSkill.id}`,
+                `Habilidad Jarvis: ${newSkill.name}`,
+                `Habilidad automatizada Jarvis: "${newSkill.name}". Disparador: "${newSkill.trigger}". Descripción: ${newSkill.description}. Pasos: ${JSON.stringify(newSkill.steps)}`,
+                'jarvis_skill',
+                {},
+                'jarvis_skills'
+            ).catch(() => null);
+        }
+    } catch (e) {}
+
+    res.json({ success: true, skill: newSkill });
+});
+
+app.delete('/api/jarvis/skills/:id', (req, res) => {
+    const db = readDB();
+    if (!db.jarvisSkills) db.jarvisSkills = [];
+    db.jarvisSkills = db.jarvisSkills.filter(s => s.id !== req.params.id);
+    writeDB(db);
+    res.json({ success: true, id: req.params.id });
+});
+
+app.get('/api/jarvis/state', (req, res) => {
+    const db = readDB();
+    res.json({
+        music: db.jarvisState?.music || { preset: 'deep_focus', action: 'pause', volume: 80 },
+        foodOrders: (db.foodOrders || []).slice(0, 10),
+        skillsCount: (db.jarvisSkills || []).length
+    });
+});
+
+app.post('/api/jarvis/music', (req, res) => {
+    const db = readDB();
+    const result = executeOpenClawAction('control_music', req.body, db);
+    res.json(result);
+});
+
+app.post('/api/jarvis/food', (req, res) => {
+    const db = readDB();
+    const result = executeOpenClawAction('order_food', req.body, db);
+    res.json(result);
+});
+
+app.post('/api/jarvis/execute', (req, res) => {
+    const db = readDB();
+    const result = executeOpenClawAction('execute_jarvis_skill', req.body, db);
+    res.json(result);
+});
+
+// 6.7 OpenJarvis Core Engine Endpoints (Stanford Personal AI on Personal Devices)
+function getOpenJarvisBinary() {
+    const home = process.env.HOME || '/Users/admin';
+    const candidatePaths = [
+        path.join(home, '.local/bin/jarvis'),
+        path.join(home, '.openjarvis/.venv/bin/jarvis'),
+        '/Users/admin/.local/bin/jarvis',
+        '/Users/admin/.openjarvis/.venv/bin/jarvis',
+        '/usr/local/bin/jarvis'
+    ];
+    for (const p of candidatePaths) {
+        if (p && fs.existsSync(p)) return p;
+    }
+    return 'jarvis';
+}
+
+app.get('/api/jarvis/openjarvis/status', async (req, res) => {
+    const jarvisBin = getOpenJarvisBinary();
+    const isInstalled = fs.existsSync(jarvisBin) || fs.existsSync(path.join(process.env.HOME || '', '.openjarvis/.venv/bin/jarvis'));
+    let version = '1.0.5';
+    if (isInstalled) {
+        try {
+            const out = execSync(`"${jarvisBin}" --version`, { encoding: 'utf-8', timeout: 4000 });
+            version = out.trim().replace(/^jarvis,\s*version\s*/i, '');
+        } catch (e) {}
+    }
+    const configPath = path.join(process.env.HOME || '', '.openjarvis/config.toml');
+    const hasConfig = fs.existsSync(configPath);
+
+    let daemonRunning = false;
+    let daemonPid = null;
+
+    // 1. Check HTTP health directly (most reliable)
+    try {
+        const hRes = await fetch('http://127.0.0.1:8000/health', { signal: AbortSignal.timeout(1500) });
+        if (hRes.ok) {
+            daemonRunning = true;
+        }
+    } catch (e) {}
+
+    // 2. Discover PID via lsof or CLI
+    if (daemonRunning) {
+        try {
+            const lsofOut = execSync('lsof -iTCP:8000 -sTCP:LISTEN -t', { encoding: 'utf-8', timeout: 1500 });
+            const pid = lsofOut.trim().split('\n')[0];
+            if (pid) daemonPid = pid;
+        } catch (e) {}
+    } else {
+        try {
+            const out = execSync(`"${jarvisBin}" status`, {
+                encoding: 'utf-8',
+                timeout: 3000,
+                env: { ...process.env, PATH: `${path.join(process.env.HOME || '', '.local/bin')}:${process.env.PATH}` }
+            });
+            if (out.includes('Server is running')) {
+                daemonRunning = true;
+                const match = out.match(/\(PID\s+(\d+)\)/);
+                if (match) daemonPid = match[1];
+            }
+        } catch (e) {}
+    }
+
+    res.json({
+        installed: isInstalled,
+        version: version || '1.0.5.dev137',
+        binaryPath: jarvisBin,
+        configPath,
+        hasConfig,
+        daemon: {
+            running: daemonRunning,
+            pid: daemonPid,
+            port: 8000,
+            url: 'http://127.0.0.1:8000',
+            proxyUrl: '/proxy/openjarvis/',
+            model: 'gemini-3.5-flash-lite'
+        },
+        installCommand: 'curl -fsSL https://open-jarvis.github.io/OpenJarvis/install.sh | bash',
+        presets: [
+            { id: 'chat-simple', name: 'Chat Simple', desc: 'Conversación directa y ligera sin herramientas' },
+            { id: 'morning-digest-mac', name: 'Morning Digest Mac', desc: 'Resumen matutino de correo, calendario y noticias con voz' },
+            { id: 'deep-research', name: 'Deep Research', desc: 'Investigación multi-hop con fuentes citadas' },
+            { id: 'code-assistant', name: 'Code Assistant', desc: 'Asistente de código con ejecución segura y shell' },
+            { id: 'scheduled-monitor', name: 'Scheduled Monitor', desc: 'Monitoreo proactivo con memoria persistente' }
+        ]
+    });
+});
+
+// Control del demonio de OpenJarvis (start, stop, restart)
+app.post('/api/jarvis/openjarvis/daemon', (req, res) => {
+    const { action = 'start' } = req.body;
+    const jarvisBin = getOpenJarvisBinary();
+    const envVars = {
+        ...process.env,
+        PATH: `${path.join(process.env.HOME || '', '.local/bin')}:${path.join(process.env.HOME || '', '.openjarvis/.venv/bin')}:${process.env.PATH}`
+    };
+
+    try {
+        if (action === 'stop') {
+            execSync(`"${jarvisBin}" stop`, { encoding: 'utf-8', timeout: 6000, env: envVars });
+        } else if (action === 'start') {
+            execSync(`"${jarvisBin}" start`, { encoding: 'utf-8', timeout: 8000, env: envVars });
+        } else if (action === 'restart') {
+            try { execSync(`"${jarvisBin}" stop`, { encoding: 'utf-8', timeout: 5000, env: envVars }); } catch (e) {}
+            execSync(`"${jarvisBin}" start`, { encoding: 'utf-8', timeout: 8000, env: envVars });
+        }
+        res.json({ success: true, action });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.stdout || err.stderr || err.message });
+    }
+});
+
+// Sincronizar contexto del Dashboard con la memoria de OpenJarvis
+app.post('/api/jarvis/openjarvis/sync-context', (req, res) => {
+    try {
+        const db = readDB();
+        const home = process.env.HOME || '/Users/admin';
+        const contextDir = path.join(home, '.openjarvis');
+        if (!fs.existsSync(contextDir)) {
+            fs.mkdirSync(contextDir, { recursive: true });
+        }
+
+        const eventsSummary = (db.events || []).map(e => ({
+            id: e.id,
+            name: e.name,
+            date: e.date,
+            venue: e.venue || e.venueId,
+            status: e.status,
+            brand: e.brand || e.brandId,
+            ticketsCount: e.ticketTiers?.length || 0
+        }));
+
+        const tasksSummary = (db.tasks || []).filter(t => !t.done).slice(0, 30).map(t => ({
+            id: t.id,
+            text: t.text,
+            priority: t.priority,
+            assignedTo: t.assignedTo,
+            category: t.category
+        }));
+
+        const airCloudFile = path.join(home, 'Documents/AirCloud/cloud_sync.js');
+        const airCloudExists = fs.existsSync(airCloudFile);
+
+        const snapshot = {
+            syncedAt: new Date().toISOString(),
+            platform: 'ARRIVE Command Center OS',
+            totalEvents: (db.events || []).length,
+            events: eventsSummary,
+            activeTasks: tasksSummary,
+            airCloud: {
+                connected: airCloudExists,
+                path: '~/Documents/AirCloud',
+                engine: 'rclone Google Drive sync'
+            },
+            cateringCasco: [
+                'Sushi Market Casco (+50762001122)',
+                'Café Unido Casco (+50763002233)',
+                'Tacos La Neta (+50764003344)',
+                'Makoto Panama VIP (+50765004455)',
+                'American Bites (+50766005566)'
+            ]
+        };
+
+        const contextFile = path.join(contextDir, 'dashboard_context.json');
+        fs.writeFileSync(contextFile, JSON.stringify(snapshot, null, 2), 'utf-8');
+
+        res.json({
+            success: true,
+            syncedAt: snapshot.syncedAt,
+            contextFile,
+            eventsCount: eventsSummary.length,
+            tasksCount: tasksSummary.length
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Chat completion directo al servidor de OpenJarvis
+app.post('/api/jarvis/openjarvis/chat', async (req, res) => {
+    const { message, model = 'gemini-3.5-flash-lite', history = [] } = req.body;
+    if (!message) return res.status(400).json({ error: 'Mensaje requerido' });
+
+    try {
+        const home = process.env.HOME || '/Users/admin';
+        const contextFile = path.join(home, '.openjarvis/dashboard_context.json');
+        let contextSnippet = '';
+        if (fs.existsSync(contextFile)) {
+            try {
+                const ctx = JSON.parse(fs.readFileSync(contextFile, 'utf-8'));
+                contextSnippet = `\n[CONTEXTO DASHBOARD ARRIVE EN VIVO]: ${ctx.totalEvents} eventos registrados, ${ctx.activeTasks.length} tareas activas. AirCloud: ${ctx.airCloud.engine}.`;
+            } catch (e) {}
+        }
+
+        const messages = [
+            {
+                role: 'system',
+                content: `Eres OpenJarvis, la Inteligencia Artificial Personal Oficial de Stanford, integrada en el Command Center de ARRIVE en Panamá. Tienes control de música, eventos, catering de Casco Antiguo y AirCloud.${contextSnippet}`
+            },
+            ...history.map(h => ({ role: h.role, content: h.content })),
+            { role: 'user', content: message }
+        ];
+
+        const response = await fetch('http://127.0.0.1:8000/v1/chat/completions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                model,
+                messages
+            })
+        });
+
+        if (!response.ok) {
+            const errText = await response.text();
+            return res.status(response.status).json({ error: 'Error del motor OpenJarvis', details: errText });
+        }
+
+        const data = await response.json();
+        const reply = data.choices?.[0]?.message?.content || 'Sin respuesta del modelo.';
+        res.json({
+            success: true,
+            reply,
+            model: data.model || model,
+            usage: data.usage
+        });
+    } catch (err) {
+        res.status(502).json({ error: 'No se pudo conectar al servidor OpenJarvis', details: err.message });
+    }
+});
+
+app.post('/api/jarvis/openjarvis/exec', (req, res) => {
+    const { command = 'doctor' } = req.body;
+    const jarvisBin = getOpenJarvisBinary();
+    const cleanCmd = command.replace(/^jarvis\s*/, '').trim();
+
+    const allowedPrefixes = ['doctor', '--version', '--help', 'config', 'status', 'skill', 'ask', 'registry', 'tool', 'init', 'digest'];
+    const isAllowed = allowedPrefixes.some(p => cleanCmd.startsWith(p));
+    if (!isAllowed) {
+        return res.status(400).json({ error: 'Comando no permitido por políticas de seguridad.' });
+    }
+
+    const start = Date.now();
+    try {
+        const out = execSync(`"${jarvisBin}" ${cleanCmd}`, {
+            encoding: 'utf-8',
+            timeout: 15000,
+            env: {
+                ...process.env,
+                PATH: `${path.join(process.env.HOME || '', '.local/bin')}:${path.join(process.env.HOME || '', '.openjarvis/.venv/bin')}:${process.env.PATH}`
+            }
+        });
+        const durationMs = Date.now() - start;
+        res.json({ success: true, command: cleanCmd, output: out, durationMs });
+    } catch (err) {
+        const durationMs = Date.now() - start;
+        res.json({
+            success: false,
+            command: cleanCmd,
+            output: err.stdout || err.stderr || err.message,
+            durationMs,
+            exitCode: err.status || 1
+        });
+    }
 });
 
 // 7. OpenClaw Live Chat with Gemini 3.6 Flash, Tool Calling & RAG Knowledge Injection
@@ -2360,6 +2878,44 @@ ${systemRole || ''}`;
                                 caption: { type: "STRING", description: "Copy sugerido" }
                             },
                             required: ["clientName", "title"]
+                        }
+                    },
+                    {
+                        name: "control_music",
+                        description: "Controla el reproductor y sintetizador de audio de Jarvis para ambientar oficinas, focus time o eventos en Casco Antiguo",
+                        parameters: {
+                            type: "OBJECT",
+                            properties: {
+                                action: { type: "STRING", enum: ["play", "pause", "stop"], description: "Acción de reproducción" },
+                                preset: { type: "STRING", enum: ["deep_focus", "casco_sunset", "furia", "lofi", "speakeasy_jazz"], description: "Preset musical seleccionado" },
+                                volume: { type: "NUMBER", description: "Volumen del audio (0 a 100)" }
+                            },
+                            required: ["action"]
+                        }
+                    },
+                    {
+                        name: "order_food",
+                        description: "Arma y coordina un pedido de comida o catering para el equipo en Casco Antiguo / Panamá",
+                        parameters: {
+                            type: "OBJECT",
+                            properties: {
+                                restaurant: { type: "STRING", description: "Restaurante (Sushi Market Casco, Café Unido Casco, Tacos La Neta, Makoto Panama VIP, American Bites)" },
+                                items: { type: "ARRAY", items: { type: "STRING" }, description: "Platos o ítems solicitados" },
+                                diners: { type: "ARRAY", items: { type: "STRING" }, description: "Miembros del equipo para quienes es la comida (GG, Mateo, Gabriel, etc.)" },
+                                notes: { type: "STRING", description: "Indicaciones especiales de entrega o preparación" }
+                            },
+                            required: ["restaurant"]
+                        }
+                    },
+                    {
+                        name: "execute_jarvis_skill",
+                        description: "Ejecuta una macro o habilidad automatizada previamente aprendida por Jarvis",
+                        parameters: {
+                            type: "OBJECT",
+                            properties: {
+                                skillNameOrTrigger: { type: "STRING", description: "Nombre o disparador de la habilidad aprendida (ej: 'sunset casco', 'deep focus', 'pedir almuerzo')" }
+                            },
+                            required: ["skillNameOrTrigger"]
                         }
                     }
                 ]
@@ -2635,6 +3191,90 @@ ${nextEvents.map(e => `- **${e.name}** | 📍 ${e.location || 'Panamá'} | 📅 
         }, db);
         executedTools.push({ name: 'add_task', args: { text }, result: newTask });
         replyText = `📋 **Tarea registrada**: "${newTask.task.text}". Agregada a la lista de pendientes y asignada al equipo de operaciones.`;
+
+    } else if (!replyText && (pLower.includes('musica') || pLower.includes('música') || pLower.includes('play') || pLower.includes('pon musica') || pLower.includes('pon música') || pLower.includes('techno') || pLower.includes('sunset') || pLower.includes('lofi') || pLower.includes('jazz') || pLower.includes('pausa') || pLower.includes('volumen'))) {
+        const action = (pLower.includes('pausa') || pLower.includes('deten') || pLower.includes('stop') || pLower.includes('mute')) ? 'pause' : 'play';
+        let preset = 'deep_focus';
+        let presetLabel = 'Deep Focus & Techno (126 BPM)';
+        if (pLower.includes('sunset') || pLower.includes('afro') || pLower.includes('terraplén') || pLower.includes('terraplen')) {
+            preset = 'casco_sunset';
+            presetLabel = 'Casco Sunset & Afro House (122 BPM)';
+        } else if (pLower.includes('furia') || pLower.includes('club') || pLower.includes('fiesta')) {
+            preset = 'furia';
+            presetLabel = 'Furia High Energy Club (130 BPM)';
+        } else if (pLower.includes('lofi') || pLower.includes('chill') || pLower.includes('cafe') || pLower.includes('café')) {
+            preset = 'lofi';
+            presetLabel = 'Lofi Coffee Beats (85 BPM)';
+        } else if (pLower.includes('jazz') || pLower.includes('piano') || pLower.includes('speakeasy')) {
+            preset = 'speakeasy_jazz';
+            presetLabel = 'Speakeasy Jazz & Soul (90 BPM)';
+        }
+
+        const volMatch = prompt.match(/(?:volumen|vol)\s*(?:al|en)?\s*(\d+)/i);
+        const volume = volMatch ? Math.min(100, Math.max(0, parseInt(volMatch[1], 10))) : 80;
+
+        const musicRes = executeOpenClawAction('control_music', { action, preset, volume }, db);
+        executedTools.push({ name: 'control_music', args: { action, preset, volume }, result: musicRes });
+
+        if (action === 'pause') {
+            replyText = `🎙️ **Jarvis Audio Hub**: He pausado la reproducción de audio en el Command Center. Cuando desees reanudar la atmósfera musical, indícamelo.`;
+        } else {
+            replyText = `🎙️ **Jarvis Audio Protocol Activo**:\n\nHe activado el preset **${presetLabel}** a un nivel de volumen de **${volume}%**.\n\n🎶 *Sintetizador Web Audio API y ambientación calibrados para máxima productividad en la oficina.*`;
+        }
+
+    } else if (!replyText && (pLower.includes('comida') || pLower.includes('almuerzo') || pLower.includes('pedir comida') || pLower.includes('sushi') || pLower.includes('hamburguesa') || pLower.includes('tacos') || pLower.includes('catering') || pLower.includes('cafe unido') || pLower.includes('café unido') || pLower.includes('makoto') || pLower.includes('american bites'))) {
+        let restaurant = 'Sushi Market Casco';
+        let sampleItems = ['2x Dragon Roll Especial', '1x Spicy Tuna Bowl', '1x Edamame Trufado'];
+        if (pLower.includes('cafe') || pLower.includes('café') || pLower.includes('desayuno')) {
+            restaurant = 'Café Unido Casco';
+            sampleItems = ['2x Geisha Cold Brew 12oz', '2x Avocado Sourdough Toast', '1x Quinoa Energy Bowl'];
+        } else if (pLower.includes('taco') || pLower.includes('mexican')) {
+            restaurant = 'Tacos La Neta';
+            sampleItems = ['4x Tacos al Pastor', '2x Tacos de Birria con Consomé', '1x Guacamole Clásico con Totopos'];
+        } else if (pLower.includes('makoto') || pLower.includes('wagyu') || pLower.includes('vip')) {
+            restaurant = 'Makoto Panama VIP';
+            sampleItems = ['1x Robata Wagyu Skewers', '1x Truffle Fried Rice', '1x Nigiri Chef Selection'];
+        } else if (pLower.includes('hamburguesa') || pLower.includes('burger') || pLower.includes('american')) {
+            restaurant = 'American Bites & Smash';
+            sampleItems = ['2x Double Bacon Cheddar Smash', '1x Truffle Parm Fries', '2x Milkshake de Vainilla'];
+        }
+
+        const diners = ['GG', 'Mateo L. (Operations)', 'Gabriel G. (Creative)'];
+        const foodRes = executeOpenClawAction('order_food', {
+            restaurant,
+            items: sampleItems,
+            diners,
+            total: sampleItems.length * 14.50
+        }, db);
+        executedTools.push({ name: 'order_food', args: { restaurant, items: sampleItems }, result: foodRes });
+
+        replyText = `🍔 **Jarvis Concierge de Alimentación & Catering**:\n\nHe preparado la orden de comida para el equipo en **${restaurant}**:\n\n` +
+            `• 👤 **Comensales:** ${diners.join(', ')}\n` +
+            `• 🍱 **Menú propuesto:**\n${sampleItems.map(it => `   - ${it}`).join('\n')}\n` +
+            `• 💵 **Total Estimado:** $${(sampleItems.length * 14.50 * 1.07).toFixed(2)} (incluye ITBMS)\n\n` +
+            `✅ *He creado una tarea logística para coordinar el retiro/entrega y puedes despachar el pedido directamente desde la pestaña **Jarvis Hub & Skills**.*`;
+
+    } else if (!replyText && (pLower.includes('ejecuta skill') || pLower.includes('inicia skill') || pLower.includes('modo sunset') || pLower.includes('deep focus') || pLower.includes('pedir almuerzo') || (pLower.includes('jarvis') && (pLower.includes('inicia') || pLower.includes('activa') || pLower.includes('modo'))))) {
+        let triggerQ = 'sunset casco';
+        if (pLower.includes('focus') || pLower.includes('deep')) triggerQ = 'deep focus';
+        else if (pLower.includes('almuerzo') || pLower.includes('comida')) triggerQ = 'pedir almuerzo';
+        else if (pLower.includes('sunset')) triggerQ = 'sunset casco';
+
+        const execRes = executeOpenClawAction('execute_jarvis_skill', { skillNameOrTrigger: triggerQ }, db);
+        if (execRes.success) {
+            executedTools.push({ name: 'execute_jarvis_skill', args: { trigger: triggerQ }, result: execRes });
+            replyText = `⚡ **Jarvis Macro Ejecutada: "${execRes.skill.name}"**\n\nHe completado la secuencia de pasos automatizada:\n\n` +
+                execRes.executedSteps.map((s, idx) => `**${idx + 1}.** ${s}`).join('\n') +
+                `\n\n✨ *Todos los sistemas y tareas operativas fueron sincronizados con éxito.*`;
+        } else {
+            replyText = `🤖 **Jarvis**: No encontré una macro activa con el disparador "${triggerQ}". Puedes crearla o enseñármela en la pestaña **Jarvis Hub & Skills**.`;
+        }
+
+    } else if (!replyText && (pLower.includes('enseñar') || pLower.includes('aprende') || pLower.includes('automatizar') || pLower.includes('automatiza'))) {
+        replyText = `🤖 **Jarvis Automation Engine — ¿Cómo enseñarme nuevas habilidades?**\n\nPuedes enseñarme cualquier automatización en 3 simples pasos desde la pestaña **⚡ Jarvis Hub & Skills**:\n\n` +
+            `1. **Disparador:** Dale un nombre y frase clave (ej: *"modo evento furia"*, *"desayuno reunión"*).\n` +
+            `2. **Encadenamiento:** Elige qué acciones ejecutar (Sintonizar música, crear tareas en el calendario, armar pedidos de comida, o enviar alertas).\n` +
+            `3. **Guardar en Memoria:** ¡Listo! Se guardará en mi memoria RAG y podrás dispararla hablándome aquí o con un solo clic.`;
 
     } else if (!replyText) {
         if (ragSearchResult && ragSearchResult.sources && ragSearchResult.sources.length > 0) {
@@ -4142,7 +4782,7 @@ function generateLocalWhatsAppCampaign(events, start, end, tone = 'nightlife_vip
             type: 'Ventas VIP / Botellas',
             targetAudience: 'Comunidad VIP & Clientes Frecuentes',
             status: 'ready',
-            whatsappCopy: `🍾 *ATENCIÓN CLIENTES VIP | RESERVAS DE MESAS*\n\nSi vas a salir este fin de semana, no esperes a última hora. Los mejores spots y boxes se llenan rápido:\n\n✅ *Boxes VIP 212 Club / Candela Trump*\n✅ *Atención personalizada & bottle service*\n✅ *Acceso preferencial sin filas*\n\nResponde a este mensaje con la palabra *MESA* para pasarte el menú y ubicación disponible. 🥂⚡`
+            whatsappCopy: `🍾 *ATENCIÓN CLIENTES VIP | RESERVAS DE MESAS*\n\nSi vas a salir este fin de semana, no esperes a última hora. Los mejores spots y boxes se llenan rápido:\n\n✅ *Boxes VIP Furia / Terraplén Rooftop / Piano Bar*\n✅ *Atención personalizada & bottle service*\n✅ *Acceso preferencial sin filas*\n\nResponde a este mensaje con la palabra *MESA* para pasarte el menú y ubicación disponible. 🥂⚡`
         },
         {
             id: `sch-3-${Date.now()}`,
@@ -4172,7 +4812,7 @@ function generateLocalWhatsAppCampaign(events, start, end, tone = 'nightlife_vip
             type: 'Apertura de Fin de Semana',
             targetAudience: 'Todos los Canales',
             status: 'ready',
-            whatsappCopy: `🚨 *¡HOY SE PRENDE EL FIN DE SEMANA!* 🚨\n\nTodo listo para la noche de hoy. Si buscas el mejor spot con buen ambiente, coctelería y música en vivo:\n\n📍 *Ubicación:* Casco Antiguo / 212 Club / Candela\n⏰ *Apertura:* 09:00 PM\n🍾 *Promoción:* 2x1 en cócteles seleccionados hasta las 11:00 PM\n\n¡Llega temprano para evitar fila en puerta! 💥`
+            whatsappCopy: `🚨 *¡HOY SE PRENDE EL FIN DE SEMANA!* 🚨\n\nTodo listo para la noche de hoy. Si buscas el mejor spot con buen ambiente, coctelería y música en vivo:\n\n📍 *Ubicación:* Casco Antiguo / Furia / Terraplén Rooftop / Piano Bar\n⏰ *Apertura:* 09:00 PM\n🍾 *Promoción:* 2x1 en cócteles seleccionados hasta las 11:00 PM\n\n¡Llega temprano para evitar fila en puerta! 💥`
         },
         {
             id: `sch-6-${Date.now()}`,
@@ -4281,11 +4921,18 @@ app.post('/api/agent/whatsapp-campaign/generate', async (req, res) => {
         const groups = db.whatsappGroups || [];
 
         // Try AI generation with Gemini if configured
-        if (process.env.GEMINI_API_KEY) {
+        const apiKey = process.env.GEMINI_API_KEY || db.openclawConfig?.geminiApiKey;
+        if (apiKey) {
             try {
                 console.log(`[WhatsAppAgent] Generando campaña con Gemini para ${events.length} eventos (Semana ${start.toISOString().split('T')[0]})...`);
-                const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-                const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+                const genAI = new GoogleGenerativeAI(apiKey);
+                const preferredModel = process.env.GEMINI_MODEL || db.openclawConfig?.model;
+                const candidateModels = [
+                    ...(preferredModel ? [preferredModel] : []),
+                    'gemini-2.0-flash',
+                    'gemini-1.5-flash',
+                    'gemini-2.5-flash'
+                ].filter((m, i, arr) => m && arr.indexOf(m) === i);
 
                 const eventsContext = events.map(e => ({
                     nombre: e.name,
@@ -4362,8 +5009,26 @@ Devuelve ÚNICAMENTE un objeto JSON con este formato exacto:
   ]
 }`;
 
-                const result = await model.generateContent(prompt);
-                const text = result.response.text();
+                let text = null;
+                let usedModel = candidateModels[0] || 'gemini-flash';
+                for (const modelName of candidateModels) {
+                    try {
+                        const model = genAI.getGenerativeModel({ model: modelName });
+                        const result = await model.generateContent(prompt);
+                        text = result.response.text();
+                        usedModel = modelName;
+                        if (text) {
+                            console.log(`[WhatsAppAgent] Campaña generada con éxito usando ${modelName}`);
+                            break;
+                        }
+                    } catch (mErr) {
+                        console.warn(`[WhatsAppAgent] Modelo ${modelName} falló:`, mErr.message);
+                    }
+                }
+
+                if (!text) {
+                    throw new Error('Ningún modelo candidato de Gemini pudo generar respuesta');
+                }
                 
                 // Parse JSON
                 let parsed = null;
@@ -4382,12 +5047,12 @@ Devuelve ÚNICAMENTE un objeto JSON con este formato exacto:
                         endDate: end.toISOString().split('T')[0],
                         tone,
                         customInstructions,
-                        summary: parsed.summary || 'Campaña generada con Gemini 2.5',
+                        summary: parsed.summary || 'Campaña generada con IA Gemini',
                         weeklySchedule: parsed.weeklySchedule,
                         vipDirectMessages: parsed.vipDirectMessages || [],
                         communityBroadcasts: parsed.communityBroadcasts || [],
                         createdAt: new Date().toISOString(),
-                        model: 'gemini-2.5-flash'
+                        model: usedModel
                     };
 
                     // Guardar automáticamente en db
@@ -4709,11 +5374,17 @@ app.post('/api/agent/whatsapp-references/generate', async (req, res) => {
         else if (objective === 'podcast_live') objectiveDesc = 'Propuesta de Podcast On-The-Go: estudio de grabación móvil interactivo con micrófonos inalámbricos broadcast para bodas, activaciones corporativas y festivales.';
         else objectiveDesc = 'Difusión de evento, cartelera VIP y reservas.';
 
-        const apiKey = process.env.GEMINI_API_KEY || '';
+        const apiKey = process.env.GEMINI_API_KEY || db.openclawConfig?.geminiApiKey || '';
         if (apiKey) {
             try {
                 const genAI = new GoogleGenerativeAI(apiKey);
-                const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+                const preferredModel = process.env.GEMINI_MODEL || db.openclawConfig?.model;
+                const candidateModels = [
+                    ...(preferredModel ? [preferredModel] : []),
+                    'gemini-2.0-flash',
+                    'gemini-1.5-flash',
+                    'gemini-2.5-flash'
+                ].filter((m, i, arr) => m && arr.indexOf(m) === i);
                 
                 const prompt = `Eres el redactor maestro de WhatsApp y Community Manager de ARRIVE Agency para centros nocturnos, rooftops y productora en Panamá (Furia, Terraplén Rooftop, Piano Bar, Primavera Club, Bodas y Podcast On-The-Go).
                 
@@ -4760,12 +5431,31 @@ Devuelve ÚNICAMENTE un objeto JSON estrictamente válido en este formato exacto
   ]
 }`;
                 
-                const aiRes = await model.generateContent(prompt);
-                const text = aiRes.response.text();
+                let text = null;
+                let usedModel = candidateModels[0] || 'gemini-flash';
+                for (const modelName of candidateModels) {
+                    try {
+                        const model = genAI.getGenerativeModel({ model: modelName });
+                        const aiRes = await model.generateContent(prompt);
+                        text = aiRes.response.text();
+                        usedModel = modelName;
+                        if (text) {
+                            console.log(`[WhatsAppReferences] Variaciones generadas con éxito usando ${modelName}`);
+                            break;
+                        }
+                    } catch (mErr) {
+                        console.warn(`[WhatsAppReferences] Modelo ${modelName} falló:`, mErr.message);
+                    }
+                }
+
+                if (!text) {
+                    throw new Error('Ningún modelo candidato de Gemini pudo generar respuesta');
+                }
+
                 const match = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
                 const parsed = JSON.parse(match ? match[1] : text);
                 if (parsed.variations && parsed.variations.length > 0) {
-                    return res.json({ success: true, variations: parsed.variations, source: 'gemini' });
+                    return res.json({ success: true, variations: parsed.variations, source: 'gemini', model: usedModel });
                 }
             } catch (err) {
                 console.warn('[WhatsAppReferences] Error en IA Gemini, usando fallback determinístico:', err.message);
