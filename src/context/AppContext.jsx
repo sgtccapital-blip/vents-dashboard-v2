@@ -144,7 +144,7 @@ export const AppProvider = ({ children }) => {
             {
                 id: 'welcome',
                 role: 'copilot',
-                text: '⚡ **OpenClaw Super Agent activo**.\n\nTengo en vivo tus eventos, proyectos, tareas y documentos del RAG. Puedo responder preguntas y crear tareas, eventos, proyectos y notas.\n\nEscribe **ayuda** para ver lo que puedo hacer.',
+                text: '⚡ **Bart activo**.\n\nTengo en vivo tus eventos, proyectos, tareas y documentos del RAG. Puedo responder preguntas y crear tareas, eventos, proyectos y notas.\n\nEscribe **ayuda** para ver lo que puedo hacer.',
                 timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             }
         ];
@@ -543,7 +543,7 @@ export const AppProvider = ({ children }) => {
             method: 'POST',
             body: { action: actionName, payload }
         });
-        if (!res) throw new Error(`OpenClaw no pudo ejecutar "${actionName}". Revisa la conexión con el servidor.`);
+        if (!res) throw new Error(`Bart no pudo ejecutar "${actionName}". Revisa la conexión con el servidor.`);
         await poll();
         return res;
     };
@@ -593,7 +593,7 @@ export const AppProvider = ({ children }) => {
 
             return botMsg;
         } catch (err) {
-            console.error('[OpenClaw Chat Error]:', err);
+            console.error('[Bart Chat Error]:', err);
             const errMsg = {
                 id: timeId('bot-err'),
                 role: 'copilot',
@@ -617,7 +617,7 @@ export const AppProvider = ({ children }) => {
             {
                 id: 'welcome',
                 role: 'copilot',
-                text: '⚡ **OpenClaw Super Agent activo** (Conversación reiniciada).\n\n¿En qué puedo asistirte con el Command Center hoy?',
+                text: '⚡ **Bart activo** (Conversación reiniciada).\n\n¿En qué puedo asistirte con el Command Center hoy?',
                 timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             }
         ];

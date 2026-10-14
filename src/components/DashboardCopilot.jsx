@@ -102,10 +102,10 @@ export default function DashboardCopilot() {
             const status = await OpenClawBrainService.getGeminiStatus();
             setGeminiStatus(status);
             notice = key
-                ? `✨ **Clave de Gemini guardada en el servidor.** OpenClaw usará **${saved.model || status.model}**. Si la clave no es válida te lo diré en la próxima respuesta.`
+                ? `✨ **Clave de Gemini guardada en el servidor.** Bart usará **${saved.model || status.model}**. Si la clave no es válida te lo diré en la próxima respuesta.`
                 : status.configured
                     ? 'ℹ️ Se quitó la clave guardada desde el dashboard, pero el servidor tiene GEMINI_API_KEY en su entorno, así que Gemini sigue activo.'
-                    : 'ℹ️ Se quitó la clave de Gemini. OpenClaw responde con el motor local.';
+                    : 'ℹ️ Se quitó la clave de Gemini. Bart responde con el motor local.';
         } catch (err) {
             notice = `⚠️ No se pudo guardar la clave: ${err.message}`;
         }
@@ -361,7 +361,7 @@ export default function DashboardCopilot() {
             { pattern: /contactos|promotores|modelos|chicas/, path: '/contactos', name: 'Contactos & Promotores' },
             { pattern: /social|redes|instagram/, path: '/social', name: 'Redes Sociales' },
             { pattern: /whatsapp|difusi[oó]n/, path: '/whatsapp-agent', name: 'Agente WhatsApp' },
-            { pattern: /cerebro|brain|consola|openclaw/, path: '/agent-brain', name: 'Consola OpenClaw' },
+            { pattern: /cerebro|brain|consola|openclaw/, path: '/agent-brain', name: 'Consola Bart' },
             { pattern: /home|inicio|dashboard|command center/, path: '/', name: 'Command Center' }
         ];
 
@@ -407,7 +407,7 @@ export default function DashboardCopilot() {
                 rawQuery,
                 messages,
                 `Modo actual del agente: ${currentModeObj.name}.${brandPrompt}`,
-                'Actúa como OpenClaw Super Agent, orquestador autónomo maestro del Command Center y ARRIVE Agency.',
+                'Actúa como Bart, orquestador autónomo maestro del Command Center y ARRIVE Agency.',
                 targetNamespace,
                 selectedMode
             );
@@ -430,7 +430,7 @@ export default function DashboardCopilot() {
             setMessages(prev => [...prev, {
                 id: `bot-${Date.now()}`,
                 role: 'copilot',
-                text: `⚠️ Error procesando comando con OpenClaw: ${err.message}`,
+                text: `⚠️ Error procesando comando con Bart: ${err.message}`,
                 timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             }]);
         } finally {
@@ -476,7 +476,7 @@ export default function DashboardCopilot() {
                             boxShadow: geminiStatus.active ? '0 0 8px #38bdf8' : '0 0 8px #10b981'
                         }} />
                     </div>
-                    <span>OpenClaw Agent</span>
+                    <span>Bart</span>
                     <span style={{
                         fontSize: '0.65rem',
                         background: 'rgba(0, 0, 0, 0.35)',
@@ -537,7 +537,7 @@ export default function DashboardCopilot() {
                             </div>
                             <div>
                                 <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#f0f0f5', display: 'flex', alignItems: 'center', gap: 6 }}>
-                                    OpenClaw Super Agent
+                                    Bart
                                     <span style={{
                                         width: 7,
                                         height: 7,
@@ -815,7 +815,7 @@ export default function DashboardCopilot() {
                                             borderTopColor: 'transparent',
                                             animation: 'spin 0.8s linear infinite'
                                         }} />
-                                        <span>OpenClaw Super Agent procesando...</span>
+                                        <span>Bart procesando...</span>
                                     </div>
                                 )}
 
@@ -1071,7 +1071,7 @@ export default function DashboardCopilot() {
                             <p style={{ fontSize: '0.78rem', color: '#a0a0b8', marginBottom: 12, lineHeight: 1.4 }}>
                                 {geminiStatus.configured
                                     ? `Gemini está configurado${geminiStatus.source === 'env' ? ' en el entorno del servidor' : ''} (modelo ${geminiStatus.model}). Escribe una clave nueva para reemplazarla.`
-                                    : 'Pega tu API Key de Google AI Studio para que OpenClaw responda con Gemini. Sin clave funciona con el motor local.'}
+                                    : 'Pega tu API Key de Google AI Studio para que Bart responda con Gemini. Sin clave funciona con el motor local.'}
                                 {' '}La clave se guarda solo en el servidor, nunca en este navegador.
                                 {geminiStatus.lastError && <><br /><span style={{ color: '#f87171' }}>Último error: {geminiStatus.lastError.message}</span></>}
                             </p>

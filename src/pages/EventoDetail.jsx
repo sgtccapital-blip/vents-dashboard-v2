@@ -170,7 +170,7 @@ export default function EventoDetail() {
                 projectId: event.id,
                 details: `Ejecución delegada por el operador para el proyecto "${event.name}".`
             });
-            setOpenClawFeedback({ type: 'success', msg: `Orden enviada a OpenClaw Super Agent. Tarea registrada en el stream.` });
+            setOpenClawFeedback({ type: 'success', msg: `Orden enviada a Bart. Tarea registrada en el stream.` });
             if (!customText) setOpenClawPromptInput('');
         } catch (err) {
             setOpenClawFeedback({ type: 'error', msg: `Error: ${err.message}` });
@@ -859,7 +859,7 @@ export default function EventoDetail() {
         { id: 'proj_overview', label: 'Visión General', icon: LayoutDashboard },
         { id: 'proj_roadmap', label: 'Roadmap & Hitos', icon: Milestone },
         { id: 'tareas', label: 'Sprints & Tareas', icon: ListTodo },
-        { id: 'proj_openclaw', label: 'OpenClaw AI Terminal', icon: Bot },
+        { id: 'proj_openclaw', label: 'Bart AI Terminal', icon: Bot },
         { id: 'proj_docs', label: 'Docs & Entregables', icon: FileText },
         { id: 'masterplan', label: 'Master Plan', icon: Target },
     ] : event.type === 'nightclub' ? [
@@ -1053,7 +1053,7 @@ export default function EventoDetail() {
                                 </div>
                                 <div>
                                     <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 600 }}>Lead Agent / Responsable</div>
-                                    <div style={{ fontSize: '18px', fontWeight: '700', color: '#fff', marginTop: '2px' }}>{event.leadAgent || 'OpenClaw Super Agent'}</div>
+                                    <div style={{ fontSize: '18px', fontWeight: '700', color: '#fff', marginTop: '2px' }}>{event.leadAgent || 'Bart'}</div>
                                 </div>
                             </div>
 
@@ -1171,7 +1171,7 @@ export default function EventoDetail() {
                             </div>
                         </div>
 
-                        {/* OpenClaw Quick Dispatcher Widget */}
+                        {/* Bart Quick Dispatcher Widget */}
                         <div className="card" style={{
                             padding: '20px',
                             background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(22, 22, 35, 0.9))',
@@ -1180,7 +1180,7 @@ export default function EventoDetail() {
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     <Bot size={18} style={{ color: '#a78bfa' }} />
-                                    <span style={{ fontSize: '14px', fontWeight: 700, color: '#fff' }}>OpenClaw Super Agent Quick Dispatch</span>
+                                    <span style={{ fontSize: '14px', fontWeight: 700, color: '#fff' }}>Bart Quick Dispatch</span>
                                 </div>
                                 <span style={{ fontSize: '11px', color: '#4ade80', display: 'flex', alignItems: 'center', gap: '4px' }}>
                                     <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#4ade80' }} /> Escuchando órdenes para este proyecto
@@ -1315,7 +1315,7 @@ export default function EventoDetail() {
                 );
             })()}
 
-            {/* ─── PROYECTOS: OPENCLAW AI TERMINAL ─── */}
+            {/* ─── PROYECTOS: BART AI TERMINAL ─── */}
             {isProjectEntity && activeTab === 'proj_openclaw' && (() => {
                 const projectOpenClawLogs = (openclawLogs || []).filter(l => l.data?.projectId === event.id || !l.data?.projectId);
 
@@ -1327,7 +1327,7 @@ export default function EventoDetail() {
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                     <Terminal size={20} style={{ color: '#a78bfa' }} />
                                     <div>
-                                        <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#fff', margin: 0 }}>OpenClaw Super Agent Console</h3>
+                                        <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#fff', margin: 0 }}>Bart Console</h3>
                                         <span style={{ fontSize: '11.5px', color: 'var(--text-tertiary)' }}>Ejecución directa de órdenes y síntesis autónoma</span>
                                     </div>
                                 </div>
@@ -1340,7 +1340,7 @@ export default function EventoDetail() {
                             <div style={{ display: 'flex', gap: '10px', marginBottom: '12px' }}>
                                 <input
                                     className="form-input"
-                                    placeholder={`Enviar instrucción a OpenClaw para "${event.name}"...`}
+                                    placeholder={`Enviar instrucción a Bart para "${event.name}"...`}
                                     value={openclawPromptInput}
                                     onChange={e => setOpenClawPromptInput(e.target.value)}
                                     onKeyDown={e => e.key === 'Enter' && handleSendOpenClawAction()}
@@ -1370,7 +1370,7 @@ export default function EventoDetail() {
                         {/* Real-time Activity Logs Stream */}
                         <div className="card" style={{ padding: '24px' }}>
                             <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#fff', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <Bot size={17} style={{ color: '#a78bfa' }} /> Registro de Ejecuciones & Pensamientos de OpenClaw
+                                <Bot size={17} style={{ color: '#a78bfa' }} /> Registro de Ejecuciones & Pensamientos de Bart
                             </h3>
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '380px', overflowY: 'auto' }}>
@@ -1398,7 +1398,7 @@ export default function EventoDetail() {
 
                                 {projectOpenClawLogs.length === 0 && (
                                     <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-tertiary)', fontSize: '13px' }}>
-                                        No hay logs de OpenClaw registrados aún. Ejecuta una orden arriba para inicializar el stream.
+                                        No hay logs de Bart registrados aún. Ejecuta una orden arriba para inicializar el stream.
                                     </div>
                                 )}
                             </div>
@@ -1429,7 +1429,7 @@ export default function EventoDetail() {
                     <textarea
                         className="form-textarea"
                         rows={16}
-                        placeholder={`# ${event.name} - Especificaciones Técnicas\n\n## 1. Arquitectura\n- Stack: ${Array.isArray(event.techStack) ? event.techStack.join(', ') : ''}\n\n## 2. Entregables MVP\n- [ ] Core Backend API\n- [ ] Frontend UI\n\n## 3. Notas de OpenClaw Super Agent\n- `}
+                        placeholder={`# ${event.name} - Especificaciones Técnicas\n\n## 1. Arquitectura\n- Stack: ${Array.isArray(event.techStack) ? event.techStack.join(', ') : ''}\n\n## 2. Entregables MVP\n- [ ] Core Backend API\n- [ ] Frontend UI\n\n## 3. Notas de Bart\n- `}
                         value={projectDocContent}
                         onChange={e => setProjectDocContent(e.target.value)}
                         style={{

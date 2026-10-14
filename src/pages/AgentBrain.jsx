@@ -27,14 +27,14 @@ export default function AgentBrain() {
     const currentModeObj = useMemo(() => OPENCLAW_MODES.find(m => m.id === selectedMode) || OPENCLAW_MODES[0], [selectedMode]);
 
     // --- OpenClaw Master Agent State ---
-    const [openclawStatus, setOpenClawStatus] = useState({ online: true, status: 'ready', label: 'OpenClaw' });
+    const [openclawStatus, setOpenClawStatus] = useState({ online: true, status: 'ready', label: 'Bart' });
     const [openclawConfig, setOpenClawConfig] = useState({ model: '', hasGeminiApiKey: false });
     const [testConnectionLoading, setTestConnectionLoading] = useState(false);
     const [testConnectionResult, setTestConnectionResult] = useState(null);
 
     // --- Chat State ---
     const [messages, setMessages] = useState([
-        { id: '1', role: 'bot', text: '⚡ **OpenClaw Agent activo**. Soy el orquestador autónomo maestro y cerebro central de tu Command Center. Tengo acceso en tiempo real a tus proyectos, eventos, tareas y base RAG.\n\nEscribe cualquier instrucción o usa comandos rápidos como `/proyecto`, `/evento`, `/tarea` o `/rag`.' }
+        { id: '1', role: 'bot', text: '⚡ **Bart activo**. Soy el orquestador autónomo maestro y cerebro central de tu Command Center. Tengo acceso en tiempo real a tus proyectos, eventos, tareas y base RAG.\n\nEscribe cualquier instrucción o usa comandos rápidos como `/proyecto`, `/evento`, `/tarea` o `/rag`.' }
     ]);
     const [input, setInput] = useState('');
     const [isThinking, setIsThinking] = useState(false);
@@ -68,7 +68,7 @@ export default function AgentBrain() {
     const [showApiModal, setShowApiModal] = useState(false);
 
     // --- Skills Marketplace State ---
-    const [systemRole, setSystemRole] = useState(() => localStorage.getItem('__openclaw_system_role') || 'Eres OpenClaw Super Agent, el orquestador autónomo maestro y cerebro central de este Command Center.');
+    const [systemRole, setSystemRole] = useState(() => localStorage.getItem('__openclaw_system_role') || 'Eres Bart, el orquestador autónomo maestro y cerebro central de este Command Center.');
     const [agentSkills, setAgentSkills] = useState(() => localStorage.getItem('__openclaw_agent_skills') || '1. Responde de forma proactiva, estructurada y ejecutiva.\n2. Ejecuta llamadas a herramientas (function calling) cuando se soliciten proyectos, tareas o hitos.\n3. Consulta siempre la base de conocimiento RAG cuando haya dudas operativas.');
     const [skillPresets, setSkillPresets] = useState([
         { id: 'budget_calc', name: 'Presupuestos & Costos', icon: '💰', color: '#10b981', enabled: true, desc: 'Calcula presupuestos y desgloses con márgenes de contingencia.' },
@@ -91,6 +91,18 @@ export default function AgentBrain() {
     useEffect(() => {
         scrollToBottom(chatEndRef.current);
     }, [messages, isThinking, thinkingStep]);
+
+    // Puente con OpenClaw en el Mac (bart-bridge)
+    const [bridgeStatus, setBridgeStatus] = useState({ online: false });
+    const [showBridgeModal, setShowBridgeModal] = useState(false);
+    const [copiedInstall, setCopiedInstall] = useState(false);
+    useEffect(() => {
+        const load = () => { if (document.visibilityState === 'visible') OpenClawBrainService.getBridgeStatus().then(setBridgeStatus); };
+        load();
+        const id = setInterval(load, 15000);
+        return () => clearInterval(id);
+    }, []);
+    const installCommand = `bash <(curl -fsSL ${window.location.origin}/bridge/setup-mac.sh) ${window.location.origin}`;
 
     // Load initial telemetry and config
     useEffect(() => {
@@ -203,6 +215,25 @@ export default function AgentBrain() {
         setTimeout(() => setThinkingStep('tool'), 400);
 
         try {
+            // 1) Bart en el OpenClaw del Mac (si el puente está conectado)
+            let macNotice = '';
+            if (bridgeStatus.online) {
+                try {
+                    const mac = await OpenClawBrainService.askOrchestrator(userText);
+                    setMessages(prev => [...prev, {
+                        id: (Date.now() + 1).toString(),
+                        role: 'bot',
+                        text: `${mac.reply}\n\n_🖥️ ${mac.provider}_`
+                    }]);
+                    if (refreshData) refreshData();
+                    return;
+                } catch (macErr) {
+                    if (macErr.offline) setBridgeStatus(st => ({ ...st, online: false }));
+                    macNotice = `\n\n_⚠️ ${macErr.message}: respondió Bart en la nube._`;
+                }
+            }
+
+            // 2) Bart en la nube (Gemini o motor local)
             // Build active skills text from presets
             const activePresetPrompts = skillPresets.filter(p => p.enabled).map(p => `- ${p.name}: ${p.desc}`).join('\n');
             const fullSkills = `${agentSkills}\n\n[HABILIDADES ACTIVAS]:\n${activePresetPrompts}`;
@@ -233,17 +264,17 @@ export default function AgentBrain() {
             setMessages(prev => [...prev, {
                 id: (Date.now() + 1).toString(),
                 role: 'bot',
-                text: result.reply + executedFeedback + sourcesFeedback
+                text: result.reply + executedFeedback + sourcesFeedback + macNotice
             }]);
 
             if (refreshData) refreshData();
 
         } catch (err) {
-            console.error('[Chat] OpenClaw error:', err);
+            console.error('[Chat] Bart error:', err);
             setMessages(prev => [...prev, {
                 id: (Date.now() + 1).toString(),
                 role: 'bot',
-                text: `⚠️ **OpenClaw Super Agent Status**: ${err.message}`
+                text: `⚠️ **Bart Status**: ${err.message}`
             }]);
         } finally {
             setIsThinking(false);
@@ -252,7 +283,7 @@ export default function AgentBrain() {
     };
 
     const handleExportChat = () => {
-        const text = messages.map(m => `### ${m.role === 'user' ? 'OPERADOR' : 'OPENCLAW AGENT'}\n${m.text}\n`).join('\n---\n\n');
+        const text = messages.map(m => `### ${m.role === 'user' ? 'OPERADOR' : 'BART'}\n${m.text}\n`).join('\n---\n\n');
         const blob = new Blob([text], { type: 'text/markdown' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -407,10 +438,10 @@ export default function AgentBrain() {
                 <div>
                     <h1 style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <BrainCircuit size={26} style={{ color: 'var(--accent-primary)' }} />
-                        Consola OpenClaw IA & Cerebro RAG
+                        Consola Bart IA & Cerebro RAG
                     </h1>
                     <p style={{ color: 'var(--text-secondary)', fontSize: '13.5px', marginTop: '4px' }}>
-                        Orquestación central gobernada por <strong>OpenClaw Agent</strong> con base de conocimientos RAG unificada.
+                        Orquestación central gobernada por <strong>Bart</strong> con base de conocimientos RAG unificada.
                     </p>
                 </div>
 
@@ -419,12 +450,12 @@ export default function AgentBrain() {
                         className="btn btn-ghost" 
                         onClick={() => { setTestConnectionResult(null); setShowApiModal(true); }}
                         style={{ padding: '8px', color: 'var(--text-secondary)' }}
-                        title="Configurar conexión OpenClaw Agent"
+                        title="Configurar conexión Bart"
                     >
                         <Settings size={20} />
                     </button>
 
-                    {/* OpenClaw Agent Status Pill */}
+                    {/* Bart Status Pill */}
                     <span style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -437,7 +468,7 @@ export default function AgentBrain() {
                         fontWeight: 700,
                         border: `1px solid ${statusColor}4d`,
                         cursor: 'pointer'
-                    }} onClick={() => setShowApiModal(true)} title={openclawStatus?.lastError?.message || 'Configurar OpenClaw'}>
+                    }} onClick={() => setShowApiModal(true)} title={openclawStatus?.lastError?.message || 'Configurar Bart'}>
                         <div style={{
                             width: '8px',
                             height: '8px',
@@ -445,25 +476,67 @@ export default function AgentBrain() {
                             background: statusColor,
                             boxShadow: `0 0 8px ${statusColor}`
                         }} />
-                        {openclawStatus?.label || 'OpenClaw'}
+                        {openclawStatus?.label || 'Bart'}
                     </span>
                 </div>
             </div>
 
-            {/* OpenClaw & AI Settings Modal */}
+            {/* Bart & AI Settings Modal */}
+            {showBridgeModal && (
+                <div className="modal-overlay" onClick={() => setShowBridgeModal(false)}>
+                    <div className="modal" style={{ maxWidth: '560px' }} onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h3 style={{ margin: 0 }}>Conectar con OpenClaw en tu Mac</h3>
+                            <button className="btn btn-ghost" style={{ padding: '4px' }} onClick={() => setShowBridgeModal(false)} aria-label="Cerrar"><X size={18} /></button>
+                        </div>
+                        <div className="modal-body" style={{ fontSize: '13px', lineHeight: 1.55 }}>
+                            <div className={`bridge-state ${bridgeStatus.online ? 'online' : ''}`}>
+                                <span className="bridge-dot" />
+                                {bridgeStatus.online
+                                    ? <>Conectado a <strong>{bridgeStatus.host || 'tu Mac'}</strong> · agente <strong>{bridgeStatus.agentName}</strong> (openclaw/{bridgeStatus.agentId}) · gateway {bridgeStatus.gateway}</>
+                                    : <>Sin conexión con tu Mac{bridgeStatus.lastSeen ? ` (última vez ${new Date(bridgeStatus.lastSeen).toLocaleString('es-PA')})` : ''}. Mientras tanto responde Bart en la nube.</>}
+                            </div>
+
+                            {!bridgeStatus.apiTokenConfigured && (
+                                <p style={{ color: 'var(--accent-orange)' }}>
+                                    ⚠️ Primero define <code>API_TOKEN</code> en las variables de Render (cualquier clave larga) y reinicia el servicio: el puente la usa para conectarse.
+                                </p>
+                            )}
+
+                            <p style={{ marginTop: '14px' }}>En la <strong>Terminal de tu Mac</strong> (con OpenClaw abierto), pega:</p>
+                            <div className="bridge-command">
+                                <code>{installCommand}</code>
+                                <button type="button" className="btn btn-primary" onClick={() => { navigator.clipboard.writeText(installCommand); setCopiedInstall(true); setTimeout(() => setCopiedInstall(false), 2000); }}>
+                                    {copiedInstall ? <Check size={14} /> : <Copy size={14} />} {copiedInstall ? 'Copiado' : 'Copiar'}
+                                </button>
+                            </div>
+                            <ol style={{ paddingLeft: '18px', color: 'var(--text-secondary)', margin: '12px 0 0' }}>
+                                <li>Te pide el <code>API_TOKEN</code> de Render (no se muestra en pantalla).</li>
+                                <li>Activa el endpoint local de OpenClaw (<code>127.0.0.1</code>, nunca se expone a internet) y busca tu agente <strong>Bart</strong>.</li>
+                                <li>Instala la skill <code>command-center</code> para que Bart lea y actúe en el dashboard desde cualquier chat.</li>
+                                <li>Deja <code>bart-bridge</code> corriendo como servicio: arranca solo con el Mac.</li>
+                            </ol>
+                            <p style={{ color: 'var(--text-tertiary)', fontSize: '12px', marginTop: '12px' }}>
+                                El puente se conecta hacia el dashboard; tu Mac no abre puertos. Cada persona del equipo tiene su propia sesión con Bart.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {showApiModal && (
                 <div className="modal-overlay">
                     <div className="modal" style={{ maxWidth: '500px' }}>
                         <div className="modal-header">
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                 <Bot size={22} style={{ color: '#a78bfa' }} />
-                                <h3 style={{ margin: 0 }}>Conexión de OpenClaw Agent</h3>
+                                <h3 style={{ margin: 0 }}>Conexión de Bart</h3>
                             </div>
                             <button className="btn btn-ghost" style={{ padding: '4px' }} onClick={() => setShowApiModal(false)}><X size={18} /></button>
                         </div>
                         <div className="modal-body">
                             <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-                                OpenClaw corre dentro de este servidor. Con una clave de Gemini responde con IA y ejecuta acciones; sin clave usa el motor local (consultas, tareas, eventos, notas y RAG).
+                                Bart corre dentro de este servidor. Con una clave de Gemini responde con IA y ejecuta acciones; sin clave usa el motor local (consultas, tareas, eventos, notas y RAG).
                             </p>
 
                             <div className="form-group" style={{ marginBottom: '16px', background: 'rgba(56, 189, 248, 0.08)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(56, 189, 248, 0.25)' }}>
@@ -570,7 +643,7 @@ export default function AgentBrain() {
                         whiteSpace: 'nowrap'
                     }}
                 >
-                    <Bot size={16} /> Consola OpenClaw Super-Agent
+                    <Bot size={16} /> Consola Bart
                 </button>
                 <button
                     onClick={() => setActiveTab('rag_inspector')}
@@ -713,6 +786,15 @@ export default function AgentBrain() {
                                         </span>
                                     </div>
                                 </div>
+                                <button
+                                    type="button"
+                                    className={`bridge-badge ${bridgeStatus.online ? 'online' : ''}`}
+                                    onClick={() => setShowBridgeModal(true)}
+                                    title={bridgeStatus.online ? `Conectado a ${bridgeStatus.host || 'tu Mac'} · openclaw/${bridgeStatus.agentId}` : 'Conectar con OpenClaw en tu Mac'}
+                                >
+                                    <span className="bridge-dot" />
+                                    {bridgeStatus.online ? `${bridgeStatus.agentName || 'Bart'} · tu Mac` : 'Conectar mi Mac'}
+                                </button>
                             </div>
 
                             {/* Message List */}
@@ -720,7 +802,7 @@ export default function AgentBrain() {
                                 {messages.map(msg => (
                                     <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start', gap: '6px' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--text-secondary)' }}>
-                                            {msg.role === 'user' ? 'OPERADOR' : '🤖 OPENCLAW AGENT'}
+                                            {msg.role === 'user' ? 'OPERADOR' : '🤖 BART'}
                                         </div>
                                         <div className="agent-chat-bubble" style={{
                                             maxWidth: '78%',
@@ -744,7 +826,7 @@ export default function AgentBrain() {
                                 {/* Live Chain-of-Thought Trace */}
                                 {isThinking && (
                                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '6px' }}>
-                                        <span style={{ fontSize: '11px', color: '#a78bfa' }}>🤖 OPENCLAW CHAIN-OF-THOUGHT</span>
+                                        <span style={{ fontSize: '11px', color: '#a78bfa' }}>🤖 BART CHAIN-OF-THOUGHT</span>
                                         <div style={{
                                             padding: '14px 20px',
                                             borderRadius: '12px',
@@ -787,7 +869,7 @@ export default function AgentBrain() {
                                     display: 'flex', flexDirection: 'column', gap: '4px'
                                 }}>
                                     <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--accent-primary)', padding: '4px 8px', textTransform: 'uppercase' }}>
-                                        Comandos Rápidos de OpenClaw
+                                        Comandos Rápidos de Bart
                                     </div>
                                     {SLASH_COMMANDS.map(cmd => (
                                         <button
@@ -1148,15 +1230,15 @@ export default function AgentBrain() {
                         <div className="card" style={{ padding: '32px', background: 'radial-gradient(circle at center, rgba(139, 92, 246, 0.08) 0%, rgba(10, 10, 15, 0.95) 100%)', textAlign: 'center' }}>
                             <h3 style={{ margin: '0 0 8px 0', fontSize: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
                                 <Cpu size={22} style={{ color: '#a78bfa' }} />
-                                Topología de Red y Arquitectura de OpenClaw
+                                Topología de Red y Arquitectura de Bart
                             </h3>
                             <p style={{ color: 'var(--text-secondary)', fontSize: '13.5px', marginBottom: '32px' }}>
-                                Visualización de interconexión en tiempo real entre OpenClaw Super Agent, el motor RAG y los subsistemas del Command Center.
+                                Visualización de interconexión en tiempo real entre Bart, el motor RAG y los subsistemas del Command Center.
                             </p>
 
                             {/* Central Diagram */}
                             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative', minHeight: '340px' }}>
-                                {/* Central Master OpenClaw Node */}
+                                {/* Central Master Bart Node */}
                                 <div style={{
                                     width: '150px', height: '150px', borderRadius: '50%',
                                     background: 'linear-gradient(135deg, #7c5cfc, #4f46e5)',
@@ -1167,7 +1249,7 @@ export default function AgentBrain() {
                                     animation: 'pulse-purple 3s infinite'
                                 }}>
                                     <Bot size={36} />
-                                    <span style={{ fontWeight: 800, fontSize: '13px', marginTop: '6px' }}>OPENCLAW AGENT</span>
+                                    <span style={{ fontWeight: 800, fontSize: '13px', marginTop: '6px' }}>BART</span>
                                     <span style={{ fontSize: '10px', opacity: 0.9 }}>Master Orchestrator</span>
                                 </div>
 
@@ -1238,7 +1320,7 @@ export default function AgentBrain() {
                                     Autopilot Autónomo de Fondo
                                 </h4>
                                 <p style={{ color: 'var(--text-secondary)', fontSize: '12.5px', lineHeight: '1.5', marginBottom: '16px' }}>
-                                    Permite a OpenClaw escanear tareas periódicamente cada 30 segundos y verificar hitos de proyectos.
+                                    Permite a Bart escanear tareas periódicamente cada 30 segundos y verificar hitos de proyectos.
                                 </p>
                                 <button
                                     className={`btn ${autopilotActive ? 'btn-danger' : 'btn-primary'}`}
@@ -1283,7 +1365,7 @@ export default function AgentBrain() {
                                     Marketplace de Habilidades Especializadas
                                 </h3>
                                 <p style={{ color: 'var(--text-secondary)', fontSize: '13px', margin: '6px 0 0 0' }}>
-                                    Activa o desactiva módulos de conocimiento pre-entrenados para moldear las capacidades de OpenClaw en tiempo real.
+                                    Activa o desactiva módulos de conocimiento pre-entrenados para moldear las capacidades de Bart en tiempo real.
                                 </p>
                             </div>
 
@@ -1350,7 +1432,7 @@ export default function AgentBrain() {
                             <div className="card" style={{ padding: '24px' }}>
                                 <h4 style={{ margin: '0 0 10px 0', fontSize: '16px' }}>Reglas Operativas Personalizadas</h4>
                                 <p style={{ color: 'var(--text-secondary)', fontSize: '12.5px', marginBottom: '14px' }}>
-                                    Reglas específicas que OpenClaw recordará en cada conversación.
+                                    Reglas específicas que Bart recordará en cada conversación.
                                 </p>
                                 <textarea
                                     className="form-control"
@@ -1369,7 +1451,7 @@ export default function AgentBrain() {
                 )}
 
                 {/* ═════════════════════════════════════════════════════════════════ */}
-                {/* 5. OPENCLAW BRIDGE & AUDIT TAB                                    */}
+                {/* 5. BART BRIDGE & AUDIT TAB                                    */}
                 {/* ═════════════════════════════════════════════════════════════════ */}
                 {activeTab === 'openclaw_bridge' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -1380,7 +1462,7 @@ export default function AgentBrain() {
                             <div className="card" style={{ padding: '24px' }}>
                                 <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', display: 'flex', alignItems: 'center', gap: '10px' }}>
                                     <Bot size={20} style={{ color: '#a78bfa' }} />
-                                    Despachador Manual de Acciones OpenClaw
+                                    Despachador Manual de Acciones Bart
                                 </h3>
                                 <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '20px' }}>
                                     Prueba ejecuciones de herramientas directamente contra la base de datos local y el logger de auditoría.
@@ -1442,7 +1524,7 @@ export default function AgentBrain() {
                                     </button>
                                 </div>
                                 <p style={{ color: 'var(--text-secondary)', fontSize: '12.5px', marginBottom: '14px' }}>
-                                    Herramientas OpenAI-compatible que OpenClaw invoca para interactuar con la base de datos.
+                                    Herramientas OpenAI-compatible que Bart invoca para interactuar con la base de datos.
                                 </p>
                                 <pre style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-subtle)', padding: '12px', borderRadius: '8px', maxHeight: '280px', overflowY: 'auto', fontSize: '11px', color: '#c4b5fd' }}>
                                     {JSON.stringify(openclawToolsList || {}, null, 2)}
@@ -1455,7 +1537,7 @@ export default function AgentBrain() {
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                                 <h3 style={{ margin: 0, fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     <ShieldCheck size={20} style={{ color: 'var(--accent-green)' }} />
-                                    Registro de Auditoría de OpenClaw (Logs)
+                                    Registro de Auditoría de Bart (Logs)
                                 </h3>
                                 <button className="btn btn-ghost" onClick={() => fetch('/api/openclaw/logs', { method: 'DELETE' }).then(() => refreshData())} style={{ fontSize: '12px', color: 'var(--accent-red)' }}>
                                     Limpiar Logs

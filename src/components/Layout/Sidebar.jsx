@@ -15,7 +15,7 @@ const navItems = [
     { path: '/contactos', icon: User, label: 'Contactos', section: 'OPERATIONS' },
     { path: '/social', icon: Share2, label: 'Redes Sociales', section: 'OPERATIONS' },
     { path: '/whatsapp-agent', icon: MessageSquare, label: 'Agente WhatsApp & Difusión', section: 'INTELLIGENCE' },
-    { path: '/agent-brain', icon: BrainCircuit, label: 'OpenClaw & Cerebro RAG', section: 'INTELLIGENCE' },
+    { path: '/agent-brain', icon: BrainCircuit, label: 'Bart & Cerebro RAG', section: 'INTELLIGENCE' },
 ];
 
 export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }) {

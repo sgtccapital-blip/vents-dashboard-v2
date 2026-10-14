@@ -117,7 +117,7 @@ export function registerRagRoutes(app, ctx) {
                 .reduce((acc, k) => acc + (Array.isArray(db[k]) ? db[k].length : 0), 0);
             return {
                 ready: true,
-                provider: 'OpenClaw RAG (BM25 local sobre documentos + datos en vivo)',
+                provider: 'Bart RAG (BM25 local sobre documentos + datos en vivo)',
                 indexed: docs.length + live,
                 documents: docs.length,
                 liveEntities: live,

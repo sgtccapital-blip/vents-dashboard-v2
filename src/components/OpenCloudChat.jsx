@@ -117,7 +117,7 @@ export default function OpenCloudChat({ onClose }) {
                     </div>
                     <div>
                         <div style={{ fontSize: '15px', fontWeight: 700, letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
-                            OpenClaw Super Agent
+                            Bart
                             <span style={{ fontSize: '10px', padding: '2px 6px', background: 'rgba(139,92,246,0.15)', color: '#a78bfa', borderRadius: '6px', fontWeight: 600 }}>
                                 Sincronizado
                             </span>
@@ -220,7 +220,7 @@ export default function OpenCloudChat({ onClose }) {
                                 <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent-primary)', animation: 'bounce 1s infinite 0.2s' }} />
                                 <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent-primary)', animation: 'bounce 1s infinite 0.3s' }} />
                             </span>
-                            <span>OpenClaw pensando...</span>
+                            <span>Bart pensando...</span>
                         </div>
                     </div>
                 )}
@@ -287,7 +287,7 @@ export default function OpenCloudChat({ onClose }) {
 
                     <input 
                         type="text"
-                        placeholder="Escribe a OpenClaw o di 'crear tarea...'" 
+                        placeholder="Escribe a Bart o di 'crear tarea...'" 
                         value={input}
                         onChange={e => setInput(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && handleSendText()}

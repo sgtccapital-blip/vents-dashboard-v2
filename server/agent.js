@@ -319,7 +319,7 @@ export const AGENT_ACTIONS = [
  */
 export function executeAgentAction(actionName, rawData, db, { source: sourceOpt, today = new Date(), user = null } = {}) {
     // Quién pidió la acción queda en la actividad ("OpenClaw · MARIO")
-    const source = sourceOpt || (user ? `OpenClaw · ${user}` : 'OpenClaw Super Agent');
+    const source = sourceOpt || (user ? `Bart · ${user}` : 'Bart');
     const data = rawData && typeof rawData === 'object' ? rawData : {};
     ['projects', 'events', 'tasks', 'notes'].forEach(k => { db[k] = list(db[k]); });
     const todayKey = toDateKey(today);
@@ -486,7 +486,7 @@ export function executeAgentAction(actionName, rawData, db, { source: sourceOpt,
                 id: data.id || `note-${Date.now()}`,
                 title: data.title || text.slice(0, 50),
                 text,
-                category: data.category || 'OpenClaw',
+                category: data.category || 'Bart',
                 projectId: data.projectId || null,
                 date: todayKey,
             };
@@ -664,7 +664,7 @@ export function buildSystemPrompt(db, { ragContext = '', skills = '', systemRole
     const clients = list(db.projects).filter(p => p.isClient || p.agency === 'arrive' || String(p.id || '').startsWith('client-'))
         .map(c => ({ name: c.name, industry: c.industry, tone: c.brand?.toneOfVoice, dos: c.brand?.dos, donts: c.brand?.donts }));
 
-    return `Eres OpenClaw, el agente operativo del Command Center de GG: agencia ARRIVE (clientes, contenido, talento), venues y eventos de nightlife en Panamá, y el portafolio de proyectos.
+    return `Eres Bart, el agente operativo del Command Center de GG: agencia ARRIVE (clientes, contenido, talento), venues y eventos de nightlife en Panamá, y el portafolio de proyectos.
 Hoy es ${todayKey} (zona America/Panama).${user ? ` Hablas con ${user} (miembro del equipo): "mis tareas" son las asignadas a ${user} y, si no dice responsable, asigna a ${user}.` : ''} Responde en español, directo y accionable, usando markdown breve (listas, negritas). No inventes datos: si algo no está en el contexto, dilo o usa search_knowledge.
 
 Reglas de herramientas:

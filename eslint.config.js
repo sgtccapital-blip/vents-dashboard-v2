@@ -7,7 +7,7 @@ import { defineConfig, globalIgnores } from 'eslint/config'
 export default defineConfig([
   globalIgnores(['dist', 'repo_git', 'backups', 'BrainVault', '_agent_inbox', '_uploads_tmp', 'node_modules']),
   {
-    files: ['**/*.{js,jsx}'],
+    files: ['**/*.{js,jsx,mjs}'],
     extends: [
       js.configs.recommended,
       reactHooks.configs.flat.recommended,
@@ -28,7 +28,7 @@ export default defineConfig([
   },
   {
     // Código que corre en Node (servidor y scripts), no en el navegador
-    files: ['server.js', 'server/**/*.js', '*.cjs', 'seed-db.js', 'tests/**/*.js'],
+    files: ['server.js', 'server/**/*.js', 'bridge/**/*.mjs', '*.cjs', 'seed-db.js', 'tests/**/*.js'],
     languageOptions: {
       globals: { ...globals.node },
     },

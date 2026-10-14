@@ -23,7 +23,7 @@ const CORE_PROJECTS_META = [
         objective: 'Agencia de marketing matriz (https://arriveservices.com): 3 divisiones operativas — ARRIVE Services (marketing & creative), ARRIVE Models (UGC, creadoras y convocatorias de cenas VIP de chicas en restaurantes de Panamá) y ARRIVE Nightlife (producción semanal en Terraplén Rooftop, Furia y Piano Bar) + ARRIVE Studio.',
         nextAction: 'Coordinar con hostess de relaciones públicas las convocatorias semanales de cenas y entrega de contenido para marcas.',
         blockers: 'Sincronizar el pipeline de aprobación de invitaciones vía WhatsApp para cenas.',
-        lead: 'ARRIVE Master Director & OpenClaw',
+        lead: 'ARRIVE Master Director & Bart',
         kpi: '25 modelos activas + 3 cenas semanales con asistencia 100% confirmada',
         progress: 88,
         defaultTasks: [
@@ -47,11 +47,11 @@ const CORE_PROJECTS_META = [
         objective: 'Plataforma móvil y web de acceso digital a clubs nocturnos, pre-order de botellas, confirmación de mesas VIP y dinámica social de eventos en Panamá.',
         nextAction: 'Validar prototipo de UI con promotores de Casco Antiguo y afinar onboarding de venues.',
         blockers: 'Definir arquitectura de comisiones e integración de pagos locales.',
-        lead: 'OpenClaw & Product Squad',
+        lead: 'Bart & Product Squad',
         kpi: 'Prototipo Figma + 150 early-adopters en waitlist',
         progress: 45,
         defaultTasks: [
-            { id: 't-ho-1', text: 'Diseñar arquitectura de datos para reserva de mesas y split de consumo', block: 'producto', priority: 'critical', owner: 'OpenClaw', done: true, due: '2026-10-15' },
+            { id: 't-ho-1', text: 'Diseñar arquitectura de datos para reserva de mesas y split de consumo', block: 'producto', priority: 'critical', owner: 'Bart', done: true, due: '2026-10-15' },
             { id: 't-ho-2', text: 'Prototipar flujos de onboarding para promotores y venues', block: 'producto', priority: 'high', owner: 'Product Squad', done: false, due: '2026-10-25' },
             { id: 't-ho-3', text: 'Validar modelo de comisión sobre venta de entradas y consumos', block: 'comercial', priority: 'critical', owner: 'CloserOps', done: false, due: '2026-11-05' },
             { id: 't-ho-4', text: 'Lanzar landing page con captación de emails y lista de espera VIP', block: 'marketing', priority: 'high', owner: 'Nexus', done: false, due: '2026-11-15' }
@@ -71,14 +71,14 @@ const CORE_PROJECTS_META = [
         objective: 'SaaS de inteligencia artificial que procesa pliegos de licitaciones públicas de PanamáCompra, extrae matrices de requisitos y califica la elegibilidad de constructoras y proveedores.',
         nextAction: 'Completar benchmark del extractor RAG con 50 pliegos oficiales > $100k.',
         blockers: 'Normalización de pliegos antiguos escaneados sin capa de texto OCR.',
-        lead: 'OpenClaw Core & CloserOps',
+        lead: 'Bart Core & CloserOps',
         kpi: '95% precisión en extracción de requisitos de pliegos',
         progress: 35,
         defaultTasks: [
-            { id: 't-lic-1', text: 'Construir pipeline OCR + chunking para pliegos de PanamáCompra', block: 'producto', priority: 'critical', owner: 'OpenClaw', done: true, due: '2026-10-10' },
+            { id: 't-lic-1', text: 'Construir pipeline OCR + chunking para pliegos de PanamáCompra', block: 'producto', priority: 'critical', owner: 'Bart', done: true, due: '2026-10-10' },
             { id: 't-lic-2', text: 'Mapear 100 constructoras y proveedores con licitaciones activas', block: 'comercial', priority: 'high', owner: 'CloserOps', done: false, due: '2026-10-30' },
-            { id: 't-lic-3', text: 'Diseñar interfaz para subir pliegos y recibir matriz de checklist legal', block: 'producto', priority: 'high', owner: 'OpenClaw', done: false, due: '2026-11-10' },
-            { id: 't-lic-4', text: 'Simulación de propuesta técnica generada por IA con auditoría legal', block: 'estrategia', priority: 'critical', owner: 'OpenClaw', done: false, due: '2026-11-25' }
+            { id: 't-lic-3', text: 'Diseñar interfaz para subir pliegos y recibir matriz de checklist legal', block: 'producto', priority: 'high', owner: 'Bart', done: false, due: '2026-11-10' },
+            { id: 't-lic-4', text: 'Simulación de propuesta técnica generada por IA con auditoría legal', block: 'estrategia', priority: 'critical', owner: 'Bart', done: false, due: '2026-11-25' }
         ]
     },
     {
@@ -101,7 +101,7 @@ const CORE_PROJECTS_META = [
         defaultTasks: [
             { id: 't-rec-1', text: 'Definir arquitectura de microservicio de transcripción con diarización', block: 'producto', priority: 'critical', owner: 'Audio AI Lab', done: false, due: '2026-11-01' },
             { id: 't-rec-2', text: 'Crear prompt maestro de extracción de compromisos, riesgos y acuerdos', block: 'estrategia', priority: 'high', owner: 'Bart (COO)', done: false, due: '2026-11-12' },
-            { id: 't-rec-3', text: 'Integración de webhooks para enviar tareas automáticas a Workspace', block: 'operacion', priority: 'high', owner: 'OpenClaw', done: false, due: '2026-11-20' },
+            { id: 't-rec-3', text: 'Integración de webhooks para enviar tareas automáticas a Workspace', block: 'operacion', priority: 'high', owner: 'Bart', done: false, due: '2026-11-20' },
             { id: 't-rec-4', text: 'Testear prototipo con 10 reuniones reales y medir precisión', block: 'producto', priority: 'medium', owner: 'Audio AI Lab', done: false, due: '2026-12-05' }
         ]
     },
@@ -119,13 +119,13 @@ const CORE_PROJECTS_META = [
         objective: 'Billetera digital y pasarela de micro-pagos QR para hospitality: permite a grupos en mesas VIP y barras dividir cuentas en partes iguales o exactas instantáneamente desde el móvil.',
         nextAction: 'Análisis de viabilidad con adquirentes locales (procesadores bancarios y sandbox Yappy/Tarjetas).',
         blockers: 'Requisitos de licencia fintech y cumplimiento regulatorio bancario.',
-        lead: 'Fintech Squad & OpenClaw',
+        lead: 'Fintech Squad & Bart',
         kpi: 'Sandbox de pago completado en menos de 3 segundos',
         progress: 15,
         defaultTasks: [
             { id: 't-wal-1', text: 'Investigación de marco regulatorio fintech y pasarelas en Panamá', block: 'estrategia', priority: 'critical', owner: 'Fintech Squad', done: false, due: '2026-11-15' },
             { id: 't-wal-2', text: 'Diseñar flujo UX para escaneo QR de cuenta y división grupal', block: 'producto', priority: 'high', owner: 'Product Squad', done: false, due: '2026-12-01' },
-            { id: 't-wal-3', text: 'Simular integración con sistemas POS de restaurantes y rooftops', block: 'operacion', priority: 'medium', owner: 'OpenClaw', done: false, due: '2026-12-20' },
+            { id: 't-wal-3', text: 'Simular integración con sistemas POS de restaurantes y rooftops', block: 'operacion', priority: 'medium', owner: 'Bart', done: false, due: '2026-12-20' },
             { id: 't-wal-4', text: 'Definir modelo de negocio (fee por transacción o suscripción venue)', block: 'comercial', priority: 'high', owner: 'CloserOps', done: false, due: '2027-01-15' }
         ]
     }
@@ -183,7 +183,7 @@ export default function PortfolioOS() {
                     statusLabel: p.status || 'Activo',
                     objective: p.description || '',
                     nextAction: 'Continuar ejecución de hitos y tareas asignadas.',
-                    lead: p.leadAgent || 'OpenClaw Team',
+                    lead: p.leadAgent || 'Bart Team',
                     kpi: `${(p.milestones || []).filter(m => m.done).length}/${Math.max((p.milestones || []).length, 1)} Hitos`,
                     progress: Math.round(((p.milestones || []).filter(m => m.done).length / Math.max((p.milestones || []).length, 1)) * 100) || 50,
                     defaultTasks: []
@@ -214,7 +214,7 @@ export default function PortfolioOS() {
         decision: '',
         motivo: '',
         impacto: 'Crítico / Estratégico',
-        decisor: 'ARRIVE Director & OpenClaw'
+        decisor: 'ARRIVE Director & Bart'
     });
 
     // Roadmap Modal
@@ -324,7 +324,7 @@ export default function PortfolioOS() {
             decision: '',
             motivo: '',
             impacto: 'Crítico / Estratégico',
-            decisor: 'ARRIVE Director & OpenClaw'
+            decisor: 'ARRIVE Director & Bart'
         });
     };
 
@@ -356,7 +356,7 @@ export default function PortfolioOS() {
                     projectId: actionItem.data.projectId || 'portfolio-hangout',
                     priority: actionItem.data.priority || 'critical',
                     block: actionItem.data.block || 'estrategia',
-                    assignedTo: 'OpenClaw Super Agent'
+                    assignedTo: 'Bart'
                 });
             } else if (actionItem.type === 'add_decision') {
                 await addDecision(actionItem.data);
@@ -482,7 +482,7 @@ export default function PortfolioOS() {
                     { id: 'tasks', label: '2. Task Plans & Bloques', icon: ListTodo },
                     { id: 'decisions', label: '3. Decision Log', icon: BookOpen },
                     { id: 'roadmap', label: '4. Strategic Roadmap', icon: GitPullRequest },
-                    { id: 'openclaw', label: '5. OpenClaw Coordination & Logs', icon: Radio }
+                    { id: 'openclaw', label: '5. Bart Coordination & Logs', icon: Radio }
                 ].map(tab => (
                     <button
                         key={tab.id}
@@ -755,7 +755,7 @@ export default function PortfolioOS() {
                             <option value="FANNY">👤 FANNY</option>
                             <option value="JEIKOB">👤 JEIKOB</option>
                             <option value="FIVVR">👤 FIVVR</option>
-                            <option value="OpenClaw">🤖 OpenClaw</option>
+                            <option value="Bart">🤖 Bart</option>
                         </select>
                         <button type="submit" className="btn btn-primary" style={{ padding: '9px 18px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
                             <Plus size={16} /> Añadir Tarea
@@ -1051,16 +1051,16 @@ export default function PortfolioOS() {
             )}
 
             {/* ═════════════════════════════════════════════════════════════════ */}
-            {/* 5. OPENCLAW COORDINATION & LOGS TAB                              */}
+            {/* 5. BART COORDINATION & LOGS TAB                              */}
             {/* ═════════════════════════════════════════════════════════════════ */}
             {activeTab === 'openclaw' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                     
-                    {/* Suggested Actions by OpenClaw Banner */}
+                    {/* Suggested Actions by Bart Banner */}
                     <div className="card" style={{ padding: '24px', background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(59, 130, 246, 0.04))', border: '1px solid rgba(139, 92, 246, 0.25)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
                             <Sparkles size={20} style={{ color: '#a78bfa' }} />
-                            <h3 style={{ margin: 0, fontSize: '17px', color: 'white' }}>Acciones Sugeridas por OpenClaw Super Agent</h3>
+                            <h3 style={{ margin: 0, fontSize: '17px', color: 'white' }}>Acciones Sugeridas por Bart</h3>
                         </div>
                         <p style={{ color: 'var(--text-secondary)', fontSize: '13px', margin: '0 0 16px 0' }}>
                             Propuestas autónomas derivadas del análisis del portafolio, estados de proyectos y cuellos de botella.
@@ -1106,12 +1106,12 @@ export default function PortfolioOS() {
                     {/* Operational Memos & Real-time Logs */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
                         
-                        {/* OpenClaw Activity Logs */}
+                        {/* Bart Activity Logs */}
                         <div className="card" style={{ padding: '20px', maxHeight: '450px', overflowY: 'auto' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
                                 <h4 style={{ margin: 0, fontSize: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     <Radio size={16} style={{ color: '#38bdf8' }} />
-                                    Registro de Actividad de OpenClaw
+                                    Registro de Actividad de Bart
                                 </h4>
                                 <span style={{ fontSize: '11px', color: '#4ade80' }}>● En Vivo</span>
                             </div>
@@ -1139,7 +1139,7 @@ export default function PortfolioOS() {
                             </h4>
                             <div style={{ background: 'rgba(0,0,0,0.3)', padding: '16px', borderRadius: '10px', border: '1px solid var(--border-subtle)', fontSize: '13px', color: '#e2e8f0', lineHeight: '1.6' }}>
                                 <p style={{ margin: '0 0 10px 0' }}>
-                                    <strong>Reglas de Operación de OpenClaw:</strong>
+                                    <strong>Reglas de Operación de Bart:</strong>
                                 </p>
                                 <ul style={{ margin: 0, paddingLeft: '20px' }}>
                                     <li><strong>Hang Out</strong> es la prioridad #1 en velocidad de validación y tracción local.</li>

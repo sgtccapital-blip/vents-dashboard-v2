@@ -1,4 +1,4 @@
-// Production state initializes empty. Real data comes from OpenClaw backend and user input.
+// Production state initializes empty. Real data comes from Bart backend and user input.
 
 export const seedProjects = [
   {
@@ -98,7 +98,7 @@ export const seedProjects = [
       "target": 10,
       "unit": "demos"
     },
-    "leadAgent": "OpenClaw Super Agent",
+    "leadAgent": "Bart",
     "links": [
       "https://www.panamacompra.gob.pa/"
     ],
@@ -215,7 +215,7 @@ export const seedProjects = [
       "target": 3,
       "unit": "clientes"
     },
-    "leadAgent": "OpenClaw Super Agent",
+    "leadAgent": "Bart",
     "links": [
       "https://youtube.com/@konektalabs"
     ],
@@ -605,7 +605,7 @@ export const seedProjects = [
     "path": "/Users/admin/Documents/HangOut",
     "docsPath": "/Users/admin/Documents/HangOut/docs",
     "currentObjective": "Completar documentación, definir wedge, ICP y MVP antes de programar.",
-    "leadAgent": "OpenClaw Super Agent",
+    "leadAgent": "Bart",
     "tags": [
       "Eventos",
       "Nightlife",
@@ -635,8 +635,8 @@ export const seedProjects = [
   },
   {
     "id": "proj-1787275228256",
-    "name": "Sistema Autónomo OpenClaw Test",
-    "description": "Prueba de integración de OpenClaw Bridge",
+    "name": "Sistema Autónomo Bart Test",
+    "description": "Prueba de integración de Bart Bridge",
     "category": "software",
     "type": "software",
     "templateKey": "project_software",
@@ -650,7 +650,7 @@ export const seedProjects = [
       "Gemini AI"
     ],
     "githubRepo": "",
-    "leadAgent": "OpenClaw Super Agent",
+    "leadAgent": "Bart",
     "milestones": [
       {
         "id": "m-1",
@@ -673,13 +673,13 @@ export const seedProjects = [
     ],
     "tasks": [],
     "tags": [
-      "OpenClaw",
+      "Bart",
       "Proyecto"
     ],
     "activityLog": [
       {
         "id": "log-1787275228256",
-        "text": "🚀 Proyecto creado e inicializado por OpenClaw Super Agent",
+        "text": "🚀 Proyecto creado e inicializado por Bart",
         "time": "8:20:28 PM",
         "type": "created"
       }
@@ -1610,8 +1610,8 @@ export const seedEvents = [
   },
   {
     "id": "proj-1787275228256",
-    "name": "Sistema Autónomo OpenClaw Test",
-    "description": "Prueba de integración de OpenClaw Bridge",
+    "name": "Sistema Autónomo Bart Test",
+    "description": "Prueba de integración de Bart Bridge",
     "category": "project",
     "type": "software",
     "templateKey": "project_software",
@@ -1620,7 +1620,7 @@ export const seedEvents = [
     "date": "2026-08-21",
     "budget": "2500",
     "estimatedBudget": "2500",
-    "organizer": "OpenClaw Super Agent",
+    "organizer": "Bart",
     "techStack": [
       "React",
       "FastAPI",
@@ -1654,21 +1654,21 @@ export const seedEvents = [
         "id": "ag-1",
         "time": "09:00",
         "title": "Definición de arquitectura y roadmap",
-        "speaker": "OpenClaw Super Agent",
+        "speaker": "Bart",
         "description": "Hito del proyecto"
       },
       {
         "id": "ag-2",
         "time": "09:00",
         "title": "Desarrollo del Core MVP",
-        "speaker": "OpenClaw Super Agent",
+        "speaker": "Bart",
         "description": "Hito del proyecto"
       },
       {
         "id": "ag-3",
         "time": "09:00",
         "title": "Pruebas y despliegue inicial",
-        "speaker": "OpenClaw Super Agent",
+        "speaker": "Bart",
         "description": "Hito del proyecto"
       }
     ],
@@ -2943,7 +2943,7 @@ export const seedDecisionLog = [
         decision: 'Hang Out será Mobile-First centrado en Nightlife, Mesas VIP y Social RSVPs',
         motivo: 'Mayor tracción inicial, monetización rápida con promotores de eventos y validación inmediata del ecosistema nocturno panameño antes de expandir a otros verticales.',
         impacto: 'Crítico / Estratégico',
-        decisor: 'OpenClaw & Product Squad'
+        decisor: 'Bart & Product Squad'
     },
     {
         id: 'dec-2',
@@ -2953,7 +2953,7 @@ export const seedDecisionLog = [
         decision: 'LicitIA enfocará su primer MVP en constructoras y proveedores de obras públicas >$100k',
         motivo: 'Contratos estatales de alto valor con matrices de requisitos complejas y alta disposición a pagar por automatización y detección de riesgos en pliegos de PanamáCompra.',
         impacto: 'Crítico / Mercado',
-        decisor: 'OpenClaw Core & CloserOps'
+        decisor: 'Bart Core & CloserOps'
     },
     {
         id: 'dec-3',
@@ -2973,7 +2973,7 @@ export const seedDecisionLog = [
         decision: 'Modelo de Split Bills y QR Pay para mesas de hospitalidad sin requerir licencia bancaria directa',
         motivo: 'Operar mediante adquirencia aliada / sandbox regulatorio de pasarelas locales para acelerar el time-to-market y reducir barreras de cumplimiento AML.',
         impacto: 'Alto / Regulatorio',
-        decisor: 'Fintech Squad & OpenClaw'
+        decisor: 'Fintech Squad & Bart'
     }
 ];
 

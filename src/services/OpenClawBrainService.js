@@ -47,7 +47,7 @@ export const SLASH_COMMANDS = [
     { command: '/proyecto', label: '/proyecto [nombre]', desc: 'Crea un nuevo proyecto en el Hub con roadmap' },
     { command: '/evento', label: '/evento [nombre] [fecha]', desc: 'Agenda un evento con agenda y requerimientos' },
     { command: '/tarea', label: '/tarea [descripción]', desc: 'Añade una tarea priorizada a la lista' },
-    { command: '/rag', label: '/rag [término o pregunta]', desc: 'Consulta directa a la base de conocimiento RAG de OpenClaw' },
+    { command: '/rag', label: '/rag [término o pregunta]', desc: 'Consulta directa a la base de conocimiento RAG de Bart' },
     { command: '/reporte', label: '/reporte', desc: 'Genera un reporte ejecutivo del estado del Dashboard' },
     { command: '/limpiar', label: '/limpiar', desc: 'Reinicia el historial de mensajes de la conversación' }
 ];
@@ -178,9 +178,34 @@ class OpenClawBrainService {
             executedTools: data.executedTools || [],
             sources: data.sources || [],
             model: data.model || 'openclaw-local',
-            provider: data.provider || 'OpenClaw',
+            provider: data.provider || 'Bart',
             usage: data.usage || null
         };
+    }
+
+    /** Estado del puente con OpenClaw en el Mac: { online, agentId, agentName, gateway, apiTokenConfigured… } */
+    static async getBridgeStatus() {
+        try {
+            const res = await fetch(`${API_BASE}/bridge/status`, { credentials: 'include' });
+            if (res.ok) return await res.json();
+        } catch { /* sin conexión */ }
+        return { online: false };
+    }
+
+    /**
+     * Envía un mensaje a Bart en el OpenClaw del Mac (vía bart-bridge).
+     * Lanza un error con `offline: true` si el Mac no está conectado.
+     */
+    static async askOrchestrator(prompt) {
+        const res = await fetch(`${API_BASE}/bart/orchestrator`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw Object.assign(new Error(data.error || `Error ${res.status}`), { offline: !!data.offline });
+        return data;
     }
 
     /** Transcribe una nota de voz (Blob) con Gemini en el servidor. Devuelve el texto. */

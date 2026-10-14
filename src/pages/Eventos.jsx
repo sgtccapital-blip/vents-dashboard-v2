@@ -24,16 +24,16 @@ export const PROJECT_AND_EVENT_TEMPLATES = {
         category: 'project',
         description: 'Desarrollo de aplicaciones web, móviles, microservicios, SaaS, APIs y herramientas digitales.',
         defaultTechStack: ['React', 'Node.js', 'Express', 'Gemini AI', 'Supabase'],
-        defaultLeadAgent: 'OpenClaw Super Agent',
+        defaultLeadAgent: 'Bart',
         defaultAgenda: [
-            { id: 'ag-1', time: '09:00', title: 'Sprint Planning & Definición de Backlog', speaker: 'OpenClaw / Dev Lead', description: 'User stories, especificaciones y prioridades del sprint' },
+            { id: 'ag-1', time: '09:00', title: 'Sprint Planning & Definición de Backlog', speaker: 'Bart / Dev Lead', description: 'User stories, especificaciones y prioridades del sprint' },
             { id: 'ag-2', time: '14:00', title: 'Arquitectura, Esquemas DB y Endpoints', speaker: 'Lead Dev', description: 'Estructura de datos, backend APIs y modelos' },
             { id: 'ag-3', time: '18:00', title: 'Despliegue MVP & Continuous Integration', speaker: 'DevOps / QA', description: 'Testing automatizado y staging build' }
         ],
         defaultRequirements: [
             { id: 'req-1', name: 'Repositorio GitHub y ramas protegidas configuradas', done: true },
             { id: 'req-2', name: 'Arquitectura de base de datos y endpoints API definidos', done: false },
-            { id: 'req-3', name: 'Integración de OpenClaw Super Agent para QA y tareas continuas', done: false }
+            { id: 'req-3', name: 'Integración de Bart para QA y tareas continuas', done: false }
         ],
         defaultMilestones: [
             { id: 'm-1', title: 'Especificación de Arquitectura & UI Wireframes', done: true, deadline: '' },
@@ -53,7 +53,7 @@ export const PROJECT_AND_EVENT_TEMPLATES = {
         defaultTechStack: ['CRM', 'Stripe', 'Google Workspace', 'Analytics'],
         defaultLeadAgent: 'Bart (COO)',
         defaultAgenda: [
-            { id: 'ag-1', time: '10:00', title: 'Validación de Modelo de Monetización', speaker: 'COO / OpenClaw', description: 'Estructura de precios, CAC, LTV y unit economics' },
+            { id: 'ag-1', time: '10:00', title: 'Validación de Modelo de Monetización', speaker: 'COO / Bart', description: 'Estructura de precios, CAC, LTV y unit economics' },
             { id: 'ag-2', time: '12:00', title: 'Negociación de Proveedores y Alianzas', speaker: 'Sourcing / Legal', description: 'Cierre de contratos y acuerdos clave' },
             { id: 'ag-3', time: '16:00', title: 'Lanzamiento GTM (Go-to-Market) & Ventas', speaker: 'Sales Lead', description: 'Apertura de canal comercial y prospección' }
         ],
@@ -70,22 +70,22 @@ export const PROJECT_AND_EVENT_TEMPLATES = {
     },
     project_openclaw: {
         id: 'project_openclaw',
-        name: '🤖 Pipeline Autónomo OpenClaw IA',
-        badgeLabel: '🤖 OPENCLAW PIPELINE',
+        name: '🤖 Pipeline Autónomo Bart IA',
+        badgeLabel: '🤖 BART PIPELINE',
         color: '#8b5cf6',
         icon: '🤖',
         type: 'ai_pipeline',
         category: 'project',
         description: 'Automatizaciones autónomas, agentes de scraping, síntesis RAG, monitores de mercado y webhooks.',
-        defaultTechStack: ['OpenClaw Super Agent', 'Python', 'Webhooks', 'RAG Store', 'OpenClaw'],
-        defaultLeadAgent: 'OpenClaw Super Agent',
+        defaultTechStack: ['Bart', 'Python', 'Webhooks', 'RAG Store', 'Bart'],
+        defaultLeadAgent: 'Bart',
         defaultAgenda: [
-            { id: 'ag-1', time: '08:00', title: 'Ingesta de Datos y Vectorización RAG', speaker: 'OpenClaw Super Agent', description: 'Indexación periódica de documentos y fuentes' },
-            { id: 'ag-2', time: '12:00', title: 'Ejecución de Triggers y Acciones Autónomas', speaker: 'OpenClaw Super Agent', description: 'Procesamiento de eventos y tareas delegadas' },
-            { id: 'ag-3', time: '19:00', title: 'Generación de Reporte y Resumen Diario', speaker: 'OpenClaw Super Agent', description: 'Registro de KPIs, hallazgos y alertas' }
+            { id: 'ag-1', time: '08:00', title: 'Ingesta de Datos y Vectorización RAG', speaker: 'Bart', description: 'Indexación periódica de documentos y fuentes' },
+            { id: 'ag-2', time: '12:00', title: 'Ejecución de Triggers y Acciones Autónomas', speaker: 'Bart', description: 'Procesamiento de eventos y tareas delegadas' },
+            { id: 'ag-3', time: '19:00', title: 'Generación de Reporte y Resumen Diario', speaker: 'Bart', description: 'Registro de KPIs, hallazgos y alertas' }
         ],
         defaultRequirements: [
-            { id: 'req-1', name: 'Webhook OpenClaw conectado a /api/openclaw/action', done: true },
+            { id: 'req-1', name: 'Webhook Bart conectado a /api/openclaw/action', done: true },
             { id: 'req-2', name: 'Esquema de herramientas (JSON tools) activado', done: true },
             { id: 'req-3', name: 'RAG Knowledge Vault alimentado con datos clave', done: false }
         ],
@@ -217,8 +217,8 @@ export default function Eventos() {
         status: 'active',
         priority: 'high',
         date: '', time: '', location: '', capacity: '', estimatedBudget: '',
-        organizer: 'OpenClaw Super Agent', contactPerson: '', phone: '', email: '',
-        leadAgent: 'OpenClaw Super Agent',
+        organizer: 'Bart', contactPerson: '', phone: '', email: '',
+        leadAgent: 'Bart',
         techStackText: 'React, Node.js, Express, Gemini AI',
         githubRepo: '',
         notes: '',
@@ -411,7 +411,7 @@ export default function Eventos() {
             techStack: stackArray,
             budget: form.estimatedBudget || form.budget || '0',
             estimatedBudget: form.estimatedBudget || form.budget || '0',
-            organizer: form.leadAgent || form.organizer || 'OpenClaw Super Agent'
+            organizer: form.leadAgent || form.organizer || 'Bart'
         };
 
         if (editingEntity) {
@@ -444,17 +444,17 @@ export default function Eventos() {
         setOpenclawTestFeedback(null);
         try {
             const demoProject = {
-                name: `Proyecto Autónomo OpenClaw ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
-                description: 'Pipeline de automatización e inteligencia creado directamente vía OpenClaw Webhook Action.',
+                name: `Proyecto Autónomo Bart ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+                description: 'Pipeline de automatización e inteligencia creado directamente vía Bart Webhook Action.',
                 category: 'ai_pipeline',
                 type: 'ai_pipeline',
                 priority: 'critical',
                 status: 'active',
                 deadline: new Date(Date.now() + 86400000 * 7).toISOString().split('T')[0],
                 budget: '2500',
-                techStack: ['OpenClaw Super Agent', 'Python', 'FastAPI', 'RAG Store', 'OpenClaw'],
+                techStack: ['Bart', 'Python', 'FastAPI', 'RAG Store', 'Bart'],
                 githubRepo: 'https://github.com/openclaw-agent/pipeline-core',
-                leadAgent: 'OpenClaw Super Agent',
+                leadAgent: 'Bart',
                 milestones: [
                     { title: 'Conexión & Ingesta RAG', done: true },
                     { title: 'Ejecución de Scrapers & Síntesis', done: false },
@@ -465,7 +465,7 @@ export default function Eventos() {
             await triggerOpenClawAction('create_project', demoProject);
             setOpenclawTestFeedback({
                 type: 'success',
-                message: `✅ ¡Acción ejecutada! OpenClaw creó el proyecto "${demoProject.name}". Se ha sincronizado en el Hub.`
+                message: `✅ ¡Acción ejecutada! Bart creó el proyecto "${demoProject.name}". Se ha sincronizado en el Hub.`
             });
         } catch (e) {
             setOpenclawTestFeedback({ type: 'error', message: `Error: ${e.message}` });
@@ -489,7 +489,7 @@ export default function Eventos() {
                         🚀 Hub de Proyectos & Eventos
                     </h1>
                     <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginTop: '4px' }}>
-                        Command Center unificado para Desarrollo de Software, Negocios, Campañas, Producción de Eventos y OpenClaw Super Agent.
+                        Command Center unificado para Desarrollo de Software, Negocios, Campañas, Producción de Eventos y Bart.
                     </p>
                 </div>
                 <div className="page-header-actions" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
@@ -503,7 +503,7 @@ export default function Eventos() {
                             color: '#a78bfa'
                         }}
                     >
-                        <Bot size={16} /> Conectar OpenClaw Agent
+                        <Bot size={16} /> Conectar Bart
                     </button>
                     <button className="btn btn-primary" onClick={() => openModal()} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <Plus size={16} /> Nuevo Proyecto / Evento
@@ -515,7 +515,7 @@ export default function Eventos() {
             <div className="empresas-metrics-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
                 <MetricCard icon={<Code size={20} />} color="#6366f1" label="Proyectos Digitales" value={totalProjectsCount} />
                 <MetricCard icon={<CalendarDays size={20} />} color="#f43f5e" label="Eventos & Producción" value={totalEventsCount} />
-                <MetricCard icon={<Bot size={20} />} color="#8b5cf6" label="OpenClaw Agent Active" value={openclawCount} />
+                <MetricCard icon={<Bot size={20} />} color="#8b5cf6" label="Bart Active" value={openclawCount} />
                 <MetricCard icon={<Layers size={20} />} color="#10b981" label="Total Entidades" value={combinedEntities.length} />
             </div>
 
@@ -527,7 +527,7 @@ export default function Eventos() {
                         { id: 'projects', label: '🚀 Proyectos & Software', count: totalProjectsCount },
                         { id: 'events', label: '🎉 Eventos', count: totalEventsCount },
                         { id: 'operations', label: '🏢 Operaciones & Club', count: combinedEntities.filter(i => i.category === 'operations' || i.type === '212_admin').length },
-                        { id: 'openclaw', label: '🤖 OpenClaw Agent', count: openclawCount }
+                        { id: 'openclaw', label: '🤖 Bart', count: openclawCount }
                     ].map(tab => (
                         <button
                             key={tab.id}
@@ -659,7 +659,7 @@ export default function Eventos() {
                                                                     color: '#a78bfa', border: '1px solid rgba(139, 92, 246, 0.4)',
                                                                     display: 'flex', alignItems: 'center', gap: '4px'
                                                                 }}>
-                                                                    <Bot size={11} /> OpenClaw
+                                                                    <Bot size={11} /> Bart
                                                                 </span>
                                                             )}
                                                             <span style={{
@@ -812,7 +812,7 @@ export default function Eventos() {
             </DragDropContext>
 
             {/* ═════════════════════════════════════════════════════════════════ */}
-            {/* ─── MODAL: CONECTAR OPENCLAW AGENT ─────────────────────────────── */}
+            {/* ─── MODAL: CONECTAR BART ─────────────────────────────── */}
             {/* ═════════════════════════════════════════════════════════════════ */}
             {showOpenClawModal && (
                 <div className="modal-overlay" onClick={() => setShowOpenClawModal(false)}>
@@ -823,8 +823,8 @@ export default function Eventos() {
                                     <Bot size={20} style={{ color: '#a78bfa' }} />
                                 </div>
                                 <div>
-                                    <h2 className="modal-title" style={{ margin: 0 }}>OpenClaw Super Agent Connection Hub</h2>
-                                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Endpoints REST, Webhooks y Schemas de Tools para tu Agente OpenClaw</span>
+                                    <h2 className="modal-title" style={{ margin: 0 }}>Bart Connection Hub</h2>
+                                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Endpoints REST, Webhooks y Schemas de Tools para tu Agente Bart</span>
                                 </div>
                             </div>
                             <button className="btn-icon" onClick={() => setShowOpenClawModal(false)}><X size={18} /></button>
@@ -835,7 +835,7 @@ export default function Eventos() {
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'rgba(34, 197, 94, 0.08)', border: '1px solid rgba(34, 197, 94, 0.25)', borderRadius: '12px', marginBottom: '20px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                     <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 10px #22c55e' }} />
-                                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#4ade80' }}>OpenClaw Bridge API Activo en Puerto 8090</span>
+                                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#4ade80' }}>Bart Bridge API Activo en Puerto 8090</span>
                                 </div>
                                 <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>v2.0 REST / Tool Calling</span>
                             </div>
@@ -874,9 +874,9 @@ export default function Eventos() {
 
                             <ModalDivider />
 
-                            {/* Tools Schema for OpenClaw Config */}
+                            {/* Tools Schema for Bart Config */}
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                                <ModalSectionLabel>Definición de Tools para OpenClaw (JSON)</ModalSectionLabel>
+                                <ModalSectionLabel>Definición de Tools para Bart (JSON)</ModalSectionLabel>
                                 <button
                                     className="btn btn-ghost"
                                     style={{ padding: '4px 10px', fontSize: '11px' }}
@@ -911,7 +911,7 @@ export default function Eventos() {
                                 fontSize: '11px', color: '#38bdf8', overflowX: 'auto', maxHeight: '140px',
                                 border: '1px solid rgba(255,255,255,0.06)'
                             }}>
-{`// Ejemplo de llamada desde OpenClaw Super Agent:
+{`// Ejemplo de llamada desde Bart:
 POST http://localhost:8090/api/openclaw/action
 Content-Type: application/json
 Authorization: Bearer <API_TOKEN del archivo .env>
@@ -931,9 +931,9 @@ Authorization: Bearer <API_TOKEN del archivo .env>
                             <ModalDivider />
 
                             {/* Interactive Test Sandbox */}
-                            <ModalSectionLabel>Probador Interactivo de OpenClaw Bridge</ModalSectionLabel>
+                            <ModalSectionLabel>Probador Interactivo de Bart Bridge</ModalSectionLabel>
                             <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
-                                Haz clic para simular que tu OpenClaw Super Agent envía una orden autónoma para crear un nuevo proyecto:
+                                Haz clic para simular que tu Bart envía una orden autónoma para crear un nuevo proyecto:
                             </p>
 
                             <button
@@ -946,7 +946,7 @@ Authorization: Bearer <API_TOKEN del archivo .env>
                                 }}
                             >
                                 <Zap size={16} />
-                                {openclawTestLoading ? 'Simulando ejecución de OpenClaw...' : 'Disparar Proyecto de Prueba con OpenClaw'}
+                                {openclawTestLoading ? 'Simulando ejecución de Bart...' : 'Disparar Proyecto de Prueba con Bart'}
                             </button>
 
                             {openclawTestFeedback && (
@@ -1029,7 +1029,7 @@ Authorization: Bearer <API_TOKEN del archivo .env>
                                     <optgroup label="🚀 Proyectos & Tecnología">
                                         <option value="project_software">💻 Proyecto Software / App / Web</option>
                                         <option value="project_business">💼 Proyecto de Negocio / Lanzamiento</option>
-                                        <option value="project_openclaw">🤖 Pipeline Autónomo OpenClaw IA</option>
+                                        <option value="project_openclaw">🤖 Pipeline Autónomo Bart IA</option>
                                         <option value="project_marketing">📣 Campaña de Marketing & Media</option>
                                     </optgroup>
                                     <optgroup label="🎉 Eventos & Producción">
@@ -1059,7 +1059,7 @@ Authorization: Bearer <API_TOKEN del archivo .env>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                                 <div className="form-group">
                                     <label className="form-label">Responsable / Lead Agent</label>
-                                    <input className="form-input" placeholder="Ej: OpenClaw Super Agent, Bart (COO), etc." value={form.leadAgent} onChange={e => setForm({ ...form, leadAgent: e.target.value })} />
+                                    <input className="form-input" placeholder="Ej: Bart, Bart (COO), etc." value={form.leadAgent} onChange={e => setForm({ ...form, leadAgent: e.target.value })} />
                                 </div>
                                 <div className="form-group">
                                     <label className="form-label">Estado</label>

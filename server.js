@@ -41,6 +41,7 @@ import {
 import { registerWhatsAppRoutes } from './server/routes/whatsapp.js';
 import { registerRagRoutes } from './server/routes/rag.js';
 import { registerLegacyAgentRoutes } from './server/routes/legacyAgents.js';
+import { registerBridgeRoutes } from './server/routes/bridge.js';
 import { ensureVapid, buildDailyBrief, buildEveningReminders, sendToUsers, todayIn } from './server/push.js';
 import { normalizeTaskStatus, normalizeEventStatus, TASK_STATUSES, EVENT_STATUSES } from './src/lib/status.js';
 
@@ -566,7 +567,7 @@ function createCRUDRoutes(entityName) {
         // Avisar a quien le asignan una tarea (si se la asigna otra persona)
         const assignee = entityName === 'tasks' && (newItem.assignee || newItem.assignedTo);
         if (assignee && assignee !== req.user && TEAM_MEMBERS.includes(assignee)) {
-            pushToUsers([{ user: assignee, title: `${req.user && req.user !== 'API' ? req.user : 'OpenClaw'} te asignó una tarea`, body: `${newItem.text}${newItem.due ? ` · vence ${newItem.due}` : ''}`, url: '/workspace', tag: `task-${newItem.id}` }])
+            pushToUsers([{ user: assignee, title: `${req.user && req.user !== 'API' ? req.user : 'Bart'} te asignó una tarea`, body: `${newItem.text}${newItem.due ? ` · vence ${newItem.due}` : ''}`, url: '/workspace', tag: `task-${newItem.id}` }])
                 .catch(err => console.warn('[Push] asignación:', err.message));
         }
 
@@ -941,7 +942,7 @@ app.get('/api/agent-intel', (req, res) => {
             const titleLine = lines.find(l => l.startsWith('# ')) || `# ${filename.replace('.md', '')}`;
             
             // Attempt to infer agent from filename (e.g. scout_something.md)
-            let agentName = 'OpenClaw Agent';
+            let agentName = 'Bart';
             if (filename.toLowerCase().startsWith('scout')) agentName = 'Scout';
             if (filename.toLowerCase().startsWith('sentinel')) agentName = 'Sentinel';
             if (filename.toLowerCase().startsWith('atlas')) agentName = 'Atlas';
@@ -1097,7 +1098,7 @@ app.put('/api/sops/:filename', (req, res) => {
 // 1. Get OpenClaw tools schema (OpenAI / JSON formatted tools for OpenClaw)
 app.get(['/api/openclaw/tools', '/api/hermes/tools'], (req, res) => {
     res.json({
-        agent: 'OpenClaw Super Agent',
+        agent: 'Bart',
         version: '2.0',
         endpoint: '/api/openclaw/action',
         stateEndpoint: '/api/openclaw/state',
@@ -1119,7 +1120,7 @@ app.get(['/api/openclaw/tools', '/api/hermes/tools'], (req, res) => {
                             budget: { type: 'string', description: 'Presupuesto estimado o costo' },
                             techStack: { type: 'array', items: { type: 'string' }, description: 'Stack tecnológico o herramientas clave' },
                             githubRepo: { type: 'string', description: 'URL o nombre del repositorio' },
-                            leadAgent: { type: 'string', description: 'Agente o responsable líder (default: OpenClaw Agent)' },
+                            leadAgent: { type: 'string', description: 'Agente o responsable líder (default: Bart)' },
                             milestones: {
                                 type: 'array',
                                 items: {
@@ -1259,7 +1260,7 @@ app.get(['/api/openclaw/state', '/api/hermes/state'], (req, res) => {
     const logs = db.openclawLogs || db.hermesLogs || [];
     res.json({
         timestamp: new Date().toISOString(),
-        agent: 'OpenClaw Super Agent',
+        agent: 'Bart',
         counts: {
             projects: (db.projects || []).length,
             events: (db.events || []).length,
@@ -1292,7 +1293,7 @@ app.delete(['/api/openclaw/logs', '/api/hermes/logs'], (req, res) => {
     db.openclawLogs = [];
     db.hermesLogs = [];
     writeDB(db);
-    res.json({ success: true, message: 'OpenClaw logs cleared' });
+    res.json({ success: true, message: 'Bart logs cleared' });
 });
 
 // 4. OpenClaw Action / Webhook handler
@@ -1306,9 +1307,9 @@ app.post(['/api/openclaw/action', '/api/openclaw/webhook', '/api/hermes/action',
     try {
         const result = executeOpenClawAction(actionName, data, db, { user: req.user !== 'API' ? req.user : null });
         // 422: la acción se entendió pero no se pudo ejecutar (datos faltantes, tarea no encontrada…)
-        return res.status(result.success ? 200 : 422).json({ status: result.success ? 'ok' : 'error', agent: 'OpenClaw Super Agent', action: actionName, result, error: result.success ? undefined : result.error });
+        return res.status(result.success ? 200 : 422).json({ status: result.success ? 'ok' : 'error', agent: 'Bart', action: actionName, result, error: result.success ? undefined : result.error });
     } catch (err) {
-        console.error('[OpenClaw Bridge] Error procesando acción:', err);
+        console.error('[Bart Bridge] Error procesando acción:', err);
         return res.status(500).json({ status: 'error', error: err.message });
     }
 });
@@ -1321,7 +1322,7 @@ function executeOpenClawAction(actionName, data, db, { persist = true, user = nu
         id: `olog-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         action: actionName,
         timestamp: new Date().toISOString(),
-        source: 'OpenClaw Super Agent',
+        source: 'Bart',
         data: data || {},
         status: result.success ? 'success' : 'error',
         error: result.success ? undefined : result.error,
@@ -1427,7 +1428,7 @@ app.get(['/api/openclaw/health', '/api/hermes/health'], async (req, res) => {
         status: lastGeminiError ? 'degraded' : 'ready',
         geminiActive: !!geminiKey,
         lastError: lastGeminiError,
-        label: geminiKey ? `OpenClaw · Gemini (${model}) + RAG` : 'OpenClaw · motor local + RAG (sin GEMINI_API_KEY)'
+        label: geminiKey ? `Bart · Gemini (${model}) + RAG` : 'Bart · motor local + RAG (sin GEMINI_API_KEY)'
     });
 });
 
@@ -1451,7 +1452,7 @@ app.delete('/api/openclaw/chat/history', (req, res) => {
     const db = readDB();
     db.openclawChatHistory = [];
     writeDB(db);
-    res.json({ success: true, message: 'OpenClaw chat history cleared' });
+    res.json({ success: true, message: 'Bart chat history cleared' });
 });
 
 // 7. OpenClaw Chat: Gemini con herramientas + RAG; si no hay clave o Gemini falla, agente local
@@ -1483,7 +1484,7 @@ async function handleOpenClawChat(req, res) {
             db,
             namespace,
             user,
-            onError: (errors) => console.warn('[OpenClaw] Gemini no respondió:', errors.join(' | ')),
+            onError: (errors) => console.warn('[Bart] Gemini no respondió:', errors.join(' | ')),
         });
         if (result?.executedTools?.length) {
             result.executedTools.forEach(t => logAgentTool(db, t));
@@ -1504,7 +1505,7 @@ async function handleOpenClawChat(req, res) {
         lastGeminiError = { at: new Date().toISOString(), message: result?.error || 'sin respuesta' };
         if (result?.executedTools?.length) {
             // Ya se ejecutaron acciones: no repetirlas con el agente local
-            return res.json({ reply: result.reply, executedTools: result.executedTools, sources, model: 'openclaw-local', provider: 'OpenClaw (Gemini incompleto)' });
+            return res.json({ reply: result.reply, executedTools: result.executedTools, sources, model: 'openclaw-local', provider: 'Bart (Gemini incompleto)' });
         }
     }
 
@@ -1522,7 +1523,7 @@ async function handleOpenClawChat(req, res) {
         executedTools: local.executedTools,
         sources: local.sources || sources,
         model: 'openclaw-local',
-        provider: apiKey ? 'OpenClaw local (Gemini no disponible)' : 'OpenClaw local (sin Gemini)',
+        provider: apiKey ? 'Bart local (Gemini no disponible)' : 'Bart local (sin Gemini)',
         usage: null,
     });
 }
@@ -1533,7 +1534,7 @@ function notifyAgentAssignments(executedTools = [], actor) {
         .filter(t => t.name === 'add_task' && t.result?.success && t.result.task?.assignee && t.result.task.assignee !== actor)
         .map(({ result: { task } }) => ({
             user: task.assignee,
-            title: `${actor ? `${actor} (vía OpenClaw)` : 'OpenClaw'} te asignó una tarea`,
+            title: `${actor ? `${actor} (vía Bart)` : 'Bart'} te asignó una tarea`,
             body: `${task.text}${task.due ? ` · vence ${task.due}` : ''}`,
             url: '/workspace',
             tag: `task-${task.id}`,
@@ -1546,7 +1547,7 @@ function logAgentTool(db, { name, args, result }) {
     db.openclawLogs = Array.isArray(db.openclawLogs) ? db.openclawLogs : [];
     db.openclawLogs.unshift({
         id: `olog-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        action: name, timestamp: new Date().toISOString(), source: 'OpenClaw Chat', data: args || {},
+        action: name, timestamp: new Date().toISOString(), source: 'Bart Chat', data: args || {},
         status: result?.success ? 'success' : 'error', error: result?.success ? undefined : result?.error,
     });
     db.openclawLogs = db.openclawLogs.slice(0, 50);
@@ -1650,7 +1651,7 @@ app.post('/api/openclaw/execute', (req, res) => {
             if (!db.activityFeed) db.activityFeed = [];
             db.activityFeed.unshift({
                 id: `act-${Date.now() + 1}`,
-                text: `[OpenClaw] ${action} → ${entity || ''}${id ? '/' + id : ''}`,
+                text: `[Bart] ${action} → ${entity || ''}${id ? '/' + id : ''}`,
                 color: '#8b5cf6',
                 timestamp: new Date().toISOString()
             });
@@ -2069,6 +2070,9 @@ try {
     console.warn('[Cron] No se pudo inicializar cron job:', e.message);
 }
 
+// ─── Puente con OpenClaw en el Mac (Bart) ─────────────────────
+registerBridgeRoutes(app, { apiTokenConfigured: !!API_TOKEN, publicDir: path.join(__dirname, 'bridge') });
+
 // ─── Static Frontend Serving ──────────────────────────────────
 app.use(express.static(path.join(__dirname, 'dist')));
 
@@ -2102,6 +2106,29 @@ app.use((err, req, res, next) => {
     }
 })();
 
+// Migración única: el agente se llama Bart (antes "OpenClaw Super Agent", "Hermes Agent"…).
+// Solo toca campos de autoría del agente, nunca notas ni textos escritos por el equipo.
+function migrateAgentNames() {
+    try {
+        const db = readDB();
+        if (db._migrations?.bartRename) return;
+        const OLD = /^(OpenClaw( Super Agent| Agent)?|Hermes( Agent)?|OpenClaw \/ Staff)$/i;
+        let n = 0;
+        const fix = (obj, key) => { if (typeof obj?.[key] === 'string' && OLD.test(obj[key].trim())) { obj[key] = 'Bart'; n++; } };
+        for (const p of db.projects || []) fix(p, 'leadAgent');
+        for (const e of db.events || []) {
+            fix(e, 'organizer');
+            fix(e, 'leadAgent');
+            for (const a of e.agenda || []) fix(a, 'speaker');
+        }
+        db._migrations = { ...(db._migrations || {}), bartRename: new Date().toISOString() };
+        writeDB(db);
+        if (n) console.log(`   🤖 ${n} campos de autoría renombrados a Bart`);
+    } catch (err) {
+        console.warn('Migración Bart:', err.message);
+    }
+}
+
 // ─── Start ────────────────────────────────────────────────────
 
 // Mantener despierto el plan gratis de Render: se hace ping a la URL pública cada 10 min
@@ -2116,11 +2143,12 @@ if (process.env.KEEP_ALIVE === 'true' && process.env.RENDER_EXTERNAL_URL) {
 app.listen(PORT, '0.0.0.0', async () => {
     console.log(`\n⚡ Command Center API & Frontend running on http://localhost:${PORT}`);
     console.log(`   Health: http://localhost:${PORT}/api/health`);
-    console.log(`   OpenClaw Chat Proxy: POST http://localhost:${PORT}/api/openclaw/chat`);
-    console.log(`   OpenClaw Health: GET http://localhost:${PORT}/api/openclaw/health`);
+    console.log(`   Bart Chat Proxy: POST http://localhost:${PORT}/api/openclaw/chat`);
+    console.log(`   Bart Health: GET http://localhost:${PORT}/api/openclaw/health`);
     
     // La restauración desde Supabase arrancó al cargar el módulo; las peticiones /api la esperan
     await supabaseReady();
+    migrateAgentNames();
     
     // Initialize db.json if it doesn't exist
     if (!fs.existsSync(DB_PATH)) {
@@ -2138,6 +2166,6 @@ app.listen(PORT, '0.0.0.0', async () => {
     // Auto-index entities into embedded RAG
     await EmbeddedRAGEngine.indexAllData();
     const status = await EmbeddedRAGEngine.getStatus();
-    console.log(`   🧠 OpenClaw RAG Brain: ONLINE (${status.indexed} docs indexed)`);
+    console.log(`   🧠 Bart RAG Brain: ONLINE (${status.indexed} docs indexed)`);
     console.log(`   Brain Query: POST http://localhost:${PORT}/api/brain/query\n`);
 });

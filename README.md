@@ -124,3 +124,25 @@ Una vez finalizado el despliegue de Render:
 ---
 
 *Desarrollado con pasión para una gestión impecable de eventos y crecimiento operativo. ⚡*
+
+---
+
+## 🤖 Conectar Bart (OpenClaw en tu Mac)
+
+La sección **OpenClaw Master Orchestrator** (Bart & Cerebro RAG) habla con el agente **Bart** de tu
+OpenClaw local. El gateway de OpenClaw nunca se expone a internet: un pequeño puente (`bart-bridge`)
+corre en tu Mac y se conecta *hacia* el dashboard.
+
+1. En Render define `API_TOKEN` (una clave larga cualquiera) y reinicia el servicio.
+2. En el dashboard: **Bart & Cerebro RAG → OpenClaw Master Orchestrator → Conectar mi Mac** y copia el comando:
+   ```bash
+   bash <(curl -fsSL https://TU-DASHBOARD/bridge/setup-mac.sh) https://TU-DASHBOARD
+   ```
+3. Pégalo en la Terminal del Mac. El instalador activa el endpoint local de OpenClaw
+   (`gateway.http.endpoints.chatCompletions.enabled`), encuentra a Bart, instala la skill
+   `command-center` (para que Bart lea/actúe en el dashboard desde cualquier chat) y deja el puente
+   como servicio de `launchd`.
+
+Si el Mac está apagado, responde Bart en la nube (Gemini o motor local). Log del puente:
+`tail -f ~/.bart-bridge/bridge.log`.
+

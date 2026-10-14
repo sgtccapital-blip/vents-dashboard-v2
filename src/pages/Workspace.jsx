@@ -263,9 +263,9 @@ export default function Workspace() {
                             cursor: 'pointer',
                             marginLeft: '8px'
                         }}
-                        title="Abrir panel lateral de OpenClaw Super Agent"
+                        title="Abrir panel lateral de Bart"
                     >
-                        <Bot size={16} /> OpenClaw Chat
+                        <Bot size={16} /> Bart Chat
                     </button>
                 </div>
             </div>
@@ -388,7 +388,7 @@ export default function Workspace() {
 
             </div>
 
-            {/* ═══ Side Drawer: OpenClaw Chat (Synced with DashboardCopilot) ══════ */}
+            {/* ═══ Side Drawer: Bart Chat (Synced with DashboardCopilot) ══════ */}
             <div className={`ws-chat-drawer ${showChat ? 'open' : ''}`} aria-hidden={!showChat} style={{
                 position: 'fixed',
                 top: 0, right: 0, bottom: 0,

@@ -46,7 +46,7 @@ const pageTitles = {
     '/calendar': 'Master Calendar',
     '/eventos': 'Eventos',
     '/social': 'Redes Sociales',
-    '/agent-brain': 'OpenClaw & Cerebro RAG',
+    '/agent-brain': 'Bart & Cerebro RAG',
 };
 
 export default function Topbar({ collapsed, searchQuery, onSearchChange, onMobileMenuToggle, onCloudSyncToggle }) {

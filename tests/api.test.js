@@ -199,3 +199,39 @@ test('la configuración nunca devuelve claves guardadas', async () => {
     assert.equal(cfg.apiKey, undefined);
     assert.equal(cfg.hasGeminiApiKey, true);
 });
+
+test('puente con OpenClaw: sin Mac → 409; con puente → entrega el mensaje y devuelve la respuesta', async () => {
+    const cookie = cookieOf(await login({ user: 'GG', password: PASSWORD }));
+    const ask = () => fetch(`${BASE}/bart/orchestrator`, { method: 'POST', headers: { Cookie: cookie, 'Content-Type': 'application/json' }, body: json({ prompt: 'hola Bart' }) });
+
+    const offline = await ask();
+    assert.equal(offline.status, 409);
+    assert.equal((await offline.json()).offline, true);
+
+    // Un usuario normal no puede hacerse pasar por el puente
+    assert.equal((await fetch(`${BASE}/bridge/next`, { headers: { Cookie: cookie } })).status, 403);
+
+    // El "Mac" abre un long-poll con el API_TOKEN y queda conectado
+    const poll = api('/bridge/next?agentId=bart&agentName=Bart&gateway=ok');
+    await new Promise(r => setTimeout(r, 100));
+    const status = await (await fetch(`${BASE}/bridge/status`, { headers: { Cookie: cookie } })).json();
+    assert.equal(status.online, true);
+    assert.equal(status.agentId, 'bart');
+
+    const answer = ask();
+    const { job } = await (await poll).json();
+    assert.equal(job.prompt, 'hola Bart');
+    assert.equal(job.user, 'GG');
+    await api('/bridge/reply', { method: 'POST', body: json({ id: job.id, reply: 'Hola GG, soy Bart' }) });
+    const res = await answer;
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.reply, 'Hola GG, soy Bart');
+    assert.equal(body.via, 'openclaw');
+});
+
+test('instalador del puente: público y sin rutas fuera de la lista', async () => {
+    assert.equal((await fetch(`http://127.0.0.1:${PORT}/bridge/setup-mac.sh`)).status, 200);
+    assert.equal((await fetch(`http://127.0.0.1:${PORT}/bridge/SKILL.md`)).status, 200);
+    assert.equal((await fetch(`http://127.0.0.1:${PORT}/bridge/..%2Fserver.js`)).status, 404);
+});

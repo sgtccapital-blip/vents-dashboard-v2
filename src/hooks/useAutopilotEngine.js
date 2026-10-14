@@ -14,7 +14,7 @@ export function useAutopilotEngine(apiOnline, addActivityOverride) {
             const nextState = !prev;
             if (addActivity) {
                 addActivity({
-                    text: `🤖 OpenClaw Autopilot ${nextState ? 'ACTIVADO' : 'DESACTIVADO'}`,
+                    text: `🤖 Bart Autopilot ${nextState ? 'ACTIVADO' : 'DESACTIVADO'}`,
                     color: nextState ? '#10b981' : '#f43f5e',
                     source: 'autopilot'
                 });
@@ -30,7 +30,7 @@ export function useAutopilotEngine(apiOnline, addActivityOverride) {
         }
 
         const runAuditCycle = async () => {
-            console.log('[OpenClaw Autopilot] Iniciando auditoría operativa en tiempo real...');
+            console.log('[Bart Autopilot] Iniciando auditoría operativa en tiempo real...');
             const now = new Date();
             const issues = [];
 
@@ -123,7 +123,7 @@ export function useAutopilotEngine(apiOnline, addActivityOverride) {
                     })
                 }).catch(() => {});
             } catch (err) {
-                console.error('[OpenClaw Autopilot] Telemetría error:', err);
+                console.error('[Bart Autopilot] Telemetría error:', err);
             }
         };
 

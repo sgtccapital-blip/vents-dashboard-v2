@@ -690,7 +690,7 @@ export default function ArriveClientManager() {
             fetchRagDocs(activeClient.id);
 
             if (addActivity) {
-                addActivity(`🧠 Memoria RAG sincronizada con OpenClaw para "${activeClient.name}"`, '#c084fc');
+                addActivity(`🧠 Memoria RAG sincronizada con Bart para "${activeClient.name}"`, '#c084fc');
             }
         } catch (err) {
             console.error('Error sincronizando RAG con backend:', err);
@@ -1409,7 +1409,7 @@ Conoce a la perfección las directrices del cliente:
                                     boxShadow: '0 3px 12px rgba(124, 92, 252, 0.4)'
                                 }}
                             >
-                                <MessageSquare size={13} /> Hablar con OpenClaw sobre esta Marca
+                                <MessageSquare size={13} /> Hablar con Bart sobre esta Marca
                             </button>
 
                             {activeClient.contactPhone && (
@@ -1683,7 +1683,7 @@ Conoce a la perfección las directrices del cliente:
                                             </span>
                                         </div>
                                         <p style={{ color: '#cbd5e1', fontSize: '12.5px', margin: 0 }}>
-                                            Sube menús en PDF, listas de precios y manuales para que OpenClaw y Gemini conozcan a fondo el negocio.
+                                            Sube menús en PDF, listas de precios y manuales para que Bart y Gemini conozcan a fondo el negocio.
                                         </p>
                                     </div>
                                     <button
@@ -2454,7 +2454,7 @@ Conoce a la perfección las directrices del cliente:
                                             </span>
                                         </div>
                                         <p style={{ color: '#cbd5e1', fontSize: '12.5px', margin: 0 }}>
-                                            Alimenta la memoria de OpenClaw Super Agent y Gemini con la identidad, documentos PDF, menús y reglas exclusivas de esta marca.
+                                            Alimenta la memoria de Bart y Gemini con la identidad, documentos PDF, menús y reglas exclusivas de esta marca.
                                         </p>
                                     </div>
 
@@ -2530,7 +2530,7 @@ Conoce a la perfección las directrices del cliente:
                                         alignItems: 'center',
                                         gap: '8px'
                                     }}>
-                                        <CheckCircle2 size={16} /> ¡Memoria RAG sincronizada exitosamente con el Servidor y lista para OpenClaw & Gemini!
+                                        <CheckCircle2 size={16} /> ¡Memoria RAG sincronizada exitosamente con el Servidor y lista para Bart & Gemini!
                                     </div>
                                 )}
 
@@ -2912,7 +2912,7 @@ Conoce a la perfección las directrices del cliente:
                                             <div>
                                                 <h4 style={{ color: '#fff', fontSize: '16px', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                     <Sparkles size={16} style={{ color: '#fbbf24' }} />
-                                                    Estudio Generativo OpenClaw & Gemini con RAG
+                                                    Estudio Generativo Bart & Gemini con RAG
                                                 </h4>
                                                 <p style={{ color: '#94a3b8', fontSize: '12px', margin: '2px 0 0 0' }}>
                                                     Genera contenido estratégico en tiempo real conectado directamente con los documentos de {activeClient.name}.
@@ -3066,7 +3066,7 @@ Conoce a la perfección las directrices del cliente:
                                             }}>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
                                                     <span style={{ fontSize: '11px', color: '#34d399', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                        <CheckCircle2 size={13} /> RESPUESTA DE OPENCLAW SUPER AGENT (RAG {activeClient.name})
+                                                        <CheckCircle2 size={13} /> RESPUESTA DE BART (RAG {activeClient.name})
                                                     </span>
 
                                                     <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
