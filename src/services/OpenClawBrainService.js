@@ -244,6 +244,12 @@ class OpenClawBrainService {
                 }
             }
 
+            // Cerebro unificado: cualquier interfaz (Consola, Copilot, Jarvis) avisa de las herramientas
+            // ejecutadas para que las demás reaccionen (p. ej. Jarvis suena el preset pedido desde el Copilot).
+            if (data.executedTools && data.executedTools.length > 0 && typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('arrive:agent-tools', { detail: data.executedTools }));
+            }
+
             return {
                 reply: data.reply || data.content || 'Acción procesada por ARRIVE Super Agent.',
                 executedTools: data.executedTools || [],

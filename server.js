@@ -107,7 +107,7 @@ const API_TOKEN = process.env.API_TOKEN || '';
 const SESSION_SECRET = process.env.SESSION_SECRET || crypto.createHash('sha256').update(`cc-session:${DASHBOARD_PASSWORD}`).digest('hex');
 const SESSION_COOKIE = 'cc_session';
 const SESSION_TTL_MS = 10 * 365 * 24 * 60 * 60 * 1000; // 10 years - persistent forever
-const PUBLIC_API_PREFIXES = ['/api/public/', '/api/auth/', '/api/jarvis/'];
+const PUBLIC_API_PREFIXES = ['/api/public/', '/api/auth/'];
 
 function safeEqual(a, b) {
     const ha = crypto.createHash('sha256').update(String(a)).digest();
@@ -2503,6 +2503,67 @@ app.post('/api/jarvis/openjarvis/daemon', (req, res) => {
     }
 });
 
+// ─── Cerebro unificado: OpenClaw (consola), ARRIVE Copilot y Jarvis leen el mismo estado ───
+// Snapshot del dashboard que comparten los tres agentes (y el motor local OpenJarvis).
+function buildDashboardSnapshot(db) {
+    const home = process.env.HOME || '/Users/admin';
+    const pendingTasks = (db.tasks || []).filter(t => !t.done);
+    return {
+        syncedAt: new Date().toISOString(),
+        platform: 'ARRIVE Command Center OS',
+        totalEvents: (db.events || []).length,
+        events: (db.events || []).map(e => ({
+            id: e.id,
+            name: e.name,
+            date: e.date,
+            venue: e.venue || e.venueId,
+            status: e.status,
+            brand: e.brand || e.brandId,
+            ticketsCount: e.ticketTiers?.length || 0
+        })),
+        projects: (db.projects || []).map(p => ({ id: p.id, name: p.name, status: p.status, priority: p.priority })),
+        pendingTasksCount: pendingTasks.length,
+        activeTasks: pendingTasks.slice(0, 30).map(t => ({
+            id: t.id,
+            text: t.text || t.title,
+            priority: t.priority,
+            assignedTo: t.assignedTo || t.assignee,
+            category: t.category,
+            due: t.due || t.dueDate
+        })),
+        recentActivity: (db.activityFeed || []).slice(0, 10).map(a => a.text),
+        jarvis: {
+            music: db.jarvisState?.music || { preset: 'deep_focus', action: 'pause', volume: 80 },
+            foodOrders: (db.foodOrders || []).slice(0, 5).map(o => ({ restaurant: o.restaurant, items: o.items, diners: o.diners, total: o.total, timestamp: o.timestamp })),
+            skills: (db.jarvisSkills || []).filter(s => s.enabled !== false).map(s => ({ name: s.name, trigger: s.trigger, steps: (s.steps || []).length }))
+        },
+        airCloud: {
+            connected: fs.existsSync(path.join(home, 'Documents/AirCloud/cloud_sync.js')),
+            path: '~/Documents/AirCloud',
+            engine: 'rclone Google Drive sync'
+        },
+        cateringCasco: [
+            'Sushi Market Casco (+50762001122)',
+            'Café Unido Casco (+50763002233)',
+            'Tacos La Neta (+50764003344)',
+            'Makoto Panama VIP (+50765004455)',
+            'American Bites (+50766005566)'
+        ]
+    };
+}
+
+// Bloque de Jarvis que se inyecta en el prompt del cerebro unificado.
+function buildJarvisBrainContext(db) {
+    const snap = buildDashboardSnapshot(db).jarvis;
+    const skills = snap.skills.map(s => `"${s.name}" (disparador: "${s.trigger}", ${s.steps} pasos)`).join(', ') || 'ninguna';
+    const orders = snap.foodOrders.map(o => `${o.restaurant} $${Number(o.total || 0).toFixed(2)} (${(o.diners || []).join(', ')})`).join(' | ') || 'sin pedidos recientes';
+    return `[JARVIS — MÓDULO PERSONAL DEL MISMO CEREBRO]:
+- Eres un solo agente con tres interfaces: Consola OpenClaw, ARRIVE Copilot y Jarvis. Comparten memoria de conversación, herramientas y datos.
+- Audio: preset "${snap.music.preset}" (${snap.music.action === 'play' ? 'reproduciendo' : 'en pausa'}, vol ${snap.music.volume}%). Usa 'control_music' para cambiarlo.
+- Pedidos de comida recientes: ${orders}. Usa 'order_food' para coordinar uno nuevo (crea tarea de logística automáticamente).
+- Habilidades aprendidas: ${skills}. Usa 'execute_jarvis_skill' cuando el usuario pida una de ellas.`;
+}
+
 // Sincronizar contexto del Dashboard con la memoria de OpenJarvis
 app.post('/api/jarvis/openjarvis/sync-context', (req, res) => {
     try {
@@ -2513,46 +2574,7 @@ app.post('/api/jarvis/openjarvis/sync-context', (req, res) => {
             fs.mkdirSync(contextDir, { recursive: true });
         }
 
-        const eventsSummary = (db.events || []).map(e => ({
-            id: e.id,
-            name: e.name,
-            date: e.date,
-            venue: e.venue || e.venueId,
-            status: e.status,
-            brand: e.brand || e.brandId,
-            ticketsCount: e.ticketTiers?.length || 0
-        }));
-
-        const tasksSummary = (db.tasks || []).filter(t => !t.done).slice(0, 30).map(t => ({
-            id: t.id,
-            text: t.text,
-            priority: t.priority,
-            assignedTo: t.assignedTo,
-            category: t.category
-        }));
-
-        const airCloudFile = path.join(home, 'Documents/AirCloud/cloud_sync.js');
-        const airCloudExists = fs.existsSync(airCloudFile);
-
-        const snapshot = {
-            syncedAt: new Date().toISOString(),
-            platform: 'ARRIVE Command Center OS',
-            totalEvents: (db.events || []).length,
-            events: eventsSummary,
-            activeTasks: tasksSummary,
-            airCloud: {
-                connected: airCloudExists,
-                path: '~/Documents/AirCloud',
-                engine: 'rclone Google Drive sync'
-            },
-            cateringCasco: [
-                'Sushi Market Casco (+50762001122)',
-                'Café Unido Casco (+50763002233)',
-                'Tacos La Neta (+50764003344)',
-                'Makoto Panama VIP (+50765004455)',
-                'American Bites (+50766005566)'
-            ]
-        };
+        const snapshot = buildDashboardSnapshot(db);
 
         const contextFile = path.join(contextDir, 'dashboard_context.json');
         fs.writeFileSync(contextFile, JSON.stringify(snapshot, null, 2), 'utf-8');
@@ -2561,8 +2583,8 @@ app.post('/api/jarvis/openjarvis/sync-context', (req, res) => {
             success: true,
             syncedAt: snapshot.syncedAt,
             contextFile,
-            eventsCount: eventsSummary.length,
-            tasksCount: tasksSummary.length
+            eventsCount: snapshot.events.length,
+            tasksCount: snapshot.activeTasks.length
         });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
@@ -2575,20 +2597,22 @@ app.post('/api/jarvis/openjarvis/chat', async (req, res) => {
     if (!message) return res.status(400).json({ error: 'Mensaje requerido' });
 
     try {
-        const home = process.env.HOME || '/Users/admin';
-        const contextFile = path.join(home, '.openjarvis/dashboard_context.json');
-        let contextSnippet = '';
-        if (fs.existsSync(contextFile)) {
-            try {
-                const ctx = JSON.parse(fs.readFileSync(contextFile, 'utf-8'));
-                contextSnippet = `\n[CONTEXTO DASHBOARD ARRIVE EN VIVO]: ${ctx.totalEvents} eventos registrados, ${ctx.activeTasks.length} tareas activas. AirCloud: ${ctx.airCloud.engine}.`;
-            } catch (e) {}
-        }
+        // Mismo estado en vivo que usa el cerebro unificado (no el archivo de la última sincronización)
+        const db = readDB();
+        const snap = buildDashboardSnapshot(db);
+        const contextSnippet = `\n[CONTEXTO DASHBOARD ARRIVE EN VIVO]: ${JSON.stringify({
+            eventos: snap.events.slice(0, 10),
+            proyectos: snap.projects,
+            tareasPendientes: snap.pendingTasksCount,
+            tareas: snap.activeTasks.slice(0, 15),
+            actividadReciente: snap.recentActivity,
+            jarvis: snap.jarvis
+        })}`;
 
         const messages = [
             {
                 role: 'system',
-                content: `Eres OpenJarvis, la Inteligencia Artificial Personal Oficial de Stanford, integrada en el Command Center de ARRIVE en Panamá. Tienes control de música, eventos, catering de Casco Antiguo y AirCloud.${contextSnippet}`
+                content: `Eres Jarvis, la interfaz personal del agente unificado del Command Center de ARRIVE en Panamá (el mismo cerebro que la Consola OpenClaw y ARRIVE Copilot), ejecutándose en el motor local OpenJarvis. Tienes control de música, eventos, catering de Casco Antiguo y AirCloud.${contextSnippet}`
             },
             ...history.map(h => ({ role: h.role, content: h.content })),
             { role: 'user', content: message }
@@ -2676,7 +2700,8 @@ async function handleOpenClawChat(req, res) {
     // Inyectar Contexto Operativo en Tiempo Real
     const liveProjects = (db.projects || []).map(p => ({ id: p.id, name: p.name, status: p.status, priority: p.priority, lead: p.leadAgent || p.lead }));
     const liveEvents = (db.events || []).map(e => ({ id: e.id, name: e.name, date: e.date, status: e.status, location: e.location, budget: e.budget }));
-    const pendingTasks = (db.tasks || []).filter(t => !t.done).slice(0, 30).map(t => ({ id: t.id, text: t.text || t.title, priority: t.priority, venue: t.venue || t.category, due: t.due || t.dueDate, assignedTo: t.assignedTo || t.assignee }));
+    const allPendingTasks = (db.tasks || []).filter(t => !t.done);
+    const pendingTasks = allPendingTasks.slice(0, 30).map(t => ({ id: t.id, text: t.text || t.title, priority: t.priority, venue: t.venue || t.category, due: t.due || t.dueDate, assignedTo: t.assignedTo || t.assignee }));
     const activeModels = (db.imageGirls || []).slice(0, 10).map(m => ({ id: m.id, name: m.name, status: m.status, category: m.category }));
     const activePromoters = (db.promoters || []).slice(0, 10).map(p => ({ id: p.id, name: p.name, venue: p.venue, status: p.status }));
 
@@ -2735,9 +2760,11 @@ Cuando el usuario te hable, te dicte una nota de voz o te escriba una lista de p
 [ESTADO EN TIEMPO REAL DEL DASHBOARD]:
 - Eventos Programados (${liveEvents.length}): ${JSON.stringify(liveEvents.slice(0, 8))}
 - Proyectos Activos (${liveProjects.length}): ${JSON.stringify(liveProjects)}
-- Tareas Pendientes en Cola (${pendingTasks.length}): ${JSON.stringify(pendingTasks.slice(0, 15))}
+- Tareas Pendientes en Cola (${allPendingTasks.length} en total; muestra de las primeras 15): ${JSON.stringify(pendingTasks.slice(0, 15))}
 - Modelos Image Girls (${activeModels.length}): ${JSON.stringify(activeModels.slice(0, 5))}
 - Promotores (${activePromoters.length}): ${JSON.stringify(activePromoters.slice(0, 5))}
+
+${buildJarvisBrainContext(db)}
 
 [BASE RAG DE CONOCIMIENTO]:
 ${ragContext || 'Información de la base de datos local y memoria operativa activa.'}

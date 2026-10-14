@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import OpenClawBrainService, { OPENCLAW_MODES, SLASH_COMMANDS } from '../services/OpenClawBrainService';
 import RagIndexer from '../services/RagIndexer';
@@ -12,10 +13,10 @@ import {
     FileText, CheckSquare, Search, Eye, Download, BookOpen, Sliders, ChevronRight,
     SlidersHorizontal, Compass, PieChart, Wrench, Shield, FileCheck
 } from 'lucide-react';
-import JarvisSkillsHub from '../components/JarvisSkillsHub';
 
 export default function AgentBrain() {
     const appContext = useApp();
+    const navigate = useNavigate();
     const { refreshData, activityFeed, addActivity, openclawLogs, triggerOpenClawAction, projects, events, tasks, notes } = appContext;
 
     // --- Active Tab State ---
@@ -32,9 +33,8 @@ export default function AgentBrain() {
     const [testConnectionResult, setTestConnectionResult] = useState(null);
 
     // --- Chat State ---
-    const [messages, setMessages] = useState([
-        { id: '1', role: 'bot', text: '⚡ **OpenClaw Agent activo**. Soy el orquestador autónomo maestro y cerebro central de tu Command Center. Tengo acceso en tiempo real a tus proyectos, eventos, tareas y base RAG.\n\nEscribe cualquier instrucción o usa comandos rápidos como `/proyecto`, `/evento`, `/tarea` o `/rag`.' }
-    ]);
+    // Memoria compartida del agente unificado (la misma que usan el Copilot y Jarvis)
+    const { openclawMessages: messages = [], setOpenclawMessages: setMessages, clearOpenclawChat } = appContext;
     const [input, setInput] = useState('');
     const [isThinking, setIsThinking] = useState(false);
     const [thinkingStep, setThinkingStep] = useState(null); // 'rag' | 'tool' | 'sync' | null
@@ -200,20 +200,18 @@ export default function AgentBrain() {
 
         // Check for local slash commands
         if (userText === '/limpiar') {
-            setMessages([{ id: Date.now().toString(), role: 'bot', text: '⚡ Conversación reiniciada. ¿Qué deseas coordinar?' }]);
+            clearOpenclawChat();
             return;
         }
 
         if (userText === '/jarvis' || userText === '/jarvis hub') {
-            setActiveTab('jarvis_hub');
-            setMessages(prev => [...prev, 
-                { id: Date.now().toString(), role: 'user', text: userText },
-                { id: (Date.now() + 1).toString(), role: 'bot', text: '⚡ **Jarvis Protocol Activo**: Abriendo el **Jarvis Hub & Skills**. Tienes acceso inmediato al sintetizador de audio, concierge de pedidos y motor de automatizaciones.' }
-            ]);
+            navigate('/jarvis');
             return;
         }
 
-        setMessages(prev => [...prev, { id: Date.now().toString(), role: 'user', text: userText }]);
+        const userMsg = { id: Date.now().toString(), role: 'user', agent: 'console', text: userText };
+        const history = [...messages, userMsg];
+        setMessages(history);
         setIsThinking(true);
 
         // Step-by-step thinking simulation for visual feedback
@@ -242,7 +240,7 @@ export default function AgentBrain() {
             const fullSkills = `${agentSkills}\n\n[HABILIDADES ACTIVAS EN MERCADO]:\n${activePresetPrompts}`;
 
             const result = await OpenClawBrainService.sendCommand(
-                userText, messages, systemRole, fullSkills, namespace, selectedMode, contextCallbacks
+                userText, history, systemRole, fullSkills, namespace, selectedMode, contextCallbacks
             );
             
             setThinkingStep('sync');
@@ -264,6 +262,7 @@ export default function AgentBrain() {
             setMessages(prev => [...prev, {
                 id: (Date.now() + 1).toString(),
                 role: 'bot',
+                agent: 'console',
                 text: (result.reply || 'Acción procesada por OpenClaw Super Agent.') + executedFeedback
             }]);
 
@@ -274,6 +273,7 @@ export default function AgentBrain() {
             setMessages(prev => [...prev, {
                 id: (Date.now() + 1).toString(),
                 role: 'bot',
+                agent: 'console',
                 text: `⚠️ **OpenClaw Super Agent Status**: ${err.message}`
             }]);
         } finally {
@@ -711,23 +711,23 @@ export default function AgentBrain() {
                     <Radio size={16} /> Puente & Auditoría
                 </button>
                 <button
-                    onClick={() => setActiveTab('jarvis_hub')}
+                    onClick={() => navigate('/jarvis')}
+                    title="Jarvis tiene su propia página en el menú; comparte memoria con esta consola"
                     style={{
                         padding: '8px 16px',
                         borderRadius: '8px',
-                        background: activeTab === 'jarvis_hub' ? 'linear-gradient(135deg, #0284c7, #38bdf8)' : 'rgba(56, 189, 248, 0.14)',
+                        background: 'rgba(56, 189, 248, 0.14)',
                         border: '1px solid rgba(56, 189, 248, 0.45)',
-                        color: activeTab === 'jarvis_hub' ? 'white' : '#38bdf8',
-                        fontWeight: 800,
+                        color: '#38bdf8',
+                        fontWeight: 700,
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '8px',
-                        whiteSpace: 'nowrap',
-                        boxShadow: activeTab === 'jarvis_hub' ? '0 0 16px rgba(56, 189, 248, 0.45)' : 'none'
+                        whiteSpace: 'nowrap'
                     }}
                 >
-                    <Sparkles size={16} /> ⚡ Jarvis Hub & Skills
+                    <Sparkles size={16} /> Jarvis ↗
                 </button>
             </div>
 
@@ -779,7 +779,7 @@ export default function AgentBrain() {
                                 <button className="btn btn-ghost" onClick={handleExportChat} style={{ fontSize: '12px', padding: '6px 10px' }} title="Descargar transcripción Markdown">
                                     <Download size={14} style={{ marginRight: '4px' }} /> Exportar
                                 </button>
-                                <button className="btn btn-ghost" onClick={() => setMessages([{ id: Date.now().toString(), role: 'bot', text: '⚡ Conversación reiniciada. ¿Qué deseas coordinar?' }])} style={{ fontSize: '12px', padding: '6px 10px', color: 'var(--accent-red)' }} title="Limpiar chat">
+                                <button className="btn btn-ghost" onClick={clearOpenclawChat} style={{ fontSize: '12px', padding: '6px 10px', color: 'var(--accent-red)' }} title="Limpiar chat">
                                     <Trash2 size={14} style={{ marginRight: '4px' }} /> Limpiar
                                 </button>
                             </div>
@@ -805,7 +805,9 @@ export default function AgentBrain() {
                                 {messages.map(msg => (
                                     <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start', gap: '6px' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--text-secondary)' }}>
-                                            {msg.role === 'user' ? 'OPERADOR' : '🤖 OPENCLAW AGENT'}
+                                            {msg.role === 'user'
+                                                ? `OPERADOR${msg.agent === 'jarvis' ? ' · vía Jarvis' : msg.agent === 'copilot' || !msg.agent ? ' · vía Copilot' : ''}`
+                                                : msg.agent === 'jarvis' ? '🎙️ JARVIS' : msg.agent === 'console' ? '🤖 OPENCLAW AGENT' : '🤖 ARRIVE COPILOT'}
                                         </div>
                                         <div style={{
                                             maxWidth: '78%',
@@ -813,11 +815,11 @@ export default function AgentBrain() {
                                             borderRadius: '12px',
                                             background: msg.role === 'user' ? 'linear-gradient(135deg, var(--accent-primary), var(--accent-purple))' : 'rgba(255,255,255,0.04)',
                                             color: 'white',
-                                            border: msg.role === 'bot' ? '1px solid var(--border-subtle)' : 'none',
+                                            border: msg.role !== 'user' ? '1px solid var(--border-subtle)' : 'none',
                                             fontSize: '14.5px',
                                             lineHeight: '1.6'
                                         }}>
-                                            {msg.role === 'bot' ? (
+                                            {msg.role !== 'user' ? (
                                                 <div style={{ background: 'transparent' }}>
                                                     <ReactMarkdown>{msg.text}</ReactMarkdown>
                                                 </div>
@@ -1577,18 +1579,6 @@ export default function AgentBrain() {
                     </div>
                 )}
 
-                {/* ═════════════════════════════════════════════════════════════════ */}
-                {/* 6. JARVIS PROTOCOL & SKILLS HUB TAB                              */}
-                {/* ═════════════════════════════════════════════════════════════════ */}
-                {activeTab === 'jarvis_hub' && (
-                    <div style={{ animation: 'fadeIn 0.25s ease' }}>
-                        <JarvisSkillsHub
-                            onOpenChat={() => setActiveTab('chat')}
-                            onAddActivity={addActivity}
-                            onAddTask={appContext.addTask}
-                        />
-                    </div>
-                )}
 
             </div>
 

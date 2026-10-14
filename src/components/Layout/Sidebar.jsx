@@ -1,7 +1,7 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import {
     LayoutDashboard, FolderKanban, Brain, Server,
-    Lightbulb, User, ChevronLeft, ChevronRight, Zap, Share2, BrainCircuit, Sparkles, BookOpen, MessageSquare, Building2, DatabaseZap, LayoutTemplate, Network, MessageCircle, Monitor, Cpu, CalendarDays, Calendar, Briefcase
+    Lightbulb, User, ChevronLeft, ChevronRight, Zap, Share2, BrainCircuit, Sparkles, BookOpen, MessageSquare, Building2, DatabaseZap, LayoutTemplate, Network, MessageCircle, Monitor, Cpu, CalendarDays, Calendar, Briefcase, AudioWaveform
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -15,6 +15,7 @@ const navItems = [
     { path: '/portfolio', icon: Briefcase, label: 'Portfolio OS', section: 'OPERATIONS' },
     { path: '/whatsapp-agent', icon: MessageSquare, label: 'Agente WhatsApp & Difusión', section: 'INTELLIGENCE' },
     { path: '/agent-brain', icon: BrainCircuit, label: 'Agent & RAG', section: 'INTELLIGENCE' },
+    { path: '/jarvis', icon: AudioWaveform, label: 'Jarvis', section: 'INTELLIGENCE' },
 ];
 
 export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }) {

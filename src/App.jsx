@@ -16,6 +16,7 @@ const EventoDetail = lazy(() => import('./pages/EventoDetail'));
 const SocialMedia = lazy(() => import('./pages/SocialMedia'));
 const MasterCalendar = lazy(() => import('./pages/MasterCalendar'));
 const AgentBrain = lazy(() => import('./pages/AgentBrain'));
+const Jarvis = lazy(() => import('./pages/Jarvis'));
 const Contactos = lazy(() => import('./pages/Contactos'));
 const PortfolioOS = lazy(() => import('./pages/PortfolioOS'));
 const WhatsAppAgent = lazy(() => import('./pages/WhatsAppAgent'));
@@ -93,6 +94,7 @@ function AppLayout() {
             <Route path="/contactos" element={<Contactos />} />
             <Route path="/whatsapp-agent" element={<WhatsAppAgent />} />
             <Route path="/agent-brain" element={<AgentBrain />} />
+            <Route path="/jarvis" element={<Jarvis />} />
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
           </Suspense>

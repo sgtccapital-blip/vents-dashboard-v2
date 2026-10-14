@@ -117,6 +117,7 @@ export default function DashboardCopilot() {
         setMessages(prev => [...prev, {
             id: `sys-${Date.now()}`,
             role: 'copilot',
+            agent: 'copilot',
             text: notice,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }]);
@@ -288,6 +289,7 @@ export default function DashboardCopilot() {
         const userMsg = {
             id: `vn-${Date.now()}`,
             role: 'user',
+            agent: 'copilot',
             type: 'voice_note',
             audioUrl,
             duration: durationFormatted,
@@ -305,6 +307,7 @@ export default function DashboardCopilot() {
                 setMessages(prev => [...prev, {
                     id: `bot-${Date.now()}`,
                     role: 'copilot',
+                    agent: 'copilot',
                     text: replyText,
                     timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                 }]);
@@ -334,6 +337,7 @@ export default function DashboardCopilot() {
         const userMsg = {
             id: `msg-${Date.now()}`,
             role: 'user',
+            agent: 'copilot',
             type: 'text',
             text,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -368,6 +372,7 @@ export default function DashboardCopilot() {
             setMessages(prev => [...prev, {
                 id: `bot-${Date.now()}`,
                 role: 'copilot',
+                agent: 'copilot',
                 text: reply,
                 timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             }]);
@@ -412,6 +417,7 @@ export default function DashboardCopilot() {
             setMessages(prev => [...prev, {
                 id: `bot-${Date.now()}`,
                 role: 'copilot',
+                agent: 'copilot',
                 text: replyText + modelTag,
                 executedTools: result.executedTools,
                 timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -424,6 +430,7 @@ export default function DashboardCopilot() {
             setMessages(prev => [...prev, {
                 id: `bot-${Date.now()}`,
                 role: 'copilot',
+                agent: 'copilot',
                 text: `⚠️ Error procesando comando con OpenClaw: ${err.message}`,
                 timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             }]);
@@ -806,6 +813,12 @@ export default function DashboardCopilot() {
                                             maxWidth: '100%'
                                         }}
                                     >
+                                        {/* Interfaz de origen cuando el mensaje vino de la Consola o de Jarvis (memoria compartida) */}
+                                        {msg.agent && msg.agent !== 'copilot' && (
+                                            <div style={{ fontSize: '0.68rem', color: msg.agent === 'jarvis' ? '#38bdf8' : '#a78bfa', marginBottom: 3 }}>
+                                                {msg.role === 'user' ? 'vía ' : ''}{msg.agent === 'jarvis' ? 'Jarvis' : 'Consola OpenClaw'}
+                                            </div>
+                                        )}
                                         {/* Message Bubble */}
                                         <div
                                             style={{

@@ -6,9 +6,11 @@ import {
     Layers, Bot, ArrowRight, ShieldCheck, RefreshCw, Radio, FileText,
     Headphones, Coffee, Flame, Moon, Award, Info,
     Terminal, Cpu, Server, Download, Activity, PlayCircle, Settings,
-    Maximize2, Minimize2, Power, Globe, Database
+    Maximize2, Minimize2, Power, Globe, Database, BrainCircuit, CalendarDays, ListChecks, FolderKanban
 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import OpenClawBrainService from '../services/OpenClawBrainService';
+import { useApp } from '../context/AppContext';
 
 // Presets de música con parámetros sonoros y enlaces
 const MUSIC_PRESETS = [
@@ -163,8 +165,22 @@ const TEAM_MEMBERS = [
     'GG', 'Mateo L.', 'Gabriel G.', 'Andrés V.', 'Fanny', 'Joshua', 'Mario', 'Andrea'
 ];
 
-export default function JarvisSkillsHub({ onOpenChat, onAddActivity, onAddTask }) {
-    const [subTab, setSubTab] = useState('openjarvis_app'); // 'openjarvis_app' | 'openjarvis_chat' | 'openjarvis_cli' | 'music' | 'food' | 'teach' | 'skills'
+// Etiqueta de la interfaz que escribió cada mensaje de la memoria compartida
+const AGENT_LABELS = {
+    jarvis: { name: 'Jarvis', color: '#38bdf8' },
+    console: { name: 'Consola OpenClaw', color: '#a78bfa' },
+    copilot: { name: 'ARRIVE Copilot', color: '#22d3ee' }
+};
+
+export default function JarvisSkillsHub({ onOpenChat, onAddActivity }) {
+    const {
+        events = [], tasks = [], projects = [],
+        openclawMessages = [], setOpenclawMessages, clearOpenclawChat,
+        addTask, updateTask, toggleTask, addEvent, addProject, refreshData
+    } = useApp();
+    const pendingTasks = tasks.filter(t => !t.done);
+    const upcomingEvents = events.filter(e => !e.date || new Date(e.date) >= new Date(new Date().toDateString()));
+    const [subTab, setSubTab] = useState('openjarvis_chat'); // 'openjarvis_app' | 'openjarvis_chat' | 'openjarvis_cli' | 'music' | 'food' | 'teach' | 'skills'
     const [voiceFeedback, setVoiceFeedback] = useState(true);
 
     // --- Music Player State ---
@@ -224,14 +240,9 @@ export default function JarvisSkillsHub({ onOpenChat, onAddActivity, onAddTask }
     const [contextSyncResult, setContextSyncResult] = useState(null);
     const [controllingDaemon, setControllingDaemon] = useState(false);
 
-    // --- Integrated ARRIVE Chat State ---
+    // --- Chat del cerebro unificado (misma memoria que Consola OpenClaw y ARRIVE Copilot) ---
     const [ojChatInput, setOjChatInput] = useState('');
-    const [ojChatHistory, setOjChatHistory] = useState([
-        {
-            role: 'assistant',
-            content: 'Hola. Soy OpenJarvis, la Inteligencia Artificial Personal Oficial de Stanford, ejecutándose directamente en tu macOS. Estoy conectado en tiempo real a tus eventos de ARRIVE en Panamá, tareas operativas, sintetizador acústico de techno/afro house, concierge de comida de Casco Antiguo y AirCloud. ¿En qué te asisto hoy?'
-        }
-    ]);
+    const chatEndRef = useRef(null);
     const [ojChatLoading, setOjChatLoading] = useState(false);
 
     // ─── Initialize Data & Audio ──────────────────────────────────────
@@ -281,31 +292,44 @@ export default function JarvisSkillsHub({ onOpenChat, onAddActivity, onAddTask }
 
     const handleSendOjChat = async (textToSend = ojChatInput) => {
         const text = (typeof textToSend === 'string' ? textToSend : ojChatInput).trim();
-        if (!text) return;
-        const userMsg = { role: 'user', content: text };
-        setOjChatHistory(prev => [...prev, userMsg]);
+        if (!text || ojChatLoading) return;
+        const stamp = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const userMsg = { id: `usr-${Date.now()}`, role: 'user', agent: 'jarvis', text, timestamp: stamp() };
+        const history = [...openclawMessages, userMsg];
+        setOpenclawMessages(history);
         setOjChatInput('');
         setOjChatLoading(true);
 
-        // Check if user is asking to play music or order food
-        const lower = text.toLowerCase();
-        if (lower.includes('musica') || lower.includes('música') || lower.includes('techno') || lower.includes('focus')) {
-            const preset = MUSIC_PRESETS.find(p => p.id === 'deep_focus') || MUSIC_PRESETS[0];
-            handleTogglePlay(preset);
-        } else if (lower.includes('afro') || lower.includes('casco sunset') || lower.includes('chill')) {
-            const preset = MUSIC_PRESETS.find(p => p.id === 'casco_sunset') || MUSIC_PRESETS[1];
-            handleTogglePlay(preset);
-        } else if (lower.includes('furia') || lower.includes('club') || lower.includes('energia') || lower.includes('energía')) {
-            const preset = MUSIC_PRESETS.find(p => p.id === 'furia') || MUSIC_PRESETS[2];
-            handleTogglePlay(preset);
+        try {
+            // Mismo cerebro, herramientas y RAG que la Consola y el Copilot; solo cambia el modo (tono Jarvis)
+            const result = await OpenClawBrainService.sendCommand(
+                text, history, 'Interfaz activa: Jarvis (página Jarvis del dashboard).', '', 'default', 'jarvis',
+                { addTask, updateTask, toggleTask, addEvent, addProject }
+            );
+            const reply = result.reply || 'Acción procesada.';
+            setOpenclawMessages(prev => [...prev, {
+                id: `bot-${Date.now()}`,
+                role: 'copilot',
+                agent: 'jarvis',
+                text: reply,
+                executedTools: result.executedTools,
+                timestamp: stamp()
+            }]);
+            if (result.executedTools?.length && refreshData) refreshData();
+            speakJarvis(reply.replace(/[*_`#>]/g, '').slice(0, 150));
+        } catch (err) {
+            setOpenclawMessages(prev => [...prev, {
+                id: `bot-${Date.now()}`, role: 'copilot', agent: 'jarvis', error: true,
+                text: `⚠️ No pude procesar la instrucción: ${err.message}`, timestamp: stamp()
+            }]);
+        } finally {
+            setOjChatLoading(false);
         }
-
-        const res = await OpenClawBrainService.chatOpenJarvis(text, ojChatHistory);
-        const reply = res.reply || 'Sin respuesta del motor.';
-        setOjChatHistory(prev => [...prev, { role: 'assistant', content: reply }]);
-        setOjChatLoading(false);
-        speakJarvis(reply.slice(0, 150));
     };
+
+    useEffect(() => {
+        if (subTab === 'openjarvis_chat') chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, [openclawMessages, ojChatLoading, subTab]);
 
     const handleRunOpenJarvisCommand = async (cmd = cliCommand) => {
         setCliExecuting(true);
@@ -441,6 +465,40 @@ export default function JarvisSkillsHub({ onOpenChat, onAddActivity, onAddTask }
             speakJarvis(`Sintonizando ${targetPreset.name}.`);
         }
     };
+
+    // Herramientas ejecutadas por cualquier interfaz del cerebro unificado (Consola, Copilot o este chat)
+    const applyAgentToolsRef = useRef(null);
+    applyAgentToolsRef.current = async (tools) => {
+        for (const tool of tools) {
+            if (tool.name === 'control_music') {
+                const args = tool.args || tool.result?.music || {};
+                if (args.action === 'pause') {
+                    stopAudioSynth();
+                    setIsPlaying(false);
+                } else {
+                    const preset = MUSIC_PRESETS.find(p => p.id === args.preset) || MUSIC_PRESETS[0];
+                    setActivePreset(preset);
+                    startAudioSynth(preset);
+                    setIsPlaying(true);
+                }
+            } else if (tool.name === 'execute_jarvis_skill') {
+                const state = await OpenClawBrainService.getJarvisState();
+                const preset = MUSIC_PRESETS.find(p => p.id === state.music?.preset);
+                if (state.music?.action === 'play' && preset) {
+                    setActivePreset(preset);
+                    startAudioSynth(preset);
+                    setIsPlaying(true);
+                }
+            } else if (tool.name === 'teach_skill') {
+                loadSkills();
+            }
+        }
+    };
+    useEffect(() => {
+        const onTools = (e) => applyAgentToolsRef.current?.(e.detail || []);
+        window.addEventListener('arrive:agent-tools', onTools);
+        return () => window.removeEventListener('arrive:agent-tools', onTools);
+    }, []);
 
     // Handle Volume Change
     const handleVolumeChange = (newVol) => {
@@ -609,15 +667,8 @@ export default function JarvisSkillsHub({ onOpenChat, onAddActivity, onAddTask }
             selectedDiners,
             orderNotes
         );
-        if (onAddTask) {
-            onAddTask({
-                text: `Coordinar entrega de comida: ${selectedRestaurant.name} ($${grandTotal.toFixed(2)})`,
-                priority: 'high',
-                venue: 'Casco Antiguo',
-                category: 'Catering & Logística',
-                assignedTo: 'Mateo L. (Operations Lead)'
-            });
-        }
+        // El servidor ya crea la tarea de logística del pedido; solo refrescamos el dashboard
+        if (res?.success && refreshData) refreshData();
         if (onAddActivity) {
             onAddActivity(`🍔 Pedido de ${selectedRestaurant.name} registrado en Command Center por $${grandTotal.toFixed(2)}`, '#f59e0b');
         }
@@ -782,7 +833,7 @@ export default function JarvisSkillsHub({ onOpenChat, onAddActivity, onAddTask }
                     <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                             <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 800, letterSpacing: '0.5px' }}>
-                                JARVIS PROTOCOL & SKILLS HUB
+                                JARVIS
                             </h2>
                             <span style={{
                                 fontSize: '11px',
@@ -797,11 +848,11 @@ export default function JarvisSkillsHub({ onOpenChat, onAddActivity, onAddTask }
                                 gap: '5px'
                             }}>
                                 <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#38bdf8', boxShadow: '0 0 6px #38bdf8' }} />
-                                v2.4 ONLINE
+                                CEREBRO UNIFICADO
                             </span>
                         </div>
                         <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#94a3b8' }}>
-                            Control inteligente de audio acústico, concierge de comidas y catering, y motor de automatizaciones aprendidas.
+                            La interfaz personal del agente ARRIVE: mismo cerebro, memoria y datos que la Consola OpenClaw y el Copilot.
                         </p>
                     </div>
                 </div>
@@ -845,10 +896,33 @@ export default function JarvisSkillsHub({ onOpenChat, onAddActivity, onAddTask }
                                 boxShadow: '0 4px 12px rgba(2, 132, 199, 0.3)'
                             }}
                         >
-                            <Bot size={15} /> Consola Chat
+                            <BrainCircuit size={15} /> Abrir en Consola
                         </button>
                     )}
                 </div>
+            </div>
+
+            {/* Estado en vivo del dashboard que comparte el cerebro unificado */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '10px', marginBottom: '20px' }}>
+                {[
+                    { label: 'Próximos eventos', value: upcomingEvents.length, icon: CalendarDays, color: '#f59e0b' },
+                    { label: 'Tareas pendientes', value: pendingTasks.length, icon: ListChecks, color: '#10b981' },
+                    { label: 'Proyectos', value: projects.length, icon: FolderKanban, color: '#a78bfa' },
+                    { label: 'Skills aprendidas', value: learnedSkills.length, icon: Layers, color: '#38bdf8' },
+                    { label: 'Audio', value: isPlaying ? activePreset.name.split(' ')[0] : 'Pausa', icon: Music, color: activePreset.color }
+                ].map(stat => (
+                    <div key={stat.label} style={{
+                        padding: '12px 14px', borderRadius: '12px',
+                        background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)',
+                        display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0
+                    }}>
+                        <stat.icon size={18} color={stat.color} style={{ flexShrink: 0 }} />
+                        <div style={{ minWidth: 0 }}>
+                            <div style={{ fontSize: '18px', fontWeight: 800, lineHeight: 1.1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{stat.value}</div>
+                            <div style={{ fontSize: '11px', color: '#94a3b8' }}>{stat.label}</div>
+                        </div>
+                    </div>
+                ))}
             </div>
 
             {/* ══════════════════════════════════════════════════════════════
@@ -884,7 +958,7 @@ export default function JarvisSkillsHub({ onOpenChat, onAddActivity, onAddTask }
                     <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                             <span style={{ fontSize: '15px', fontWeight: 800, color: '#ffffff', letterSpacing: '0.3px' }}>
-                                OpenJarvis Core Engine (Stanford Personal AI)
+                                Motor local OpenJarvis (opcional)
                             </span>
                             <span style={{
                                 fontSize: '11px',
@@ -907,7 +981,7 @@ export default function JarvisSkillsHub({ onOpenChat, onAddActivity, onAddTask }
                                 }} />
                                 {openJarvisStatus?.daemon?.running
                                     ? `DAEMON ONLINE (PID ${openJarvisStatus.daemon.pid || '30406'} • Puerto 8000)`
-                                    : 'DAEMON READY'}
+                                    : 'MOTOR LOCAL APAGADO'}
                             </span>
                             <span style={{
                                 fontSize: '11px',
@@ -922,7 +996,7 @@ export default function JarvisSkillsHub({ onOpenChat, onAddActivity, onAddTask }
                             </span>
                         </div>
                         <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#94a3b8' }}>
-                            Programa oficial ejecutándose localmente con inferencia en streaming, herramientas del sistema y sincronización directa con ARRIVE.
+                            Inferencia local en tu Mac. Lee el mismo estado en vivo del dashboard que el cerebro unificado.
                         </p>
                     </div>
                 </div>
@@ -1041,13 +1115,13 @@ export default function JarvisSkillsHub({ onOpenChat, onAddActivity, onAddTask }
                 overflowX: 'auto'
             }}>
                 {[
-                    { id: 'openjarvis_app', label: '🖥️ App Oficial OpenJarvis', icon: Globe, badge: openJarvisStatus?.daemon?.running ? 'ONLINE' : 'DAEMON' },
-                    { id: 'openjarvis_chat', label: '💬 Chat Integrado ARRIVE', icon: Bot, badge: 'CONECTADO' },
-                    { id: 'openjarvis_cli', label: '⚡ Consola & Presets CLI', icon: Terminal, badge: 'STANFORD' },
-                    { id: 'music', label: '🎵 Audio & Focus Synth', icon: Music, badge: isPlaying ? 'PLAYING' : null },
-                    { id: 'food', label: '🍔 Concierge Casco & Catering', icon: Utensils, badge: cart.length > 0 ? `${cart.length}` : null },
-                    { id: 'teach', label: '⚡ Automatizador de Tareas', icon: Zap, badge: 'MACROS' },
-                    { id: 'skills', label: '🧠 Memoria de Skills', icon: Layers, badge: `${learnedSkills.length}` }
+                    { id: 'openjarvis_chat', label: 'Chat unificado', icon: Bot, badge: 'MEMORIA COMPARTIDA' },
+                    { id: 'music', label: 'Audio & Focus', icon: Music, badge: isPlaying ? 'PLAYING' : null },
+                    { id: 'food', label: 'Concierge & Catering', icon: Utensils, badge: cart.length > 0 ? `${cart.length}` : null },
+                    { id: 'teach', label: 'Automatizador', icon: Zap, badge: null },
+                    { id: 'skills', label: 'Skills', icon: Layers, badge: `${learnedSkills.length}` },
+                    { id: 'openjarvis_app', label: 'App OpenJarvis', icon: Globe, badge: openJarvisStatus?.daemon?.running ? 'ONLINE' : 'OFF' },
+                    { id: 'openjarvis_cli', label: 'CLI local', icon: Terminal, badge: null }
                 ].map(tab => {
                     const Icon = tab.icon;
                     const isActive = subTab === tab.id;
@@ -2532,42 +2606,19 @@ export default function JarvisSkillsHub({ onOpenChat, onAddActivity, onAddTask }
                             </div>
                             <div>
                                 <div style={{ fontSize: '14px', fontWeight: 800, color: '#ffffff' }}>
-                                    OpenJarvis Interactive Chat OS
+                                    Cerebro unificado ARRIVE
                                 </div>
                                 <div style={{ fontSize: '11px', color: '#94a3b8' }}>
-                                    Motor: Gemini 3.5 Flash Lite • Conectado a Eventos, Tareas, Música y Comida
+                                    Misma conversación que la Consola OpenClaw y el Copilot • datos del dashboard en vivo
                                 </div>
                             </div>
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <button
-                                onClick={handleSyncDashboardContext}
-                                disabled={syncingContext}
-                                style={{
-                                    padding: '5px 12px',
-                                    borderRadius: '6px',
-                                    background: 'rgba(6, 182, 212, 0.15)',
-                                    border: '1px solid rgba(6, 182, 212, 0.35)',
-                                    color: '#67e8f9',
-                                    fontSize: '11.5px',
-                                    fontWeight: 600,
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '5px'
+                                onClick={() => {
+                                    if (window.confirm('¿Reiniciar la conversación? Se borra también en la Consola y el Copilot.')) clearOpenclawChat();
                                 }}
-                            >
-                                <Database size={12} /> Sincronizar Contexto
-                            </button>
-
-                            <button
-                                onClick={() => setOjChatHistory([
-                                    {
-                                        role: 'assistant',
-                                        content: 'Historial reiniciado. ¿En qué te asisto ahora?'
-                                    }
-                                ])}
                                 style={{
                                     padding: '5px 10px',
                                     borderRadius: '6px',
@@ -2592,45 +2643,47 @@ export default function JarvisSkillsHub({ onOpenChat, onAddActivity, onAddTask }
                         flexDirection: 'column',
                         gap: '14px'
                     }}>
-                        {ojChatHistory.map((msg, idx) => {
+                        {openclawMessages.map((msg, idx) => {
                             const isUser = msg.role === 'user';
+                            const agent = AGENT_LABELS[msg.agent] || { name: 'Agente ARRIVE', color: '#a5b4fc' };
                             return (
                                 <div
-                                    key={idx}
+                                    key={msg.id || idx}
                                     style={{
                                         display: 'flex',
-                                        justifyContent: isUser ? 'flex-end' : 'flex-start',
-                                        gap: '10px'
+                                        flexDirection: 'column',
+                                        alignItems: isUser ? 'flex-end' : 'flex-start',
+                                        gap: '4px'
                                     }}
                                 >
-                                    {!isUser && (
-                                        <div style={{
-                                            width: '30px',
-                                            height: '30px',
-                                            borderRadius: '8px',
-                                            background: 'linear-gradient(135deg, #0284c7, #38bdf8)',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            flexShrink: 0,
-                                            marginTop: '2px'
-                                        }}>
-                                            <Sparkles size={16} color="#ffffff" />
-                                        </div>
-                                    )}
-                                    <div style={{
+                                    <div style={{ fontSize: '10.5px', color: '#64748b', display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                        {isUser ? 'Tú' : <span style={{ color: agent.color, fontWeight: 700 }}>{agent.name}</span>}
+                                        {isUser && msg.agent && msg.agent !== 'jarvis' && <span>· desde {agent.name}</span>}
+                                        {msg.timestamp && <span>· {msg.timestamp}</span>}
+                                    </div>
+                                    <div className="jarvis-chat-bubble" style={{
                                         maxWidth: '78%',
-                                        padding: '12px 16px',
+                                        padding: '10px 14px',
                                         borderRadius: isUser ? '14px 14px 2px 14px' : '14px 14px 14px 2px',
                                         background: isUser ? 'linear-gradient(135deg, #0284c7, #0ea5e9)' : 'rgba(15, 23, 42, 0.9)',
-                                        border: `1px solid ${isUser ? 'transparent' : 'rgba(255, 255, 255, 0.1)'}`,
+                                        border: `1px solid ${isUser ? 'transparent' : msg.error ? 'rgba(239, 68, 68, 0.4)' : 'rgba(255, 255, 255, 0.1)'}`,
                                         color: '#ffffff',
                                         fontSize: '13px',
                                         lineHeight: '1.55',
-                                        whiteSpace: 'pre-wrap',
+                                        whiteSpace: isUser ? 'pre-wrap' : 'normal',
+                                        overflowWrap: 'anywhere',
                                         boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)'
                                     }}>
-                                        {msg.content}
+                                        {isUser ? msg.text : <ReactMarkdown>{msg.text || ''}</ReactMarkdown>}
+                                        {msg.executedTools?.length > 0 && (
+                                            <div style={{ marginTop: '8px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                                {msg.executedTools.map((t, i) => (
+                                                    <span key={i} style={{ fontSize: '10.5px', fontWeight: 700, padding: '2px 8px', borderRadius: '8px', background: 'rgba(56, 189, 248, 0.15)', color: '#7dd3fc' }}>
+                                                        ⚡ {t.name}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             );
@@ -2639,9 +2692,10 @@ export default function JarvisSkillsHub({ onOpenChat, onAddActivity, onAddTask }
                         {ojChatLoading && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#38bdf8', fontSize: '12.5px' }}>
                                 <RefreshCw size={14} className="animate-spin" />
-                                <span>OpenJarvis pensando respuesta con Gemini 3.5...</span>
+                                <span>Jarvis consultando el cerebro unificado…</span>
                             </div>
                         )}
+                        <div ref={chatEndRef} />
                     </div>
 
                     {/* Quick Suggestion Chips */}
@@ -2654,10 +2708,11 @@ export default function JarvisSkillsHub({ onOpenChat, onAddActivity, onAddTask }
                         overflowX: 'auto'
                     }}>
                         {[
-                            { text: '🎵 Pon música de techno para programar', label: 'Techno Focus' },
-                            { text: '🍔 Qué menús hay en Casco Antiguo para pedir ahora?', label: 'Comida Casco' },
-                            { text: '📅 Qué eventos tenemos programados en ARRIVE?', label: 'Eventos ARRIVE' },
-                            { text: '☁️ Verifica la sincronización de archivos en AirCloud', label: 'AirCloud' }
+                            { text: 'Dame el resumen del día: eventos próximos, tareas críticas y qué está atrasado', label: 'Resumen del día' },
+                            { text: '¿Qué eventos tenemos esta semana y qué les falta?', label: 'Eventos de la semana' },
+                            { text: '¿Qué tareas pendientes tiene cada persona del equipo?', label: 'Tareas por persona' },
+                            { text: 'Pon música de deep focus techno para trabajar', label: 'Techno Focus' },
+                            { text: 'Pide almuerzo en Café Unido para el equipo de operaciones', label: 'Almuerzo equipo' }
                         ].map((chip, cIdx) => (
                             <button
                                 key={cIdx}
@@ -2697,7 +2752,7 @@ export default function JarvisSkillsHub({ onOpenChat, onAddActivity, onAddTask }
                                     handleSendOjChat();
                                 }
                             }}
-                            placeholder="Habla con OpenJarvis (ej: 'pon música techno', 'pide comida en Casco', 'qué eventos hay')..."
+                            placeholder="Habla con Jarvis (ej: 'qué eventos hay esta semana', 'crea una tarea para Mateo', 'pon música techno')..."
                             style={{
                                 flex: 1,
                                 background: 'rgba(0, 0, 0, 0.5)',

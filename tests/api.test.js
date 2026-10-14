@@ -72,12 +72,15 @@ after(() => {
 });
 
 test('sin credenciales la API privada responde 401', async () => {
-    for (const p of ['/tasks', '/contacts', '/state', '/openclaw/config', '/agent/whatsapp-groups']) {
+    for (const p of ['/tasks', '/contacts', '/state', '/openclaw/config', '/agent/whatsapp-groups', '/jarvis/skills', '/jarvis/openjarvis/status']) {
         const r = await fetch(`${BASE}${p}`);
         assert.equal(r.status, 401, p);
     }
     const bad = await fetch(`${BASE}/tasks`, { headers: { Authorization: 'Bearer nope' } });
     assert.equal(bad.status, 401);
+    // Jarvis ejecuta comandos locales: nunca sin sesión
+    const exec = await fetch(`${BASE}/jarvis/openjarvis/exec`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: json({ command: 'doctor' }) });
+    assert.equal(exec.status, 401);
 });
 
 test('login: contraseña mala 401, buena da cookie HttpOnly que funciona', async () => {
