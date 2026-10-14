@@ -1,16 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import { GraduationCap, Flame, Link2, Upload, RefreshCw, Trash2, Sparkles, Copy, Check, Loader2, Scissors, Clock, Wrench } from 'lucide-react';
 import { studioApi, mediaUrl } from '../../lib/studioApi';
+import AccountChips from './AccountChips';
 import './Studio.css';
 
 const TYPE = { viral: { label: 'Viral', icon: Flame }, tutorial: { label: 'Tutorial', icon: GraduationCap } };
 
-function AddReference({ accounts, onAdded }) {
+function AddReference({ accounts, account, onAdded }) {
     const [type, setType] = useState('viral');
     const [url, setUrl] = useState('');
     const [file, setFile] = useState(null);
     const [notes, setNotes] = useState('');
-    const [accountIds, setAccountIds] = useState([]);
+    const [accountIds, setAccountIds] = useState(account ? [account.id] : []);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
 
@@ -24,7 +25,7 @@ function AddReference({ accounts, onAdded }) {
         if (file) fd.append('file', file);
         try {
             await studioApi.addReference(fd);
-            setUrl(''); setFile(null); setNotes(''); setAccountIds([]);
+            setUrl(''); setFile(null); setNotes(''); setAccountIds(account ? [account.id] : []);
             onAdded();
         } catch (err) { setError(err.message); }
         setBusy(false);
@@ -49,9 +50,7 @@ function AddReference({ accounts, onAdded }) {
             <textarea rows={2} placeholder={type === 'tutorial' ? 'Qué técnica enseña o qué quieres aprender de este tutorial (opcional)' : 'Qué te gusta de este video, para qué cuenta lo ves… (opcional)'} value={notes} onChange={e => setNotes(e.target.value)} />
             <div className="ref-add-foot">
                 <div className="ref-accts">
-                    {accounts.map(a => (
-                        <button key={a.id} className={`raw-chip ${accountIds.includes(a.id) ? 'on' : ''}`} onClick={() => setAccountIds(prev => (prev.includes(a.id) ? prev.filter(x => x !== a.id) : [...prev, a.id]))}>{a.handler}</button>
-                    ))}
+                    <AccountChips accounts={accounts} value={accountIds} onChange={setAccountIds} />
                 </div>
                 <button className="social-btn-primary" disabled={busy || (!url && !file)} onClick={submit}>{busy ? 'Subiendo…' : 'Agregar y analizar'}</button>
             </div>
@@ -60,9 +59,14 @@ function AddReference({ accounts, onAdded }) {
     );
 }
 
-function ReferenceDetail({ refItem: r, accounts, onClose, onChanged }) {
+function ReferenceDetail({ refItem: r, accounts, account, onClose, onChanged }) {
     const a = r.analysis;
-    const [accountId, setAccountId] = useState(r.accountIds?.[0] || '');
+    const [accountId, setAccountId] = useState(account?.id || r.accountIds?.[0] || '');
+    const [accountIds, setAccountIds] = useState(r.accountIds || []);
+    const assign = async ids => {
+        setAccountIds(ids);
+        try { await studioApi.updateReference(r.id, { accountIds: ids }); onChanged(); } catch (err) { setMsg(err.message); }
+    };
     const [direction, setDirection] = useState('');
     const [busy, setBusy] = useState(false);
     const [msg, setMsg] = useState('');
@@ -72,7 +76,7 @@ function ReferenceDetail({ refItem: r, accounts, onClose, onChanged }) {
         setBusy(true); setMsg('');
         try {
             const task = await studioApi.recreate(r.id, { accountId, direction });
-            setMsg(`Idea creada para ${task.accountHandler}: "${task.title}". Está en Abrir cuenta → Producción, lista para desarrollar.`);
+            setMsg(`Idea creada para ${task.accountHandler}: "${task.title}". Está en la cuenta → Producción, lista para desarrollar.`);
             onChanged();
         } catch (err) { setMsg(err.message); }
         setBusy(false);
@@ -90,6 +94,7 @@ function ReferenceDetail({ refItem: r, accounts, onClose, onChanged }) {
                     <div>
                         <h3 className="social-modal-title">{TYPE[r.type]?.label} · {r.title || a?.title}</h3>
                         <p className="social-modal-sub">{r.url ? <a href={r.url} target="_blank" rel="noreferrer">{r.url}</a> : 'Archivo subido'}{r.analyzedBy ? ` · analizado con ${r.analyzedBy}` : ''}</p>
+                        <div className="ref-assign"><span>Asignada a</span><AccountChips accounts={accounts} value={accountIds} onChange={assign} /></div>
                     </div>
                     <button className="social-modal-close" onClick={onClose}>✕</button>
                 </div>
@@ -154,7 +159,7 @@ function ReferenceDetail({ refItem: r, accounts, onClose, onChanged }) {
 }
 
 /** Biblioteca de referencias virales y tutoriales que la máquina aprende a recrear. */
-export default function ReferencesPanel({ accounts }) {
+export default function ReferencesPanel({ accounts, account = null, onChanged }) {
     const [refs, setRefs] = useState([]);
     const [filter, setFilter] = useState('all');
     const [openId, setOpenId] = useState(null);
@@ -170,13 +175,15 @@ export default function ReferencesPanel({ accounts }) {
         return () => { alive = false; if (id) clearInterval(id); };
     }, [reload, busy]);
 
-    const visible = useMemo(() => refs.filter(r => filter === 'all' || r.type === filter || (filter === 'build' && r.analysis?.recreate?.needsNewBuild)), [refs, filter]);
+    const visible = useMemo(() => refs
+        .filter(r => !account || (r.accountIds || []).includes(account.id))
+        .filter(r => filter === 'all' || r.type === filter || (filter === 'build' && r.analysis?.recreate?.needsNewBuild)), [refs, filter, account]);
     const open = refs.find(r => r.id === openId);
-    const refresh = () => setReload(k => k + 1);
+    const refresh = () => { setReload(k => k + 1); onChanged?.(); };
 
     return (
         <div className="refs">
-            <AddReference accounts={accounts} onAdded={refresh} />
+            <AddReference key={account?.id || 'all'} accounts={accounts} account={account} onAdded={refresh} />
             {error && <div className="studio-error">{error}</div>}
             <div className="raw-filters">
                 {[['all', 'Todo'], ['viral', 'Virales'], ['tutorial', 'Tutoriales'], ['build', 'Técnicas por construir']].map(([id, label]) => (
@@ -201,6 +208,7 @@ export default function ReferencesPanel({ accounts }) {
                                     <b>{r.title || r.analysis?.title || r.url || 'Referencia'}</b>
                                     {working && <span className="ref-status"><Loader2 size={12} className="spin" /> {r.step || 'En cola…'}</span>}
                                     {r.status === 'error' && <span className="ref-status err">{r.error}</span>}
+                                    {!account && (r.accountIds || []).length > 0 && <span className="ref-tech">{r.accountIds.map(id => accounts.find(x => x.id === id)?.handler).filter(Boolean).join(' · ')}</span>}
                                     {r.analysis && <span className="ref-tech">{r.analysis.technique.name} · {r.analysis.recreate.difficulty}{r.analysis.recreate.needsNewBuild ? ' · por construir' : ''}</span>}
                                 </div>
                                 <div className="ref-actions" onClick={e => e.stopPropagation()}>
@@ -212,7 +220,7 @@ export default function ReferencesPanel({ accounts }) {
                     })}
                 </div>
             )}
-            {open && <ReferenceDetail refItem={open} accounts={accounts} onClose={() => setOpenId(null)} onChanged={refresh} />}
+            {open && <ReferenceDetail refItem={open} accounts={accounts} account={account} onClose={() => setOpenId(null)} onChanged={refresh} />}
         </div>
     );
 }

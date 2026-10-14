@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import React, { useState, lazy, Suspense } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useSearchParams } from 'react-router-dom';
 import { AppProvider, useApp } from './context/AppContext';
 import AuthGate from './components/AuthGate';
 import Sidebar from './components/Layout/Sidebar';
@@ -7,7 +7,6 @@ import Topbar from './components/Layout/Topbar';
 import MobileTabBar from './components/Layout/MobileTabBar';
 import CloudSyncPanel from './components/CloudSyncPanel';
 import { X } from 'lucide-react';
-import React, { lazy, Suspense } from 'react';
 
 // Cada página se descarga solo cuando se abre (antes iba todo en un archivo de 1,1 MB)
 const Home = lazy(() => import('./pages/Home'));
@@ -20,7 +19,12 @@ const AgentBrain = lazy(() => import('./pages/AgentBrain'));
 const Contactos = lazy(() => import('./pages/Contactos'));
 const PortfolioOS = lazy(() => import('./pages/PortfolioOS'));
 const WhatsAppAgent = lazy(() => import('./pages/WhatsAppAgent'));
-const ArriveAgencyOS = lazy(() => import('./pages/ArriveAgencyOS'));
+
+function ArriveRedirect() {
+  const [searchParams] = useSearchParams();
+  const tab = searchParams.get('tab') || 'clients';
+  return <Navigate to={`/?tab=${tab}`} replace />;
+}
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -79,7 +83,7 @@ function AppLayout() {
           <Suspense fallback={<div style={{ padding: '24px', color: 'var(--text-tertiary)', fontSize: '13px' }}>Cargando…</div>}>
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/arrive" element={<ArriveAgencyOS />} />
+            <Route path="/arrive" element={<ArriveRedirect />} />
             <Route path="/portfolio" element={<PortfolioOS />} />
             <Route path="/workspace" element={<Workspace />} />
             <Route path="/calendar" element={<MasterCalendar />} />

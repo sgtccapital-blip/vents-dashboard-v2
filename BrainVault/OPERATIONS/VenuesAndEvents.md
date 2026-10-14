@@ -1,6 +1,42 @@
 # Venues & Cartelera de Eventos
 Control de locales nocturnos (Terraplén, Furia, Piano Bar) y activaciones.
 
+## Halloween Primavera
+Fecha: 2026-10-31 | Estado: planning
+Ubicación/Venue: Primavera Club
+Presupuesto: $0
+Descripción: Pendientes: flyer, animación, mecánica de premios y resolver disponibilidad/conflicto de DJ o talento.
+
+## Terraplén — Cena de domingo
+Fecha: 2026-10-18 | Estado: planning
+Ubicación/Venue: Terraplén Rooftop
+Presupuesto: $0
+Descripción: Cena dominical confirmada; pendiente completar convocatoria y confirmaciones.
+
+## Primavera — Cena y party sábado
+Fecha: 2026-10-17 | Estado: planning
+Ubicación/Venue: Primavera Club
+Presupuesto: $0
+Descripción: Plan tentativo de cenas y party; falta confirmar operación final, responsables y convocatoria.
+
+## Furia — Party viernes
+Fecha: 2026-10-16 | Estado: planning
+Ubicación/Venue: Furia Panamá
+Presupuesto: $0
+Descripción: Operación de viernes. Confirmar coordinación final y centralizar materiales de Monaco/Miami en el grupo de trabajo.
+
+## Sushi Party — Activación jueves
+Fecha: 2026-10-15 | Estado: planning
+Ubicación/Venue: Por confirmar
+Presupuesto: $0
+Descripción: Activación con meta grupal de 100 invitadas. ARRIVE reportó 15 confirmadas inicialmente y trabaja para completar unas 25; lista de Casti pendiente.
+
+## Terraplén — Cena de jueves
+Fecha: 2026-10-15 | Estado: planning
+Ubicación/Venue: Terraplén Rooftop
+Presupuesto: $0
+Descripción: Cena y convocatoria de invitadas. Lista inicial recibida y confirmaciones adicionales en curso.
+
 ## Terraplen Rooftop
 Fecha: Por definir | Estado: activo
 Ubicación/Venue: Terraplén, Casco Antiguo / Santa Ana, Panamá

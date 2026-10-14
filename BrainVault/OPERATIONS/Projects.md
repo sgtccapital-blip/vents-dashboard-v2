@@ -5,6 +5,13 @@ Lista de proyectos activos y sus tareas.
 Prioridad: critical | Estado: active
 Descripción: Agencia de marketing y experiencias con base en Panamá (https://arriveservices.com). Manejo integral de las 3 divisiones: ARRIVE Services (Creative & Marketing), ARRIVE Models (Modelos, Creadores UGC y convocatorias de cenas VIP para chicas en restaurantes) y ARRIVE Nightlife (Eventos semanales en Terraplén Rooftop, Furia y Piano Bar) más ARRIVE Studio (Content Days mensuales).
 Tareas:
+- [ ] Crear video caso de Nissan sobre la cobertura realizada en el Motor Show: recopilar y organizar el material, definir narrativa y resultados, editar la versión final y preparar la entrega/publicación. (GG)
+- [ ] Confirmar logística y fecha del transporte de mercancía o donaciones con Lisandro (Gabriel G.)
+- [ ] Revisar y responder el nuevo mensaje de Celia en Alibaba sobre la escultura personalizada (Gabriel G.)
+- [ ] Resolver con Supertec la suspensión de Creative Cloud y el problema de la invitación de Gemini (Gabriel G.)
+- [ ] Solicitar a SUIRA el video pendiente de Terraplén y establecer calendario, alcance y entregables semanales de contenido (Gabriel G.)
+- [ ] Crear contenido audiovisual y estratégico para ARRIVE Agency (Mario)
+- [ ] Crear la web de multiservicios para ARRIVE Agency (Gabriel G.)
 - [ ] Diseñar presentaciones comerciales (pitch decks) para ofrecer los nuevos paquetes de servicios a clientes (Gabriel G. (Director Creativo))
 - [ ] Seguir avanzando con la web de la agencia (arriveservices.com): estructurar sección de servicios y paquetes (Gabriel G. (Director Creativo))
 - [ ] Crear y programar los calendarios de posts de Instagram para cada cuenta activa con hooks y copys (Valeria R. (Community Manager))
@@ -15,6 +22,13 @@ Tareas:
 Prioridad: critical | Estado: active
 Descripción: Gestión semanal de los 3 venues estratégicos: convocatorias de cenas para chicas, acuerdos de barra libre, control de promotores, venta de mesas VIP y facturación recurrente.
 Tareas:
+- [ ] Cerrar flyer, animación, mecánica de premios y disponibilidad de DJ o talento para Halloween Primavera (Gabriel G.)
+- [ ] Devolver la llamada a Kate y cerrar el pendiente operativo de Casco Peatonal (Gabriel G.)
+- [ ] Completar lista y confirmaciones para la cena de Terraplén del domingo (Gabriel G.)
+- [ ] Confirmar plan, responsables y convocatoria de la cena y party de Primavera del sábado (Gabriel G.)
+- [ ] Confirmar la operación final de Furia del viernes y centralizar los materiales de Monaco/Miami en el grupo de trabajo (Gabriel G.)
+- [ ] Aclarar y recuperar acceso operativo al grupo “16 OCT - TERRAPLEN Rooftop piso 3” (Gabriel G.)
+- [ ] Consolidar listas y confirmaciones para Terraplén y Sushi Party del jueves; dar seguimiento a la lista pendiente de Casti (Gabriel G.)
 - [ ] Organización y convocatoria VIP para la Cena + Closing Party de fin de semana (Domingo) (Pulse (PR Hostess))
 - [ ] Difusión en redes y convocatoria de asistentes para el Party en Primavera (Viernes) (Valeria R. (Community Manager))
 - [ ] Coordinar logística de acceso VIP y reservaciones para el Party en Primavera (Viernes) (Mateo L. (Operations Lead))
@@ -55,22 +69,15 @@ Tareas:
 ## Proyecto: Wedding Content Creation — Social Media & Real-Time Coverage
 Prioridad: high | Estado: active
 Descripción: Servicio premium de creación de contenido en tiempo real para bodas y eventos nupciales (Reels 4K, TikToks y Stories el mismo día). Cobertura especializada para parejas, planners y marcas de lujo.
-Estructura Comercial & Paquetes:
-- **Paquete Social Essential ($450 - $650):** 4 a 6 horas de cobertura continua (getting ready + ceremonia + coctel). 2 a 3 Reels/TikToks editados con audios tendencia + 100+ clips crudos entregados en menos de 24 horas vía Drive/AirDrop. 1 Creador con iPhone 16 Pro Max + gimbal + kit de luces.
-- **Paquete Full VIP & Real-Time Delivery ($850 - $1,200):** Cobertura completa de hasta 10 horas (first look hasta hora loca). 5 a 7 Reels editados con entrega del primer Reel resumen la misma noche antes de que termine la fiesta. 300+ clips crudos organizados por carpetas. 2 Creadores en coordinación con fotógrafos tradicionales.
-- **Add-On Confesionario / Mensajes de Invitados (+$350):** Micrófonos inalámbricos para cápsulas de audio y felicitaciones espontáneas de los invitados.
 Tareas:
-- [x] Definir tarifario comercial, entregables y modelo de contrato para Wedding Content Creation & Podcast en bodas (Mateo L. (Operations Lead))
-- [x] Estructurar y lanzar nuevo servicio: "Wedding Content Creation" (cobertura exclusiva para bodas en Reels, TikToks y Stories en tiempo real) (Gabriel G. (Director Creativo))
 - [ ] Producir el reel de Wedding Content Creation para la boda del sábado (Gabriel G.)
+- [ ] Definir tarifario comercial, entregables y modelo de contrato para Wedding Content Creation & Podcast en bodas (Mateo L. (Operations Lead))
+- [ ] Estructurar y lanzar nuevo servicio: "Wedding Content Creation" (cobertura exclusiva para bodas en Reels, TikToks y Stories en tiempo real) (Gabriel G. (Director Creativo))
 
 ## Proyecto: Podcast On-The-Go — Bodas, Eventos & Casco Antiguo
 Prioridad: high | Estado: active
 Descripción: Producción de podcast móvil y entrevistas en vivo directamente en bodas, fiestas exclusivas y activaciones de marca. Formato dinámico de video podcast para redes sociales y YouTube.
-Estructura Comercial & Paquetes:
-- **Activación Pop-Up Eventos / Rooftops ($350 - $500):** Set móvil con mesa vestida branding ARRIVE, 2 micrófonos inalámbricos broadcast, cobertura de 2 a 3 horas de vox-pop/entrevistas espontáneas a asistentes y VIPs. Entrega de 4 micro-clips verticales con subtítulos dinámicos listos para Reels/TikTok.
-- **Episodio Live / Boda / Marca ($750 - $1,100):** Grabación multitrack y multicámara 4K (2 ángulos) en locación (Terraplén, Furia o venue privado). Entrevistas guiadas a novios, invitados de honor o voceros de marca. Entrega de episodio completo masterizado para YouTube/Spotify + 6 clips virales verticales en 48 horas.
 Tareas:
-- [x] Estructurar nuevo proyecto: "Podcast On-The-Go" (producción de podcast móvil en bodas y diferentes eventos/locaciones) (Andrés V. (Lead Filmmaker))
 - [ ] Probar micrófonos inalámbricos del Podcast On-The-Go (Andrés V.)
+- [ ] Estructurar nuevo proyecto: "Podcast On-The-Go" (producción de podcast móvil en bodas y diferentes eventos/locaciones) (Andrés V. (Lead Filmmaker))
 

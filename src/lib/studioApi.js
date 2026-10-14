@@ -38,6 +38,12 @@ export const studioApi = {
     reanalyze: id => call(`/references/${id}/analyze`, { method: 'POST' }),
     deleteReference: id => call(`/references/${id}`, { method: 'DELETE' }),
     recreate: (id, payload) => call(`/references/${id}/recreate`, { method: 'POST', body: payload }),
+    updateReference: (id, changes) => call(`/references/${id}`, { method: 'PATCH', body: changes }),
+    libraryItems: (params = {}) => call(`/library-items?${new URLSearchParams(Object.entries(params).filter(([, v]) => v))}`),
+    createLibraryItem: item => call('/library-items', { method: 'POST', body: item }),
+    updateLibraryItem: (id, changes) => call(`/library-items/${id}`, { method: 'PATCH', body: changes }),
+    deleteLibraryItem: id => call(`/library-items/${id}`, { method: 'DELETE' }),
+    ideaFromLine: (id, payload) => call(`/library-items/${id}/idea`, { method: 'POST', body: payload }),
 };
 
 export const thumbUrl = (asset, size = 320) => {

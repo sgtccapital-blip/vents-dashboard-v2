@@ -1,0 +1,408 @@
+/* ═══════════════════════════════════════════════════════════════════
+   Redes Sociales — tema oscuro minimalista
+   Neutros casi negros, bordes finos, un solo acento. Se carga después de
+   SocialEngine.css y Studio.css; los colores de ambos salen de estos tokens.
+   ═══════════════════════════════════════════════════════════════════ */
+
+:root {
+  --se-bg: #09090b;
+  --se-surface: #111113;
+  --se-surface-2: #18181b;
+  --se-surface-hover: #1c1c20;
+  --se-border: rgba(255, 255, 255, 0.07);
+  --se-border-strong: rgba(255, 255, 255, 0.14);
+  --se-text: #fafafa;
+  --se-text-2: #d4d4d8;
+  --se-muted: #a1a1aa;
+  --se-faint: #71717a;
+  --se-accent: #8b7cff;
+  --se-accent-rgb: 139, 124, 255;
+  --se-radius: 12px;
+  --se-radius-sm: 8px;
+}
+
+.social-engine-container {
+  gap: 20px;
+  color: var(--se-text-2);
+  letter-spacing: -0.005em;
+  -webkit-font-smoothing: antialiased;
+}
+
+.social-engine-container h1,
+.social-engine-container h2,
+.social-engine-container h3,
+.social-engine-container h4 {
+  letter-spacing: -0.02em;
+  font-weight: 600 !important;
+}
+
+/* Las superficies genéricas de la app (.card) dentro de esta sección */
+.social-engine-container .card {
+  background: var(--se-surface);
+  border: 1px solid var(--se-border);
+  border-radius: var(--se-radius);
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+/* ─── Encabezado ─── */
+.social-engine-container .social-hero-header {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 4px 0 0;
+  overflow: visible;
+}
+.social-engine-container .social-hero-header::before { display: none; }
+.social-engine-container .social-hero-top { margin-bottom: 18px; }
+.social-engine-container .social-hero-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--se-surface-2);
+  border: 1px solid var(--se-border);
+  color: var(--se-text);
+  box-shadow: none;
+}
+.social-engine-container .social-hero-icon svg { width: 18px; height: 18px; }
+.social-engine-container .social-hero-titles h1 {
+  font-family: inherit;
+  font-size: 22px;
+  color: var(--se-text);
+}
+.social-engine-container .social-hero-titles p { color: var(--se-faint); font-size: 13px; }
+
+/* Métricas: una fila de cifras separadas por líneas finas */
+.social-engine-container .social-metrics-strip {
+  gap: 0;
+  border: 1px solid var(--se-border);
+  border-radius: var(--se-radius);
+  background: var(--se-surface);
+  overflow: hidden;
+}
+.social-engine-container .social-metric-card {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  border-left: 1px solid var(--se-border);
+  padding: 14px 18px;
+  gap: 6px;
+}
+.social-engine-container .social-metric-card:first-child { border-left: 0; }
+.social-engine-container .social-metric-lbl {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--se-faint);
+}
+.social-engine-container .social-metric-val { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; }
+.social-engine-container .social-metric-sub { color: var(--se-faint); font-weight: 400; }
+
+/* ─── Botones ─── */
+.social-engine-container .social-btn-primary {
+  background: var(--se-text);
+  color: var(--se-bg);
+  border: 1px solid var(--se-text);
+  border-radius: var(--se-radius-sm);
+  box-shadow: none;
+  font-weight: 600;
+  padding: 8px 14px;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+.social-engine-container .social-btn-primary:hover:not(:disabled) { transform: none; box-shadow: none; opacity: 0.88; }
+.social-engine-container .social-btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+.social-engine-container .social-btn-secondary {
+  background: transparent;
+  border: 1px solid var(--se-border-strong);
+  color: var(--se-text-2);
+  border-radius: var(--se-radius-sm);
+  font-weight: 500;
+  padding: 8px 14px;
+}
+.social-engine-container .social-btn-secondary:hover { background: var(--se-surface-2); color: var(--se-text); border-color: var(--se-border-strong); }
+
+/* ─── Selector de cuentas ─── */
+.social-engine-container .social-channels-bar { gap: 6px; padding: 0 0 4px; scrollbar-width: none; }
+.social-engine-container .social-channels-bar::-webkit-scrollbar { display: none; }
+.social-engine-container .social-channel-chip {
+  background: transparent;
+  border: 1px solid var(--se-border);
+  color: var(--se-muted);
+  padding: 6px 12px 6px 6px;
+  font-weight: 500;
+  gap: 8px;
+}
+.social-engine-container .social-channel-chip span[style] { color: var(--se-faint) !important; font-weight: 400 !important; }
+.social-engine-container .social-channel-chip:hover { background: var(--se-surface); color: var(--se-text); border-color: var(--se-border-strong); }
+.social-engine-container .social-channel-chip.active {
+  background: var(--se-surface-2);
+  border-color: var(--se-border-strong);
+  color: var(--se-text);
+  box-shadow: none;
+}
+.social-engine-container .channel-avatar { width: 22px; height: 22px; }
+.social-engine-container .channel-avatar-all { background: var(--se-surface-2); border: 1px solid var(--se-border-strong); color: var(--se-text-2); }
+.social-engine-container .channel-count-badge,
+.social-engine-container .social-channel-chip.active .channel-count-badge {
+  background: transparent;
+  color: var(--se-faint);
+  padding: 0;
+  font-weight: 500;
+}
+
+/* ─── Pestañas: subrayado fino ─── */
+.social-engine-container .social-tabs-nav,
+.social-engine-container .account-profile-subtabs {
+  gap: 2px;
+  border-bottom: 1px solid var(--se-border);
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.social-engine-container .social-tabs-nav::-webkit-scrollbar,
+.social-engine-container .account-profile-subtabs::-webkit-scrollbar { display: none; }
+.social-engine-container .social-tab-btn,
+.social-engine-container .account-subtab-btn {
+  background: transparent;
+  border: 0;
+  border-bottom: 1.5px solid transparent;
+  border-radius: 0;
+  margin-bottom: -1px;
+  padding: 10px 12px;
+  color: var(--se-faint);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  box-shadow: none;
+}
+.social-engine-container .social-tab-btn:hover,
+.social-engine-container .account-subtab-btn:hover { background: transparent; color: var(--se-text-2); }
+.social-engine-container .social-tab-btn.active,
+.social-engine-container .account-subtab-btn.active {
+  background: transparent;
+  color: var(--se-text);
+  border-bottom-color: var(--se-text);
+  box-shadow: none;
+}
+.social-engine-container .account-subtab-badge {
+  background: var(--se-surface-2);
+  color: var(--se-muted);
+  font-weight: 500;
+  box-shadow: none;
+}
+
+/* ─── Barra de búsqueda y filtros ─── */
+.social-engine-container .social-search-input,
+.social-engine-container .social-filter-select {
+  background: var(--se-surface);
+  border: 1px solid var(--se-border);
+  border-radius: var(--se-radius-sm);
+}
+.social-engine-container .social-search-input:focus-within,
+.social-engine-container .social-filter-select:focus { border-color: var(--se-border-strong); }
+.social-engine-container .social-search-input input { color: var(--se-text); }
+
+/* ─── Tablero ─── */
+.social-engine-container .social-kanban-board { gap: 12px; }
+.social-engine-container .social-kanban-col {
+  background: transparent;
+  border: 1px solid var(--se-border);
+  border-radius: var(--se-radius);
+  min-height: 420px;
+  padding: 10px;
+}
+.social-engine-container .kanban-col-head { border-bottom: 0; padding: 2px 4px 6px; }
+.social-engine-container .kanban-col-title {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--se-text-2);
+  gap: 8px;
+}
+.social-engine-container .kanban-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; flex: none; }
+.social-engine-container .kanban-col-count { background: transparent; color: var(--se-faint); font-weight: 500; padding: 0; }
+
+.social-engine-container .social-content-card,
+.social-engine-container .account-post-card,
+.social-engine-container .event-box-card,
+.social-engine-container .event-art-card,
+.social-engine-container .hook-card,
+.social-engine-container .account-dna-card,
+.social-engine-container .prod-card,
+.social-engine-container .idea-card,
+.social-engine-container .lib-card,
+.social-engine-container .ref-card {
+  background: var(--se-surface);
+  border: 1px solid var(--se-border);
+  border-radius: var(--se-radius);
+  box-shadow: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.social-engine-container .social-content-card:hover,
+.social-engine-container .account-post-card:hover,
+.social-engine-container .event-box-card:hover,
+.social-engine-container .event-art-card:hover,
+.social-engine-container .hook-card:hover,
+.social-engine-container .ref-card:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: var(--se-border-strong);
+  background: var(--se-surface-hover);
+}
+.social-engine-container .card-hook-box,
+.social-engine-container .account-post-hook-box,
+.social-engine-container .account-post-caption-box {
+  background: var(--se-surface-2);
+  border: 0;
+  border-radius: var(--se-radius-sm);
+}
+.social-engine-container .card-hook-label { color: var(--se-faint); text-transform: none; letter-spacing: 0; }
+.social-engine-container .card-account-pill { color: var(--se-muted); }
+.social-engine-container .card-format-pill,
+.social-engine-container .account-post-badge-fmt,
+.social-engine-container .account-post-pillar,
+.social-engine-container .idea-format,
+.social-engine-container .idea-pillar,
+.social-engine-container .hook-cat-badge,
+.social-engine-container .event-badge-pill {
+  background: var(--se-surface-2);
+  border: 1px solid var(--se-border);
+  color: var(--se-muted);
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
+}
+.social-engine-container .card-advance-btn {
+  background: transparent;
+  border: 1px solid var(--se-border);
+  color: var(--se-muted);
+}
+.social-engine-container .card-advance-btn:hover { background: var(--se-surface-2); color: var(--se-text); }
+
+/* ─── Perfil de cuenta ─── */
+.social-engine-container .account-profile-hero {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+}
+.social-engine-container .account-profile-hero::before,
+.social-engine-container .account-profile-hero::after { display: none; }
+.social-engine-container .account-hero-avatar { box-shadow: none; }
+.social-engine-container .account-hero-stats {
+  gap: 0;
+  border: 1px solid var(--se-border);
+  border-radius: var(--se-radius);
+  background: var(--se-surface);
+  overflow: hidden;
+}
+.social-engine-container .account-stat-box {
+  background: transparent;
+  border: 0;
+  border-left: 1px solid var(--se-border);
+  border-radius: 0;
+}
+.social-engine-container .account-stat-box:first-child { border-left: 0; }
+.social-engine-container .account-stat-lbl { text-transform: none; letter-spacing: 0; color: var(--se-faint); font-weight: 500; }
+.social-engine-container .account-stat-val { font-weight: 600; letter-spacing: -0.02em; }
+.social-engine-container .account-verified-badge,
+.social-engine-container .account-hero-type,
+.social-engine-container .account-hero-event-chip {
+  background: var(--se-surface-2);
+  border: 1px solid var(--se-border);
+  color: var(--se-muted);
+  box-shadow: none;
+}
+.social-engine-container .account-breadcrumb-bar { background: transparent; border: 0; padding: 0; }
+
+/* ─── Chips, vacíos y estados (estudio) ─── */
+.social-engine-container .raw-chip,
+.social-engine-container .hook-category-chip,
+.social-engine-container .art-preset-chip {
+  border: 1px solid var(--se-border);
+  color: var(--se-muted);
+  background: transparent;
+  font-weight: 500;
+}
+.social-engine-container .raw-chip:hover { color: var(--se-text); border-color: var(--se-border-strong); }
+.social-engine-container .raw-chip.on,
+.social-engine-container .hook-category-chip.active {
+  background: var(--se-text);
+  color: var(--se-bg);
+  border-color: var(--se-text);
+  font-weight: 600;
+}
+.social-engine-container .raw-empty { border: 1px dashed var(--se-border-strong); color: var(--se-faint); background: transparent; }
+.social-engine-container .lib-plan {
+  background: var(--se-surface);
+  border: 1px solid var(--se-border);
+  color: var(--se-muted);
+}
+.social-engine-container .lib-plan b { color: var(--se-text); }
+
+/* ─── Modales y formularios ─── */
+.social-engine-container .social-modal-overlay { background: rgba(0, 0, 0, 0.72); backdrop-filter: blur(4px); }
+.social-engine-container .social-modal-box {
+  background: var(--se-surface);
+  border: 1px solid var(--se-border-strong);
+  border-radius: 16px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+}
+.social-engine-container .social-modal-header,
+.social-engine-container .social-modal-footer { border-color: var(--se-border); background: transparent; }
+.social-engine-container .social-modal-title { color: var(--se-text); font-weight: 600; }
+.social-engine-container .social-modal-close { background: transparent; border: 0; color: var(--se-faint); }
+.social-engine-container .social-modal-close:hover { color: var(--se-text); }
+.social-engine-container .social-field label,
+.social-engine-container .lib-field > span { color: var(--se-faint); font-weight: 500; text-transform: none; letter-spacing: 0; }
+.social-engine-container input:not([type='checkbox']):not([type='radio']):not([type='range']),
+.social-engine-container textarea,
+.social-engine-container select {
+  background: var(--se-bg);
+  border: 1px solid var(--se-border);
+  border-radius: var(--se-radius-sm);
+  color: var(--se-text);
+}
+.social-engine-container .social-search-input input { background: transparent; border: 0; }
+.social-engine-container input:focus,
+.social-engine-container textarea:focus,
+.social-engine-container select:focus { outline: none; border-color: rgba(var(--se-accent-rgb), 0.6); }
+
+@media (max-width: 760px) {
+  .social-engine-container .social-metrics-strip,
+  .social-engine-container .account-hero-stats { grid-template-columns: repeat(2, 1fr); }
+  .social-engine-container .social-metric-card:nth-child(odd),
+  .social-engine-container .account-stat-box:nth-child(odd) { border-left: 0; }
+  .social-engine-container .social-metric-card:nth-child(n + 3),
+  .social-engine-container .account-stat-box:nth-child(n + 3) { border-top: 1px solid var(--se-border); }
+}
+
+/* Avatares de plataforma en monocromo: el ícono ya dice qué red es */
+.social-engine-container .social-channel-chip .channel-avatar {
+  background: var(--se-surface-2) !important;
+  border: 1px solid var(--se-border);
+  color: var(--se-muted);
+}
+.social-engine-container .social-channel-chip.active .channel-avatar { color: var(--se-text); }
+
+.social-engine-container .account-profile-subtabs { border: 0; border-bottom: 1px solid var(--se-border); }
+.social-engine-container .account-hero-avatar { overflow: hidden; border: 1px solid var(--se-border); }
+.social-engine-container .account-hero-avatar-svg { width: 100%; height: 100%; }
+.social-engine-container .account-hero-avatar-svg svg { width: 100%; height: 100%; display: block; }
+.social-engine-container .account-hero-type {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: var(--se-muted);
+  font-size: 13px;
+}
+.social-engine-container .account-hero-bio { color: var(--se-faint); }
+.social-engine-container .account-back-btn { background: transparent; border: 1px solid var(--se-border); color: var(--se-text-2); box-shadow: none; }
+.social-engine-container .account-breadcrumb-trail { color: var(--se-faint); }

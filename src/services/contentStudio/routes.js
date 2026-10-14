@@ -10,6 +10,7 @@ import { catalog, providerStatus, estimateCost, brandPrompt, runGeneration, frie
 import { AdaptationSchema, REFERENCE_SYSTEM } from './referenceEngine.js';
 import multer from 'multer';
 import { renderBrief, slugify } from './brief.js';
+import { LIBRARY_TYPES, ensureLibrary, pickFields, itemsForAccount, kitContext, lineIdeaPrompt } from './contentLibrary.js';
 
 const MAX_IMAGES = 12;
 
@@ -133,7 +134,7 @@ export function registerContentStudio(app, { readDB, writeDB, loadBrands, accoun
             const images = await thumbnailsFor(assets);
             const out = await generateStructured({
                 system: SYSTEM_PROMPT,
-                prompt: ideasPrompt({ account, brand, assets, count: Math.min(Number(count) || 5, 10), direction, hasImages: images.length > 0 }),
+                prompt: ideasPrompt({ account, brand, assets, count: Math.min(Number(count) || 5, 10), direction, hasImages: images.length > 0 }) + kitContext(itemsForAccount(db, accountId)),
                 schema: IdeaSchema,
                 images,
                 geminiApiKey: geminiKey(),
@@ -162,7 +163,7 @@ export function registerContentStudio(app, { readDB, writeDB, loadBrands, accoun
             const playbook = refObj?.playbookPath && fs.existsSync(path.join(projectRoot, refObj.playbookPath)) ? fs.readFileSync(path.join(projectRoot, refObj.playbookPath), 'utf-8') : '';
             const out = await generateStructured({
                 system: SYSTEM_PROMPT,
-                prompt: developPrompt({ account, brand, task, assets, hasImages: images.length > 0, reference: playbook }),
+                prompt: developPrompt({ account, brand, task, assets, hasImages: images.length > 0, reference: playbook }) + kitContext((db.libraryItems || []).filter(i => i.id === task.lineId)),
                 schema: DevelopmentSchema,
                 images,
                 geminiApiKey: geminiKey(),
@@ -522,7 +523,7 @@ export function registerContentStudio(app, { readDB, writeDB, loadBrands, accoun
             const playbook = ref.playbookPath && fs.existsSync(path.join(projectRoot, ref.playbookPath)) ? fs.readFileSync(path.join(projectRoot, ref.playbookPath), 'utf-8') : JSON.stringify(ref.analysis);
             const out = await generateStructured({
                 system: `${REFERENCE_SYSTEM}\n${SYSTEM_PROMPT}`,
-                prompt: `${accountContext(account, brand)}\n## Referencia\n${playbook}\n${req.body?.direction ? `\n## Dirección\n${req.body.direction}\n` : ''}\nDiseña UNA pieza para ${account.handler} que recree el formato y la técnica de la referencia con material propio y la línea de la cuenta.`,
+                prompt: `${accountContext(account, brand)}${kitContext(itemsForAccount(db, account.id))}\n## Referencia\n${playbook}\n${req.body?.direction ? `\n## Dirección\n${req.body.direction}\n` : ''}\nDiseña UNA pieza para ${account.handler} que recree el formato y la técnica de la referencia con material propio y la línea de la cuenta.`,
                 schema: AdaptationSchema,
                 geminiApiKey: geminiKey(),
             });
@@ -543,6 +544,85 @@ export function registerContentStudio(app, { readDB, writeDB, loadBrands, accoun
             fresh.contentTasks = [...(fresh.contentTasks || []), task];
             writeDB(fresh);
             res.json(task);
+        } catch (err) {
+            res.status(502).json({ error: err.message });
+        }
+    });
+
+    // ─── Biblioteca general: líneas y hooks asignables a cuentas ───
+    const libraryDB = () => {
+        const db = readDB();
+        if (ensureLibrary(db)) writeDB(db);
+        return db;
+    };
+
+    app.get('/api/studio/library-items', (req, res) => {
+        const { accountId, type } = req.query;
+        let items = libraryDB().libraryItems;
+        if (accountId) items = items.filter(i => (i.accountIds || []).includes(accountId));
+        if (type) items = items.filter(i => i.type === type);
+        res.json(items.slice().sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))));
+    });
+
+    app.post('/api/studio/library-items', (req, res) => {
+        const type = req.body?.type;
+        if (!LIBRARY_TYPES.includes(type)) return res.status(400).json({ error: 'Tipo no válido (linea | hook)' });
+        const fields = pickFields(type, req.body);
+        if (type === 'linea' && !fields.name) return res.status(400).json({ error: 'La línea necesita un nombre' });
+        if (type === 'hook' && !fields.text) return res.status(400).json({ error: 'El hook necesita texto' });
+        const db = libraryDB();
+        const item = { id: `${type}-${Date.now()}`, type, accountIds: [], createdAt: new Date().toISOString(), ...fields };
+        db.libraryItems.push(item);
+        writeDB(db);
+        res.status(201).json(item);
+    });
+
+    app.patch('/api/studio/library-items/:id', (req, res) => {
+        const db = libraryDB();
+        const item = db.libraryItems.find(i => i.id === req.params.id);
+        if (!item) return res.status(404).json({ error: 'Elemento no encontrado' });
+        Object.assign(item, pickFields(item.type, req.body), { updatedAt: new Date().toISOString() });
+        writeDB(db);
+        res.json(item);
+    });
+
+    app.delete('/api/studio/library-items/:id', (req, res) => {
+        const db = libraryDB();
+        const before = db.libraryItems.length;
+        db.libraryItems = db.libraryItems.filter(i => i.id !== req.params.id);
+        if (db.libraryItems.length === before) return res.status(404).json({ error: 'Elemento no encontrado' });
+        writeDB(db);
+        res.json({ deleted: req.params.id });
+    });
+
+    // Idea nueva siguiendo una línea. Devuelve la pieza sin guardarla: el cliente la agrega al pipeline.
+    app.post('/api/studio/library-items/:id/idea', async (req, res) => {
+        const db = libraryDB();
+        const line = db.libraryItems.find(i => i.id === req.params.id && i.type === 'linea');
+        const account = (db.socialMedia || []).find(a => a.id === req.body?.accountId);
+        if (!line) return res.status(404).json({ error: 'Línea no encontrada' });
+        if (!account) return res.status(404).json({ error: 'Cuenta no encontrada' });
+        try {
+            const brand = brandForAccount(account.id);
+            const out = await generateStructured({
+                system: SYSTEM_PROMPT,
+                prompt: `${accountContext(account, brand)}\n${lineIdeaPrompt(line)}${req.body?.direction ? `\n\n## Dirección\n${req.body.direction}` : ''}`,
+                schema: AdaptationSchema,
+                geminiApiKey: geminiKey(),
+            });
+            const a = out.data;
+            res.json({
+                id: `ct-${Date.now()}`,
+                createdAt: new Date().toISOString(),
+                title: a.title, accountId: account.id, accountHandler: account.handler,
+                format: line.format || a.format, pillar: line.pillar || a.pillar, status: 'idea',
+                hookVerbal: a.hook, hookVisual: a.overlayText ? `Texto en pantalla: ${a.overlayText}` : '',
+                scriptBody: `${a.concept}\n\nTomas:\n${a.shotList.map(x => `- ${x}`).join('\n')}`,
+                overlayText: a.overlayText, durationSec: line.durationSec || a.durationSec, caption: a.caption, cta: a.cta,
+                hashtags: account.dna?.hashtags || '', ideaWhy: a.why,
+                rawAssetIds: [], lineId: line.id, source: 'line',
+                publishDate: new Date().toISOString().slice(0, 10), publishTime: '19:30',
+            });
         } catch (err) {
             res.status(502).json({ error: err.message });
         }
