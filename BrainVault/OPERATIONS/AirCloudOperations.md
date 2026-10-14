@@ -1,7 +1,7 @@
 # AirCloud • Live Operations Briefing (Bóveda y Rodaje en Vivo)
 
 *Documento de telemetría operativa sincronizado automáticamente para el RAG de eventos y agentes IA.*
-*Última actualización: 2026-10-14 07:44:47*
+*Última actualización: 2026-10-14 18:11:25*
 
 ## 1. Resumen Ejecutivo del Rodaje
 - **Sistema**: AirCloud P2P Vault (macOS)
@@ -11,7 +11,7 @@
 - **Respaldo Google Drive**: Conectado (goldenstartrading11@gmail.com)
 - **Carpeta en Nube**: `AirCloud_Vault` con **17 tomas** respaldadas
 - **Integridad de Nube**: Espejo 1:1 estricto (0 duplicados, reconciliación automática de borrados)
-- **Dispositivos en Rodaje Conectados**: 0 activo(s)
+- **Dispositivos en Rodaje Conectados**: 1 activo(s)
 
 ## 2. Desglose de Tomas por Carpeta de Rodaje
 ### 📁 Carpeta: Tom (12 toma(s) • 2.13 GB)
@@ -36,7 +36,7 @@
 - **`Carros_Toma_005.mov`** | 43.13 MB | Subido: 2026-10-14 03:15:16
 
 ## 3. Dispositivos Activos en la Red P2P de Rodaje
-*Solo el nodo maestro (MacBook) está en línea.*
+- **MacBook GG** (desktop) | IP: `127.0.0.1` | Estado: 🟢 En vivo
 
 ## 4. Rutas y Acceso Local para Agentes y Montaje
 - **Biblioteca Local (Finder)**: `/Users/admin/Movies/AirCloud/Archivos`
