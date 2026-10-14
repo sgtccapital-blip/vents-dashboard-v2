@@ -5,6 +5,7 @@
 import fs from 'fs';
 import path from 'path';
 import { searchKnowledge, getKnowledgeDoc } from '../agent.js';
+import { collectVaultFiles, toRagDocument } from '../brainVault.js';
 
 export function registerRagRoutes(app, ctx) {
     const { readDB, writeDB, upload, extractPdfText, rootDir } = ctx;
@@ -38,49 +39,50 @@ export function registerRagRoutes(app, ctx) {
             return { success: true, documentId: docObj.id, indexed: true };
         },
 
+        /**
+         * Indexa una carpeta de notas (el BrainVault): título y categoría desde el encabezado YAML,
+         * omite "_plantillas", "_archivo" y ocultos, y quita del índice lo que ya no existe en la carpeta.
+         */
         async indexObsidianVault(vaultPath, namespace = 'default') {
             if (!vaultPath || !fs.existsSync(vaultPath)) return { success: false, error: 'Ruta de vault inválida o inexistente' };
-
-            function getAllFiles(dirPath, arrayOfFiles = []) {
-                const files = fs.readdirSync(dirPath);
-                files.forEach(file => {
-                    const fullPath = path.join(dirPath, file);
-                    if (fs.statSync(fullPath).isDirectory()) {
-                        if (!file.startsWith('.')) getAllFiles(fullPath, arrayOfFiles);
-                    } else if (file.endsWith('.md') || file.endsWith('.txt')) {
-                        arrayOfFiles.push(fullPath);
-                    }
-                });
-                return arrayOfFiles;
-            }
-
-            const files = getAllFiles(vaultPath);
+            const root = path.resolve(vaultPath);
+            const files = collectVaultFiles(root);
             const db = readDB();
-            if (!db.ragDocuments) db.ragDocuments = [];
-            let count = 0;
+            db.ragDocuments = db.ragDocuments || [];
 
+            const seen = new Set();
             for (const f of files) {
-                const content = fs.readFileSync(f, 'utf-8');
-                const fname = path.basename(f);
-                const docId = `obsidian-${path.relative(vaultPath, f).replace(/[^a-zA-Z0-9_-]/g, '_')}`;
-
-                const existing = db.ragDocuments.findIndex(d => d.id === docId);
+                const rel = path.relative(root, f);
+                const doc = toRagDocument(fs.readFileSync(f, 'utf-8'), rel);
+                const docId = `obsidian-${rel.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+                seen.add(docId);
                 const docObj = {
                     id: docId,
-                    filename: fname,
-                    title: fname,
-                    content,
-                    category: 'obsidian_vault',
+                    filename: path.basename(f),
+                    title: doc.title,
+                    content: doc.content,
+                    category: doc.category,
+                    tags: doc.tags,
                     namespace: namespace || 'default',
                     path: f,
-                    updatedAt: new Date().toISOString()
+                    source: 'brainvault',
+                    updatedAt: doc.updated || new Date().toISOString(),
                 };
+                const existing = db.ragDocuments.findIndex(d => d.id === docId);
                 if (existing >= 0) db.ragDocuments[existing] = docObj;
                 else db.ragDocuments.push(docObj);
-                count++;
             }
+
+            // Documentos de esta carpeta que ya no existen (borrados, renombrados o movidos a _archivo)
+            const before = db.ragDocuments.length;
+            db.ragDocuments = db.ragDocuments.filter(d => !(
+                String(d.id).startsWith('obsidian-') &&
+                typeof d.path === 'string' &&
+                path.resolve(d.path).startsWith(root + path.sep) &&
+                !seen.has(d.id)
+            ));
             writeDB(db);
-            return { success: true, count };
+            return { success: true, count: files.length, removed: before - db.ragDocuments.length };
         },
 
         async indexAllData() {
@@ -331,8 +333,8 @@ export function registerRagRoutes(app, ctx) {
     app.post('/api/brain/sync-vault', async (req, res) => {
         try {
             const namespace = req.body.namespace || 'default';
-            // Sin ruta: indexa el BrainVault y los docs del repo (lo que existe también en Render)
-            const paths = req.body.path ? [req.body.path] : [path.join(rootDir, 'BrainVault'), path.join(rootDir, 'docs')];
+            // Sin ruta: indexa el BrainVault del repo (lo que existe también en Render)
+            const paths = req.body.path ? [req.body.path] : [path.join(rootDir, 'BrainVault')];
             let processed = 0;
             for (const p of paths) {
                 const result = await EmbeddedRAGEngine.indexObsidianVault(p, namespace);

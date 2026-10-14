@@ -42,7 +42,6 @@ before(async () => {
             PORT: String(PORT),
             DB_PATH: dbPath,
             VAULT_PATH: path.join(tmp, 'vault'),
-            BRAIN_VAULT_DIR: path.join(tmp, 'BrainVault'),
             DASHBOARD_PASSWORD: PASSWORD,
             TEAM_PASSWORDS: 'MARIO:mario-secreto',
             API_TOKEN: TOKEN,

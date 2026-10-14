@@ -18,7 +18,6 @@ import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import multer from 'multer';
 import { createRequire } from 'module';
-import { execFile } from 'child_process';
 import crypto from 'crypto';
 import cron from 'node-cron';
 const require = createRequire(import.meta.url);
@@ -433,18 +432,6 @@ const scheduleSupabaseSync = debounce(() => {
     syncToSupabase(data).catch(err => console.error('[Supabase Sync Catch] Error:', err.message));
 }, 2000);
 
-let vaultRunning = false;
-let vaultPending = false;
-function runBrainVault() {
-    if (vaultRunning) { vaultPending = true; return; }
-    vaultRunning = true;
-    execFile(process.execPath, ['generate_brain_vault.cjs'], { cwd: __dirname }, (error) => {
-        if (error) console.error(`[BrainVault Sync] Error sincronizando markdown: ${error.message}`);
-        vaultRunning = false;
-        if (vaultPending) { vaultPending = false; runBrainVault(); }
-    });
-}
-const scheduleBrainVault = debounce(runBrainVault, 5000);
 
 function writeDB(data) {
     writeDBFile(data);
@@ -452,7 +439,6 @@ function writeDB(data) {
     if (SUPABASE_URL && SUPABASE_KEY && !SUPABASE_URL.includes('tu-proyecto') && !SUPABASE_KEY.includes('tu-anon')) {
         scheduleSupabaseSync();
     }
-    scheduleBrainVault();
 }
 
 // ─── Generic CRUD Factory ─────────────────────────────────────
@@ -2158,6 +2144,14 @@ app.listen(PORT, '0.0.0.0', async () => {
         } catch (e) {
             console.warn('No se pudo auto-inicializar seed:', e.message);
         }
+    }
+
+    // Cerebro de Bart: indexar el BrainVault del repo en cada arranque (así cada deploy trae lo último)
+    try {
+        const brain = await EmbeddedRAGEngine.indexObsidianVault(path.join(__dirname, 'BrainVault'));
+        if (brain.success) console.log(`   🧠 Cerebro: ${brain.count} documentos del BrainVault indexados${brain.removed ? ` (${brain.removed} obsoletos quitados)` : ''}`);
+    } catch (err) {
+        console.warn('   Cerebro: no se pudo indexar el BrainVault:', err.message);
     }
 
     // Auto-index entities into embedded RAG
