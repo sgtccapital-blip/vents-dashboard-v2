@@ -74,7 +74,7 @@ export const BROADCAST_OBJECTIVES = [
 ];
 
 export default function WhatsAppAgent() {
-    const { events, contacts, addActivity } = useApp();
+    const { events, contacts, imageGirls, addActivity } = useApp();
 
     // ─── Week & Navigation State ────────────────────────────────
     const [weekOffset, setWeekOffset] = useState(0);
@@ -82,6 +82,17 @@ export default function WhatsAppAgent() {
     const [customRange, setCustomRange] = useState(false);
     const [startDateInput, setStartDateInput] = useState('');
     const [endDateInput, setEndDateInput] = useState('');
+
+    // ─── Test Phone & Inline Edit State ─────────────────────────
+    const [testPhone, setTestPhone] = useState(() => {
+        try {
+            return localStorage.getItem('__whatsapp_test_phone') || '';
+        } catch {
+            return '';
+        }
+    });
+    const [customVipCopy, setCustomVipCopy] = useState('');
+    const [isEditingVipCopy, setIsEditingVipCopy] = useState(false);
 
     // ─── Generator State ────────────────────────────────────────
     const [selectedTone, setSelectedTone] = useState('nightlife_vip');
@@ -430,7 +441,8 @@ export default function WhatsAppAgent() {
     };
 
     const handleSendDirectWhatsApp = (contact, textTemplate) => {
-        const text = WhatsAppAgentService.personalizeMessage(textTemplate, contact);
+        const rawTemplate = isEditingVipCopy && customVipCopy.trim() ? customVipCopy : (textTemplate || activeVipTemplate?.whatsappCopy || '');
+        const text = WhatsAppAgentService.personalizeMessage(rawTemplate, contact);
         const url = WhatsAppAgentService.buildWhatsAppLink(contact.phone, text);
         
         // Log dispatch
@@ -491,6 +503,48 @@ export default function WhatsAppAgent() {
         window.open(url, '_blank');
     };
 
+    const handleCopyFullWeek = () => {
+        const fullMarkdown = WhatsAppAgentService.buildFullWeekMarkdown(campaign);
+        if (!fullMarkdown) return;
+        handleCopy('full-week-copy', fullMarkdown);
+    };
+
+    const handleBroadcastFullWeek = () => {
+        const fullMarkdown = WhatsAppAgentService.buildFullWeekMarkdown(campaign);
+        if (!fullMarkdown) return;
+        const url = WhatsAppAgentService.buildWhatsAppLink('', fullMarkdown);
+        WhatsAppAgentService.logDispatch({
+            title: `Cartelera Semanal Completa (${campaign?.startDate || ''} al ${campaign?.endDate || ''})`,
+            target: 'Comunidades & Grupos WhatsApp',
+            channel: 'whatsapp_broadcast',
+            copyPreview: fullMarkdown
+        });
+        loadLogs();
+        window.open(url, '_blank');
+    };
+
+    const handleResetSentContacts = () => {
+        if (window.confirm('¿Deseas reiniciar el contador de contactos enviados para una nueva ronda de difusión?')) {
+            setSentContactIds([]);
+            localStorage.removeItem('__whatsapp_sent_contacts');
+        }
+    };
+
+    const handleSendTestWhatsApp = () => {
+        if (!testPhone.trim()) return;
+        const text = currentSimulatedText;
+        const url = WhatsAppAgentService.buildWhatsAppLink(testPhone, text);
+        WhatsAppAgentService.logDispatch({
+            title: `Prueba en Vivo a ${testPhone}`,
+            target: 'Prueba Personal',
+            channel: 'whatsapp_test',
+            recipientPhone: testPhone,
+            copyPreview: text
+        });
+        loadLogs();
+        window.open(url, '_blank');
+    };
+
     const handleSaveScheduleEdit = () => {
         if (!editingScheduleItem || !campaign) return;
         const updated = campaign.weeklySchedule.map(s => s.id === editingScheduleItem.id ? editingScheduleItem : s);
@@ -527,15 +581,42 @@ export default function WhatsAppAgent() {
     };
 
     // ─── Filtered Contacts for Outreach ─────────────────────────
+    const allAudienceContacts = useMemo(() => {
+        const baseContacts = (contacts || []).map(c => ({
+            ...c,
+            role: c.role || 'VIP'
+        }));
+        const modelContacts = (imageGirls || []).map((g, idx) => ({
+            id: `girl-${g.id || idx}`,
+            name: g.name || 'Modelo ARRIVE',
+            phone: g.phone || '',
+            instagram: g.ig || '',
+            role: '🌸 Modelo / Chicas VIP',
+            isModel: true,
+            detail: g.type || 'Cena VIP & Cócteles',
+            rating: g.rating || 5.0
+        }));
+        return [...modelContacts, ...baseContacts];
+    }, [contacts, imageGirls]);
+
     const filteredContacts = useMemo(() => {
-        return (contacts || []).filter(c => {
+        return allAudienceContacts.filter(c => {
             const matchesSearch = (c.name || '').toLowerCase().includes(contactSearch.toLowerCase()) ||
                                   (c.phone || '').toLowerCase().includes(contactSearch.toLowerCase()) ||
-                                  (c.instagram || '').toLowerCase().includes(contactSearch.toLowerCase());
+                                  (c.instagram || '').toLowerCase().includes(contactSearch.toLowerCase()) ||
+                                  (c.detail || '').toLowerCase().includes(contactSearch.toLowerCase());
             const matchesRole = selectedAudienceFilter === 'all' || c.role === selectedAudienceFilter;
             return matchesSearch && matchesRole;
         });
-    }, [contacts, contactSearch, selectedAudienceFilter]);
+    }, [allAudienceContacts, contactSearch, selectedAudienceFilter]);
+
+    const outreachStats = useMemo(() => {
+        const total = filteredContacts.length;
+        const sent = filteredContacts.filter(c => sentContactIds.includes(c.id)).length;
+        const pending = Math.max(0, total - sent);
+        const percentage = total > 0 ? Math.round((sent / total) * 100) : 0;
+        return { total, sent, pending, percentage };
+    }, [filteredContacts, sentContactIds]);
 
     // ─── Filtered Reference Messages ────────────────────────────
     const normalizeObjKey = (obj) => {
@@ -600,6 +681,8 @@ export default function WhatsAppAgent() {
         if (!campaign?.vipDirectMessages) return null;
         return campaign.vipDirectMessages.find(t => t.id === selectedVipTemplateId) || campaign.vipDirectMessages[0];
     }, [campaign, selectedVipTemplateId]);
+
+    const effectiveVipCopy = isEditingVipCopy && customVipCopy.trim() !== '' ? customVipCopy : (activeVipTemplate?.whatsappCopy || '');
 
     return (
         <div className="page-content animate-in" style={{ paddingBottom: '60px' }}>
@@ -988,6 +1071,81 @@ export default function WhatsAppAgent() {
                             </span>
                         </div>
                     )}
+
+                    {/* Full Week Broadcast Bar */}
+                    <div style={{
+                        padding: '16px 20px',
+                        background: 'linear-gradient(90deg, rgba(37, 211, 102, 0.12) 0%, rgba(124, 92, 252, 0.1) 100%)',
+                        border: '1px solid rgba(37, 211, 102, 0.3)',
+                        borderRadius: '14px',
+                        marginBottom: '22px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        flexWrap: 'wrap',
+                        gap: '14px'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{
+                                width: '38px',
+                                height: '38px',
+                                borderRadius: '10px',
+                                background: '#25D366',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: '#000',
+                                fontWeight: 800
+                            }}>
+                                <Share2 size={18} />
+                            </div>
+                            <div>
+                                <div style={{ fontWeight: 700, fontSize: '14px', color: '#fff' }}>
+                                    Cartelera Completa de la Semana (Lunes a Domingo)
+                                </div>
+                                <div style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
+                                    Exporta o difunde todos los 7 días consolidados en un solo post estructurado para comunidades de WhatsApp.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <button
+                                className="btn btn-secondary"
+                                onClick={() => handleCopyFullWeek()}
+                                style={{
+                                    padding: '9px 16px',
+                                    fontSize: '13px',
+                                    fontWeight: 600,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px'
+                                }}
+                            >
+                                {copiedId === 'full-week-copy' ? <Check size={15} color="#25D366" /> : <Copy size={15} />}
+                                {copiedId === 'full-week-copy' ? '¡Cartelera Copiada!' : 'Copiar Cartelera Completa'}
+                            </button>
+
+                            <button
+                                className="btn btn-primary"
+                                onClick={() => handleBroadcastFullWeek()}
+                                style={{
+                                    background: '#25D366',
+                                    color: '#000',
+                                    fontWeight: 700,
+                                    padding: '9px 16px',
+                                    fontSize: '13px',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px'
+                                }}
+                            >
+                                <Send size={15} /> Difundir a Comunidades
+                            </button>
+                        </div>
+                    </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '20px' }}>
                         {campaign?.weeklySchedule?.map((item) => {
@@ -1941,6 +2099,47 @@ export default function WhatsAppAgent() {
                             ))}
                         </div>
 
+                        {/* Outreach Progress Tracker */}
+                        <div style={{
+                            padding: '12px 18px',
+                            background: 'rgba(0,0,0,0.3)',
+                            borderRadius: '12px',
+                            border: '1px solid var(--border-subtle)',
+                            marginBottom: '18px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            flexWrap: 'wrap',
+                            gap: '12px'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 1, minWidth: '240px' }}>
+                                <div style={{ fontSize: '13px', color: '#fff' }}>
+                                    <strong>Progreso de Difusión:</strong> {outreachStats.sent} de {outreachStats.total} contactados ({outreachStats.percentage}%)
+                                </div>
+                                <div style={{ flex: 1, maxWidth: '160px', height: '8px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', overflow: 'hidden' }}>
+                                    <div style={{ width: `${outreachStats.percentage}%`, height: '100%', background: '#25D366', transition: 'width 0.3s ease' }} />
+                                </div>
+                            </div>
+                            <button
+                                onClick={handleResetSentContacts}
+                                style={{
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: 'var(--text-tertiary)',
+                                    fontSize: '11.5px',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    padding: '4px 8px',
+                                    borderRadius: '6px'
+                                }}
+                                title="Reiniciar lista de contactados para una nueva campaña"
+                            >
+                                <RefreshCw size={12} /> Reiniciar tracking
+                            </button>
+                        </div>
+
                         {/* Contacts Table / List */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                             {filteredContacts.length === 0 ? (
@@ -1956,7 +2155,7 @@ export default function WhatsAppAgent() {
                                             style={{
                                                 padding: '14px 18px',
                                                 background: 'rgba(0,0,0,0.25)',
-                                                border: '1px solid var(--border-subtle)',
+                                                border: contact.isModel ? '1px solid rgba(236, 72, 153, 0.3)' : '1px solid var(--border-subtle)',
                                                 borderRadius: '12px',
                                                 display: 'flex',
                                                 alignItems: 'center',
@@ -1970,22 +2169,27 @@ export default function WhatsAppAgent() {
                                                     width: '40px',
                                                     height: '40px',
                                                     borderRadius: '10px',
-                                                    background: contact.role === 'VIP' ? 'rgba(245, 158, 11, 0.2)' : 'rgba(59, 130, 246, 0.2)',
+                                                    background: contact.isModel ? 'rgba(236, 72, 153, 0.2)' : contact.role === 'VIP' ? 'rgba(245, 158, 11, 0.2)' : 'rgba(59, 130, 246, 0.2)',
                                                     display: 'flex',
                                                     alignItems: 'center',
                                                     justifyContent: 'center',
                                                     fontWeight: 800,
                                                     fontSize: '15px',
-                                                    color: contact.role === 'VIP' ? '#f59e0b' : '#3b82f6'
+                                                    color: contact.isModel ? '#ec4899' : contact.role === 'VIP' ? '#f59e0b' : '#3b82f6'
                                                 }}>
-                                                    {contact.name.charAt(0)}
+                                                    {contact.isModel ? '🌸' : contact.name.charAt(0)}
                                                 </div>
                                                 <div>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                         <span style={{ fontWeight: 700, fontSize: '14px', color: '#fff' }}>{contact.name}</span>
-                                                        <span className={`tag tag-${contact.role === 'VIP' ? 'active' : 'pending'}`} style={{ fontSize: '10px', padding: '1px 6px' }}>
+                                                        <span className={`tag ${contact.isModel ? 'tag-purple' : contact.role === 'VIP' ? 'tag-active' : 'tag-pending'}`} style={{ fontSize: '10px', padding: '1px 6px' }}>
                                                             {contact.role}
                                                         </span>
+                                                        {contact.detail && (
+                                                            <span style={{ fontSize: '11px', color: contact.isModel ? '#f472b6' : 'var(--text-tertiary)' }}>
+                                                                • {contact.detail}
+                                                            </span>
+                                                        )}
                                                         {isSent && (
                                                             <span style={{ fontSize: '11px', color: '#25D366', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '3px' }}>
                                                                 <CheckCircle2 size={13} /> Enviado
@@ -2001,7 +2205,7 @@ export default function WhatsAppAgent() {
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                                 <button
                                                     className="btn btn-primary"
-                                                    onClick={() => handleSendDirectWhatsApp(contact, activeVipTemplate?.whatsappCopy || '')}
+                                                    onClick={() => handleSendDirectWhatsApp(contact, effectiveVipCopy)}
                                                     style={{
                                                         background: '#25D366',
                                                         color: '#000',
@@ -2027,16 +2231,44 @@ export default function WhatsAppAgent() {
 
                     {/* Right: Selected Template Preview */}
                     <div className="card" style={{ padding: '20px', background: 'var(--bg-card)', position: 'sticky', top: '80px' }}>
-                        <h4 style={{ margin: '0 0 12px 0', fontSize: '15px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <Sliders size={16} color="var(--accent-primary)" /> Plantilla de Mensaje Activa
-                        </h4>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                            <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Sliders size={16} color="var(--accent-primary)" /> Plantilla de Mensaje Activa
+                            </h4>
+                            <button
+                                onClick={() => {
+                                    if (!isEditingVipCopy) {
+                                        setCustomVipCopy(effectiveVipCopy);
+                                    }
+                                    setIsEditingVipCopy(!isEditingVipCopy);
+                                }}
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: 'var(--accent-primary)',
+                                    fontSize: '11.5px',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    padding: '2px 6px',
+                                    borderRadius: '4px'
+                                }}
+                            >
+                                <Edit3 size={12} /> {isEditingVipCopy ? 'Fijar' : 'Editar'}
+                            </button>
+                        </div>
 
                         {/* Template selector pills */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
                             {campaign?.vipDirectMessages?.map(tmpl => (
                                 <div 
                                     key={tmpl.id}
-                                    onClick={() => setSelectedVipTemplateId(tmpl.id)}
+                                    onClick={() => {
+                                        setSelectedVipTemplateId(tmpl.id);
+                                        setCustomVipCopy(tmpl.whatsappCopy);
+                                        setIsEditingVipCopy(false);
+                                    }}
                                     style={{
                                         padding: '10px 14px',
                                         borderRadius: '10px',
@@ -2060,25 +2292,47 @@ export default function WhatsAppAgent() {
                         {activeVipTemplate && (
                             <div>
                                 <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '6px' }}>
-                                    Vista previa del texto:
+                                    {isEditingVipCopy ? 'Editando copy personalizado (soporta {{nombre}}):' : 'Vista previa del texto:'}
                                 </div>
-                                <div style={{
-                                    background: 'rgba(18, 140, 126, 0.12)',
-                                    border: '1px solid rgba(37, 211, 102, 0.25)',
-                                    borderRadius: '10px',
-                                    padding: '14px',
-                                    fontSize: '13px',
-                                    lineHeight: '1.5',
-                                    color: 'rgba(255,255,255,0.92)',
-                                    whiteSpace: 'pre-wrap',
-                                    marginBottom: '14px'
-                                }}>
-                                    {activeVipTemplate.whatsappCopy}
-                                </div>
+                                {isEditingVipCopy ? (
+                                    <textarea
+                                        rows={6}
+                                        value={customVipCopy}
+                                        onChange={(e) => setCustomVipCopy(e.target.value)}
+                                        style={{
+                                            width: '100%',
+                                            padding: '12px',
+                                            background: 'rgba(0,0,0,0.4)',
+                                            border: '1px solid var(--accent-primary)',
+                                            borderRadius: '10px',
+                                            color: '#fff',
+                                            fontSize: '13px',
+                                            lineHeight: '1.5',
+                                            resize: 'vertical',
+                                            marginBottom: '14px',
+                                            fontFamily: 'inherit'
+                                        }}
+                                        placeholder="Escribe tu mensaje usando {{nombre}}..."
+                                    />
+                                ) : (
+                                    <div style={{
+                                        background: 'rgba(18, 140, 126, 0.12)',
+                                        border: '1px solid rgba(37, 211, 102, 0.25)',
+                                        borderRadius: '10px',
+                                        padding: '14px',
+                                        fontSize: '13px',
+                                        lineHeight: '1.5',
+                                        color: 'rgba(255,255,255,0.92)',
+                                        whiteSpace: 'pre-wrap',
+                                        marginBottom: '14px'
+                                    }}>
+                                        {effectiveVipCopy}
+                                    </div>
+                                )}
 
                                 <button
                                     className="btn btn-secondary"
-                                    onClick={() => handleCopy(activeVipTemplate.id, activeVipTemplate.whatsappCopy)}
+                                    onClick={() => handleCopy(activeVipTemplate.id, effectiveVipCopy)}
                                     style={{ width: '100%', padding: '9px', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                                 >
                                     {copiedId === activeVipTemplate.id ? <Check size={15} /> : <Copy size={15} />}
@@ -2271,6 +2525,57 @@ export default function WhatsAppAgent() {
                             {copiedId === 'sim-text' ? <Check size={16} /> : <Copy size={16} />}
                             {copiedId === 'sim-text' ? '¡Texto Copiado!' : 'Copiar Texto del Simulador'}
                         </button>
+
+                        {/* Live Test to WhatsApp Mobile */}
+                        <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--border-subtle)' }}>
+                            <h5 style={{ margin: '0 0 6px 0', fontSize: '13px', color: '#25D366', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <Send size={14} /> Enviar prueba a mi WhatsApp
+                            </h5>
+                            <p style={{ margin: '0 0 10px 0', fontSize: '12px', color: 'var(--text-tertiary)' }}>
+                                Envía este texto formateado a tu propio celular para verificar cómo se ve en la app oficial de WhatsApp:
+                            </p>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                <input 
+                                    type="text"
+                                    placeholder="Tu teléfono (ej: 6211-4455)"
+                                    value={testPhone}
+                                    onChange={(e) => {
+                                        setTestPhone(e.target.value);
+                                        localStorage.setItem('__whatsapp_test_phone', e.target.value);
+                                    }}
+                                    style={{
+                                        flex: 1,
+                                        padding: '8px 12px',
+                                        background: 'rgba(0,0,0,0.3)',
+                                        border: '1px solid var(--border-default)',
+                                        borderRadius: '8px',
+                                        color: '#fff',
+                                        fontSize: '13px'
+                                    }}
+                                />
+                                <button
+                                    className="btn btn-primary"
+                                    onClick={handleSendTestWhatsApp}
+                                    disabled={!testPhone.trim()}
+                                    style={{
+                                        background: '#25D366',
+                                        color: '#000',
+                                        fontWeight: 700,
+                                        padding: '8px 14px',
+                                        fontSize: '13px',
+                                        border: 'none',
+                                        borderRadius: '8px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        cursor: testPhone.trim() ? 'pointer' : 'not-allowed',
+                                        opacity: testPhone.trim() ? 1 : 0.6
+                                    }}
+                                >
+                                    <Send size={14} /> Probar
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                     {/* Phone Screen Mockup */}

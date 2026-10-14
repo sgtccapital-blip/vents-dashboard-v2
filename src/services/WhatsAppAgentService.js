@@ -14,6 +14,7 @@ export const CAMPAIGN_TONES = [
 
 export const AUDIENCE_TAGS = [
     { id: 'all', label: 'Todos los Contactos' },
+    { id: '🌸 Modelo / Chicas VIP', label: '🌸 Modelos / Chicas VIP' },
     { id: 'VIP', label: '👑 Clientes VIP' },
     { id: 'Promotor', label: '⚡ Promotores & RRPP' },
     { id: 'Invitado', label: '🎟️ Invitados / Listas' },
@@ -166,18 +167,53 @@ class WhatsAppAgentService {
     }
 
     /**
+     * Limpia y normaliza números de teléfono. Si es un número local de Panamá (8 dígitos),
+     * antepone automáticamente el código internacional de país 507.
+     */
+    static formatCleanPhone(phone = '') {
+        if (!phone) return '';
+        let cleaned = String(phone).replace(/[^0-9]/g, '');
+        if (cleaned.startsWith('00')) {
+            cleaned = cleaned.substring(2);
+        }
+        // Si tiene 8 dígitos (formato estándar de celular o fijo en Panamá), anteponer 507
+        if (cleaned.length === 8) {
+            cleaned = `507${cleaned}`;
+        } else if (cleaned.length === 7) {
+            cleaned = `507${cleaned}`;
+        }
+        return cleaned;
+    }
+
+    /**
      * Construye un enlace directo a WhatsApp Web / App
      * @param {string} phone - Teléfono con o sin código de país
      * @param {string} text - Texto del mensaje
      * @returns {string} - URL lista para window.open
      */
     static buildWhatsAppLink(phone = '', text = '') {
-        const cleanPhone = (phone || '').replace(/[^0-9]/g, '');
+        const cleanPhone = this.formatCleanPhone(phone);
         const encoded = encodeURIComponent(text || '');
         if (cleanPhone) {
             return `https://wa.me/${cleanPhone}?text=${encoded}`;
         }
         return `https://wa.me/?text=${encoded}`;
+    }
+
+    /**
+     * Compila la cartelera completa de toda la semana en un solo post estructurado para WhatsApp
+     */
+    static buildFullWeekMarkdown(campaign) {
+        if (!campaign || !Array.isArray(campaign.weeklySchedule) || campaign.weeklySchedule.length === 0) {
+            return '';
+        }
+        const range = campaign.startDate && campaign.endDate ? ` (${campaign.startDate} al ${campaign.endDate})` : '';
+        const header = `🔥 *CARTELERA OFICIAL DE LA SEMANA | ARRIVE VIP* 🔥${range}\n\nAquí tienes la agenda completa de experiencias, fiestas y reservas exclusivas:\n`;
+        const days = campaign.weeklySchedule.map(s => {
+            return `────────────────────\n📍 *${(s.day || '').toUpperCase()}* ${s.date ? `_(${s.date})_` : ''}\n✨ *${s.title}*\n\n${s.whatsappCopy}`;
+        }).join('\n\n');
+        const footer = `\n────────────────────\n📲 *RESERVAS & MESAS VIP:*\nEscríbenos directamente por aquí para listas, cenas o botellas con atención prioritaria. 🥂⚡`;
+        return `${header}\n${days}\n${footer}`;
     }
 
     /**
