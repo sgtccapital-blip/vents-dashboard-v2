@@ -9,7 +9,7 @@ import {
 import { useApp } from '../context/AppContext';
 
 // Initial default team members tailored for ARRIVE Agency office operations
-const DEFAULT_OFFICE_TEAM = [
+export const DEFAULT_OFFICE_TEAM = [
     {
         id: 'team-creative-lead',
         personName: 'Gabriel G.',
