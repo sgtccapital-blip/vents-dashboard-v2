@@ -28,7 +28,14 @@ export default defineConfig([
   },
   {
     // Código que corre en Node (servidor y scripts), no en el navegador
-    files: ['server.js', 'server/**/*.js', 'bridge/**/*.mjs', '*.cjs', 'seed-db.js', 'tests/**/*.js'],
+    files: ['server.js', 'server/**/*.js', 'bridge/**/*.mjs', 'seed-db.js', 'tests/**/*.js'],
+    languageOptions: {
+      // Módulos ESM: sin require/__dirname implícitos (si se usan, hay que crearlos)
+      globals: { ...globals.nodeBuiltin },
+    },
+  },
+  {
+    files: ['*.cjs'],
     languageOptions: {
       globals: { ...globals.node },
     },

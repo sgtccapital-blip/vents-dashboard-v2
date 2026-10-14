@@ -4,8 +4,12 @@
  */
 import fs from 'fs';
 import path from 'path';
+import { createRequire } from 'module';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import openCloudEngine from '../openCloudEngine.js';
+
+// Este módulo es ESM: `require` no existe por defecto (lo usan las skills locales legacy)
+const require = createRequire(import.meta.url);
 
 export function registerLegacyAgentRoutes(app, ctx) {
     const { readDB, writeDB, geminiKeyFor, AGENTS_WORKSPACE_PATH, VAULT_PATH } = ctx;
@@ -341,20 +345,11 @@ export function registerLegacyAgentRoutes(app, ctx) {
         }
     });
 
+    // Deshabilitado: escribía un .js con contenido arbitrario en el servidor y lo ejecutaba (require),
+    // es decir, ejecución remota de código para cualquiera con sesión. Nada del dashboard lo usa;
+    // las habilidades de Bart viven en tu OpenClaw (~/.openclaw/skills).
     app.post('/api/skills', (req, res) => {
-        // Allows updating/writing a new `.js` skill
-        try {
-            const { filename, content } = req.body;
-            if (!filename || !content) return res.status(400).json({ error: 'Missing filename or content' });
-
-            fs.writeFileSync(path.join(SKILLS_WORKSPACE_PATH, filename), content);
-            // Clear require cache so new skill is loaded next time
-            delete require.cache[require.resolve(path.join(SKILLS_WORKSPACE_PATH, filename))];
-
-            res.json({ success: true });
-        } catch (e) {
-            res.status(500).json({ error: e.message });
-        }
+        res.status(410).json({ error: 'Deshabilitado por seguridad: las habilidades se instalan en OpenClaw (~/.openclaw/skills), no en el servidor.' });
     });
 
     app.post('/api/orch/chat', async (req, res) => {

@@ -1059,7 +1059,7 @@ Authorization: Bearer <API_TOKEN del archivo .env>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                                 <div className="form-group">
                                     <label className="form-label">Responsable / Lead Agent</label>
-                                    <input className="form-input" placeholder="Ej: Bart, Bart (COO), etc." value={form.leadAgent} onChange={e => setForm({ ...form, leadAgent: e.target.value })} />
+                                    <input className="form-input" placeholder="Ej: Bart, GG, MARIO" value={form.leadAgent} onChange={e => setForm({ ...form, leadAgent: e.target.value })} />
                                 </div>
                                 <div className="form-group">
                                     <label className="form-label">Estado</label>

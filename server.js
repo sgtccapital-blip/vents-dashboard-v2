@@ -652,78 +652,77 @@ app.get('/api/agents/metrics', (req, res) => {
     res.json(metrics);
 });
 
-// ─── E-commerce / Dropshipping Checkout Endpoint ─────────────────
+// ─── Endpoints públicos (sitios web externos, sin login) ──────
+// Son la única puerta abierta sin sesión: límite por IP, tamaños acotados y nunca se confía
+// en precios ni estados que mande el cliente.
+const publicHits = new Map();
+function publicRateLimited(req, max = 10, windowMs = 10 * 60 * 1000) {
+    const now = Date.now();
+    const recent = (publicHits.get(req.ip) || []).filter(t => now - t < windowMs);
+    recent.push(now);
+    publicHits.set(req.ip, recent);
+    return recent.length > max;
+}
+const clip = (v, n = 200) => String(v ?? '').trim().slice(0, n);
+
+function findCatalogProduct(company, productId) {
+    for (const category of (company.services || [])) {
+        const product = (category.items || []).find(p => p.id === productId);
+        if (product) return product;
+    }
+    return null;
+}
 
 app.post('/api/public/checkout', (req, res) => {
-    const { companyId, customer, items, totalAmount } = req.body;
-    
-    if (!companyId || !customer || !items || items.length === 0) {
+    if (publicRateLimited(req)) return res.status(429).json({ error: 'Demasiadas solicitudes. Intenta en unos minutos.' });
+    const { companyId, customer, items } = req.body || {};
+    if (!companyId || !customer || !Array.isArray(items) || items.length === 0 || items.length > 50) {
         return res.status(400).json({ error: 'Faltan datos obligatorios para el checkout.' });
     }
 
     const db = readDB();
     const company = (db.companies || []).find(c => c.id === companyId);
-    
-    if (!company) {
-        return res.status(404).json({ error: 'Empresa no encontrada.' });
+    if (!company) return res.status(404).json({ error: 'Empresa no encontrada.' });
+
+    // Precios y productos salen del catálogo, no de lo que mande el navegador
+    const lines = [];
+    for (const cartItem of items) {
+        const product = findCatalogProduct(company, cartItem?.productId);
+        if (!product) return res.status(400).json({ error: `Producto no encontrado: ${clip(cartItem?.productId, 60)}` });
+        const quantity = Math.min(99, Math.max(1, parseInt(cartItem.quantity) || 1));
+        const unitPrice = parseFloat(product.salePrice) || 0;
+        lines.push({ productId: product.id, name: product.name, quantity, unitPrice, unitCost: parseFloat(product.purchasePrice) || 0, product });
     }
 
-    // 1. Reducir el inventario de los productos comprados
-    let profitTotal = 0;
-    
-    items.forEach(cartItem => {
-        // Products live inside company.services[n].items (categories → items)
-        let product = null;
-        for (const category of (company.services || [])) {
-            product = (category.items || []).find(p => p.id === cartItem.productId);
-            if (product) break;
-        }
-        if (product) {
-            // Restar stock
-            const currentStock = parseInt(product.inventory) || 0;
-            product.inventory = Math.max(0, currentStock - (parseInt(cartItem.quantity) || 1));
-            
-            // Estimar margen de ganancia de esta venta
-            const unitCost = parseFloat(product.purchasePrice) || 0;
-            const unitSale = parseFloat(cartItem.price) || 0;
-            profitTotal += ((unitSale - unitCost) * (parseInt(cartItem.quantity) || 1));
-        }
-    });
+    lines.forEach(l => { l.product.inventory = Math.max(0, (parseInt(l.product.inventory) || 0) - l.quantity); });
+    const totalAmount = lines.reduce((acc, l) => acc + l.unitPrice * l.quantity, 0);
+    const netProfit = lines.reduce((acc, l) => acc + (l.unitPrice - l.unitCost) * l.quantity, 0);
 
-    // 2. Registrar el nuevo Pedido
     const newOrder = {
         id: `ord-${Date.now()}`,
         companyId,
         companyName: company.name,
-        customer,
-        items,
-        totalAmount: parseFloat(totalAmount) || 0,
-        netProfit: profitTotal,
-        paymentStatus: 'Pagado',
-        logisticsStatus: 'Pendiente', // Pendiente, Procesando, Enviado, Completado
+        customer: { name: clip(customer.name, 120), email: clip(customer.email, 160), phone: clip(customer.phone, 40), address: clip(customer.address, 300) },
+        items: lines.map(({ productId, name, quantity, unitPrice }) => ({ productId, name, quantity, price: unitPrice })),
+        totalAmount,
+        netProfit,
+        // Sin pasarela de pago conectada: el pedido entra pendiente y se confirma a mano
+        paymentStatus: 'Pendiente de pago',
+        logisticsStatus: 'Pendiente',
+        source: 'web',
         createdAt: new Date().toISOString()
     };
 
-    if (!db.orders) db.orders = [];
-    db.orders.unshift(newOrder); // Poner los más recientes primero
-
-    // 3. Registrar actividad
-    if (!db.activityFeed) db.activityFeed = [];
-    db.activityFeed.unshift({
+    db.orders = [newOrder, ...(db.orders || [])].slice(0, 2000);
+    db.activityFeed = [{
         id: `act-${Date.now()}`,
-        text: `🛒 Nueva Venta Web en ${company.name} por $${totalAmount}`,
+        text: `🛒 Nuevo pedido web en ${company.name} por $${totalAmount.toFixed(2)} (pendiente de pago)`,
         color: '#22c55e',
         timestamp: new Date().toISOString()
-    });
-    db.activityFeed = db.activityFeed.slice(0, 50);
-
+    }, ...(db.activityFeed || [])].slice(0, 50);
     writeDB(db);
 
-    // ★ RAG Auto-Upsert for orders
-    const RAGEngine = req.app.get('ragEngine');
-    if (RAGEngine) RAGEngine.upsertEntity('orders', newOrder).catch(e => console.error('[RAG] Checkout upsert error', e.message));
-
-    res.status(201).json({ success: true, orderId: newOrder.id, message: 'Pedido procesado exitosamente.' });
+    res.status(201).json({ success: true, orderId: newOrder.id, totalAmount, paymentStatus: newOrder.paymentStatus, message: 'Pedido recibido. Te contactaremos para confirmar el pago.' });
 });
 
 // ─── Public Catalog Endpoint (for external websites) ─────────
@@ -731,12 +730,9 @@ app.post('/api/public/checkout', (req, res) => {
 app.get('/api/public/catalog/:companyId', (req, res) => {
     const db = readDB();
     const company = (db.companies || []).find(c => c.id === req.params.companyId);
-    
-    if (!company) {
-        return res.status(404).json({ error: 'Empresa no encontrada.' });
-    }
+    if (!company) return res.status(404).json({ error: 'Empresa no encontrada.' });
 
-    // Build organized catalog response
+    // Nunca se publica el costo de compra (revelaría los márgenes)
     const categories = (company.services || []).map(cat => ({
         title: cat.title,
         products: (cat.items || []).map(item => ({
@@ -744,17 +740,13 @@ app.get('/api/public/catalog/:companyId', (req, res) => {
             name: item.name,
             description: item.description || '',
             salePrice: parseFloat(item.salePrice) || 0,
-            purchasePrice: parseFloat(item.purchasePrice) || 0,
-            inventory: parseInt(item.inventory) || 0,
+            inStock: (parseInt(item.inventory) || 0) > 0,
             image: item.image || '',
             isBestSeller: !!item.isBestSeller,
             isNew: !!item.isNew,
-            isDropshipping: !!item.isDropshipping,
             category: cat.title
         }))
     }));
-
-    const totalProducts = categories.reduce((sum, cat) => sum + cat.products.length, 0);
 
     res.json({
         company: {
@@ -769,7 +761,7 @@ app.get('/api/public/catalog/:companyId', (req, res) => {
             description: company.description
         },
         categories,
-        totalProducts,
+        totalProducts: categories.reduce((sum, cat) => sum + cat.products.length, 0),
         lastUpdated: new Date().toISOString()
     });
 });
@@ -777,39 +769,42 @@ app.get('/api/public/catalog/:companyId', (req, res) => {
 // ─── Public Lead / Quote Request Endpoint ─────────────────────
 
 app.post('/api/public/lead', (req, res) => {
-    const { companyId, name, email, phone, message, product, source } = req.body;
-
-    if (!companyId || !name) {
-        return res.status(400).json({ error: 'Faltan datos obligatorios (companyId, name).' });
-    }
+    if (publicRateLimited(req, 5)) return res.status(429).json({ error: 'Demasiadas solicitudes. Intenta en unos minutos.' });
+    const { companyId, product, source } = req.body || {};
+    const name = clip(req.body?.name, 120);
+    if (!companyId || !name) return res.status(400).json({ error: 'Faltan datos obligatorios (companyId, name).' });
 
     const db = readDB();
     const company = (db.companies || []).find(c => c.id === companyId);
-    const companyName = company ? company.name : 'Empresa desconocida';
+    // Solo empresas reales: evita que cualquiera llene el dashboard de tareas falsas
+    if (!company) return res.status(404).json({ error: 'Empresa no encontrada.' });
 
-    // 1. Log as activity
-    if (!db.activityFeed) db.activityFeed = [];
-    db.activityFeed.unshift({
+    const email = clip(req.body?.email, 160);
+    const phone = clip(req.body?.phone, 40);
+    const message = clip(req.body?.message, 2000);
+    const productName = clip(product, 160);
+
+    db.activityFeed = [{
         id: `act-${Date.now()}`,
-        text: `📩 Nueva cotización de ${name} para ${companyName}${product ? ` — "${product}"` : ''}`,
+        text: `📩 Nueva cotización de ${name} para ${company.name}${productName ? ` — "${productName}"` : ''}`,
         color: '#6366f1',
         timestamp: new Date().toISOString()
-    });
-    db.activityFeed = db.activityFeed.slice(0, 50);
+    }, ...(db.activityFeed || [])].slice(0, 50);
 
-    // 2. Create a task for follow-up
-    if (!db.tasks) db.tasks = [];
+    db.tasks = db.tasks || [];
     db.tasks.push({
         id: `task-${Date.now()}`,
-        title: `Cotización: ${product || 'General'} — ${name}`,
-        description: `Lead desde web ${source || 'externa'}.\n\nContacto:\n- Nombre: ${name}\n- Email: ${email || 'N/A'}\n- Teléfono: ${phone || 'N/A'}\n- Mensaje: ${message || 'Sin mensaje'}\n\nProducto: ${product || 'Consulta general'}`,
+        text: `Cotización: ${productName || 'General'} — ${name}`,
+        description: `Lead desde web ${clip(source, 80) || 'externa'}.\n\nContacto:\n- Nombre: ${name}\n- Email: ${email || 'N/A'}\n- Teléfono: ${phone || 'N/A'}\n- Mensaje: ${message || 'Sin mensaje'}\n\nProducto: ${productName || 'Consulta general'}`,
         status: 'pending',
+        done: false,
         priority: 'high',
-        project: companyName,
+        project: company.name,
         companyId,
+        assignee: company.lead || 'GG',
+        createdBy: 'web',
         createdAt: new Date().toISOString()
     });
-
     writeDB(db);
 
     res.status(201).json({ success: true, message: 'Cotización recibida exitosamente. Nos pondremos en contacto pronto.' });
@@ -1056,6 +1051,8 @@ app.put('/api/sops/:filename', (req, res) => {
             return res.status(400).json({ error: 'Content must be a string' });
         }
 
+        // Solo el nombre del archivo: nada de rutas (../) fuera de la carpeta de SOPs
+        if (path.basename(filename) !== filename) return res.status(400).json({ error: 'Invalid filename' });
         const filePath = path.join(AGENTS_WORKSPACE_PATH, filename);
         if (!fs.existsSync(filePath)) {
             return res.status(404).json({ error: `SOP ${filename} not found` });

@@ -23,6 +23,7 @@ const seed = {
         { id: 't-2', text: 'Dos', done: true },
     ],
     contacts: [{ id: 'c-1', name: 'Ana' }],
+    companies: [{ id: 'co-1', name: 'Tienda', lead: 'MARIO', services: [{ title: 'Bebidas', items: [{ id: 'p-1', name: 'Hielo', salePrice: '5', purchasePrice: '2', inventory: '10' }] }] }],
     contentTasks: { ideas: [], production: [], ready: [], published: [] },
 };
 
@@ -234,4 +235,37 @@ test('instalador del puente: público y sin rutas fuera de la lista', async () =
     assert.equal((await fetch(`http://127.0.0.1:${PORT}/bridge/setup-mac.sh`)).status, 200);
     assert.equal((await fetch(`http://127.0.0.1:${PORT}/bridge/SKILL.md`)).status, 200);
     assert.equal((await fetch(`http://127.0.0.1:${PORT}/bridge/..%2Fserver.js`)).status, 404);
+});
+
+test('público: catálogo sin costos, checkout con precios del catálogo y pendiente de pago', async () => {
+    const cat = await (await fetch(`${BASE}/public/catalog/co-1`)).json();
+    const prod = cat.categories[0].products[0];
+    assert.equal(prod.salePrice, 5);
+    assert.equal(prod.purchasePrice, undefined, 'no publica el costo');
+    assert.equal(prod.inventory, undefined);
+    assert.equal(prod.inStock, true);
+
+    const post = (body) => fetch(`${BASE}/public/checkout`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: json(body) });
+    const r = await post({ companyId: 'co-1', customer: { name: 'Cliente' }, items: [{ productId: 'p-1', quantity: 2, price: 0.01 }], totalAmount: 0.01 });
+    assert.equal(r.status, 201);
+    const order = await r.json();
+    assert.equal(order.totalAmount, 10, 'ignora el precio que manda el navegador');
+    assert.equal(order.paymentStatus, 'Pendiente de pago');
+    assert.equal((await post({ companyId: 'co-1', customer: { name: 'x' }, items: [{ productId: 'falso' }] })).status, 400);
+});
+
+test('público: leads solo para empresas reales, con texto visible y límite por IP', async () => {
+    const post = (body) => fetch(`${BASE}/public/lead`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: json(body) });
+    assert.equal((await post({ companyId: 'no-existe', name: 'Spam' })).status, 404);
+    assert.equal((await post({ companyId: 'co-1', name: 'Laura', product: 'Hielo' })).status, 201);
+    const tasks = await (await api('/tasks')).json();
+    const lead = tasks.find(t => t.companyId === 'co-1');
+    assert.equal(lead.text, 'Cotización: Hielo — Laura');
+    assert.equal(lead.assignee, 'MARIO');
+    await api(`/tasks/${lead.id}`, { method: 'DELETE' });
+    let limited = false;
+    for (let i = 0; i < 6 && !limited; i++) limited = (await post({ companyId: 'co-1', name: `Spam ${i}` })).status === 429;
+    assert.ok(limited, 'corta el spam por IP');
+    const after = await (await api('/tasks')).json();
+    for (const t of after.filter(x => x.companyId === 'co-1')) await api(`/tasks/${t.id}`, { method: 'DELETE' });
 });
