@@ -2392,6 +2392,122 @@ app.post('/api/jarvis/execute', (req, res) => {
     res.json(result);
 });
 
+// 6.6b Jarvis voz y personalidad
+app.get('/api/jarvis/config', (req, res) => {
+    res.json(getJarvisConfig(readDB()));
+});
+
+app.post('/api/jarvis/config', (req, res) => {
+    const db = readDB();
+    if (!db.jarvisState) db.jarvisState = {};
+    const allowed = Object.keys(JARVIS_DEFAULT_CONFIG);
+    const patch = Object.fromEntries(Object.entries(req.body || {}).filter(([k, v]) => allowed.includes(k) && typeof v === 'string'));
+    db.jarvisState.config = { ...getJarvisConfig(db), ...patch };
+    writeDB(db);
+    res.json(db.jarvisState.config);
+});
+
+function geminiKeyFor(db) {
+    return process.env.GEMINI_API_KEY || db.openclawConfig?.geminiApiKey || '';
+}
+
+async function geminiGenerate(model, apiKey, body, timeoutMs = 30000) {
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(timeoutMs)
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error?.message || `Gemini ${r.status}`);
+    return data;
+}
+
+// Envuelve PCM 16-bit mono en un WAV reproducible por el navegador
+function pcmToWav(pcm, sampleRate = 24000) {
+    const header = Buffer.alloc(44);
+    header.write('RIFF', 0); header.writeUInt32LE(36 + pcm.length, 4); header.write('WAVE', 8);
+    header.write('fmt ', 12); header.writeUInt32LE(16, 16); header.writeUInt16LE(1, 20); header.writeUInt16LE(1, 22);
+    header.writeUInt32LE(sampleRate, 24); header.writeUInt32LE(sampleRate * 2, 28); header.writeUInt16LE(2, 32); header.writeUInt16LE(16, 34);
+    header.write('data', 36); header.writeUInt32LE(pcm.length, 40);
+    return Buffer.concat([header, pcm]);
+}
+
+// Voz → texto (español, inglés o mezclado) con Gemini
+app.post('/api/jarvis/transcribe', async (req, res) => {
+    const db = readDB();
+    const apiKey = geminiKeyFor(db);
+    const { audio, mimeType = 'audio/wav' } = req.body || {};
+    if (!apiKey) return res.status(503).json({ error: 'Falta GEMINI_API_KEY para transcribir' });
+    if (!audio) return res.status(400).json({ error: 'Audio requerido' });
+
+    const vocabulary = ['Jarvis', 'ARRIVE', 'OpenClaw', 'Terraplén', 'Furia', 'Primavera Club', 'Piano Bar', 'Casco Antiguo', 'GG',
+        ...(db.events || []).slice(0, 20).map(e => e.name), ...(db.contacts || []).slice(0, 30).map(c => c.name)].filter(Boolean);
+    const body = {
+        contents: [{
+            parts: [
+                { inlineData: { mimeType, data: audio } },
+                { text: `Transcribe exactly what the speaker says, keeping the original language (Spanish, English or mixed). Do not translate or answer. Possible names: ${vocabulary.join(', ')}. Return JSON {"text": string, "language": "es"|"en"|"mixed"}. If there is no intelligible speech return {"text": "", "language": ""}.` }
+            ]
+        }],
+        generationConfig: { responseMimeType: 'application/json', temperature: 0 }
+    };
+    const models = [process.env.JARVIS_STT_MODEL, 'gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-2.5-flash'].filter(Boolean);
+    let lastErr;
+    for (const model of models) {
+        try {
+            const data = await geminiGenerate(model, apiKey, body, 20000);
+            const raw = data.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') || '{}';
+            const parsed = JSON.parse(raw.replace(/^```json\s*|```$/g, ''));
+            return res.json({ text: (parsed.text || '').trim(), language: parsed.language || '', model });
+        } catch (e) { lastErr = e; }
+    }
+    res.status(502).json({ error: `No se pudo transcribir: ${lastErr?.message}` });
+});
+
+// Texto → voz neural bilingüe con Gemini TTS (con caché para frases repetidas)
+const ttsCache = new Map();
+app.post('/api/jarvis/tts', async (req, res) => {
+    const db = readDB();
+    const apiKey = geminiKeyFor(db);
+    const cfg = getJarvisConfig(db);
+    const text = String(req.body?.text || '').trim().slice(0, 1200);
+    const voiceName = req.body?.voiceName || cfg.voiceName;
+    if (!apiKey) return res.status(503).json({ error: 'Falta GEMINI_API_KEY para la voz' });
+    if (!text) return res.status(400).json({ error: 'Texto requerido' });
+
+    const key = crypto.createHash('sha1').update(`${voiceName}|${text}`).digest('hex');
+    if (ttsCache.has(key)) {
+        res.setHeader('Content-Type', 'audio/wav');
+        return res.send(ttsCache.get(key));
+    }
+    // Solo el texto: los modelos TTS actuales leen en voz alta cualquier indicación de estilo
+    const prompt = text;
+    const models = [process.env.JARVIS_TTS_MODEL, 'gemini-3.8-flash-tts', 'gemini-3.1-flash-tts-preview', 'gemini-2.5-flash-preview-tts'].filter(Boolean);
+    let lastErr;
+    for (const model of models) {
+        try {
+            const data = await geminiGenerate(model, apiKey, {
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName } } } }
+            }, 45000);
+            const part = data.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+            if (!part) throw new Error('Respuesta sin audio');
+            let audio = Buffer.from(part.inlineData.data, 'base64');
+            const mime = part.inlineData.mimeType || '';
+            if (!mime.includes('wav') && audio.subarray(0, 4).toString() !== 'RIFF') {
+                const rate = Number(mime.match(/rate=(\d+)/)?.[1]) || 24000;
+                audio = pcmToWav(audio, rate);
+            }
+            ttsCache.set(key, audio);
+            if (ttsCache.size > 150) ttsCache.delete(ttsCache.keys().next().value);
+            res.setHeader('Content-Type', 'audio/wav');
+            return res.send(audio);
+        } catch (e) { lastErr = e; }
+    }
+    res.status(502).json({ error: `No se pudo generar la voz: ${lastErr?.message}` });
+});
+
 // 6.7 OpenJarvis Core Engine Endpoints (Stanford Personal AI on Personal Devices)
 function getOpenJarvisBinary() {
     const home = process.env.HOME || '/Users/admin';
@@ -2564,6 +2680,82 @@ function buildJarvisBrainContext(db) {
 - Habilidades aprendidas: ${skills}. Usa 'execute_jarvis_skill' cuando el usuario pida una de ellas.`;
 }
 
+// ─── Jarvis: configuración editable desde el dashboard (personalidad, idioma y voz) ───
+const JARVIS_DEFAULT_CONFIG = {
+    voiceEngine: 'gemini',          // 'gemini' (voz neural en la nube) | 'browser' (voz del sistema, sin internet)
+    voiceName: 'Charon',
+    language: 'auto',               // 'auto' | 'es' | 'en'
+    addressAs: 'señor',
+    instructions: ''
+};
+
+function getJarvisConfig(db) {
+    return { ...JARVIS_DEFAULT_CONFIG, ...(db.jarvisState?.config || {}) };
+}
+
+function todayInPanama() {
+    const now = new Date();
+    return {
+        iso: now.toLocaleDateString('en-CA', { timeZone: 'America/Panama' }),
+        human: now.toLocaleString('es-PA', { timeZone: 'America/Panama', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    };
+}
+
+// Prompt de la interfaz Jarvis: el mismo cerebro, con todo el estado del dashboard y reglas de voz
+function detectSpokenLanguage(text = '') {
+    const es = (text.match(/\b(el|la|los|las|de|que|qué|y|en|un|una|para|tenemos|hay|cuántas?|cuántos?|dame|pon|crea|está|están)\b|[ñáéíóú¿¡]/gi) || []).length;
+    const en = (text.match(/\b(the|and|you|is|are|what|what's|who|how|have|of|to|for|with|my|our|please|show|give|create)\b/gi) || []).length;
+    return en > es ? 'en' : 'es';
+}
+
+// La conversación previa puede estar en otro idioma: la indicación va pegada al mensaje actual
+function withJarvisLanguageHint(db, prompt) {
+    if (getJarvisConfig(db).language !== 'auto') return prompt;
+    return detectSpokenLanguage(prompt) === 'en'
+        ? `${prompt}\n\n(Reply in English.)`
+        : `${prompt}\n\n(Responde en español.)`;
+}
+
+function buildJarvisAgentPrompt(db, { voice = false, prompt = '' } = {}) {
+    const cfg = getJarvisConfig(db);
+    const today = todayInPanama();
+    const pending = (db.tasks || []).filter(t => !t.done);
+    const overdue = pending.filter(t => (t.due || t.dueDate) && String(t.due || t.dueDate).slice(0, 10) < today.iso);
+    const byPerson = {};
+    for (const t of pending) {
+        const who = t.assignedTo || t.assignee || 'Sin asignar';
+        byPerson[who] = (byPerson[who] || 0) + 1;
+    }
+    const upcoming = (db.events || [])
+        .filter(e => !e.date || String(e.date).slice(0, 10) >= today.iso)
+        .sort((a, b) => String(a.date || '9999').localeCompare(String(b.date || '9999')))
+        .slice(0, 15)
+        .map(e => ({ name: e.name, date: e.date, venue: e.venue || e.location || e.venueId, status: e.status }));
+    const lang = cfg.language === 'es' ? 'Responde siempre en español.'
+        : cfg.language === 'en' ? 'Always answer in English.'
+        : 'Responde en el idioma en que te hablen (español o inglés); si mezclan, usa el idioma dominante del mensaje.';
+
+    return `[INTERFAZ ACTIVA: JARVIS]
+Eres JARVIS, el asistente personal por voz de GG en el Command Center de ARRIVE. Eres el mismo cerebro que la Consola OpenClaw y el ARRIVE Copilot: tienes todos los datos y herramientas del dashboard.
+- Fecha y hora actual (Panamá): ${today.human} (${today.iso}). Usa esta fecha para interpretar "hoy", "mañana", "esta semana".
+- ${lang}
+- Dirígete al usuario como "${cfg.addressAs}" con naturalidad (no en cada frase).
+- Tono: elegante, seguro, preciso, con un toque de ingenio. Nunca inventes datos: si algo no está en el dashboard, dilo.
+- Cuando pidan crear, mover o completar algo, ejecuta la herramienta correspondiente y confírmalo.
+${voice ? '- Esta respuesta se va a LEER EN VOZ ALTA: máximo 3 frases cortas, sin markdown, sin listas, sin emojis ni símbolos; escribe fechas, horas y cantidades como se dicen. Si el usuario pide detalle, da lo esencial y ofrece ampliar.' : '- Responde de forma concisa; usa listas cortas solo si ayudan.'}
+
+[TODO LO QUE JARVIS SABE DEL DASHBOARD AHORA]
+- Próximos eventos (${upcoming.length}): ${JSON.stringify(upcoming)}
+- Tareas pendientes: ${pending.length} en total, ${overdue.length} vencidas. Por persona: ${JSON.stringify(byPerson)}
+- Tareas vencidas: ${JSON.stringify(overdue.slice(0, 10).map(t => ({ text: t.text || t.title, due: t.due || t.dueDate, assignedTo: t.assignedTo || t.assignee })))}
+- Contactos registrados: ${(db.contacts || []).length}
+- Actividad reciente: ${JSON.stringify((db.activityFeed || []).slice(0, 8).map(a => a.text))}
+${cfg.instructions ? `\n[INSTRUCCIONES PERSONALIZADAS DE GG PARA JARVIS — tienen prioridad]\n${cfg.instructions}` : ''}
+${cfg.language === 'auto' ? (detectSpokenLanguage(prompt) === 'en'
+        ? '\n[LANGUAGE FOR THIS REPLY]: The user wrote in ENGLISH. Your whole reply MUST be in English, regardless of the language of the data above.'
+        : '\n[IDIOMA DE ESTA RESPUESTA]: El usuario habló en español. Responde en español.') : ''}`;
+}
+
 // Sincronizar contexto del Dashboard con la memoria de OpenJarvis
 app.post('/api/jarvis/openjarvis/sync-context', (req, res) => {
     try {
@@ -2680,10 +2872,19 @@ app.post('/api/jarvis/openjarvis/exec', (req, res) => {
     }
 });
 
+// Modelos de Gemini saturados o colgados: se saltan 2 minutos para no esperar su timeout en cada mensaje
+const modelCooldown = new Map();
+function isModelCoolingDown(model) {
+    return (modelCooldown.get(model) || 0) > Date.now();
+}
+function coolDownModel(model, ms = 120000) {
+    modelCooldown.set(model, Date.now() + ms);
+}
+
 // 7. OpenClaw Live Chat with Gemini 3.6 Flash, Tool Calling & RAG Knowledge Injection
 async function handleOpenClawChat(req, res) {
     const db = readDB();
-    const { prompt, history = [], systemRole, skills, namespace = 'default' } = req.body;
+    const { prompt, history = [], systemRole, skills, namespace = 'default', agent, voice } = req.body;
     if (!prompt) return res.status(400).json({ error: 'Prompt es requerido' });
 
     // Determine Gemini API Key
@@ -2769,17 +2970,21 @@ ${buildJarvisBrainContext(db)}
 [BASE RAG DE CONOCIMIENTO]:
 ${ragContext || 'Información de la base de datos local y memoria operativa activa.'}
 
-${systemRole || ''}`;
+${systemRole || ''}${agent === 'jarvis' ? `\n\n${buildJarvisAgentPrompt(db, { voice: !!voice, prompt })}` : `\n\n[FECHA ACTUAL (Panamá)]: ${todayInPanama().human}`}`;
 
     // ─── 1. INTEGRACIÓN CON GOOGLE GEMINI (Multi-Model Resiliente con Fast Fallback) ───
     if (geminiApiKey) {
         const preferredModel = process.env.GEMINI_MODEL || db.openclawConfig?.model;
+        // Los modelos que acaban de fallar (saturados o colgados) pasan al final de la cola
         const candidateModels = [
             ...(preferredModel ? [preferredModel] : []),
             'gemini-3.8-flash',
+            'gemini-3.7-flash',
+            'gemini-3.5-flash',
             'gemini-3.5-flash-lite',
             'gemini-3.1-flash-lite'
-        ].filter((m, i, arr) => arr.indexOf(m) === i);
+        ].filter((m, i, arr) => arr.indexOf(m) === i)
+            .sort((a, b) => Number(isModelCoolingDown(a)) - Number(isModelCoolingDown(b)));
 
         const geminiContents = [
             ...history.slice(-8).map(h => ({
@@ -2788,7 +2993,7 @@ ${systemRole || ''}`;
             })),
             {
                 role: 'user',
-                parts: [{ text: prompt }]
+                parts: [{ text: agent === 'jarvis' ? withJarvisLanguageHint(db, prompt) : prompt }]
             }
         ];
 
@@ -3027,6 +3232,7 @@ ${systemRole || ''}`;
                     const errStatus = geminiRes.status;
                     const errText = await geminiRes.text();
                     console.warn(`[Gemini API] Modelo ${modelName} devolvió ${errStatus}:`, errText.slice(0, 120));
+                    if (errStatus === 429 || errStatus >= 500) coolDownModel(modelName);
                     // Si la clave es inválida o no autorizada, no iterar todos los modelos para no demorar la respuesta
                     if (errStatus === 400 || errStatus === 401 || errStatus === 403) {
                         break;
@@ -3034,6 +3240,7 @@ ${systemRole || ''}`;
                 }
             } catch (modelErr) {
                 console.warn(`[Gemini API] Excepción en ${modelName}:`, modelErr.message);
+                coolDownModel(modelName);
             }
         }
     }

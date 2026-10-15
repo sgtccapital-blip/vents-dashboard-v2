@@ -6,11 +6,12 @@ import {
     Layers, Bot, ArrowRight, ShieldCheck, RefreshCw, Radio, FileText,
     Headphones, Coffee, Flame, Moon, Award, Info,
     Terminal, Cpu, Server, Download, Activity, PlayCircle, Settings,
-    Maximize2, Minimize2, Power, Globe, Database, BrainCircuit, CalendarDays, ListChecks, FolderKanban
+    Maximize2, Minimize2, Power, Globe, Database, BrainCircuit, CalendarDays, ListChecks, FolderKanban, Mic, Square
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import OpenClawBrainService from '../services/OpenClawBrainService';
 import { useApp } from '../context/AppContext';
+import { recordUtterance, transcribe, speak, stopSpeaking } from '../lib/jarvisVoice';
 
 // Presets de música con parámetros sonoros y enlaces
 const MUSIC_PRESETS = [
@@ -165,17 +166,42 @@ const TEAM_MEMBERS = [
     'GG', 'Mateo L.', 'Gabriel G.', 'Andrés V.', 'Fanny', 'Joshua', 'Mario', 'Andrea'
 ];
 
-// Etiqueta de la interfaz que escribió cada mensaje de la memoria compartida
-const AGENT_LABELS = {
-    jarvis: { name: 'Jarvis', color: '#38bdf8' },
-    console: { name: 'Consola OpenClaw', color: '#a78bfa' },
-    copilot: { name: 'ARRIVE Copilot', color: '#22d3ee' }
+// Voces neurales de Gemini TTS (todas hablan español e inglés con pronunciación nativa)
+const GEMINI_VOICES = [
+    { id: 'Charon', desc: 'Grave e informativa — la más JARVIS' },
+    { id: 'Orus', desc: 'Firme y segura' },
+    { id: 'Iapetus', desc: 'Clara y precisa' },
+    { id: 'Algieba', desc: 'Suave y elegante' },
+    { id: 'Sadaltager', desc: 'Experta, tono de asesor' },
+    { id: 'Fenrir', desc: 'Enérgica' },
+    { id: 'Puck', desc: 'Alegre y cercana' },
+    { id: 'Gacrux', desc: 'Madura y pausada' },
+    { id: 'Kore', desc: 'Firme (femenina)' },
+    { id: 'Aoede', desc: 'Ligera (femenina)' },
+    { id: 'Despina', desc: 'Suave (femenina)' },
+    { id: 'Zephyr', desc: 'Brillante (femenina)' }
+];
+
+const DEFAULT_JARVIS_CONFIG = {
+    voiceEngine: 'gemini',
+    voiceName: 'Charon',
+    language: 'auto',
+    addressAs: 'señor',
+    instructions: ''
+};
+
+const VOICE_STATE_LABELS = {
+    idle: 'Toca para hablar',
+    listening: 'Escuchando…',
+    transcribing: 'Entendiendo…',
+    thinking: 'Pensando…',
+    speaking: 'Hablando — toca para interrumpir'
 };
 
 export default function JarvisSkillsHub({ onOpenChat, onAddActivity }) {
     const {
         events = [], tasks = [], projects = [],
-        openclawMessages = [], setOpenclawMessages, clearOpenclawChat,
+        openclawMessages = [], setOpenclawMessages,
         addTask, updateTask, toggleTask, addEvent, addProject, refreshData
     } = useApp();
     const pendingTasks = tasks.filter(t => !t.done);
@@ -240,15 +266,35 @@ export default function JarvisSkillsHub({ onOpenChat, onAddActivity }) {
     const [contextSyncResult, setContextSyncResult] = useState(null);
     const [controllingDaemon, setControllingDaemon] = useState(false);
 
-    // --- Chat del cerebro unificado (misma memoria que Consola OpenClaw y ARRIVE Copilot) ---
+    // --- Chat de Jarvis (mismo cerebro y datos que la Consola y el Copilot; aquí solo se ven sus mensajes) ---
     const [ojChatInput, setOjChatInput] = useState('');
     const chatEndRef = useRef(null);
+    const jarvisMessages = openclawMessages.filter(m => m.agent === 'jarvis');
+
+    // --- Voz: escuchar → entender → responder en voz alta ---
+    const [jarvisConfig, setJarvisConfig] = useState(DEFAULT_JARVIS_CONFIG);
+    const [configDraft, setConfigDraft] = useState(DEFAULT_JARVIS_CONFIG);
+    const [configSaved, setConfigSaved] = useState(false);
+    const [voiceState, setVoiceState] = useState('idle');
+    const [micLevel, setMicLevel] = useState(0);
+    const [handsFree, setHandsFree] = useState(false);
+    const [voiceError, setVoiceError] = useState('');
+    const [testingVoice, setTestingVoice] = useState(false);
+    const listenAbortRef = useRef(null);
+    const handsFreeRef = useRef(false);
+    useEffect(() => { handsFreeRef.current = handsFree; }, [handsFree]);
+    // El modo continuo encadena llamadas desde renders anteriores: leen siempre el estado más reciente
+    const latestRef = useRef({});
     const [ojChatLoading, setOjChatLoading] = useState(false);
 
     // ─── Initialize Data & Audio ──────────────────────────────────────
     useEffect(() => {
         loadSkills();
         loadOpenJarvisStatus();
+        OpenClawBrainService.getJarvisConfig()
+            .then(cfg => { setJarvisConfig(cfg); setConfigDraft(cfg); })
+            .catch(() => {});
+        return () => { listenAbortRef.current?.abort(); stopSpeaking(); };
     }, []);
 
     const loadSkills = async () => {
@@ -290,23 +336,33 @@ export default function JarvisSkillsHub({ onOpenChat, onAddActivity }) {
         handleReloadIframe();
     };
 
-    const handleSendOjChat = async (textToSend = ojChatInput) => {
+    useEffect(() => {
+        latestRef.current = { jarvisMessages, jarvisConfig, voiceFeedback };
+    });
+
+    const handleSendOjChat = async (textToSend = ojChatInput, { viaVoice = false } = {}) => {
         const text = (typeof textToSend === 'string' ? textToSend : ojChatInput).trim();
         if (!text || ojChatLoading) return;
+        stopSpeaking();
         const stamp = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const userMsg = { id: `usr-${Date.now()}`, role: 'user', agent: 'jarvis', text, timestamp: stamp() };
-        const history = [...openclawMessages, userMsg];
-        setOpenclawMessages(history);
+        const userMsg = { id: `usr-${Date.now()}`, role: 'user', agent: 'jarvis', text, viaVoice, timestamp: stamp() };
+        const { jarvisMessages: currentMessages, jarvisConfig: cfg, voiceFeedback: spoken } = latestRef.current;
+        const history = currentMessages.slice(-12);
+        setOpenclawMessages(prev => [...prev, userMsg]);
         setOjChatInput('');
         setOjChatLoading(true);
+        setVoiceState('thinking');
+        setVoiceError('');
 
+        let reply = '';
         try {
-            // Mismo cerebro, herramientas y RAG que la Consola y el Copilot; solo cambia el modo (tono Jarvis)
+            // Mismo cerebro, herramientas y RAG; el servidor añade el contexto completo y la personalidad de Jarvis
             const result = await OpenClawBrainService.sendCommand(
-                text, history, 'Interfaz activa: Jarvis (página Jarvis del dashboard).', '', 'default', 'jarvis',
-                { addTask, updateTask, toggleTask, addEvent, addProject }
+                text, history, '', '', 'default', 'jarvis',
+                { addTask, updateTask, toggleTask, addEvent, addProject },
+                { agent: 'jarvis', voice: spoken }
             );
-            const reply = result.reply || 'Acción procesada.';
+            reply = result.reply || 'Hecho.';
             setOpenclawMessages(prev => [...prev, {
                 id: `bot-${Date.now()}`,
                 role: 'copilot',
@@ -316,20 +372,85 @@ export default function JarvisSkillsHub({ onOpenChat, onAddActivity }) {
                 timestamp: stamp()
             }]);
             if (result.executedTools?.length && refreshData) refreshData();
-            speakJarvis(reply.replace(/[*_`#>]/g, '').slice(0, 150));
         } catch (err) {
+            reply = `No pude procesar eso: ${err.message}`;
             setOpenclawMessages(prev => [...prev, {
                 id: `bot-${Date.now()}`, role: 'copilot', agent: 'jarvis', error: true,
-                text: `⚠️ No pude procesar la instrucción: ${err.message}`, timestamp: stamp()
+                text: `⚠️ ${reply}`, timestamp: stamp()
             }]);
         } finally {
             setOjChatLoading(false);
         }
+
+        if (spoken) {
+            setVoiceState('speaking');
+            await speak(reply, cfg);
+        }
+        setVoiceState('idle');
+        // Conversación continua: vuelve a escuchar al terminar de hablar
+        if (viaVoice && handsFreeRef.current) startListening();
+    };
+
+    const startListening = async () => {
+        if (!navigator.mediaDevices?.getUserMedia) {
+            setVoiceError('Este navegador no permite usar el micrófono.');
+            return;
+        }
+        stopSpeaking();
+        setVoiceError('');
+        const controller = new AbortController();
+        listenAbortRef.current = controller;
+        setVoiceState('listening');
+        try {
+            const wav = await recordUtterance({ onLevel: setMicLevel, abortSignal: controller.signal });
+            if (!wav) {
+                setVoiceState('idle');
+                if (handsFreeRef.current) setHandsFree(false);
+                return;
+            }
+            setVoiceState('transcribing');
+            const { text } = await transcribe(wav);
+            if (!text) {
+                setVoiceState('idle');
+                setVoiceError('No te entendí, ¿puedes repetirlo?');
+                return;
+            }
+            await handleSendOjChat(text, { viaVoice: true });
+        } catch (err) {
+            setVoiceState('idle');
+            setVoiceError(err.name === 'NotAllowedError' ? 'Permite el acceso al micrófono para hablar con Jarvis.' : err.message);
+        } finally {
+            listenAbortRef.current = null;
+        }
+    };
+
+    const handleOrbClick = () => {
+        if (voiceState === 'listening') listenAbortRef.current?.abort();
+        else if (voiceState === 'speaking') { stopSpeaking(); setVoiceState('idle'); }
+        else if (voiceState === 'idle') startListening();
+    };
+
+    const handleSaveConfig = async () => {
+        try {
+            const saved = await OpenClawBrainService.saveJarvisConfig(configDraft);
+            setJarvisConfig(saved);
+            setConfigDraft(saved);
+            setConfigSaved(true);
+            setTimeout(() => setConfigSaved(false), 2500);
+        } catch (err) {
+            setVoiceError(err.message);
+        }
+    };
+
+    const handleTestVoice = async () => {
+        setTestingVoice(true);
+        await speak(`Buenas, ${configDraft.addressAs || 'señor'}. Todos los sistemas en línea. All systems are online and ready when you are.`, configDraft);
+        setTestingVoice(false);
     };
 
     useEffect(() => {
         if (subTab === 'openjarvis_chat') chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }, [openclawMessages, ojChatLoading, subTab]);
+    }, [jarvisMessages.length, ojChatLoading, subTab]);
 
     const handleRunOpenJarvisCommand = async (cmd = cliCommand) => {
         setCliExecuting(true);
@@ -352,17 +473,10 @@ export default function JarvisSkillsHub({ onOpenChat, onAddActivity }) {
         setTimeout(() => setCopiedCliOutput(false), 2000);
     };
 
-    // Voice Synthesis Helper
+    // Avisos hablados de las acciones del hub (misma voz que las respuestas)
     const speakJarvis = (text) => {
-        if (!voiceFeedback || typeof window === 'undefined' || !window.speechSynthesis) return;
-        try {
-            window.speechSynthesis.cancel();
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'es-ES';
-            utterance.pitch = 0.95;
-            utterance.rate = 1.05;
-            window.speechSynthesis.speak(utterance);
-        } catch (e) {}
+        if (!voiceFeedback || voiceState !== 'idle') return;
+        speak(text, jarvisConfig);
     };
 
     // ─── Web Audio API Synthesizer ────────────────────────────────────
@@ -468,7 +582,7 @@ export default function JarvisSkillsHub({ onOpenChat, onAddActivity }) {
 
     // Herramientas ejecutadas por cualquier interfaz del cerebro unificado (Consola, Copilot o este chat)
     const applyAgentToolsRef = useRef(null);
-    applyAgentToolsRef.current = async (tools) => {
+    useEffect(() => { applyAgentToolsRef.current = async (tools) => {
         for (const tool of tools) {
             if (tool.name === 'control_music') {
                 const args = tool.args || tool.result?.music || {};
@@ -493,7 +607,7 @@ export default function JarvisSkillsHub({ onOpenChat, onAddActivity }) {
                 loadSkills();
             }
         }
-    };
+    }; });
     useEffect(() => {
         const onTools = (e) => applyAgentToolsRef.current?.(e.detail || []);
         window.addEventListener('arrive:agent-tools', onTools);
@@ -859,7 +973,7 @@ export default function JarvisSkillsHub({ onOpenChat, onAddActivity }) {
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <button
-                        onClick={() => setVoiceFeedback(!voiceFeedback)}
+                        onClick={() => { if (voiceFeedback) stopSpeaking(); setVoiceFeedback(!voiceFeedback); }}
                         style={{
                             padding: '6px 12px',
                             borderRadius: '8px',
@@ -875,7 +989,7 @@ export default function JarvisSkillsHub({ onOpenChat, onAddActivity }) {
                         }}
                         title="Activar/Desactivar síntesis de voz Jarvis"
                     >
-                        <Radio size={14} /> Voz Jarvis: {voiceFeedback ? 'ON' : 'OFF'}
+                        <Radio size={14} /> Respuesta hablada: {voiceFeedback ? 'ON' : 'OFF'}
                     </button>
 
                     {onOpenChat && (
@@ -1115,7 +1229,8 @@ export default function JarvisSkillsHub({ onOpenChat, onAddActivity }) {
                 overflowX: 'auto'
             }}>
                 {[
-                    { id: 'openjarvis_chat', label: 'Chat unificado', icon: Bot, badge: 'MEMORIA COMPARTIDA' },
+                    { id: 'openjarvis_chat', label: 'Hablar con Jarvis', icon: Mic, badge: voiceState !== 'idle' ? 'EN VIVO' : null },
+                    { id: 'settings', label: 'Personalizar', icon: Settings, badge: null },
                     { id: 'music', label: 'Audio & Focus', icon: Music, badge: isPlaying ? 'PLAYING' : null },
                     { id: 'food', label: 'Concierge & Catering', icon: Utensils, badge: cart.length > 0 ? `${cart.length}` : null },
                     { id: 'teach', label: 'Automatizador', icon: Zap, badge: null },
@@ -2577,64 +2692,48 @@ export default function JarvisSkillsHub({ onOpenChat, onAddActivity }) {
                     borderRadius: '14px',
                     display: 'flex',
                     flexDirection: 'column',
-                    height: '680px',
+                    height: 'min(760px, 78vh)',
                     overflow: 'hidden',
                     boxShadow: '0 12px 30px rgba(0, 0, 0, 0.5)'
                 }}>
-                    {/* Chat Header */}
+                    {/* Orbe de voz */}
                     <div style={{
-                        padding: '14px 20px',
+                        padding: '18px 20px',
                         borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-                        background: 'rgba(10, 15, 29, 0.95)',
+                        background: 'radial-gradient(ellipse at center, rgba(14, 165, 233, 0.14) 0%, rgba(10, 15, 29, 0.95) 70%)',
                         display: 'flex',
-                        justifyContent: 'space-between',
                         alignItems: 'center',
-                        flexWrap: 'wrap',
-                        gap: '10px'
+                        gap: '20px',
+                        flexWrap: 'wrap'
                     }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <div style={{
-                                width: '36px',
-                                height: '36px',
-                                borderRadius: '10px',
-                                background: 'linear-gradient(135deg, #0284c7, #38bdf8)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                            }}>
-                                <Bot size={20} color="#ffffff" />
+                        <button
+                            onClick={handleOrbClick}
+                            disabled={voiceState === 'transcribing' || voiceState === 'thinking'}
+                            aria-label={VOICE_STATE_LABELS[voiceState]}
+                            className={`jarvis-orb jarvis-orb--${voiceState}`}
+                            style={{ '--mic-level': micLevel }}
+                        >
+                            {voiceState === 'listening' ? <Square size={26} /> : voiceState === 'speaking' ? <Volume2 size={28} /> : voiceState === 'idle' ? <Mic size={30} /> : <RefreshCw size={26} className="animate-spin" />}
+                        </button>
+                        <div style={{ flex: '1 1 240px', minWidth: 0 }}>
+                            <div style={{ fontSize: '16px', fontWeight: 800 }}>{VOICE_STATE_LABELS[voiceState]}</div>
+                            <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '3px' }}>
+                                Habla en español o en inglés. Jarvis ve todo el dashboard en vivo: eventos, tareas, equipo, contactos y actividad.
                             </div>
-                            <div>
-                                <div style={{ fontSize: '14px', fontWeight: 800, color: '#ffffff' }}>
-                                    Cerebro unificado ARRIVE
-                                </div>
-                                <div style={{ fontSize: '11px', color: '#94a3b8' }}>
-                                    Misma conversación que la Consola OpenClaw y el Copilot • datos del dashboard en vivo
-                                </div>
-                            </div>
+                            {voiceError && <div style={{ fontSize: '12px', color: '#fca5a5', marginTop: '6px' }}>{voiceError}</div>}
                         </div>
-
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <button
-                                onClick={() => {
-                                    if (window.confirm('¿Reiniciar la conversación? Se borra también en la Consola y el Copilot.')) clearOpenclawChat();
-                                }}
-                                style={{
-                                    padding: '5px 10px',
-                                    borderRadius: '6px',
-                                    background: 'rgba(255, 255, 255, 0.05)',
-                                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                                    color: '#94a3b8',
-                                    fontSize: '11px',
-                                    cursor: 'pointer'
-                                }}
-                            >
-                                Limpiar
-                            </button>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#cbd5e1', cursor: 'pointer' }}>
+                                <input type="checkbox" checked={handsFree} onChange={e => setHandsFree(e.target.checked)} />
+                                Conversación continua
+                            </label>
+                            <span style={{ fontSize: '11px', color: '#64748b' }}>
+                                Voz: {jarvisConfig.voiceEngine === 'browser' ? 'del sistema (local)' : `${jarvisConfig.voiceName} · Gemini`}
+                            </span>
                         </div>
                     </div>
 
-                    {/* Messages Scroll Area */}
+                    {/* Mensajes de Jarvis */}
                     <div style={{
                         flex: 1,
                         padding: '20px',
@@ -2643,9 +2742,13 @@ export default function JarvisSkillsHub({ onOpenChat, onAddActivity }) {
                         flexDirection: 'column',
                         gap: '14px'
                     }}>
-                        {openclawMessages.map((msg, idx) => {
+                        {jarvisMessages.length === 0 && (
+                            <div style={{ margin: 'auto', textAlign: 'center', color: '#94a3b8', fontSize: '13px', maxWidth: '420px', lineHeight: 1.6 }}>
+                                Toca el micrófono y pregunta lo que quieras: <em>“¿Qué tenemos esta semana?”</em>, <em>“Crea una tarea para Mateo: confirmar DJ de Furia”</em> o <em>“What's overdue today?”</em>
+                            </div>
+                        )}
+                        {jarvisMessages.map((msg, idx) => {
                             const isUser = msg.role === 'user';
-                            const agent = AGENT_LABELS[msg.agent] || { name: 'Agente ARRIVE', color: '#a5b4fc' };
                             return (
                                 <div
                                     key={msg.id || idx}
@@ -2657,9 +2760,17 @@ export default function JarvisSkillsHub({ onOpenChat, onAddActivity }) {
                                     }}
                                 >
                                     <div style={{ fontSize: '10.5px', color: '#64748b', display: 'flex', gap: '6px', alignItems: 'center' }}>
-                                        {isUser ? 'Tú' : <span style={{ color: agent.color, fontWeight: 700 }}>{agent.name}</span>}
-                                        {isUser && msg.agent && msg.agent !== 'jarvis' && <span>· desde {agent.name}</span>}
+                                        {isUser ? `Tú${msg.viaVoice ? ' · 🎙️ voz' : ''}` : <span style={{ color: '#38bdf8', fontWeight: 700 }}>Jarvis</span>}
                                         {msg.timestamp && <span>· {msg.timestamp}</span>}
+                                        {!isUser && !msg.error && (
+                                            <button
+                                                onClick={() => speak(msg.text, jarvisConfig)}
+                                                title="Escuchar de nuevo"
+                                                style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: 0, display: 'flex' }}
+                                            >
+                                                <Volume2 size={12} />
+                                            </button>
+                                        )}
                                     </div>
                                     <div className="jarvis-chat-bubble" style={{
                                         maxWidth: '78%',
@@ -2692,13 +2803,13 @@ export default function JarvisSkillsHub({ onOpenChat, onAddActivity }) {
                         {ojChatLoading && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#38bdf8', fontSize: '12.5px' }}>
                                 <RefreshCw size={14} className="animate-spin" />
-                                <span>Jarvis consultando el cerebro unificado…</span>
+                                <span>Jarvis está pensando…</span>
                             </div>
                         )}
                         <div ref={chatEndRef} />
                     </div>
 
-                    {/* Quick Suggestion Chips */}
+                    {/* Atajos */}
                     <div style={{
                         padding: '8px 16px',
                         background: 'rgba(10, 15, 29, 0.7)',
@@ -2709,14 +2820,15 @@ export default function JarvisSkillsHub({ onOpenChat, onAddActivity }) {
                     }}>
                         {[
                             { text: 'Dame el resumen del día: eventos próximos, tareas críticas y qué está atrasado', label: 'Resumen del día' },
-                            { text: '¿Qué eventos tenemos esta semana y qué les falta?', label: 'Eventos de la semana' },
+                            { text: '¿Qué eventos tenemos esta semana y qué les falta?', label: 'Esta semana' },
                             { text: '¿Qué tareas pendientes tiene cada persona del equipo?', label: 'Tareas por persona' },
-                            { text: 'Pon música de deep focus techno para trabajar', label: 'Techno Focus' },
-                            { text: 'Pide almuerzo en Café Unido para el equipo de operaciones', label: 'Almuerzo equipo' }
-                        ].map((chip, cIdx) => (
+                            { text: "What's overdue and who owns it?", label: 'Overdue (EN)' },
+                            { text: 'Pon música de deep focus techno para trabajar', label: 'Techno Focus' }
+                        ].map((chip) => (
                             <button
-                                key={cIdx}
+                                key={chip.label}
                                 onClick={() => handleSendOjChat(chip.text)}
+                                disabled={ojChatLoading}
                                 style={{
                                     padding: '5px 11px',
                                     borderRadius: '8px',
@@ -2732,11 +2844,19 @@ export default function JarvisSkillsHub({ onOpenChat, onAddActivity }) {
                                 {chip.label}
                             </button>
                         ))}
+                        <button
+                            onClick={() => {
+                                if (window.confirm('¿Borrar la conversación de Jarvis?')) setOpenclawMessages(prev => prev.filter(m => m.agent !== 'jarvis'));
+                            }}
+                            style={{ marginLeft: 'auto', padding: '5px 10px', borderRadius: '8px', background: 'transparent', border: '1px solid rgba(255, 255, 255, 0.1)', color: '#94a3b8', fontSize: '11px', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                        >
+                            Limpiar
+                        </button>
                     </div>
 
-                    {/* Chat Input Bar */}
+                    {/* Escribir */}
                     <div style={{
-                        padding: '14px 20px',
+                        padding: '12px 16px',
                         borderTop: '1px solid rgba(255, 255, 255, 0.08)',
                         background: 'rgba(10, 15, 29, 0.95)',
                         display: 'flex',
@@ -2748,13 +2868,12 @@ export default function JarvisSkillsHub({ onOpenChat, onAddActivity }) {
                             value={ojChatInput}
                             onChange={(e) => setOjChatInput(e.target.value)}
                             onKeyDown={(e) => {
-                                if (e.key === 'Enter' && !e.shiftKey) {
-                                    handleSendOjChat();
-                                }
+                                if (e.key === 'Enter' && !e.shiftKey) handleSendOjChat();
                             }}
-                            placeholder="Habla con Jarvis (ej: 'qué eventos hay esta semana', 'crea una tarea para Mateo', 'pon música techno')..."
+                            placeholder="O escríbele a Jarvis…"
                             style={{
                                 flex: 1,
+                                minWidth: 0,
                                 background: 'rgba(0, 0, 0, 0.5)',
                                 border: '1px solid rgba(6, 182, 212, 0.3)',
                                 borderRadius: '10px',
@@ -2768,7 +2887,7 @@ export default function JarvisSkillsHub({ onOpenChat, onAddActivity }) {
                             onClick={() => handleSendOjChat()}
                             disabled={ojChatLoading || !ojChatInput.trim()}
                             style={{
-                                padding: '10px 18px',
+                                padding: '10px 16px',
                                 borderRadius: '10px',
                                 background: 'linear-gradient(135deg, #0284c7, #38bdf8)',
                                 border: 'none',
@@ -2785,6 +2904,72 @@ export default function JarvisSkillsHub({ onOpenChat, onAddActivity }) {
                             <Send size={14} /> Enviar
                         </button>
                     </div>
+                </div>
+            )}
+
+            {/* ══════════════════════════════════════════════════════════════
+                SUBTAB: PERSONALIZAR JARVIS (voz, idioma, personalidad)
+            ══════════════════════════════════════════════════════════════ */}
+            {subTab === 'settings' && (
+                <div className="jarvis-settings">
+                    <section>
+                        <h3>Voz</h3>
+                        <div className="jarvis-field">
+                            <label>Motor de voz</label>
+                            <select value={configDraft.voiceEngine} onChange={e => setConfigDraft({ ...configDraft, voiceEngine: e.target.value })}>
+                                <option value="gemini">Voz neural Gemini (la mejor; usa internet)</option>
+                                <option value="browser">Voz del sistema (100% local, menos natural)</option>
+                            </select>
+                        </div>
+                        {configDraft.voiceEngine === 'gemini' && (
+                                <div className="jarvis-field">
+                                    <label>Voz</label>
+                                    <select value={configDraft.voiceName} onChange={e => setConfigDraft({ ...configDraft, voiceName: e.target.value })}>
+                                        {GEMINI_VOICES.map(v => <option key={v.id} value={v.id}>{v.id} — {v.desc}</option>)}
+                                    </select>
+                                </div>
+                        )}
+                        <button className="jarvis-btn" onClick={handleTestVoice} disabled={testingVoice}>
+                            <Volume2 size={14} /> {testingVoice ? 'Reproduciendo…' : 'Probar voz'}
+                        </button>
+                    </section>
+
+                    <section>
+                        <h3>Personalidad</h3>
+                        <div className="jarvis-field">
+                            <label>Idioma de respuesta</label>
+                            <select value={configDraft.language} onChange={e => setConfigDraft({ ...configDraft, language: e.target.value })}>
+                                <option value="auto">Automático — responde en el idioma en que le hables</option>
+                                <option value="es">Siempre en español</option>
+                                <option value="en">Always in English</option>
+                            </select>
+                        </div>
+                        <div className="jarvis-field">
+                            <label>Cómo te llama</label>
+                            <input value={configDraft.addressAs} onChange={e => setConfigDraft({ ...configDraft, addressAs: e.target.value })} placeholder="señor, GG, jefe…" />
+                        </div>
+                        <div className="jarvis-field">
+                            <label>Instrucciones propias (tienen prioridad sobre todo lo demás)</label>
+                            <textarea
+                                rows={6}
+                                value={configDraft.instructions}
+                                onChange={e => setConfigDraft({ ...configDraft, instructions: e.target.value })}
+                                placeholder={'Ej:\n- Cuando te pida el resumen del día, empieza por lo vencido.\n- Las tareas de producción van siempre a Joshua.\n- Si hablo de "la boda", es el evento de Wedding Content de este sábado.'}
+                            />
+                        </div>
+                    </section>
+
+                    <div className="jarvis-settings-actions">
+                        <button className="jarvis-btn jarvis-btn--primary" onClick={handleSaveConfig}>
+                            {configSaved ? <><Check size={14} /> Guardado</> : 'Guardar cambios'}
+                        </button>
+                        <button className="jarvis-btn" onClick={() => setConfigDraft(jarvisConfig)}>Descartar</button>
+                    </div>
+
+                    <section className="jarvis-where">
+                        <h3>¿Dónde corre Jarvis?</h3>
+                        <p>La app, tus datos (eventos, tareas, contactos) y la memoria de Jarvis viven en tu Mac. El razonamiento, la transcripción de tu voz y la voz neural usan Gemini en la nube con tu API key; con la voz del sistema, solo la voz es local. El motor OpenJarvis de las pestañas “App OpenJarvis” y “CLI local” también corre en tu Mac, pero usa Gemini como modelo.</p>
+                    </section>
                 </div>
             )}
 

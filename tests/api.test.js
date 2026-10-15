@@ -260,3 +260,14 @@ test('jarvis skills: listar, crear, controlar música, pedir comida y ejecutar m
     assert.equal(ojExecData.success, true);
 });
 
+test('jarvis config: se guarda y solo acepta campos conocidos', async () => {
+    const def = await (await api('/jarvis/config')).json();
+    assert.equal(def.voiceName, 'Charon');
+    assert.equal(def.language, 'auto');
+    const saved = await (await api('/jarvis/config', { method: 'POST', body: json({ voiceName: 'Orus', language: 'en', hack: 'x' }) })).json();
+    assert.equal(saved.voiceName, 'Orus');
+    assert.equal(saved.language, 'en');
+    assert.equal(saved.hack, undefined);
+    const tts = await api('/jarvis/tts', { method: 'POST', body: json({ text: '' }) });
+    assert.ok([400, 503].includes(tts.status));
+});

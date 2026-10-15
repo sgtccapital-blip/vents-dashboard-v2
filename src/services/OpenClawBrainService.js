@@ -173,7 +173,7 @@ class OpenClawBrainService {
     /**
      * Envía un mensaje al OpenClaw Super Agent con contexto en vivo + RAG + Modo + Gemini
      */
-    static async sendCommand(prompt, historyContext = [], systemRole = '', skills = '', namespace = 'default', modeId = 'ejecutivo', contextCallbacks = null) {
+    static async sendCommand(prompt, historyContext = [], systemRole = '', skills = '', namespace = 'default', modeId = 'ejecutivo', contextCallbacks = null, options = {}) {
         try {
             const modeObj = OPENCLAW_MODES.find(m => m.id === modeId) || OPENCLAW_MODES[0];
             const combinedSystemRole = `${modeObj.systemPrompt}\n\n${systemRole || ''}`;
@@ -190,7 +190,10 @@ class OpenClawBrainService {
                 systemRole: combinedSystemRole,
                 skills,
                 namespace,
-                geminiApiKey: geminiApiKey || undefined
+                geminiApiKey: geminiApiKey || undefined,
+                // Interfaz que habla (p. ej. 'jarvis') y si la respuesta se leerá en voz alta
+                agent: options.agent,
+                voice: options.voice
             };
 
             let res = await fetch(endpoint, {
@@ -454,6 +457,22 @@ class OpenClawBrainService {
             foodOrders: [],
             skillsCount: 0
         };
+    }
+
+    static async getJarvisConfig() {
+        const res = await fetch(`${API_BASE}/jarvis/config`);
+        if (!res.ok) throw new Error('No se pudo leer la configuración de Jarvis');
+        return res.json();
+    }
+
+    static async saveJarvisConfig(patch) {
+        const res = await fetch(`${API_BASE}/jarvis/config`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(patch)
+        });
+        if (!res.ok) throw new Error('No se pudo guardar la configuración de Jarvis');
+        return res.json();
     }
 
     // ─── OpenJarvis Engine Core Methods ───────────────────────────────
