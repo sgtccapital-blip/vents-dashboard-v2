@@ -70,13 +70,18 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
     const loadRaw = id => JSON.parse(fs.readFileSync(rawPath(id), 'utf8'));
 
     // ─── Embeddings ───
+    // Por tandas de 50, guardando cada una: si la cuota se corta a mitad, lo avanzado no se pierde.
     async function embedMissing(limit = Infinity) {
         if (!embedder.available()) return 0;
-        const missing = store.missingVectors(limit);
-        if (!missing.length) return 0;
-        const vectors = await embedder.embedDocuments(missing.map(c => store.textForEmbedding(c)));
-        missing.forEach((c, i) => store.setVector(c.id, vectors[i]));
-        return missing.length;
+        let done = 0;
+        while (done < limit) {
+            const slice = store.missingVectors(Math.min(50, limit - done));
+            if (!slice.length) break;
+            const vectors = await embedder.embedDocuments(slice.map(c => store.textForEmbedding(c)));
+            slice.forEach((c, i) => store.setVector(c.id, vectors[i]));
+            done += slice.length;
+        }
+        return done;
     }
 
     // Un fallo de embeddings no debe frenar nada: los trozos quedan buscables por palabras y se vectorizan después.
@@ -211,7 +216,7 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
         const keepTranscript = !digest || (digest.relevance !== 'baja' && digest.type !== 'trivial');
         if (keepTranscript) indexTranscript(conv, docMeta);
         else store.removeDoc(`chatgpt:${id}`, { save: false });
-        await embedSafe();
+        embedSafe(); // los vectores se calculan aparte, al ritmo que permite la cuota
 
         Object.assign(meta, {
             status: digest ? 'done' : 'indexed_raw',
@@ -263,7 +268,7 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
             firstDate: convs[0].updateTime, lastDate: convs[convs.length - 1].updateTime,
         };
         store.upsertDoc({ id: `project-memory:${key}`, source: 'chatgpt', kind: 'project_memory', title: `Memoria del proyecto · ${name}`, meta: { projectId, project: name, namespace: 'chatgpt' } }, chunkText(text, 2400, 200));
-        await embedSafe();
+        embedSafe(); // los vectores se calculan aparte, al ritmo que permite la cuota
         saveState();
         return state.projects[key];
     }
@@ -284,7 +289,7 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
         state.profile = { data, text: profileToText(data), updatedAt: new Date().toISOString(), basedOn: digests.length };
         state.digestsSinceProfile = 0;
         store.upsertDoc({ id: 'profile:user', source: 'chatgpt', kind: 'profile', title: 'Perfil de trabajo del usuario', meta: { namespace: 'chatgpt' } }, chunkText(state.profile.text, 2400, 200));
-        await embedSafe();
+        embedSafe(); // los vectores se calculan aparte, al ritmo que permite la cuota
         saveState();
         return state.profile;
     }
@@ -359,7 +364,7 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
                     try { await refreshProfile(); } catch (e) { worker.lastError = `Perfil: ${e.message.slice(0, 200)}`; }
                 }
             }
-            await embedMissing().catch(e => { worker.lastError = `Embeddings: ${e.message.slice(0, 200)}`; });
+            embedSafe();
         } finally {
             worker.running = false;
             worker.current = [];
@@ -387,10 +392,9 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
         for (const doc of store.listDocs(x => x.source === 'dashboard')) {
             if (!seen.has(doc.id)) { store.removeDoc(doc.id); removed++; }
         }
-        let embedded = 0;
-        try { embedded = await embedMissing(); } catch (e) { log.warn('[Knowledge] Embeddings del dashboard pendientes:', e.message); }
         if (changed || removed) store.scheduleSave();
-        return { changed, removed, embedded, total: docs.length };
+        embedSafe();
+        return { changed, removed, pendingVectors: store.missingVectors().length, total: docs.length };
     }
 
     // ─── Memorias que guardan agentes o el usuario ───
@@ -398,7 +402,7 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
         if (!content) throw new Error('Falta content');
         const id = `memory:${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
         const doc = store.upsertDoc({ id, source: 'memory', kind: 'memory', title: title || content.slice(0, 80), meta: { origin: source, agent, projectId, tags, namespace: 'memory', date: new Date().toISOString() } }, chunkText(content));
-        try { await embedMissing(); } catch (e) { log.warn('[Knowledge] Memoria guardada sin embedding:', e.message); }
+        embedSafe(); // ya es buscable por palabras; el vector llega en segundo plano
         return doc;
     }
 
@@ -526,6 +530,8 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
 
     return {
         store,
+        /** Espera a que terminen los vectores pendientes (útil en pruebas y scripts). */
+        waitForEmbeddings: () => embedSafe(),
         importExport, importConversations, indexPendingTranscripts, syncState, ingestFromExtension, reportExtensionRun, runWorker, syncDashboard, saveMemory, search, scanWatchDir, embedMissing,
         refreshProjectMemory, refreshProfile,
         status, listConversations, getConversation, excludeConversation, retryErrors, setConfig,

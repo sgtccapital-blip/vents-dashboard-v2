@@ -214,7 +214,9 @@ export class KnowledgeStore {
         const kwRank = rank(kw);
         const simRank = rank(sim);
         const fused = new Map();
-        for (const [i, r] of kwRank) fused.set(i, (fused.get(i) || 0) + 1 / (60 + r));
+        // Un trozo que aún no tiene vector (recién llegado) no debe perder contra los que sí: su rango por
+        // palabras cuenta doble mientras tanto.
+        for (const [i, r] of kwRank) fused.set(i, (fused.get(i) || 0) + (qVec && !this.vectors[i] ? 2 : 1) / (60 + r));
         for (const [i, r] of simRank) fused.set(i, (fused.get(i) || 0) + 1 / (60 + r));
         if (!fused.size) return [];
 

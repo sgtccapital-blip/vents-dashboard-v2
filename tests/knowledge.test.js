@@ -227,3 +227,23 @@ test('una conversación es buscable apenas llega, antes de que la IA la resuma, 
     assert.ok(embedded - transcriptEmbeds <= 3);
     engine.flush();
 });
+
+test('un trozo sin vector todavía compite en igualdad con los vectorizados', () => {
+    const store = new KnowledgeStore(tmpDir(), { dims: 2, model: 'fake' });
+    store.upsertDoc({ id: 'viejo', source: 'dashboard', kind: 'task', title: 'Lista de invitados', meta: {} }, ['Completar la lista de invitados del domingo']);
+    store.setVector('viejo#0', [1, 0]);
+    store.upsertDoc({ id: 'nuevo', source: 'chatgpt', kind: 'transcript', title: 'Quitar números lista', meta: {} }, ['Quitar los números de la lista de contactos y dejar solo nombres']);
+    assert.equal(store.search({ query: 'quitar números lista', queryVector: [1, 0] })[0].docId, 'nuevo');
+});
+
+test('el limitador de embeddings respeta el máximo por minuto', async () => {
+    const { createRateLimiter } = await import('../src/services/knowledge/embeddings.js');
+    let t = 0;
+    const waits = [];
+    const reserve = createRateLimiter(90, { now: () => t, sleep: async ms => { waits.push(ms); t += ms; } });
+    await reserve(50);
+    await reserve(40);
+    assert.equal(waits.length, 0);
+    await reserve(50); // pasaría de 90 en el mismo minuto: espera a que se libere
+    assert.ok(waits.length > 0 && t >= 60000);
+});
