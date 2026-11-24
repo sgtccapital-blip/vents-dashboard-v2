@@ -20,6 +20,7 @@
     "@google/genai": "^1.46.0",
     "@google/generative-ai": "^0.24.1",
     "@hello-pangea/dnd": "^18.0.1",
+    "@huggingface/transformers": "^4.3.2",
     "@modelcontextprotocol/sdk": "^1.32.2",
     "@pinecone-database/pinecone": "^7.1.0",
     "cors": "^2.8.6",

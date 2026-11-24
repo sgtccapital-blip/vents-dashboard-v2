@@ -9,6 +9,7 @@ import { KnowledgeStore } from './store.js';
 import { QuotaError } from './embeddings.js';
 import { chunkText, hash, fold } from './text.js';
 import { jevAvailable, triageConversation } from './jev.js';
+import { playbookMarkdown, REFERENCE_TYPES } from '../contentStudio/referenceEngine.js';
 import { readExportFile, normalizeConversation, transcriptText, digestInput, isChatGptExportZip } from './chatgptExport.js';
 import {
     DigestSchema, DIGEST_SYSTEM, digestPrompt, digestToText,
@@ -72,7 +73,7 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
         if (!embedder.available() || embedder.pausedUntil?.()) return 0;
         let done = 0;
         while (done < limit) {
-            const slice = store.missingVectors(Math.min(20, limit - done));
+            const slice = store.missingVectors(Math.min(embedder.batchSize || 20, limit - done));
             if (!slice.length) break;
             const vectors = await embedder.embedDocuments(slice.map(c => store.textForEmbedding(c)));
             slice.forEach((c, i) => store.setVector(c.id, vectors[i]));
@@ -401,8 +402,27 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
             store.upsertDoc({ id, source: 'dashboard', kind: d.category || 'document', title, hash: h, meta: { namespace: d.namespace || 'default', legacyId: d.id, date: d.updatedAt || d.addedAt } }, chunkText(d.content || title));
             changed++;
         }
+        // Referencias y tutoriales analizados (Redes Sociales → Referencias): el playbook completo entra al RAG.
+        const accountsById = Object.fromEntries((db.socialMedia || []).map(a => [a.id, a.handler]));
+        for (const r of db.references || []) {
+            if (!r.analysis) continue;
+            const id = `reference:${r.id}`;
+            seen.add(id);
+            const a = r.analysis;
+            const accounts = (r.accountIds || []).map(x => accountsById[x] || x);
+            let text;
+            try { text = playbookMarkdown(r, a, r.stats); } catch { text = JSON.stringify(a); }
+            text = `${text}${r.notes ? `\n## Nota del equipo\n${r.notes}\n` : ''}${accounts.length ? `\nCuentas: ${accounts.join(', ')}\n` : ''}`;
+            const h = hash(text);
+            if (store.getDoc(id)?.hash === h) continue;
+            store.upsertDoc({
+                id, source: 'reference', kind: r.type || 'viral', title: `${REFERENCE_TYPES[r.type] || 'Referencia'} · ${r.title || a.title}`, hash: h,
+                meta: { namespace: 'reference', referenceId: r.id, url: r.url || '', accounts, technique: a.technique?.name || '', date: r.analyzedAt || r.createdAt },
+            }, chunkText(text, 2400, 200));
+            changed++;
+        }
         let removed = 0;
-        for (const doc of store.listDocs(x => x.source === 'dashboard')) {
+        for (const doc of store.listDocs(x => x.source === 'dashboard' || x.source === 'reference')) {
             if (!seen.has(doc.id)) { store.removeDoc(doc.id); removed++; }
         }
         if (changed || removed) store.scheduleSave();

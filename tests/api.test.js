@@ -55,6 +55,7 @@ before(async () => {
             RENDER: '',
             // El motor de conocimiento no debe llamar a Gemini ni leer la carpeta de Descargas real.
             GEMINI_API_KEY: '',
+            KNOWLEDGE_EMBEDDER: 'none',
             CHATGPT_EXPORT_DIR: path.join(tmp, 'downloads'),
         },
         stdio: 'ignore',

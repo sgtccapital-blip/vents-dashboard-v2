@@ -270,3 +270,16 @@ test('la cuota diaria se renueva a medianoche del Pacífico', async () => {
     const hours = (reset - now) / 3600000;
     assert.ok(hours > 16.9 && hours < 17.2, String(hours));
 });
+
+test('embeddings locales: ordenan bien búsquedas en español', { skip: !fs.existsSync(path.join(os.homedir(), 'Library/Caches/arrive-command-center/models')) && 'modelo local no descargado' }, async () => {
+    const { createLocalEmbedder } = await import('../src/services/knowledge/localEmbedder.js');
+    const e = createLocalEmbedder({ log: {} });
+    const docs = ['Precio de Hang Out en diciembre: preventa 15 y puerta 20.', 'Receta de pan de masa madre con harina y agua.', 'Waller cobra 5% por transacción a los venues.'];
+    const store = new KnowledgeStore(tmpDir(), { dims: e.dims, model: e.model });
+    docs.forEach((d, i) => store.upsertDoc({ id: `d${i}`, source: 'chatgpt', kind: 'transcript', title: '', meta: {} }, [d]));
+    const vecs = await e.embedDocuments(docs);
+    vecs.forEach((v, i) => store.setVector(`d${i}#0`, v));
+    const top = async q => store.search({ query: '', queryVector: await e.embedQuery(q) })[0].docId;
+    assert.equal(await top('¿a cuánto quedó la entrada?'), 'd0');
+    assert.equal(await top('cuánto cobra Waller a los venues'), 'd2');
+});

@@ -4,13 +4,19 @@ import path from 'path';
 import multer from 'multer';
 import { createKnowledgeEngine } from './engine.js';
 import { createGeminiEmbedder } from './embeddings.js';
-import { createReferenceLibrary } from './references.js';
+import { createLocalEmbedder } from './localEmbedder.js';
+
+// local (por defecto): modelo en la Mac, gratis y sin límites. gemini: API de Google. none: solo palabras clave.
+function chooseEmbedder(getGeminiKey) {
+    const kind = process.env.KNOWLEDGE_EMBEDDER || 'local';
+    if (kind === 'gemini') return createGeminiEmbedder(getGeminiKey);
+    if (kind === 'none') return { model: 'none', dims: 1, available: () => false, pausedUntil: () => null };
+    return createLocalEmbedder();
+}
 
 export function registerKnowledge(app, { readDB, getGeminiKey, generateStructured, availableProviders, dataDir, uploadDir, cron, extensionDir = '' }) {
-    const embedder = createGeminiEmbedder(getGeminiKey);
+    const embedder = chooseEmbedder(getGeminiKey);
     const engine = createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateStructured, availableProviders, embedder });
-    const references = createReferenceLibrary({ dataDir, store: engine.store, embedMissing: engine.embedMissing, getGeminiKey, generateStructured });
-    engine.references = references;
 
     const upload = multer({
         dest: uploadDir,
@@ -84,35 +90,6 @@ export function registerKnowledge(app, { readDB, getGeminiKey, generateStructure
         res.status(201).json(await engine.saveMemory({ title, content, agent, projectId, tags: Array.isArray(tags) ? tags : [] }));
     }));
 
-    // ─── Referencias: links de YouTube / Instagram / TikTok… analizados por IA y metidos al RAG ───
-    app.get('/api/knowledge/references', (req, res) => {
-        const { q, type, status } = req.query;
-        res.json({ items: references.list({ q, type, status }), status: references.status() });
-    });
-    app.get('/api/knowledge/references/:id', (req, res) => {
-        const it = references.get(req.params.id);
-        if (!it) return res.status(404).json({ error: 'Referencia no encontrada' });
-        res.json(it);
-    });
-    app.post('/api/knowledge/references', wrap(async (req, res) => {
-        const { urls, url, note, account, tags } = req.body || {};
-        res.status(201).json(references.add({ urls: urls || url, note, account, tags: Array.isArray(tags) ? tags : String(tags || '').split(',').map(t => t.trim()).filter(Boolean) }));
-    }));
-    app.patch('/api/knowledge/references/:id', (req, res) => {
-        const it = references.update(req.params.id, req.body || {});
-        if (!it) return res.status(404).json({ error: 'Referencia no encontrada' });
-        res.json(it);
-    });
-    app.post('/api/knowledge/references/:id/retry', (req, res) => {
-        const it = references.retry(req.params.id);
-        if (!it) return res.status(404).json({ error: 'Referencia no encontrada' });
-        res.json(it);
-    });
-    app.delete('/api/knowledge/references/:id', (req, res) => {
-        if (!references.remove(req.params.id)) return res.status(404).json({ error: 'Referencia no encontrada' });
-        res.json({ ok: true });
-    });
-
     app.post('/api/knowledge/config', (req, res) => res.json(engine.setConfig(req.body || {})));
 
     app.post('/api/knowledge/sync-dashboard', wrap(async (req, res) => res.json(await engine.syncDashboard())));
@@ -126,12 +103,10 @@ export function registerKnowledge(app, { readDB, getGeminiKey, generateStructure
         } catch (e) { console.warn('[Knowledge] Sync inicial falló:', e.message); }
         engine.scanWatchDir();
         engine.runWorker();
-        references.runWorker();
     }, 3000);
     cron?.schedule('*/10 * * * *', () => {
         engine.scanWatchDir();
         engine.tick();
-        references.runWorker();
         engine.syncDashboard().catch(e => console.warn('[Knowledge] Sync del dashboard falló:', e.message));
     });
 
