@@ -198,3 +198,32 @@ test('sin cuota de IA las conversaciones quedan buscables igual y se resumen des
     assert.equal(engine.status().chatgpt.done, 2);
     engine.flush();
 });
+
+test('una conversación es buscable apenas llega, antes de que la IA la resuma, y el resumen no la reindexa', async () => {
+    const dir = tmpDir();
+    let release;
+    const gate = new Promise(r => { release = r; });
+    const generateStructured = async ({ schema }) => {
+        await gate;
+        return { data: schema.parse({ summary: 'precios', project: 'Hang Out', projectId: '', type: 'proyecto', relevance: 'alta', decisions: [], ideas: [], pending: [], reasoning: [], facts: [], tags: [] }), model: 'fake' };
+    };
+    let embedded = 0;
+    const engine = createKnowledgeEngine({
+        dataDir: dir, readDB: () => ({ projects: [] }), getGeminiKey: () => '', generateStructured, availableProviders: () => ['gemini'],
+        embedder: { model: 'fake', dims: 2, available: () => true, embedDocuments: async t => { embedded += t.length; return t.map(() => [1, 0]); }, embedQuery: async () => [1, 0] },
+        log: { log() {}, warn() {}, error() {} },
+    });
+    engine.importConversations([sample[0]]);
+    const { results } = await engine.search({ query: 'precio preventa hang out' });
+    assert.equal(results[0].docId, 'chatgpt:c1');
+    assert.equal(engine.status().chatgpt.done, 0);
+
+    const transcriptEmbeds = embedded;
+    release();
+    for (let i = 0; i < 100 && engine.status().chatgpt.done < 1; i++) await new Promise(r => setTimeout(r, 10));
+    assert.equal(engine.status().chatgpt.done, 1);
+    // Solo se vectorizaron el resumen y la memoria del proyecto; la transcripción ya estaba.
+    assert.ok(engine.store.getDoc('chatgpt:c1').meta.relevance === 'alta');
+    assert.ok(embedded - transcriptEmbeds <= 3);
+    engine.flush();
+});

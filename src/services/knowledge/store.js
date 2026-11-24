@@ -99,6 +99,15 @@ export class KnowledgeStore {
         return this.docs.get(doc.id);
     }
 
+    /** Cambia los metadatos de un documento sin volver a trocearlo ni recalcular sus vectores. */
+    updateDocMeta(id, meta) {
+        const doc = this.docs.get(id);
+        if (!doc) return null;
+        doc.meta = { ...(doc.meta || {}), ...meta };
+        this.scheduleSave();
+        return doc;
+    }
+
     removeDoc(id, { save = true } = {}) {
         if (!this.docs.has(id)) return false;
         this.docs.delete(id);

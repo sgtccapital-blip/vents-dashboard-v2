@@ -119,6 +119,7 @@ export function registerKnowledge(app, { readDB, getGeminiKey, generateStructure
 
     // Arranque: índice del dashboard, cola pendiente y vigilancia de Descargas.
     setTimeout(async () => {
+        engine.indexPendingTranscripts();
         try {
             const r = await engine.syncDashboard();
             console.log(`   🧠 Conocimiento: ${engine.store.stats().docs} documentos (${r.changed} del dashboard actualizados)`);

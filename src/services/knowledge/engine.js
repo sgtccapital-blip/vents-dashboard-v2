@@ -80,8 +80,20 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
     }
 
     // Un fallo de embeddings no debe frenar nada: los trozos quedan buscables por palabras y se vectorizan después.
-    async function embedSafe() {
-        try { return await embedMissing(); } catch (e) { worker.lastError = `Embeddings: ${e.message.slice(0, 200)}`; return 0; }
+    // Las llamadas se encadenan para no pedir dos veces los mismos vectores.
+    let embedChain = Promise.resolve(0);
+    function embedSafe() {
+        embedChain = embedChain.then(() => embedMissing()).catch(e => { worker.lastError = `Embeddings: ${e.message.slice(0, 200)}`; return 0; });
+        return embedChain;
+    }
+
+    /** Indexa el texto completo de una conversación; si no cambió desde la última vez, solo actualiza sus metadatos. */
+    function indexTranscript(conv, docMeta) {
+        const id = `chatgpt:${conv.id}`;
+        const h = hash(`${conv.updateTime}|${conv.messages.length}|${conv.title}`);
+        if (store.getDoc(id)?.hash === h) { store.updateDocMeta(id, docMeta); return false; }
+        store.upsertDoc({ id, source: 'chatgpt', kind: 'transcript', title: conv.title, hash: h, meta: docMeta }, chunkText(transcriptText(conv.messages)));
+        return true;
     }
 
     // ─── Importación ───
@@ -102,6 +114,11 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
             const sameTime = prev && Math.abs(new Date(prev.updateTime) - new Date(conv.updateTime)) < 1500;
             if (prev && sameTime && prev.messageCount === conv.messages.length) { summary.unchanged++; continue; }
             fs.writeFileSync(rawPath(conv.id), JSON.stringify(conv));
+            // Buscable de inmediato: el resumen de la IA llega después y no hace falta esperarlo.
+            indexTranscript(conv, {
+                conversationId: conv.id, date: conv.updateTime, namespace: 'chatgpt', chatgptProjectId: conv.chatgptProjectId,
+                projectId: prev?.digest?.projectId || '', project: prev?.digest?.project || '', relevance: '', type: '', tags: [],
+            });
             state.conversations[conv.id] = {
                 ...(prev || {}),
                 id: conv.id, title: conv.title, createTime: conv.createTime, updateTime: conv.updateTime,
@@ -114,7 +131,7 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
         }
         if (record) state.imports = [summary, ...state.imports].slice(0, 30);
         flush();
-        if (summary.added || summary.updated) runWorker();
+        if (summary.added || summary.updated) { embedSafe(); runWorker(); }
         return summary;
     }
 
@@ -187,15 +204,13 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
             chatgptProjectId: conv.chatgptProjectId,
         };
         store.removeDoc(`chatgpt:${id}:digest`, { save: false });
-        store.removeDoc(`chatgpt:${id}`, { save: false });
         if (digest) {
             store.upsertDoc({ id: `chatgpt:${id}:digest`, source: 'chatgpt', kind: 'digest', title: `Resumen · ${conv.title}`, meta: docMeta }, [digestToText(conv, digest)]);
         }
         // Las consultas sueltas solo quedan como resumen; lo útil se indexa completo para encontrar detalles exactos.
         const keepTranscript = !digest || (digest.relevance !== 'baja' && digest.type !== 'trivial');
-        if (keepTranscript) {
-            store.upsertDoc({ id: `chatgpt:${id}`, source: 'chatgpt', kind: 'transcript', title: conv.title, meta: docMeta }, chunkText(transcriptText(conv.messages)));
-        }
+        if (keepTranscript) indexTranscript(conv, docMeta);
+        else store.removeDoc(`chatgpt:${id}`, { save: false });
         await embedSafe();
 
         Object.assign(meta, {
@@ -207,6 +222,21 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
         if (digest) state.digestsSinceProfile++;
         saveState();
         return { ...meta, quotaHit };
+    }
+
+    /** Al arrancar: lo que quedó en cola sin indexar (versiones anteriores) se vuelve buscable ya. */
+    function indexPendingTranscripts() {
+        let n = 0;
+        for (const c of Object.values(state.conversations)) {
+            if (c.status !== 'pending' || store.getDoc(`chatgpt:${c.id}`)) continue;
+            try {
+                const conv = loadRaw(c.id);
+                indexTranscript(conv, { conversationId: c.id, date: conv.updateTime, namespace: 'chatgpt', chatgptProjectId: conv.chatgptProjectId, projectId: '', project: '', relevance: '', type: '', tags: [] });
+                n++;
+            } catch { /* sin archivo crudo: se reprocesa cuando vuelva a llegar */ }
+        }
+        if (n) embedSafe();
+        return n;
     }
 
     // ─── Memoria por proyecto y perfil ───
@@ -496,7 +526,7 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
 
     return {
         store,
-        importExport, importConversations, syncState, ingestFromExtension, reportExtensionRun, runWorker, syncDashboard, saveMemory, search, scanWatchDir, embedMissing,
+        importExport, importConversations, indexPendingTranscripts, syncState, ingestFromExtension, reportExtensionRun, runWorker, syncDashboard, saveMemory, search, scanWatchDir, embedMissing,
         refreshProjectMemory, refreshProfile,
         status, listConversations, getConversation, excludeConversation, retryErrors, setConfig,
         pause() { worker.paused = true; },
