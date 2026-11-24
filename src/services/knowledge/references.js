@@ -134,7 +134,10 @@ export function createReferenceLibrary({ dataDir, store, embedMissing, getGemini
     const file = path.join(dataDir, 'references.json');
     const workDir = path.join(os.tmpdir(), 'arrive-references');
     const ytdlp = findBin('yt-dlp', 'YTDLP_PATH');
-    const videoModel = () => process.env.REFERENCE_VIDEO_MODEL || process.env.KNOWLEDGE_LLM_MODEL || 'gemini-3.8-flash';
+    // Modelos que ven video, en orden. Cada uno tiene su propia cuota diaria en el plan gratis
+    // (3.8 Flash y 3 Flash: 20/día; Flash Lite: 500/día), así que al agotarse uno se pasa al siguiente.
+    // 3.6 Flash queda fuera a propósito: lo usa Jarvis.
+    const videoModels = () => (process.env.REFERENCE_VIDEO_MODELS || 'gemini-3.8-flash,gemini-3-flash-preview,gemini-3.5-flash-lite,gemini-3.1-flash-lite').split(',').map(x => x.trim()).filter(Boolean);
     const cookiesBrowser = () => process.env.REFERENCE_COOKIES_BROWSER || ''; // p. ej. "chrome" para posts de IG que piden sesión
 
     let state = { items: {} };
@@ -223,10 +226,24 @@ export function createReferenceLibrary({ dataDir, store, embedMissing, getGemini
 
     const deleteGeminiFile = (name, apiKey) => fetch(`${GEM}/v1beta/${name}`, { method: 'DELETE', headers: { 'x-goog-api-key': apiKey } }).catch(() => {});
 
-    async function analyzeVideo({ fileData, meta, note, apiKey }) {
+    /** Prueba los modelos de video en orden; si uno no tiene cuota o está saturado, sigue con el próximo. */
+    async function analyzeVideo(args) {
+        const errors = [];
+        for (const model of videoModels()) {
+            try {
+                return { analysis: await analyzeVideoWith(model, args), model };
+            } catch (e) {
+                errors.push(`${model}: ${e.message.slice(0, 160)}`);
+                if (!/\b(429|500|503|504)\b|quota|RESOURCE_EXHAUSTED|UNAVAILABLE|high demand|\b404\b/i.test(e.message)) throw e;
+            }
+        }
+        throw new Error(errors.join(' | '));
+    }
+
+    async function analyzeVideoWith(model, { fileData, meta, note, apiKey }) {
         const jsonSchema = z.toJSONSchema(ReferenceSchema);
         const long = (meta.duration || 0) > LONG_VIDEO_SEC;
-        const res = await fetch(`${GEM}/v1beta/models/${videoModel()}:generateContent`, {
+        const res = await fetch(`${GEM}/v1beta/models/${model}:generateContent`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
             body: JSON.stringify({
@@ -249,8 +266,8 @@ export function createReferenceLibrary({ dataDir, store, embedMissing, getGemini
             system: SYSTEM,
             prompt: `${promptFor(meta, note)}\n\nNo tienes el video, solo este texto: desglosa lo que se pueda y deja vacío lo que no se sepa.`,
             schema: ReferenceSchema,
+            task: 'reference',
             geminiApiKey: getGeminiKey(),
-            geminiModel: videoModel(),
         });
         return { analysis: data, model };
     }
@@ -268,13 +285,14 @@ export function createReferenceLibrary({ dataDir, store, embedMissing, getGemini
             item.meta.hasSubtitles = !!meta.subtitles;
 
             let analysis = null;
+            let usedModel = '';
             let mode = '';
             const errors = [];
             if (apiKey && !(meta.duration > HUGE_VIDEO_SEC)) {
                 // YouTube público: Gemini lo ve directo desde el link, sin descargar.
                 if (item.platform === 'youtube') {
                     try {
-                        analysis = await analyzeVideo({ fileData: { fileUri: item.url, mimeType: 'video/*' }, meta, note: item.note, apiKey });
+                        ({ analysis, model: usedModel } = await analyzeVideo({ fileData: { fileUri: item.url, mimeType: 'video/*' }, meta, note: item.note, apiKey }));
                         mode = 'video';
                     } catch (e) { errors.push(`YouTube directo: ${e.message}`); if (/\b429\b|RESOURCE_EXHAUSTED/.test(e.message)) throw e; }
                 }
@@ -283,7 +301,7 @@ export function createReferenceLibrary({ dataDir, store, embedMissing, getGemini
                     try {
                         const video = await download(item.url, dir, meta.duration);
                         uploaded = await uploadToGemini(video, apiKey);
-                        analysis = await analyzeVideo({ fileData: { fileUri: uploaded.uri, mimeType: uploaded.mimeType }, meta, note: item.note, apiKey });
+                        ({ analysis, model: usedModel } = await analyzeVideo({ fileData: { fileUri: uploaded.uri, mimeType: uploaded.mimeType }, meta, note: item.note, apiKey }));
                         mode = 'video';
                     } catch (e) {
                         errors.push(`Video: ${e.message}`);
@@ -295,13 +313,13 @@ export function createReferenceLibrary({ dataDir, store, embedMissing, getGemini
             }
             if (!analysis) {
                 if (!meta.description && !meta.subtitles && !meta.title) throw new Error(errors.join(' | ') || item.metaError || 'No se pudo leer el link');
-                analysis = (await analyzeText({ meta, note: item.note })).analysis;
+                ({ analysis, model: usedModel } = await analyzeText({ meta, note: item.note }));
                 mode = 'texto';
             }
             item.analysis = analysis;
             item.mode = mode;
             item.warnings = errors;
-            item.model = videoModel();
+            item.model = usedModel;
             item.status = 'done';
             item.error = '';
             indexItem(item);
@@ -433,7 +451,7 @@ export function createReferenceLibrary({ dataDir, store, embedMissing, getGemini
         status() {
             const items = Object.values(state.items);
             const c = st => items.filter(it => it.status === st).length;
-            return { total: items.length, done: c('done'), pending: c('pending') + c('processing'), errors: c('error'), worker: { ...worker }, ytdlp, model: videoModel(), cookiesBrowser: cookiesBrowser() };
+            return { total: items.length, done: c('done'), pending: c('pending') + c('processing'), errors: c('error'), worker: { ...worker }, ytdlp, model: videoModels().join(' → '), cookiesBrowser: cookiesBrowser() };
         },
         runWorker,
     };

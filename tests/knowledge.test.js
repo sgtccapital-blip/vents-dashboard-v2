@@ -262,3 +262,11 @@ test('el limitador también respeta los tokens por minuto y los resúmenes se ve
     store.upsertDoc({ id: 'p', source: 'chatgpt', kind: 'profile', title: 'z', meta: {} }, ['d']);
     assert.deepEqual(store.missingVectors(2).map(c => c.docId), ['p', 'd']);
 });
+
+test('la cuota diaria se renueva a medianoche del Pacífico', async () => {
+    const { nextQuotaReset } = await import('../src/services/knowledge/embeddings.js');
+    const now = new Date('2026-11-24T15:00:00Z'); // 07:00 en Los Ángeles
+    const reset = nextQuotaReset(now);
+    const hours = (reset - now) / 3600000;
+    assert.ok(hours > 16.9 && hours < 17.2, String(hours));
+});

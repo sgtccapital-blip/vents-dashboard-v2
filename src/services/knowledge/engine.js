@@ -8,6 +8,7 @@ import path from 'path';
 import { KnowledgeStore } from './store.js';
 import { QuotaError } from './embeddings.js';
 import { chunkText, hash, fold } from './text.js';
+import { jevAvailable, triageConversation } from './jev.js';
 import { readExportFile, normalizeConversation, transcriptText, digestInput, isChatGptExportZip } from './chatgptExport.js';
 import {
     DigestSchema, DIGEST_SYSTEM, digestPrompt, digestToText,
@@ -59,12 +60,8 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
     const worker = { running: false, paused: false, blockedReason: '', current: [], processedThisRun: 0, lastRunAt: null, lastError: '' };
 
     const llmOk = () => availableProviders({ geminiApiKey: getGeminiKey() }).length > 0;
-    const llm = (opts) => generateStructured({
-        ...opts,
-        geminiApiKey: getGeminiKey(),
-        provider: getGeminiKey() ? 'gemini' : undefined,
-        geminiModel: process.env.KNOWLEDGE_LLM_MODEL || 'gemini-3.8-flash',
-    });
+    // Cadena de modelos de la tarea "knowledge" (Gemma → Flash Lite → OpenRouter), ver contentStudio/llm.js.
+    const llm = (opts) => generateStructured({ ...opts, task: 'knowledge', geminiApiKey: getGeminiKey() });
 
     const rawPath = id => path.join(rawDir, `${id.replace(/[^a-zA-Z0-9_-]/g, '_')}.json`);
     const loadRaw = id => JSON.parse(fs.readFileSync(rawPath(id), 'utf8'));
@@ -72,7 +69,7 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
     // ─── Embeddings ───
     // Por tandas de 50, guardando cada una: si la cuota se corta a mitad, lo avanzado no se pierde.
     async function embedMissing(limit = Infinity) {
-        if (!embedder.available()) return 0;
+        if (!embedder.available() || embedder.pausedUntil?.()) return 0;
         let done = 0;
         while (done < limit) {
             const slice = store.missingVectors(Math.min(20, limit - done));
@@ -130,7 +127,7 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
                 chatgptProjectId: conv.chatgptProjectId, archived: conv.archived,
                 messageCount: conv.messages.length,
                 chars: conv.messages.reduce((n, m) => n + m.text.length, 0),
-                status: 'pending', error: '',
+                status: 'pending', error: '', triage: null, // cambió: Jev la vuelve a evaluar
             };
             prev ? summary.updated++ : summary.added++;
         }
@@ -181,7 +178,23 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
 
         let digest = null;
         let quotaHit = null;
-        if (llmOk() && !skipLLM) {
+        // Filtro con Jev (centavos por millón de tokens): las consultas sueltas no gastan una llamada al LLM.
+        if (llmOk() && !skipLLM && jevAvailable() && !meta.triage) {
+            try {
+                meta.triage = await triageConversation({ title: conv.title, transcript: digestInput(conv.messages) });
+            } catch (err) {
+                log.warn('[Knowledge] Filtro Jev no disponible:', err.message.slice(0, 160));
+            }
+        }
+        const skipThreshold = Number(process.env.JEV_SKIP_THRESHOLD) || 0.15;
+        if (meta.triage && meta.triage.worth < skipThreshold && meta.triage.confidence >= 0.5) {
+            digest = {
+                summary: `Consulta suelta: ${conv.title}`, project: '', projectId: '', type: 'trivial', relevance: 'baja',
+                decisions: [], ideas: [], pending: [], reasoning: [], facts: [], tags: [],
+            };
+            meta.digestModel = 'jev (filtro, sin LLM)';
+            meta.digestError = '';
+        } else if (llmOk() && !skipLLM) {
             try {
                 const { data, model } = await llm({
                     system: DIGEST_SYSTEM,
@@ -409,7 +422,7 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
     // ─── Búsqueda ───
     async function search({ query, topK = 8, source, kind, projectId, namespace } = {}) {
         let queryVector = null;
-        if (query && embedder.available() && store.stats().embedded) {
+        if (query && embedder.available() && store.stats().embedded && !embedder.pausedUntil?.()) {
             try { queryVector = await embedder.embedQuery(query); } catch (e) { log.warn('[Knowledge] Búsqueda solo por palabras:', e.message); }
         }
         const results = store.search({ query, queryVector, topK, filter: { source, kind, projectId, namespace } });
@@ -467,7 +480,7 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
             profileUpdatedAt: state.profile?.updatedAt || null,
             worker: { ...worker },
             store: store.stats(),
-            ai: { llm: llmOk(), embeddings: embedder.available(), embedModel: embedder.model },
+            ai: { llm: llmOk(), embeddings: embedder.available(), embedModel: embedder.model, embeddingsPausedUntil: embedder.pausedUntil?.() || null },
             config: state.config,
         };
     }

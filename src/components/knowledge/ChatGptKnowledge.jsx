@@ -283,6 +283,11 @@ export default function ChatGptKnowledge() {
                     </div>
                 )}
                 {w?.blockedReason && <div style={{ marginTop: '8px', fontSize: '12.5px', color: '#f59e0b', display: 'flex', gap: '6px' }} title={w.blockedReason}><AlertCircle size={14} /> {friendlyError(w.blockedReason)}</div>}
+                {status?.ai?.embeddingsPausedUntil && (
+                    <div style={{ marginTop: '8px', fontSize: '12.5px', color: '#f59e0b', display: 'flex', gap: '6px' }}>
+                        <AlertCircle size={14} /> Se agotó el cupo diario gratis de Gemini para la búsqueda por significado (1.000 trozos al día). Se reanuda solo el {new Date(status.ai.embeddingsPausedUntil).toLocaleString('es')}; mientras, todo se busca por palabras. Con facturación activa en Google AI Studio no hay este límite.
+                    </div>
+                )}
                 {status && !status.ai.llm && <div style={{ marginTop: '8px', fontSize: '12.5px', color: '#f59e0b', display: 'flex', gap: '6px' }}><AlertCircle size={14} /> Sin IA configurada (GEMINI_API_KEY): las conversaciones se pueden buscar, pero no se resumen.</div>}
                 {w?.lastError && <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--text-secondary)' }} title={w.lastError}>Último aviso: {friendlyError(w.lastError)}</div>}
             </div>
