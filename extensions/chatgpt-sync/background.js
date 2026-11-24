@@ -34,6 +34,19 @@ async function chatgptTab({ open = false } = {}) {
     return tab;
 }
 
+// Las pestañas de ChatGPT abiertas antes de instalar o actualizar la extensión no tienen el
+// content script: si no responde, se inyecta y se reintenta.
+async function sendSync(tabId, full) {
+    try {
+        return await chrome.tabs.sendMessage(tabId, { type: 'sync', full });
+    } catch (e) {
+        if (!/Receiving end does not exist|Could not establish connection/i.test(e.message)) throw e;
+        await chrome.scripting.executeScript({ target: { tabId }, files: ['sync-core.js', 'content.js'] });
+        await new Promise(r => setTimeout(r, 500));
+        return chrome.tabs.sendMessage(tabId, { type: 'sync', full });
+    }
+}
+
 async function startSync({ open = false, force = false } = {}) {
     const cfg = await getCfg();
     if (!cfg.token) return { error: 'Falta la llave del dashboard' };
@@ -45,7 +58,7 @@ async function startSync({ open = false, force = false } = {}) {
     }
     await setCfg({ lastAttemptAt: Date.now() });
     try {
-        const report = await chrome.tabs.sendMessage(tab.id, { type: 'sync', full: !cfg.backfillComplete });
+        const report = await sendSync(tab.id, !cfg.backfillComplete);
         if (report && !report.error) await setCfg({ backfillComplete: report.complete });
         await setCfg({ lastRun: { at: new Date().toISOString(), ...report } });
         return report;

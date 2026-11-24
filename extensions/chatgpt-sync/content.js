@@ -1,6 +1,9 @@
 // Corre dentro de chatgpt.com: usa la sesión del usuario para leer sus conversaciones
 // y se las pasa al service worker, que las manda al dashboard.
 (() => {
+    // Evita registrarse dos veces si la extensión se inyecta en una pestaña que ya la tenía.
+    if (globalThis.__arriveChatgptSync) return;
+    globalThis.__arriveChatgptSync = true;
     let accessToken = null;
     let running = false;
 
