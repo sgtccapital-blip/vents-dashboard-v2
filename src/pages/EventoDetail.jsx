@@ -26,7 +26,7 @@ export default function EventoDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
     const {
-        events, updateEvent, deleteEvent,
+        events, updateEvent: updateEventRecord, deleteEvent,
         projects, updateProject, deleteProject,
         tasks, updateTask, addTask,
         triggerOpenClawAction, openclawLogs,
@@ -36,6 +36,9 @@ export default function EventoDetail() {
         fetchGoogleCalendarEvents, syncEventToGoogleCalendar
     } = useApp();
     const event = (events || []).find(e => e.id === id) || (projects || []).find(p => p.id === id);
+    // Esta ficha sirve para eventos y proyectos: cada cambio se guarda en su propia colección.
+    const isEventRecord = (events || []).some(e => e.id === id);
+    const updateEvent = isEventRecord ? updateEventRecord : updateProject;
 
     const handleDeleteThisEntity = async () => {
         if (!event) return;

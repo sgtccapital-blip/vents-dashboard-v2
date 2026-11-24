@@ -12,6 +12,7 @@ import ReactMarkdown from 'react-markdown';
 import OpenClawBrainService from '../services/OpenClawBrainService';
 import { useApp } from '../context/AppContext';
 import { recordUtterance, transcribe, speak, stopSpeaking } from '../lib/jarvisVoice';
+import { startLiveSession } from '../lib/jarvisLive';
 
 // Presets de música con parámetros sonoros y enlaces
 const MUSIC_PRESETS = [
@@ -163,7 +164,7 @@ const RESTAURANTS = [
 
 // Miembros frecuentes del equipo de ARRIVE
 const TEAM_MEMBERS = [
-    'GG', 'Mateo L.', 'Gabriel G.', 'Andrés V.', 'Fanny', 'Joshua', 'Mario', 'Andrea'
+    'Gabriel', 'Joshua', 'Suira', 'Mario', 'Dalia'
 ];
 
 // Voces neurales de Gemini TTS (todas hablan español e inglés con pronunciación nativa)
@@ -183,6 +184,7 @@ const GEMINI_VOICES = [
 ];
 
 const DEFAULT_JARVIS_CONFIG = {
+    voiceMode: 'live',
     voiceEngine: 'gemini',
     voiceName: 'Charon',
     language: 'auto',
@@ -192,6 +194,9 @@ const DEFAULT_JARVIS_CONFIG = {
 
 const VOICE_STATE_LABELS = {
     idle: 'Toca para hablar',
+    connecting: 'Conectando…',
+    live_listening: 'Te escucho — habla cuando quieras',
+    live_speaking: 'Hablando — interrúmpelo cuando quieras',
     listening: 'Escuchando…',
     transcribing: 'Entendiendo…',
     thinking: 'Pensando…',
@@ -226,7 +231,7 @@ export default function JarvisSkillsHub({ onOpenChat, onAddActivity }) {
     // --- Food Concierge State ---
     const [selectedRestaurant, setSelectedRestaurant] = useState(RESTAURANTS[0]);
     const [cart, setCart] = useState([]);
-    const [selectedDiners, setSelectedDiners] = useState(['GG', 'Mateo L.']);
+    const [selectedDiners, setSelectedDiners] = useState(['Gabriel', 'Joshua']);
     const [orderNotes, setOrderNotes] = useState('Entregar en oficina Casco Antiguo / Terraplén Rooftop. Salsa aparte.');
     const [foodFeedback, setFoodFeedback] = useState(null);
     const [copiedWhatsApp, setCopiedWhatsApp] = useState(false);
@@ -281,6 +286,10 @@ export default function JarvisSkillsHub({ onOpenChat, onAddActivity }) {
     const [voiceError, setVoiceError] = useState('');
     const [testingVoice, setTestingVoice] = useState(false);
     const listenAbortRef = useRef(null);
+    // Conversación en tiempo real (Gemini Live)
+    const liveRef = useRef(null);
+    const [liveActive, setLiveActive] = useState(false);
+    const [livePartial, setLivePartial] = useState({ user: '', jarvis: '' });
     const handsFreeRef = useRef(false);
     useEffect(() => { handsFreeRef.current = handsFree; }, [handsFree]);
     // El modo continuo encadena llamadas desde renders anteriores: leen siempre el estado más reciente
@@ -294,7 +303,7 @@ export default function JarvisSkillsHub({ onOpenChat, onAddActivity }) {
         OpenClawBrainService.getJarvisConfig()
             .then(cfg => { setJarvisConfig(cfg); setConfigDraft(cfg); })
             .catch(() => {});
-        return () => { listenAbortRef.current?.abort(); stopSpeaking(); };
+        return () => { listenAbortRef.current?.abort(); stopSpeaking(); liveRef.current?.stop(); };
     }, []);
 
     const loadSkills = async () => {
@@ -343,6 +352,13 @@ export default function JarvisSkillsHub({ onOpenChat, onAddActivity }) {
     const handleSendOjChat = async (textToSend = ojChatInput, { viaVoice = false } = {}) => {
         const text = (typeof textToSend === 'string' ? textToSend : ojChatInput).trim();
         if (!text || ojChatLoading) return;
+        if (liveRef.current) {
+            // En conversación en vivo, lo escrito también lo responde por voz al instante
+            liveRef.current.sendText(text);
+            setLivePartial({ user: text, jarvis: '' });
+            setOjChatInput('');
+            return;
+        }
         stopSpeaking();
         const stamp = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         const userMsg = { id: `usr-${Date.now()}`, role: 'user', agent: 'jarvis', text, viaVoice, timestamp: stamp() };
@@ -424,7 +440,59 @@ export default function JarvisSkillsHub({ onOpenChat, onAddActivity }) {
         }
     };
 
+    const startLive = async () => {
+        stopSpeaking();
+        setVoiceError('');
+        const stamp = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        try {
+            liveRef.current = await startLiveSession({
+                history: latestRef.current.jarvisMessages.slice(-10).map(m => ({ role: m.role, text: m.text })),
+                callbacks: {
+                    onState: (state) => {
+                        if (state === 'closed') {
+                            liveRef.current = null;
+                            setLiveActive(false);
+                            setVoiceState('idle');
+                            setLivePartial({ user: '', jarvis: '' });
+                        } else {
+                            setLiveActive(state !== 'connecting');
+                            setVoiceState(state === 'connecting' ? 'connecting' : `live_${state}`);
+                        }
+                    },
+                    onLevel: setMicLevel,
+                    onUserText: (text) => setLivePartial(prev => ({ ...prev, user: text })),
+                    onJarvisText: (text) => setLivePartial(prev => ({ ...prev, jarvis: text })),
+                    onTurn: ({ user, jarvis, tools }) => {
+                        const now = Date.now();
+                        setOpenclawMessages(prev => [
+                            ...prev,
+                            ...(user ? [{ id: `usr-${now}`, role: 'user', agent: 'jarvis', text: user, viaVoice: true, timestamp: stamp() }] : []),
+                            ...(jarvis || tools.length ? [{ id: `bot-${now}`, role: 'copilot', agent: 'jarvis', text: jarvis || 'Hecho.', executedTools: tools, timestamp: stamp() }] : [])
+                        ]);
+                        setLivePartial({ user: '', jarvis: '' });
+                    },
+                    onToolResult: (tool) => {
+                        // Mismo aviso que el chat: el synth, las skills y el dashboard reaccionan
+                        window.dispatchEvent(new CustomEvent('arrive:agent-tools', { detail: [tool] }));
+                        if (refreshData && !['search_knowledge', 'get_dashboard_snapshot'].includes(tool.name)) refreshData();
+                    },
+                    onError: (err) => setVoiceError(err.message)
+                }
+            });
+        } catch (err) {
+            liveRef.current = null;
+            setLiveActive(false);
+            setVoiceState('idle');
+            setVoiceError(err.name === 'NotAllowedError'
+                ? 'Permite el acceso al micrófono para hablar con Jarvis.'
+                : `Tiempo real no disponible (${err.message}). Usando el modo clásico.`);
+            if (err.name !== 'NotAllowedError') startListening();
+        }
+    };
+
     const handleOrbClick = () => {
+        if (liveRef.current) { liveRef.current.stop(); return; }
+        if (voiceState === 'idle' && jarvisConfig.voiceMode !== 'classic') { startLive(); return; }
         if (voiceState === 'listening') listenAbortRef.current?.abort();
         else if (voiceState === 'speaking') { stopSpeaking(); setVoiceState('idle'); }
         else if (voiceState === 'idle') startListening();
@@ -450,7 +518,7 @@ export default function JarvisSkillsHub({ onOpenChat, onAddActivity }) {
 
     useEffect(() => {
         if (subTab === 'openjarvis_chat') chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }, [jarvisMessages.length, ojChatLoading, subTab]);
+    }, [jarvisMessages.length, ojChatLoading, subTab, livePartial]);
 
     const handleRunOpenJarvisCommand = async (cmd = cliCommand) => {
         setCliExecuting(true);
@@ -2708,27 +2776,35 @@ export default function JarvisSkillsHub({ onOpenChat, onAddActivity }) {
                     }}>
                         <button
                             onClick={handleOrbClick}
-                            disabled={voiceState === 'transcribing' || voiceState === 'thinking'}
+                            disabled={voiceState === 'transcribing' || voiceState === 'thinking' || voiceState === 'connecting'}
                             aria-label={VOICE_STATE_LABELS[voiceState]}
                             className={`jarvis-orb jarvis-orb--${voiceState}`}
                             style={{ '--mic-level': micLevel }}
                         >
-                            {voiceState === 'listening' ? <Square size={26} /> : voiceState === 'speaking' ? <Volume2 size={28} /> : voiceState === 'idle' ? <Mic size={30} /> : <RefreshCw size={26} className="animate-spin" />}
+                            {liveActive || voiceState === 'listening' ? (voiceState === 'live_speaking' ? <Volume2 size={28} /> : <Square size={26} />) : voiceState === 'speaking' ? <Volume2 size={28} /> : voiceState === 'idle' ? <Mic size={30} /> : <RefreshCw size={26} className="animate-spin" />}
                         </button>
                         <div style={{ flex: '1 1 240px', minWidth: 0 }}>
-                            <div style={{ fontSize: '16px', fontWeight: 800 }}>{VOICE_STATE_LABELS[voiceState]}</div>
+                            <div style={{ fontSize: '16px', fontWeight: 800 }}>
+                                {voiceState === 'idle' && jarvisConfig.voiceMode !== 'classic' ? 'Toca para conversar' : VOICE_STATE_LABELS[voiceState]}
+                            </div>
                             <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '3px' }}>
-                                Habla en español o en inglés. Jarvis ve todo el dashboard en vivo: eventos, tareas, equipo, contactos y actividad.
+                                {liveActive
+                                    ? 'Conversación en vivo: habla con naturalidad, interrúmpelo cuando quieras. Toca el orbe para terminar.'
+                                    : 'Habla en español o en inglés. Jarvis ve todo el dashboard en vivo: eventos, tareas, equipo, contactos y actividad.'}
                             </div>
                             {voiceError && <div style={{ fontSize: '12px', color: '#fca5a5', marginTop: '6px' }}>{voiceError}</div>}
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#cbd5e1', cursor: 'pointer' }}>
-                                <input type="checkbox" checked={handsFree} onChange={e => setHandsFree(e.target.checked)} />
-                                Conversación continua
-                            </label>
+                            {jarvisConfig.voiceMode === 'classic' && (
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#cbd5e1', cursor: 'pointer' }}>
+                                    <input type="checkbox" checked={handsFree} onChange={e => setHandsFree(e.target.checked)} />
+                                    Conversación continua
+                                </label>
+                            )}
                             <span style={{ fontSize: '11px', color: '#64748b' }}>
-                                Voz: {jarvisConfig.voiceEngine === 'browser' ? 'del sistema (local)' : `${jarvisConfig.voiceName} · Gemini`}
+                                {jarvisConfig.voiceMode === 'classic'
+                                    ? `Modo clásico · voz ${jarvisConfig.voiceEngine === 'browser' ? 'del sistema' : jarvisConfig.voiceName}`
+                                    : `Tiempo real · voz ${jarvisConfig.voiceName}`}
                             </span>
                         </div>
                     </div>
@@ -2800,6 +2876,16 @@ export default function JarvisSkillsHub({ onOpenChat, onAddActivity }) {
                             );
                         })}
 
+                        {liveActive && livePartial.user && (
+                            <div style={{ alignSelf: 'flex-end', maxWidth: '78%', padding: '10px 14px', borderRadius: '14px 14px 2px 14px', background: 'rgba(2, 132, 199, 0.45)', color: '#e0f2fe', fontSize: '13px', fontStyle: 'italic' }}>
+                                {livePartial.user}
+                            </div>
+                        )}
+                        {liveActive && livePartial.jarvis && (
+                            <div style={{ alignSelf: 'flex-start', maxWidth: '78%', padding: '10px 14px', borderRadius: '14px 14px 14px 2px', background: 'rgba(15, 23, 42, 0.9)', border: '1px solid rgba(56, 189, 248, 0.35)', color: '#ffffff', fontSize: '13px' }}>
+                                {livePartial.jarvis}
+                            </div>
+                        )}
                         {ojChatLoading && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#38bdf8', fontSize: '12.5px' }}>
                                 <RefreshCw size={14} className="animate-spin" />
@@ -2915,7 +3001,14 @@ export default function JarvisSkillsHub({ onOpenChat, onAddActivity }) {
                     <section>
                         <h3>Voz</h3>
                         <div className="jarvis-field">
-                            <label>Motor de voz</label>
+                            <label>Modo de conversación</label>
+                            <select value={configDraft.voiceMode} onChange={e => setConfigDraft({ ...configDraft, voiceMode: e.target.value })}>
+                                <option value="live">Tiempo real — responde en 1-2 s, se puede interrumpir (recomendado)</option>
+                                <option value="classic">Clásico — escucha, piensa y luego habla (más lento)</option>
+                            </select>
+                        </div>
+                        <div className="jarvis-field">
+                            <label>Motor de voz {configDraft.voiceMode !== 'classic' && '(solo modo clásico; el tiempo real siempre usa la voz de Gemini)'}</label>
                             <select value={configDraft.voiceEngine} onChange={e => setConfigDraft({ ...configDraft, voiceEngine: e.target.value })}>
                                 <option value="gemini">Voz neural Gemini (la mejor; usa internet)</option>
                                 <option value="browser">Voz del sistema (100% local, menos natural)</option>

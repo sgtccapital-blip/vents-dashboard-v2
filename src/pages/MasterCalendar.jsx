@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, CheckSquare, CalendarDays, Share2, ArrowLeft, ArrowRight, Plus, MessageSquare } from 'lucide-react';
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, CheckSquare, CalendarDays, Share2, ArrowLeft, ArrowRight, Plus, MessageSquare, GitPullRequest, Send } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useNavigate } from 'react-router-dom';
 import CalendarItemModal from '../components/CalendarItemModal';
@@ -54,7 +54,7 @@ function parseDueDate(due) {
 const isSameDay = (d1, d2) => d1 && d2 && d1.getDate() === d2.getDate() && d1.getMonth() === d2.getMonth() && d1.getFullYear() === d2.getFullYear();
 
 export default function MasterCalendar() {
-    const { tasks, events, addTask, gcalToken, googleCalendarEvents, connectGoogleCalendar, disconnectGoogleCalendar, fetchGoogleCalendarEvents } = useApp();
+    const { tasks, events, addTask, portfolioRoadmap, gcalToken, googleCalendarEvents, connectGoogleCalendar, disconnectGoogleCalendar, fetchGoogleCalendarEvents } = useApp();
     const navigate = useNavigate();
     const today = new Date();
     
@@ -299,8 +299,28 @@ export default function MasterCalendar() {
             });
         });
 
+        // 5. Portfolio OS Strategic Roadmap milestones with deadlines
+        (portfolioRoadmap || []).forEach(r => {
+            if (r.deadline) {
+                const rDate = new Date(r.deadline + 'T12:00:00');
+                if (!isNaN(rDate.getTime())) {
+                    items.push({
+                        id: `roadmap-${r.id}`,
+                        type: 'roadmap',
+                        division: r.block === 'marketing' ? 'content' : r.block === 'operacion' ? 'nightlife' : 'services',
+                        venue: r.eventName || r.project || '',
+                        eventId: r.eventId || '',
+                        title: `🚀 [Roadmap ${r.project}]: ${r.title}`,
+                        dateObj: rDate,
+                        color: r.column === 'now' ? '#22c55e' : r.column === 'next' ? '#f59e0b' : '#a855f7',
+                        fullItem: r
+                    });
+                }
+            }
+        });
+
         return items;
-    }, [tasks, events, contentEntries, googleCalendarEvents]);
+    }, [tasks, events, portfolioRoadmap, contentEntries, googleCalendarEvents]);
 
     const filteredItems = useMemo(() => {
         if (selectedDivision === 'all') return unifiedItems;
@@ -588,7 +608,7 @@ export default function MasterCalendar() {
                             }}
                             onClick={() => navigate('/whatsapp-agent')}
                         >
-                            <MessageSquare size={13} /> ⚡ Difusión Semanal
+                            <Send size={13} /> ⚡ Agente de Difusión
                         </button>
                     </div>
                 </div>
@@ -727,6 +747,26 @@ export default function MasterCalendar() {
                                                         display: 'flex', alignItems: 'center', gap: '4px'
                                                     }}>
                                                         <CalendarDays size={10} /> {item.title}
+                                                    </div>
+                                                );
+                                            }
+                                            if (item.type === 'roadmap') {
+                                                return (
+                                                    <div key={item.id} 
+                                                        onClick={(e) => { e.stopPropagation(); setSelectedItem(item); }}
+                                                        style={{ 
+                                                        fontSize: '10px', 
+                                                        padding: '4px 6px', 
+                                                        borderRadius: '4px', 
+                                                        background: `${item.color}20`,
+                                                        color: item.color,
+                                                        border: `1px solid ${item.color}50`,
+                                                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                                                        cursor: 'pointer',
+                                                        display: 'flex', alignItems: 'center', gap: '4px'
+                                                    }}>
+                                                        <GitPullRequest size={10} style={{ flexShrink: 0 }} />
+                                                        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title}</span>
                                                     </div>
                                                 );
                                             }

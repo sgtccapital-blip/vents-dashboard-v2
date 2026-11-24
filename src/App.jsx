@@ -15,11 +15,17 @@ const Eventos = lazy(() => import('./pages/Eventos'));
 const EventoDetail = lazy(() => import('./pages/EventoDetail'));
 const SocialMedia = lazy(() => import('./pages/SocialMedia'));
 const MasterCalendar = lazy(() => import('./pages/MasterCalendar'));
+const MasterContentHub = lazy(() => import('./pages/MasterContentHub'));
+const CreativeBrief = lazy(() => import('./pages/CreativeBrief'));
+const ProductionCalendar = lazy(() => import('./pages/ProductionCalendar'));
 const AgentBrain = lazy(() => import('./pages/AgentBrain'));
 const Jarvis = lazy(() => import('./pages/Jarvis'));
 const Contactos = lazy(() => import('./pages/Contactos'));
 const PortfolioOS = lazy(() => import('./pages/PortfolioOS'));
 const WhatsAppAgent = lazy(() => import('./pages/WhatsAppAgent'));
+const MiSemana = lazy(() => import('./pages/MiSemana'));
+const Finanzas = lazy(() => import('./pages/Finanzas'));
+const AiOfficeHQ = lazy(() => import('./pages/AiOfficeHQ'));
 
 function ArriveRedirect() {
   const [searchParams] = useSearchParams();
@@ -86,13 +92,21 @@ function AppLayout() {
             <Route path="/" element={<Home />} />
             <Route path="/arrive" element={<ArriveRedirect />} />
             <Route path="/portfolio" element={<PortfolioOS />} />
+            <Route path="/semana" element={<MiSemana />} />
+            <Route path="/finanzas" element={<Finanzas />} />
             <Route path="/workspace" element={<Workspace />} />
+            <Route path="/content-hub" element={<MasterContentHub />} />
+            <Route path="/creative-brief" element={<CreativeBrief />} />
+            <Route path="/production-calendar" element={<ProductionCalendar />} />
             <Route path="/calendar" element={<MasterCalendar />} />
             <Route path="/eventos" element={<Eventos />} />
             <Route path="/eventos/:id" element={<EventoDetail />} />
             <Route path="/social" element={<SocialMedia />} />
             <Route path="/contactos" element={<Contactos />} />
             <Route path="/whatsapp-agent" element={<WhatsAppAgent />} />
+            <Route path="/difusion" element={<WhatsAppAgent />} />
+            <Route path="/office" element={<AiOfficeHQ />} />
+            <Route path="/ai-office" element={<AiOfficeHQ />} />
             <Route path="/agent-brain" element={<AgentBrain />} />
             <Route path="/jarvis" element={<Jarvis />} />
             <Route path="*" element={<Navigate to="/" />} />

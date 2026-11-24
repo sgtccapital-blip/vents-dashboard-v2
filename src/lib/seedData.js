@@ -850,85 +850,749 @@ export const seedSocialMedia = [
 ];
 export const seedContentTasks = [
     {
-        id: 'ct-1',
-        title: 'Recap Semanal: The Night Belongs to ARRIVE',
-        accountId: 'social-arrive-models',
-        accountHandler: '@Arrive.models',
-        format: 'Reel 9:16',
-        pillar: 'Branding & Lifestyle',
-        status: 'ready',
-        hookVerbal: 'Así dominamos la noche y las experiencias de los 3 mejores venues de Panamá este fin de semana.',
-        hookVisual: 'Corte ultra rápido a 60fps con audio drop sincronizado de botellas, luces y skyline del Casco.',
-        scriptBody: 'Escena 1 (0-3s): Hook visual y de audio con copa brindando.\nEscena 2 (3-8s): Terraplén Rooftop al atardecer, risas y cena de chicas.\nEscena 3 (8-14s): Furia con bengalas y show de botellas.\nEscena 4 (14-20s): Piano Bar en ambiente íntimo de jazz.\nEscena 5 (20-25s): Logo ARRIVE y llamado a la acción.',
-        cta: 'Guarda este video y etiqueta con quién vas a salir este fin de semana.',
-        assignee: 'Andrés V. (Lead Filmmaker)',
-        shootingLocation: 'Casco Antiguo HQ & Venues',
-        assetsDriveUrl: 'https://drive.google.com/drive/folders/arrive-agency-recap-oct',
-        publishDate: '2026-10-06',
-        publishTime: '19:30',
-        caption: 'The night belongs to ARRIVE. Creamos experiencias que transforman la noche panameña. 🍸✨',
-        hashtags: '#arriveagency #panama #nightlife #cascoantiguo #panamacity'
+        "id": "ct-arrive-recap",
+        "title": "Recap Semanal: The Night Belongs to ARRIVE",
+        "accountId": "social-arrive-models",
+        "accountHandler": "@Arrive.models",
+        "projectId": "proj-arrive-agency",
+        "format": "Reel 9:16",
+        "pillar": "Branding & Lifestyle",
+        "status": "ready",
+        "hubCategory": "video",
+        "priority": "high",
+        "hookVerbal": "Así dominamos la noche y las experiencias de los 3 mejores venues de Panamá este fin de semana.",
+        "hookVisual": "Corte ultra rápido a 60fps con audio drop sincronizado de botellas, luces y skyline del Casco Antiguo.",
+        "storyline": "Recap cinemático de alto impacto que consolida a ARRIVE como la agencia líder de la noche en Panamá.",
+        "specs": {
+            "resolution": "1080x1920 (4K Master)",
+            "fps": "60 fps",
+            "aspectRatio": "9:16",
+            "codec": "H.264 High Profile",
+            "audioTarget": "-14 LUFS"
+        },
+        "motionSpecs": {
+            "hasMotion": true,
+            "template": "arrive-brand-pack-v1",
+            "motionNotes": "Lower third minimal con tipografía Serif en cortes principales. Logo ARRIVE dorado en cierre.",
+            "lowerThird": true,
+            "animatedTitle": true,
+            "brandKitApplied": true,
+            "claudeEngineStatus": "Plantilla lista en Claude"
+        },
+        "clippingSpecs": null,
+        "edl": [
+            {
+                "order": 1,
+                "scene": "Hook Visual y Audio Drop",
+                "inOut": "00:00 - 00:03",
+                "visualAction": "Copa de cóctel brindando con chispas de fondo y skyline Casco",
+                "voiceover": "Así dominamos la noche...",
+                "overlayText": "THE NIGHT BELONGS TO ARRIVE",
+                "transition": "Glitch Cut",
+                "soundFx": "Glass Clink + Bass Drop"
+            },
+            {
+                "order": 2,
+                "scene": "Terraplén Sunset Sessions",
+                "inOut": "00:03 - 00:08",
+                "visualAction": "Atardecer dorado, mesa imperial de modelos, risas y brindis",
+                "voiceover": "Desde las mejores terrazas...",
+                "overlayText": "SUNSET SESSIONS // TERRAPLÉN",
+                "transition": "Speed Ramp",
+                "soundFx": "Ambient House Track"
+            },
+            {
+                "order": 3,
+                "scene": "Furia Bottle & Pyro Show",
+                "inOut": "00:08 - 00:15",
+                "visualAction": "Bengalas, botellas de Don Julio con luces LED y pista encendida",
+                "voiceover": "Hasta la energía más salvaje...",
+                "overlayText": "MIDNIGHT ENERGY // FURIA",
+                "transition": "Flash Transition",
+                "soundFx": "Pyro Boom SFX"
+            },
+            {
+                "order": 4,
+                "scene": "Piano Bar Speakeasy Jazz",
+                "inOut": "00:15 - 00:22",
+                "visualAction": "Ambiente íntimo con iluminación cálida y cócteles clásicos",
+                "voiceover": "Y los speakeasies más exclusivos.",
+                "overlayText": "SPEAKEASY VIBES",
+                "transition": "Slow Dissolve",
+                "soundFx": "Jazz Sax Riff"
+            },
+            {
+                "order": 5,
+                "scene": "Endcard ARRIVE Agency",
+                "inOut": "00:22 - 00:26",
+                "visualAction": "Logo animado ARRIVE y llamada a la acción",
+                "voiceover": "Vive la experiencia ARRIVE.",
+                "overlayText": "RESERVA TU MESA // LINK EN BIO",
+                "transition": "Zoom Out",
+                "soundFx": "Sub Hit Final"
+            }
+        ],
+        "checklist": [
+            {
+                "text": "Revisar zonas seguras de Instagram (14% superior, 20% inferior)",
+                "done": true
+            },
+            {
+                "text": "Sincronización de cortes al beat drop de 124 BPM",
+                "done": true
+            },
+            {
+                "text": "Color grading LUT cálido según BRAND.md",
+                "done": true
+            },
+            {
+                "text": "Audio masterizado a -14 LUFS",
+                "done": true
+            },
+            {
+                "text": "Aprobación de dirección creativa ARRIVE",
+                "done": true
+            }
+        ],
+        "shootingDate": "2026-11-20",
+        "shootingLocation": "Casco Antiguo HQ & Venues (Terraplén / Furia / Piano Bar)",
+        "shootingCrew": "Andrés V. (Lead Filmmaker) + 2 Asistentes de Cámara",
+        "shootingTime": "18:00 - 02:00",
+        "editDeadline": "2026-11-23",
+        "assignee": "Andrés V. (Lead Filmmaker)",
+        "deliveryDate": "2026-11-24",
+        "deliveryVersion": "final",
+        "publishDate": "2026-11-25",
+        "publishTime": "19:30",
+        "caption": "The night belongs to ARRIVE. Transformamos cada fin de semana en Panamá en una experiencia inolvidable. 🍸✨ Guarda este reel para tu próximo plan.",
+        "hashtags": "#arriveagency #panama #nightlife #cascoantiguo #panamacity #luxuryexperiences"
     },
     {
-        id: 'ct-2',
-        title: 'POV: Fuiste invitada a la mesa imperial de ARRIVE Models',
-        accountId: 'social-arrive-models',
-        accountHandler: '@Arrive.models',
-        format: 'TikTok / UGC',
-        pillar: 'Talento & Cenas',
-        status: 'editing',
-        hookVerbal: 'Si eres creadora de contenido en Panamá, este es el único grupo VIP del que necesitas formar parte.',
-        hookVisual: 'Cena de 8 chicas con cócteles iluminados en Terraplén y mesa imperial reservada.',
-        scriptBody: 'Hook: Cámara en primera persona entrando al rooftop.\nCuerpo: Muestra el menú de 3 tiempos, los cócteles de autor y el ambiente.\nConsejo: Cómo enviar tu portafolio por DM para ser convocada.',
-        cta: 'Comenta "VIP" para enviarte el formulario de casting de este mes.',
-        assignee: 'Camila S. (Talent Booker)',
-        shootingLocation: 'Terraplén Rooftop',
-        assetsDriveUrl: 'https://drive.google.com/drive/folders/arrive-models-dinners',
-        publishDate: '2026-10-07',
-        publishTime: '20:00',
-        caption: 'La mesa imperial de los jueves ya tiene dueñas. ¿Quieres estar en la próxima convocatoria? Comenta "VIP" 🍸👑',
-        hashtags: '#arrivemodels #cenasvip #panamamodels #ugcpanama #cascoantiguo'
+        "id": "ct-mg-elemento",
+        "title": "Cyber Glitch Logo Intro & Visual Identity",
+        "accountId": "social-elemento-techno",
+        "accountHandler": "@Elemento.techno",
+        "projectId": "proj-venues-panama",
+        "format": "Motion Graphic 9:16",
+        "pillar": "Branding & Visual FX",
+        "status": "editing",
+        "hubCategory": "motion_graphics",
+        "priority": "urgent",
+        "hookVerbal": "Siente el pulso de la noche techno de Panamá con nuestra nueva identidad sonora y visual.",
+        "hookVisual": "Cyber glitch vector pulse sincronizado a 132 BPM con tipografía cinética y luces estroboscópicas.",
+        "storyline": "Pieza animada en Remotion para apertura de reels, visuales en vivo para pantallas LED y transiciones de historias.",
+        "specs": {
+            "resolution": "1080x1920 (4K Master Source)",
+            "fps": "60 fps",
+            "aspectRatio": "9:16",
+            "codec": "ProRes 4444 Alpha / H.264",
+            "audioTarget": "-14 LUFS"
+        },
+        "motionSpecs": {
+            "hasMotion": true,
+            "template": "remotion-techno-glitch-v2",
+            "motionNotes": "Animación de nodos en Remotion con audio reactivo. Tokens #00f2ea (cyan neón) y #7c5cfc (violeta oscuro).",
+            "lowerThird": true,
+            "animatedTitle": true,
+            "brandKitApplied": true,
+            "claudeEngineStatus": "Desarrollando en Claude Code (Listo para importar)",
+            "remotionComposition": "ElementoLogoGlitch"
+        },
+        "clippingSpecs": null,
+        "edl": [
+            {
+                "order": 1,
+                "scene": "Glitch Vectorial Hook",
+                "inOut": "00:00 - 00:02",
+                "visualAction": "Distorsión RGB y aberración cromática con sonido sub-bass",
+                "voiceover": "",
+                "overlayText": "ELEMENTO // PANAMÁ",
+                "transition": "Hard Cut",
+                "soundFx": "Sub-bass drop"
+            },
+            {
+                "order": 2,
+                "scene": "Kinetic Typography Lineup",
+                "inOut": "00:02 - 00:06",
+                "visualAction": "Texto cinético con tipografía display y velocidad variable",
+                "voiceover": "La frecuencia no se detiene",
+                "overlayText": "DJS RESIDENTES · 28 NOV",
+                "transition": "Whip Pan",
+                "soundFx": "Riser SFX"
+            },
+            {
+                "order": 3,
+                "scene": "Cierre & Link Bio",
+                "inOut": "00:06 - 00:10",
+                "visualAction": "Animación de logo final y glow neón pulsante",
+                "voiceover": "Asegura tu entrada en bio",
+                "overlayText": "LINK EN BIO // TICKETS",
+                "transition": "Fade to Black",
+                "soundFx": "Sub-kick hit"
+            }
+        ],
+        "checklist": [
+            {
+                "text": "Canal Alpha transparente verificado para Remotion",
+                "done": false
+            },
+            {
+                "text": "Sincronización exacta al golpe de caja de 132 BPM",
+                "done": true
+            },
+            {
+                "text": "Uso estricto de tokens de color de Elemento Techno",
+                "done": true
+            },
+            {
+                "text": "Export en 60fps fluido para visuales de cabina LED",
+                "done": false
+            }
+        ],
+        "shootingDate": "2026-11-21",
+        "shootingLocation": "Studio Remotion / LED Visuals Rig",
+        "shootingCrew": "Motion Designer Lead (Claude Engine)",
+        "shootingTime": "14:00 - 18:00",
+        "editDeadline": "2026-11-24",
+        "assignee": "Claude Code & Motion Lead",
+        "deliveryDate": "2026-11-26",
+        "deliveryVersion": "v1",
+        "publishDate": "2026-11-28",
+        "publishTime": "20:00",
+        "caption": "La frecuencia nunca se detiene. Estrenamos nueva identidad visual y sonido envolvente para este fin de semana en Elemento. ⚡🎛️",
+        "hashtags": "#elementotechno #panamatechno #electronicmusic #cascoantiguo #motiongraphics #remotion"
     },
     {
-        id: 'ct-6',
-        title: 'Cómo escalamos las reservas de un local en 30 días sin pagar ads',
-        accountId: 'social-arrive-models',
-        accountHandler: '@Arrive.models',
-        format: 'Reel 9:16',
-        pillar: 'Autoridad & Negocios',
-        status: 'idea',
-        hookVerbal: 'Deja de quemar plata en publicidad de Instagram si tu local sigue vacío los jueves.',
-        hookVisual: 'Gráfica de reservas subiendo + planos rápidos del equipo de ARRIVE organizando la convocatoria.',
-        scriptBody: 'Explicación del sistema de 3 pasos:\n1. Convocatorias de creadoras UGC con incentivo real.\n2. Contenido generado en el local compartido en 50 cuentas esa misma noche.\n3. Efecto FOMO que llena el local los fines de semana.',
-        cta: 'Mándanos un mensaje con la palabra "ESCALAR" para analizar tu marca.',
-        assignee: 'Gabriel G. (Director Creativo)',
-        shootingLocation: 'Oficina ARRIVE HQ',
-        assetsDriveUrl: '',
-        publishDate: '2026-10-10',
-        publishTime: '12:00',
-        caption: 'La publicidad tradicional ya no funciona igual. Las experiencias y las comunidades son las que llenan venues hoy. 📈⚡',
-        hashtags: '#arriveagency #marketingpanama #growthagency #cascobusiness'
+        "id": "ct-clip-podcast-1",
+        "title": "Podcast Clip: Cómo llenar un Rooftop todos los jueves",
+        "accountId": "social-arrive-models",
+        "accountHandler": "@Arrive.models",
+        "projectId": "proj-podcast-live",
+        "format": "Podcast Clip 9:16",
+        "pillar": "Estrategia & Negocios",
+        "status": "ready",
+        "hubCategory": "clipping",
+        "priority": "high",
+        "hookVerbal": "La gente no sale a tomarse un trago; sale a pertenecer a una historia.",
+        "hookVisual": "Primer plano dinámico con subtítulos palabra por palabra estilo Alex Hormozi y resaltado amarillo.",
+        "storyline": "Extracción del clip más potente de 45 segundos del episodio 14 del podcast grabado en vivo en Casco Antiguo.",
+        "specs": {
+            "resolution": "1080x1920 Vertical",
+            "fps": "30 fps",
+            "aspectRatio": "9:16",
+            "codec": "H.264",
+            "audioTarget": "-14 LUFS"
+        },
+        "motionSpecs": null,
+        "clippingSpecs": {
+            "isClip": true,
+            "sourceTitle": "Podcast On-The-Go EP14 (Casco Antiguo Live)",
+            "sourceUrl": "https://drive.google.com/drive/folders/arrive-podcast-raw-ep14",
+            "sourceTimestampStart": "12:35",
+            "sourceTimestampEnd": "13:20",
+            "speaker": "Gabriel G. (Director Creativo)",
+            "viralFactor": "Alta controversia: El 80% de los locales cometen este error fatal en sus redes.",
+            "captionsStyle": "Hormozi / Word-by-word con emojis y resaltado amarillo",
+            "claudeEngineStatus": "Listo para corte automático con Whisper + Claude"
+        },
+        "edl": [
+            {
+                "order": 1,
+                "scene": "Hook Controversial",
+                "inOut": "00:00 - 00:04",
+                "visualAction": "Zoom in suave a la cara del speaker mientras lanza la frase clave",
+                "voiceover": "La gente no sale a tomarse un trago...",
+                "overlayText": "EL ERROR DE LOS LOCALES",
+                "transition": "Jump Cut",
+                "soundFx": "Pop sound"
+            },
+            {
+                "order": 2,
+                "scene": "Explicación & B-Roll",
+                "inOut": "00:04 - 00:32",
+                "visualAction": "B-roll intercalado de Terraplén Rooftop al atardecer y copas brindando",
+                "voiceover": "La experiencia empieza en el contenido que ven a las 4 de la tarde...",
+                "overlayText": "EXPERIENCIA > PUBLICIDAD",
+                "transition": "Quick cut",
+                "soundFx": "Ambient low"
+            },
+            {
+                "order": 3,
+                "scene": "Conclusión y CTA",
+                "inOut": "00:32 - 00:45",
+                "visualAction": "Vuelta al speaker con logo del podcast y sticker animado",
+                "voiceover": "Escucha el episodio completo en Spotify y YouTube",
+                "overlayText": "EPISODIO COMPLETO EN BIO",
+                "transition": "Fade",
+                "soundFx": "Whoosh"
+            }
+        ],
+        "checklist": [
+            {
+                "text": "Transcripción Whisper alineada palabra por palabra",
+                "done": true
+            },
+            {
+                "text": "Recorte vertical 9:16 centrado en el orador (Auto-reframe)",
+                "done": true
+            },
+            {
+                "text": "B-Rolls intercalados en silencios de respiración",
+                "done": true
+            },
+            {
+                "text": "Audio de voz comprimido y sin eco de sala",
+                "done": true
+            }
+        ],
+        "shootingDate": "2026-11-18",
+        "shootingLocation": "Casco Antiguo Rooftop Studio",
+        "shootingCrew": "Podcast Mobile Rig (2 cámaras Sony FX3 + Shure SM7B)",
+        "shootingTime": "16:00 - 18:30",
+        "editDeadline": "2026-11-23",
+        "assignee": "Claude Clipping Engine & Editor",
+        "deliveryDate": "2026-11-24",
+        "deliveryVersion": "final",
+        "publishDate": "2026-11-25",
+        "publishTime": "18:30",
+        "caption": "Si tu local sigue vacío los jueves, estás vendiendo el producto equivocado. Escucha el análisis completo en el link de nuestra bio. 🎙️🔥",
+        "hashtags": "#clipping #podcast #arriveagency #nightlifebusiness #growthmarketing #viralclips"
+    },
+    {
+        "id": "ct-terraplen-sunset",
+        "title": "Sunset Sessions: Girls Dinner & Coctelería de Autor",
+        "accountId": "social-arrive-models",
+        "accountHandler": "@Arrive.models",
+        "projectId": "proj-venues-panama",
+        "format": "Reel 9:16",
+        "pillar": "Gastronomía & Sunset",
+        "status": "shooting",
+        "hubCategory": "video",
+        "priority": "high",
+        "hookVerbal": "El secreto mejor guardado de los jueves en Casco Antiguo empieza a las 5:30 de la tarde.",
+        "hookVisual": "Golden hour iluminando copa de cóctel humeante con la bahía de Panamá de fondo.",
+        "storyline": "Experiencia sensorial que combina maridaje de bienvenida, mesa de chicas y el atardecer más espectacular de la ciudad.",
+        "specs": {
+            "resolution": "1080x1920 (4K 60fps)",
+            "fps": "60 fps",
+            "aspectRatio": "9:16",
+            "codec": "H.264",
+            "audioTarget": "-14 LUFS"
+        },
+        "motionSpecs": null,
+        "clippingSpecs": null,
+        "edl": [
+            {
+                "order": 1,
+                "scene": "Golden Hour Sunset Hook",
+                "inOut": "00:00 - 00:03",
+                "visualAction": "Primer plano de cóctel de autor con romero ahumado frente al atardecer",
+                "voiceover": "El secreto mejor guardado...",
+                "overlayText": "JUEVES // SUNSET SESSIONS",
+                "transition": "Slow Fade",
+                "soundFx": "Glass Clink + Chime"
+            },
+            {
+                "order": 2,
+                "scene": "Mesa Imperial Girls Dinner",
+                "inOut": "00:03 - 00:12",
+                "visualAction": "Platos gourmet servidos, risas de chicas brindando y música suave",
+                "voiceover": "Una cena diseñada para conectar...",
+                "overlayText": "GIRLS DINNER // 3 TIEMPOS",
+                "transition": "Whip Pan",
+                "soundFx": "Chill Deep House"
+            },
+            {
+                "order": 3,
+                "scene": "Skyline Nocturno y Cierre",
+                "inOut": "00:12 - 00:18",
+                "visualAction": "Transición de la tarde a la noche con las luces de la ciudad encendidas",
+                "voiceover": "Reserva tu lugar antes de que se agote.",
+                "overlayText": "MESAS LIMITADAS // LINK BIO",
+                "transition": "Speed Ramp",
+                "soundFx": "Bass Drop"
+            }
+        ],
+        "checklist": [
+            {
+                "text": "Confirmación de 8 modelos de imagen convocadas",
+                "done": true
+            },
+            {
+                "text": "Permisos de grabación en Terraplén Rooftop asegurados",
+                "done": true
+            },
+            {
+                "text": "Baterías y luces portátiles listas para transición a noche",
+                "done": false
+            },
+            {
+                "text": "Guion entregado al equipo de barra para preparación de cócteles",
+                "done": true
+            }
+        ],
+        "shootingDate": "2026-11-26",
+        "shootingLocation": "Terraplén Rooftop (Casco Antiguo)",
+        "shootingCrew": "Carlos M. (Cam 1) + Sofía R. (Directora de Producción)",
+        "shootingTime": "17:00 - 21:00",
+        "editDeadline": "2026-11-28",
+        "assignee": "Andrés V. (Lead Filmmaker)",
+        "deliveryDate": "2026-11-29",
+        "deliveryVersion": "v1",
+        "publishDate": "2026-11-30",
+        "publishTime": "17:00",
+        "caption": "Los jueves tienen un nuevo ritual. Sunset Sessions & Girls Dinner en la terraza más exclusiva de Casco. 🌅🍸 Cupos limitados por reserva previa.",
+        "hashtags": "#terraplenrooftop #sunsetsessions #girlsdinner #cascoantiguo #panamanightlife"
+    },
+    {
+        "id": "ct-furia-pyro",
+        "title": "Friday Night Fever: Pyro Show & VIP Bottle Service",
+        "accountId": "social-urbannights-pa",
+        "accountHandler": "@Urbannights.pa",
+        "projectId": "proj-venues-panama",
+        "format": "Reel 9:16",
+        "pillar": "Nightlife & Energy",
+        "status": "editing",
+        "hubCategory": "video",
+        "priority": "urgent",
+        "hookVerbal": "Esto es lo que pasa cuando el reloj marca la 1:00 AM en el club más salvaje de Panamá.",
+        "hookVisual": "Corte rápido con bengalas encendidas, lluvia de confeti y botella descorchada en cámara lenta.",
+        "storyline": "Transmisión de pura adrenalina y show de botellas VIP para calentar la venta de mesas del fin de semana.",
+        "specs": {
+            "resolution": "1080x1920 4K",
+            "fps": "60 fps",
+            "aspectRatio": "9:16",
+            "codec": "H.264",
+            "audioTarget": "-14 LUFS"
+        },
+        "motionSpecs": {
+            "hasMotion": true,
+            "template": "furia-fire-fx",
+            "motionNotes": "Efectos de chispas y transición con flash blanco en los drops principales.",
+            "lowerThird": false,
+            "animatedTitle": true,
+            "brandKitApplied": true,
+            "claudeEngineStatus": "Revisando en Claude"
+        },
+        "clippingSpecs": null,
+        "edl": [
+            {
+                "order": 1,
+                "scene": "Countdown & Pyro Hook",
+                "inOut": "00:00 - 00:03",
+                "visualAction": "Cuenta regresiva en pantalla LED y explosión de chispas frías",
+                "voiceover": "1:00 AM en Panamá...",
+                "overlayText": "FRIDAY NIGHT FEVER",
+                "transition": "Impact Flash",
+                "soundFx": "Laser Riser + Boom"
+            },
+            {
+                "order": 2,
+                "scene": "Bottle Show & Modelos",
+                "inOut": "00:03 - 00:10",
+                "visualAction": "Desfile de botellas con chispas VIP hacia mesa central",
+                "voiceover": "Show exclusivo de botellas",
+                "overlayText": "VIP BOTTLE SERVICE",
+                "transition": "Hard Cut",
+                "soundFx": "High Energy Drop"
+            },
+            {
+                "order": 3,
+                "scene": "Pista y Cierre de Reservas",
+                "inOut": "00:10 - 00:15",
+                "visualAction": "Pista repleta con manos arriba y luces estroboscópicas",
+                "voiceover": "Reserva tu mesa VIP por WhatsApp",
+                "overlayText": "MESAS DISPONIBLES // WHATSAPP",
+                "transition": "Fade",
+                "soundFx": "Crowd Cheers"
+            }
+        ],
+        "checklist": [
+            {
+                "text": "Captura de tomas en cámara lenta a 120fps aprobada",
+                "done": true
+            },
+            {
+                "text": "Efectos de bengala balanceados para evitar sobreexposición",
+                "done": true
+            },
+            {
+                "text": "Subtítulo de contacto de WhatsApp para reservas VIP",
+                "done": false
+            }
+        ],
+        "shootingDate": "2026-11-22",
+        "shootingLocation": "Furia Club Casco Antiguo",
+        "shootingCrew": "Equipo de filmación nocturna ARRIVE",
+        "shootingTime": "23:00 - 03:30",
+        "editDeadline": "2026-11-25",
+        "assignee": "Mateo R. (Senior Video Editor)",
+        "deliveryDate": "2026-11-26",
+        "deliveryVersion": "v1",
+        "publishDate": "2026-11-27",
+        "publishTime": "21:00",
+        "caption": "El viernes se vive con furia o no se vive. ¿Listo para el bottle show de esta noche? Escríbenos para asegurar tu mesa imperial. 🍾🔥",
+        "hashtags": "#furiapanama #clubbing #nightlife #bottleservice #casconights"
+    },
+    {
+        "id": "ct-5am-mindset",
+        "title": "5AM Club Mindset: Disciplina y Carrera Matutina",
+        "accountId": "social-5amclub-new",
+        "accountHandler": "@__5amclub",
+        "projectId": "proj-arrive-agency",
+        "format": "Reel 9:16",
+        "pillar": "Lifestyle & Fitness",
+        "status": "script",
+        "hubCategory": "video",
+        "priority": "normal",
+        "hookVerbal": "Mientras la ciudad duerme, el 1% ya ganó el día antes de que salga el sol.",
+        "hookVisual": "Reloj marcando 05:00 AM, zapatillas atándose y amanecer frío en la Cinta Costera.",
+        "storyline": "Motivación e inspiración comunitaria para unirse a las carreras matutinas y el club de alto rendimiento.",
+        "specs": {
+            "resolution": "1080x1920",
+            "fps": "30 fps",
+            "aspectRatio": "9:16",
+            "codec": "H.264",
+            "audioTarget": "-14 LUFS"
+        },
+        "motionSpecs": null,
+        "clippingSpecs": null,
+        "edl": [
+            {
+                "order": 1,
+                "scene": "Despertar & Hook",
+                "inOut": "00:00 - 00:03",
+                "visualAction": "Alarma sonando 05:00 AM y pies tocando el piso con determinación",
+                "voiceover": "El 1% no negocia...",
+                "overlayText": "05:00 AM // LA HORA DE LA VICTORIA",
+                "transition": "Cut",
+                "soundFx": "Clock Ticking"
+            },
+            {
+                "order": 2,
+                "scene": "Runners en Cinta Costera",
+                "inOut": "00:03 - 00:14",
+                "visualAction": "Grupo de 30 corredores con camisetas del club avanzando con el amanecer",
+                "voiceover": "Construimos hábitos que no se rompen...",
+                "overlayText": "COMMUNITY RUN // SÁBADOS",
+                "transition": "Gimbal Tracking",
+                "soundFx": "Inspiring Cinematic Beats"
+            },
+            {
+                "order": 3,
+                "scene": "Café & Networking",
+                "inOut": "00:14 - 00:20",
+                "visualAction": "Café de especialidad post-carrera y sonrisas de equipo",
+                "voiceover": "Únete al club en el link de la bio.",
+                "overlayText": "REGÍSTRATE GRATIS // BIO",
+                "transition": "Fade",
+                "soundFx": "Warm Synth Finish"
+            }
+        ],
+        "checklist": [
+            {
+                "text": "Convocatoria enviada al canal de WhatsApp del 5AM Club",
+                "done": true
+            },
+            {
+                "text": "Ruta de 5K en Cinta Costera mapeada para camarógrafo en bicicleta",
+                "done": true
+            },
+            {
+                "text": "Grabación de audio de voz en off con tono motivacional",
+                "done": false
+            }
+        ],
+        "shootingDate": "2026-11-29",
+        "shootingLocation": "Cinta Costera & Café Unido Casco",
+        "shootingCrew": "Gabriel G. + Drone Operator",
+        "shootingTime": "04:45 - 08:00",
+        "editDeadline": "2026-12-01",
+        "assignee": "Camila S. (Content Specialist)",
+        "deliveryDate": "2026-12-02",
+        "deliveryVersion": "v1",
+        "publishDate": "2026-12-03",
+        "publishTime": "06:00",
+        "caption": "Las victorias no ocurren por suerte; se construyen a las 5:00 AM. ¿Aceptas el reto este sábado? 🏃‍♂️🌅",
+        "hashtags": "#5amclub #panamarunners #cintacostera #disciplina #highperformance"
+    },
+    {
+        "id": "ct-clip-techno-interview",
+        "title": "DJ Clip: El drop que cambió mi carrera en la escena electrónica",
+        "accountId": "social-elemento-techno",
+        "accountHandler": "@Elemento.techno",
+        "projectId": "proj-venues-panama",
+        "format": "TikTok / Clip 9:16",
+        "pillar": "Música & Backstage",
+        "status": "shooting",
+        "hubCategory": "clipping",
+        "priority": "normal",
+        "hookVerbal": "No entendí lo que era el techno de verdad hasta que vi a 600 personas llorar con este track.",
+        "hookVisual": "Cámara frontal del DJ en la cabina de Elemento con cascos puestos y mirada fija al público.",
+        "storyline": "Extracto testimonial íntimo de backstage antes de salir al escenario, cortado para TikTok y Shorts virales.",
+        "specs": {
+            "resolution": "1080x1920",
+            "fps": "30 fps",
+            "aspectRatio": "9:16",
+            "codec": "H.264",
+            "audioTarget": "-14 LUFS"
+        },
+        "motionSpecs": null,
+        "clippingSpecs": {
+            "isClip": true,
+            "sourceTitle": "Elemento Backstage Sessions - DJ Residente Raw",
+            "sourceUrl": "https://drive.google.com/drive/folders/elemento-backstage-raw",
+            "sourceTimestampStart": "04:12",
+            "sourceTimestampEnd": "04:58",
+            "speaker": "DJ Residente Elemento",
+            "viralFactor": "Conexión emocional y drop inesperado",
+            "captionsStyle": "High-contrast dynamic subtitles with audio wave",
+            "claudeEngineStatus": "Esperando ingesta de material raw"
+        },
+        "edl": [
+            {
+                "order": 1,
+                "scene": "Confesión del DJ",
+                "inOut": "00:00 - 00:05",
+                "visualAction": "DJ hablando a cámara en camerino con luz tenue",
+                "voiceover": "No entendí lo que era el techno...",
+                "overlayText": "EL MOMENTO QUE LO CAMBIÓ TODO",
+                "transition": "Cut",
+                "soundFx": "Vinyl Crackle"
+            },
+            {
+                "order": 2,
+                "scene": "Corte al Drop en la Pista",
+                "inOut": "00:05 - 00:30",
+                "visualAction": "Cámara rápida a la pista explotando con luces láser y humo",
+                "voiceover": "Fue en 2024 en este mismo escenario...",
+                "overlayText": "ELEMENTO // CABINA LIVE",
+                "transition": "Drop Jump",
+                "soundFx": "Techno Kick Massive"
+            }
+        ],
+        "checklist": [
+            {
+                "text": "Micrófono de solapa inalámbrico conectado a cámara secundaria",
+                "done": false
+            },
+            {
+                "text": "Grabación directa de la mesa Pioneer DJM-900NXS2",
+                "done": true
+            }
+        ],
+        "shootingDate": "2026-11-25",
+        "shootingLocation": "Backstage & Cabina Elemento Techno",
+        "shootingCrew": "Filmmaker Backstage",
+        "shootingTime": "22:00 - 01:00",
+        "editDeadline": "2026-11-27",
+        "assignee": "Claude Clipping Module & Editor",
+        "deliveryDate": "2026-11-28",
+        "deliveryVersion": "v1",
+        "publishDate": "2026-11-29",
+        "publishTime": "19:00",
+        "caption": "La música electrónica no se explica con palabras; se vive en la pista de Elemento. ¿Estuviste ahí esa noche? 🖤🔊",
+        "hashtags": "#elementotechno #panamaelectronic #djlife #technofamily #cascoantiguo"
+    },
+    {
+        "id": "ct-mg-kinetictypo",
+        "title": "Kinetic Typography Lineup Teaser: Urban Nights 2026",
+        "accountId": "social-urbannights-pa",
+        "accountHandler": "@Urbannights.pa",
+        "projectId": "proj-venues-panama",
+        "format": "Motion Graphic 9:16",
+        "pillar": "Lineup & Pauta",
+        "status": "ready",
+        "hubCategory": "motion_graphics",
+        "priority": "high",
+        "hookVerbal": "El cartel definitivo de la noche urbana en Casco ya está aquí.",
+        "hookVisual": "Tipografía brutalista en movimiento cinético 3D con ritmo sincopado y texturas de asfalto.",
+        "storyline": "Teaser de motion graphics de alta velocidad diseñado para historias y pauta publicitaria en Meta Ads.",
+        "specs": {
+            "resolution": "1080x1920",
+            "fps": "60 fps",
+            "aspectRatio": "9:16",
+            "codec": "H.264",
+            "audioTarget": "-14 LUFS"
+        },
+        "motionSpecs": {
+            "hasMotion": true,
+            "template": "urban-kinetic-brutalist",
+            "motionNotes": "Efecto de texto elástico con deformación por cuadrícula y transiciones de bloque monocromático.",
+            "lowerThird": false,
+            "animatedTitle": true,
+            "brandKitApplied": true,
+            "claudeEngineStatus": "Renderizado con éxito en Claude Remotion Engine",
+            "remotionComposition": "UrbanLineupTeaser"
+        },
+        "clippingSpecs": null,
+        "edl": [
+            {
+                "order": 1,
+                "scene": "Apertura Brutalista",
+                "inOut": "00:00 - 00:02",
+                "visualAction": "Flash de tipografía gigante ocupando toda la pantalla",
+                "voiceover": "",
+                "overlayText": "URBAN NIGHTS // 2026",
+                "transition": "Strobe",
+                "soundFx": "Heavy Sub Hit"
+            },
+            {
+                "order": 2,
+                "scene": "Lineup Roll",
+                "inOut": "00:02 - 00:07",
+                "visualAction": "Nombres de los 4 artistas rotando en perspectiva 3D",
+                "voiceover": "",
+                "overlayText": "SPECIAL GUESTS REVEALED",
+                "transition": "Fast Whip",
+                "soundFx": "Trap Snare Roll"
+            },
+            {
+                "order": 3,
+                "scene": "Fecha y Cierre",
+                "inOut": "00:07 - 00:10",
+                "visualAction": "Logo final, fecha del evento y botón simulado de ticket",
+                "voiceover": "Entradas en bio",
+                "overlayText": "29 NOVIEMBRE // CASCO",
+                "transition": "Fade",
+                "soundFx": "Bass Slam"
+            }
+        ],
+        "checklist": [
+            {
+                "text": "Composición de Remotion validada sin frames dropeados",
+                "done": true
+            },
+            {
+                "text": "Tipografía autorizada por el brandbook de Urban Nights",
+                "done": true
+            },
+            {
+                "text": "Versión de 10 segundos ajustada a especificaciones de Meta Stories Ads",
+                "done": true
+            }
+        ],
+        "shootingDate": "2026-11-19",
+        "shootingLocation": "Digital Studio Remotion",
+        "shootingCrew": "Motion Designer",
+        "shootingTime": "10:00 - 13:00",
+        "editDeadline": "2026-11-23",
+        "assignee": "Claude Code & Motion Lead",
+        "deliveryDate": "2026-11-24",
+        "deliveryVersion": "final",
+        "publishDate": "2026-11-26",
+        "publishTime": "18:00",
+        "caption": "El lineup oficial ha sido revelado. No te quedes fuera de la noche más esperada de noviembre en Casco Antiguo. Boletos en el link de la bio. 🎟️⚡",
+        "hashtags": "#urbannights #panamaurban #cascoantiguo #lineupreveal #motiongraphics #remotion"
     }
 ];
 export const seedNotes = [];
 export const seedCompanies = [];
-export const seedPromoters = [
-    { id: 'prom-1', name: 'Juan Top', phone: '+507 6500-1122', contacts: 850, style: 'VIP / Mesas & Botellas', rating: 4.9 },
-    { id: 'prom-2', name: 'María VIP', phone: '+507 6700-3344', contacts: 1200, style: 'Chicas a Cenar & Listas Exclusivas', rating: 5.0 },
-    { id: 'prom-3', name: 'Carlos Casco', phone: '+507 6800-5566', contacts: 600, style: 'Rooftops & Sunset Sessions', rating: 4.8 },
-    { id: 'prom-4', name: 'Diego Furia', phone: '+507 6900-7788', contacts: 750, style: 'Clubbing & High Energy', rating: 4.7 }
-];
+// Sin datos de ejemplo: se llenan desde el dashboard.
+export const seedPromoters = [];
 
-export const seedImageGirls = [
-    { id: 'girl-1', name: 'Sofía M.', ig: '@sofia.pty', phone: '+507 6211-4455', type: 'Cena VIP & Cócteles', rating: 5.0, available: true },
-    { id: 'girl-2', name: 'Camila R.', ig: '@camila.oficial', phone: '+507 6390-1122', type: 'Contenido / Stories', rating: 4.9, available: true },
-    { id: 'girl-3', name: 'Valentina D.', ig: '@valen_vibes', phone: '+507 6555-8899', type: 'Mesa Anfitriona', rating: 4.8, available: true },
-    { id: 'girl-4', name: 'Isabella S.', ig: '@isa.solis', phone: '+507 6712-3344', type: 'Cena VIP & Maridaje', rating: 5.0, available: true },
-    { id: 'girl-5', name: 'Andrea B.', ig: '@andreab_pty', phone: '+507 6443-2211', type: 'Cena VIP & Mesa Furia', rating: 4.9, available: true },
-    { id: 'girl-6', name: 'Nicole C.', ig: '@nicole.casco', phone: '+507 6899-7766', type: 'Rooftop Sunset Hostess', rating: 4.7, available: true },
-    { id: 'girl-7', name: 'Mariana T.', ig: '@mariana.t', phone: '+507 6122-3399', type: 'Cena VIP & Networking', rating: 4.8, available: true },
-    { id: 'girl-8', name: 'Daniela G.', ig: '@dani.gomez', phone: '+507 6633-8822', type: 'Animación & Shots VIP', rating: 4.9, available: true }
-];
+// Sin datos de ejemplo: se llenan desde el dashboard.
+export const seedImageGirls = [];
 
 export const seedEvents = [
   {
@@ -2985,13 +3649,8 @@ export const seedEvents = [
   }
 ];
 
-export const seedContacts = [
-    { id: 'cnt-1', name: 'Juan Pérez', phone: '+507 6123-4567', email: 'juan@example.com', instagram: '@juanp', role: 'VIP', dob: '1990-05-15', tags: ['High Spender', 'Frecuente'] },
-    { id: 'cnt-2', name: 'Ana Gómez', phone: '+507 6987-6543', email: 'ana.gomez@example.com', instagram: '@anita_g', role: 'Promotor', dob: '1995-10-22', tags: ['RRPP', 'Staff'] },
-    { id: 'cnt-3', name: 'Carlos Díaz', phone: '+507 6555-1234', email: 'carlos.d@example.com', instagram: '@carlos.dj', role: 'Proveedor', dob: '1988-12-01', tags: ['DJ', 'Audio'] },
-    { id: 'cnt-4', name: 'María López', phone: '+507 6333-9876', email: 'maria.lop@example.com', instagram: '@mary.lopez', role: 'Invitado', dob: '1998-03-08', tags: ['Lista Chicas', 'Nuevo'] },
-    { id: 'cnt-5', name: 'Roberto Chen', phone: '+507 6777-4444', email: 'roberto.c@example.com', instagram: '@robchen', role: 'Staff', dob: '1992-07-30', tags: ['Barra', 'Bartender'] }
-];
+// Sin datos de ejemplo: se llenan desde el dashboard.
+export const seedContacts = [];
 
 export const seedDecisionLog = [
     {

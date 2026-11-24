@@ -11,98 +11,98 @@ import { useApp } from '../context/AppContext';
 // Initial default team members tailored for ARRIVE Agency office operations
 export const DEFAULT_OFFICE_TEAM = [
     {
-        id: 'team-creative-lead',
-        personName: 'Gabriel G.',
+        id: 'team-director-general',
+        personName: 'Gabriel',
         avatar: '👑',
-        role: 'Director Creativo & Fundador',
-        division: 'Creative & Strategy',
-        station: 'Estación 01 — Dirección Creativa & Pitching',
+        role: 'Director General & Fundador',
+        division: 'Executive & Strategy',
+        station: 'Estación 01 — Dirección General & Alianzas',
         setup: 'MacBook Pro M3 Max + Pantalla Studio Display 5K',
         status: 'En Oficina',
         statusColor: '#10b981',
         phone: '50762110001',
-        email: 'creative@arriveservices.com',
-        currentFocus: 'Pitch a nuevos venues en Casco & estrategia visual de retainers Q4',
+        email: 'gabriel@arriveservices.com',
+        currentFocus: 'Estrategia de crecimiento de ARRIVE, alianzas de marca y nuevos negocios',
         defaultTasks: [
-            'Revisión y feedback de 4 Reels de Terraplén Rooftop',
-            'Presentación de propuesta a nueva discoteca en Casco',
-            'Planificación estratégica del Content Day de octubre'
+            'Revisión estratégica de nuevos contratos y alianzas con venues',
+            'Reunión directiva de alineación de proyectos del mes',
+            'Definición de visión comercial para Q4'
+        ]
+    },
+    {
+        id: 'team-creative-lead',
+        personName: 'Mario',
+        avatar: '🎨',
+        role: 'Director Creativo & Content Strategist',
+        division: 'Creative & Strategy',
+        station: 'Estación 02 — Dirección Creativa, Concept & Pitching',
+        setup: 'MacBook Pro M3 Pro + iPad Pro con Apple Pencil para bocetado',
+        status: 'En Oficina',
+        statusColor: '#10b981',
+        phone: '50762110004',
+        email: 'mario@arriveservices.com',
+        currentFocus: 'Pitch decks para nuevos clientes, conceptos visuales, branding e ideas de campañas',
+        defaultTasks: [
+            'Diseño de presentación comercial (Pitch Deck) para nuevo cliente',
+            'Conceptualización creativa del próximo Content Day de venues',
+            'Supervisión de línea gráfica y estética de las marcas aliadas'
         ]
     },
     {
         id: 'team-filmmaker',
-        personName: 'Andrés V.',
+        personName: 'Suira',
         avatar: '🎬',
-        role: 'Lead Filmmaker & Editor 4K / Motion',
+        role: 'Lead Filmmaker & Productora Audiovisual',
         division: 'ARRIVE Studio',
-        station: 'Estación 02 — Suite de Edición & Color Grading',
+        station: 'Estación 03 — Suite de Edición 4K & Color Grading',
         setup: 'Mac Studio M2 Ultra + 64GB + Dual 4K ProArt + Sony FX3',
         status: 'En Edición',
         statusColor: '#60a5fa',
-        phone: '50762110002',
-        email: 'production@arriveservices.com',
-        currentFocus: 'Color grading y sound design de Reels 9:16 para Furia y Terraplén',
+        phone: '50762110003',
+        email: 'suira@arriveservices.com',
+        currentFocus: 'Color grading, sound design y edición de Reels 4K para Terraplén y Furia',
         defaultTasks: [
             'Exportar 2 Reels en 4K HDR para Terraplén Rooftop',
-            'Edición de recap cena de chicas en Furia Panamá',
-            'Backup en disco duro NAS de las tomas del fin de semana'
-        ]
-    },
-    {
-        id: 'team-talent-booker',
-        personName: 'Camila S.',
-        avatar: '🍸',
-        role: 'Head of Talent & VIP Booker (ARRIVE Models)',
-        division: 'ARRIVE Models',
-        station: 'Estación 03 — Booking & Hospitality Desk',
-        setup: 'iPad Pro M4 con teclado + iPhone 15 Pro Max para WhatsApp Business',
-        status: 'Convocando Cenas',
-        statusColor: '#f472b6',
-        phone: '50762110003',
-        email: 'talent@arriveservices.com',
-        currentFocus: 'Confirmaciones de 10 chicas para cena Terraplén (Jueves) y Furia (Viernes)',
-        defaultTasks: [
-            'Enviar recordatorios de WhatsApp con dresscode para la cena del jueves',
-            'Confirmar lista de acceso y mesa reservada con Gerente de Terraplén',
-            'Scouting de 5 nuevas creadoras UGC en Ciudad de Panamá'
-        ]
-    },
-    {
-        id: 'team-community-manager',
-        personName: 'Valeria R.',
-        avatar: '📱',
-        role: 'Community & Growth Manager',
-        division: 'ARRIVE Services',
-        station: 'Estación 04 — Distribution & Social Media Hub',
-        setup: 'iMac 24" M3 + Meta Business Suite + Metricool',
-        status: 'En Oficina',
-        statusColor: '#10b981',
-        phone: '50762110004',
-        email: 'social@arriveservices.com',
-        currentFocus: 'Publicación de historias interactivas y programación de posts semanales',
-        defaultTasks: [
-            'Programar carrusel gastronómico de Terraplén en Meta Business Suite',
-            'Responder 15 DMs de solicitudes de reserva en Casco',
-            'Reporte de crecimiento semanal de la cuenta @arriveagency'
+            'Edición de recap de fiesta y cena en Furia Panamá',
+            'Backup en disco NAS y organización de tomas de cámara'
         ]
     },
     {
         id: 'team-account-executive',
-        personName: 'Mateo L.',
+        personName: 'Joshua',
         avatar: '💼',
-        role: 'Account Executive & Operaciones de Oficina',
+        role: 'Operations Lead & Logística de Agencia',
         division: 'Agency Operations',
-        station: 'Estación 05 — Operations & Retainers Care',
+        station: 'Estación 04 — Operations & Retainers Care',
         setup: 'Dell XPS 15 + Suite de Facturación + Google Workspace',
-        status: 'Reunión Cliente',
-        statusColor: '#fbbf24',
-        phone: '50762110005',
-        email: 'ops@arriveservices.com',
-        currentFocus: 'Seguimiento de facturas de retainers del mes y minutas de clientes',
+        status: 'En Oficina',
+        statusColor: '#10b981',
+        phone: '50762110002',
+        email: 'joshua@arriveservices.com',
+        currentFocus: 'Seguimiento de tareas operativas, facturas de retainers del mes y logística de venues',
         defaultTasks: [
-            'Envío de factura y recibo de pago mensual de Terraplén Rooftop',
-            'Coordinar minuta de reunión de kickoff con nuevo cliente',
-            'Revisión de inventario de bebidas e insumos para la oficina'
+            'Envío de factura y recibo mensual de retainers a clientes',
+            'Coordinar logística técnica y proveedores de venues',
+            'Revisión y actualización del tablero de tareas operativas'
+        ]
+    },
+    {
+        id: 'team-executive-assistant',
+        personName: 'Dalia',
+        avatar: '📋',
+        role: 'Asistente Ejecutiva & Secretaria de Dirección',
+        division: 'Executive Assistance',
+        station: 'Estación 05 — Coordinación Ejecutiva & Secretaría',
+        setup: 'iMac 24" M3 + iPhone 15 + Suite Administrativa Google & Notion',
+        status: 'En Oficina',
+        statusColor: '#10b981',
+        phone: '50762110005',
+        email: 'dalia@arriveservices.com',
+        currentFocus: 'Gestión de agenda directiva, minutas de reuniones, reservas y compras de oficina',
+        defaultTasks: [
+            'Coordinar agenda semanal de reuniones y llamadas del equipo',
+            'Redactar y enviar minutas de acuerdos con clientes',
+            'Gestión de insumos de oficina, catering y reservas en Casco'
         ]
     }
 ];
@@ -123,7 +123,17 @@ export default function ArriveTeamOffice() {
     const [team, setTeam] = useState(() => {
         try {
             const saved = localStorage.getItem('arrive_agency_office_team');
-            if (saved) return JSON.parse(saved);
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                const hasOldRoles = Array.isArray(parsed) && parsed.some(m =>
+                    (m.personName === 'Joshua' && m.role?.includes('Filmmaker')) ||
+                    (m.personName === 'Suira' && m.role?.includes('Operations')) ||
+                    (m.personName === 'Mario' && m.role?.includes('Community')) ||
+                    (m.personName === 'Dalia' && m.role?.includes('Talent')) ||
+                    ['Mateo L.', 'Camila S.', 'Valeria R.', 'Andrés V.'].includes(m.personName)
+                );
+                if (!hasOldRoles && Array.isArray(parsed) && parsed.length === 5) return parsed;
+            }
         } catch (e) {
             console.error('Error loading office team', e);
         }

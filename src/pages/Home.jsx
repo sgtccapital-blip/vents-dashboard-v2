@@ -52,7 +52,17 @@ export default function Home() {
     const [officeTeam, setOfficeTeam] = useState(() => {
         try {
             const saved = localStorage.getItem('arrive_agency_office_team');
-            if (saved) return JSON.parse(saved);
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                const hasOldRoles = Array.isArray(parsed) && parsed.some(m =>
+                    (m.personName === 'Joshua' && m.role?.includes('Filmmaker')) ||
+                    (m.personName === 'Suira' && m.role?.includes('Operations')) ||
+                    (m.personName === 'Mario' && m.role?.includes('Community')) ||
+                    (m.personName === 'Dalia' && m.role?.includes('Talent')) ||
+                    ['Mateo L.', 'Camila S.', 'Valeria R.', 'Andrés V.'].includes(m.personName)
+                );
+                if (!hasOldRoles && Array.isArray(parsed) && parsed.length === 5) return parsed;
+            }
         } catch (e) {}
         return DEFAULT_OFFICE_TEAM;
     });
@@ -60,7 +70,21 @@ export default function Home() {
     useEffect(() => {
         try {
             const saved = localStorage.getItem('arrive_agency_office_team');
-            if (saved) setOfficeTeam(JSON.parse(saved));
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                const hasOldRoles = Array.isArray(parsed) && parsed.some(m =>
+                    (m.personName === 'Joshua' && m.role?.includes('Filmmaker')) ||
+                    (m.personName === 'Suira' && m.role?.includes('Operations')) ||
+                    (m.personName === 'Mario' && m.role?.includes('Community')) ||
+                    (m.personName === 'Dalia' && m.role?.includes('Talent')) ||
+                    ['Mateo L.', 'Camila S.', 'Valeria R.', 'Andrés V.'].includes(m.personName)
+                );
+                if (!hasOldRoles && Array.isArray(parsed) && parsed.length === 5) {
+                    setOfficeTeam(parsed);
+                } else {
+                    setOfficeTeam(DEFAULT_OFFICE_TEAM);
+                }
+            }
         } catch (e) {}
     }, [currentTab]);
 
@@ -101,75 +125,15 @@ export default function Home() {
 
     // ─── Local State for Dinner Guestlists ───
     const [selectedDinnerVenue, setSelectedDinnerVenue] = useState('Terraplén Rooftop');
+    // Antes arrancaba con 8 invitadas de ejemplo; ahora solo lo que se haya cargado de verdad.
+    const DEMO_GUEST_IDS = new Set(['g-1', 'g-2', 'g-3', 'g-4', 'g-5', 'g-6', 'g-7', 'g-8']);
     const [dinnerGuestlist, setDinnerGuestlist] = useState(() => {
         try {
-            const saved = localStorage.getItem('os_live_dinner_guestlist');
-            if (saved) {
-                const parsed = JSON.parse(saved);
-                if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-            }
-        } catch (e) {}
-        return [
-            { 
-                id: 'g-1', 
-                name: 'Sofía M.', 
-                ig: '@sofia.pty', 
-                phone: '50762114455', 
-                type: 'Cena VIP & Cócteles', 
-                venue: 'Terraplén Rooftop', 
-                day: 'Jueves 8:30 PM', 
-                status: 'confirmada',
-                friends: [
-                    { id: 'f-1', name: 'Valeria Ruiz', ig: '@valeria.r' },
-                    { id: 'f-2', name: 'Camila S.', ig: '@cami.s' }
-                ]
-            },
-            { 
-                id: 'g-2', 
-                name: 'Camila R.', 
-                ig: '@camila.oficial', 
-                phone: '50763901122', 
-                type: 'Contenido / Stories', 
-                venue: 'Terraplén Rooftop', 
-                day: 'Jueves 8:30 PM', 
-                status: 'confirmada',
-                friends: [
-                    { id: 'f-3', name: 'Daniela P.', ig: '@dani.p' }
-                ]
-            },
-            { 
-                id: 'g-3', 
-                name: 'Valentina D.', 
-                ig: '@valen_vibes', 
-                phone: '50765558899', 
-                type: 'Mesa Anfitriona', 
-                venue: 'Terraplén Rooftop', 
-                day: 'Jueves 8:30 PM', 
-                status: 'confirmada',
-                friends: [
-                    { id: 'f-4', name: 'Nicole M.', ig: '@nicole.m' },
-                    { id: 'f-5', name: 'Isabella C.', ig: '@isa.c' }
-                ]
-            },
-            { id: 'g-4', name: 'Isabella S.', ig: '@isa.solis', phone: '50767123344', type: 'Cena VIP & Maridaje', venue: 'Terraplén Rooftop', day: 'Jueves 8:30 PM', status: 'pendiente', friends: [] },
-            { 
-                id: 'g-5', 
-                name: 'Andrea B.', 
-                ig: '@andreab_pty', 
-                phone: '50764432211', 
-                type: 'Cena VIP & Mesa Furia', 
-                venue: 'Furia', 
-                day: 'Viernes 9:00 PM', 
-                status: 'confirmada',
-                friends: [
-                    { id: 'f-6', name: 'Mariana Gomez', ig: '@mariana.g' },
-                    { id: 'f-7', name: 'Laura Castillo', ig: '@laura.cast' }
-                ]
-            },
-            { id: 'g-6', name: 'Nicole C.', ig: '@nicole.casco', phone: '50768997766', type: 'Rooftop Sunset Hostess', venue: 'Terraplén Rooftop', day: 'Jueves 8:30 PM', status: 'confirmada', friends: [] },
-            { id: 'g-7', name: 'Mariana T.', ig: '@mariana.t', phone: '50761223399', type: 'Cena VIP & Networking', venue: 'Piano Bar', day: 'Sábado 9:30 PM', status: 'confirmada', friends: [] },
-            { id: 'g-8', name: 'Daniela G.', ig: '@dani.gomez', phone: '50766338822', type: 'Animación & Shots VIP', venue: 'Furia', day: 'Viernes 9:00 PM', status: 'pendiente', friends: [] }
-        ];
+            const parsed = JSON.parse(localStorage.getItem('os_live_dinner_guestlist') || '[]');
+            return Array.isArray(parsed) ? parsed.filter(g => !DEMO_GUEST_IDS.has(g.id)) : [];
+        } catch {
+            return [];
+        }
     });
 
     // Auto-save dinnerGuestlist in localStorage
@@ -776,7 +740,7 @@ export default function Home() {
                             className="arrive-action-btn"
                             onClick={() => navigate('/whatsapp-agent')}
                         >
-                            <MessageSquare size={13} style={{ color: '#25D366' }} /> Agente WhatsApp & Difusión
+                            <Send size={13} style={{ color: '#a855f7' }} /> Agente de Difusión
                         </button>
                         <button 
                             type="button" 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { isActiveEvent } from '../lib/status';
-import WhatsAppAgentService, { CAMPAIGN_TONES, AUDIENCE_TAGS } from '../services/WhatsAppAgentService';
+import WhatsAppAgentService, { CAMPAIGN_TONES, AUDIENCE_TAGS, DIFFUSION_CHANNELS } from '../services/WhatsAppAgentService';
 import {
     MessageSquare, Send, Sparkles, Calendar, Users, Share2, Copy, Check,
     Bot, CheckCircle2, Clock, Play, RefreshCw, Plus, Edit3, Trash2,
@@ -150,7 +150,13 @@ export default function WhatsAppAgent() {
     const [editingScheduleItem, setEditingScheduleItem] = useState(null);
     const [showGroupModal, setShowGroupModal] = useState(false);
     const [editingGroup, setEditingGroup] = useState(null);
-    const [groupForm, setGroupForm] = useState({ name: '', category: 'VIP & Clientes Frecuentes', memberCount: '', inviteLink: '', postDays: ['Lunes', 'Viernes'], notes: '' });
+    const [groupForm, setGroupForm] = useState({ name: '', platform: 'whatsapp', category: 'VIP & Clientes Frecuentes', memberCount: '', inviteLink: '', postDays: ['Lunes', 'Viernes'], notes: '' });
+
+    // ─── Multi-Channel Diffusion State ──────────────────────────
+    const [selectedScheduleChannel, setSelectedScheduleChannel] = useState('all'); // 'all' | 'whatsapp' | 'ig_broadcast' | 'ig_dm' | 'tiktok_dm' | 'automation_webhook'
+    const [outreachChannel, setOutreachChannel] = useState('all'); // 'all' | 'whatsapp' | 'instagram' | 'tiktok'
+    const [groupsPlatformFilter, setGroupsPlatformFilter] = useState('all'); // 'all' | 'whatsapp' | 'instagram_broadcast' | 'instagram_group' | 'tiktok'
+    const [simulatorPlatform, setSimulatorPlatform] = useState('whatsapp'); // 'whatsapp' | 'instagram' | 'tiktok'
 
     // ─── Simulator & Interactive State ──────────────────────────
     const [simulatedDayId, setSimulatedDayId] = useState(null);
@@ -467,13 +473,80 @@ export default function WhatsAppAgent() {
         window.open(url, '_blank');
     };
 
-    const handleSendGroupWhatsApp = (group, text) => {
-        const url = WhatsAppAgentService.buildWhatsAppLink('', text);
-        
+    const handleSendDirectInstagram = (contact, textTemplate) => {
+        const rawTemplate = isEditingVipCopy && customVipCopy.trim() ? customVipCopy : (textTemplate || activeVipTemplate?.whatsappCopy || '');
+        let text = WhatsAppAgentService.personalizeMessage(rawTemplate, contact);
+        text = WhatsAppAgentService.adaptCopyForChannel(text, 'ig_dm');
+
+        navigator.clipboard?.writeText(text);
+
+        const igUser = (contact.instagram || '').replace(/[@\s]/g, '').trim();
+        const url = WhatsAppAgentService.buildInstagramDmLink(igUser);
+
         WhatsAppAgentService.logDispatch({
-            title: `Broadcast a Grupo: ${group.name}`,
+            title: `Outreach Instagram DM a ${contact.name} (@${igUser || 'inbox'})`,
+            target: contact.name,
+            channel: 'ig_dm',
+            recipientName: contact.name,
+            copyPreview: text
+        });
+
+        const updated = [...new Set([...sentContactIds, contact.id])];
+        setSentContactIds(updated);
+        localStorage.setItem('__whatsapp_sent_contacts', JSON.stringify(updated));
+
+        loadLogs();
+        window.open(url, '_blank');
+    };
+
+    const handleSendDirectTikTok = (contact, textTemplate) => {
+        const rawTemplate = isEditingVipCopy && customVipCopy.trim() ? customVipCopy : (textTemplate || activeVipTemplate?.whatsappCopy || '');
+        let text = WhatsAppAgentService.personalizeMessage(rawTemplate, contact);
+        text = WhatsAppAgentService.adaptCopyForChannel(text, 'tiktok_dm');
+
+        navigator.clipboard?.writeText(text);
+
+        const ttUser = (contact.tiktok || contact.instagram || '').replace(/[@\s]/g, '').trim();
+        const url = WhatsAppAgentService.buildTikTokDmLink(ttUser);
+
+        WhatsAppAgentService.logDispatch({
+            title: `Outreach TikTok DM a ${contact.name} (@${ttUser || 'messages'})`,
+            target: contact.name,
+            channel: 'tiktok_dm',
+            recipientName: contact.name,
+            copyPreview: text
+        });
+
+        const updated = [...new Set([...sentContactIds, contact.id])];
+        setSentContactIds(updated);
+        localStorage.setItem('__whatsapp_sent_contacts', JSON.stringify(updated));
+
+        loadLogs();
+        window.open(url, '_blank');
+    };
+
+    const handleSendGroupWhatsApp = (group, text) => {
+        const platform = group.platform || 'whatsapp';
+        let url = '';
+        let channelKey = 'whatsapp_group';
+
+        if (platform === 'instagram_broadcast') {
+            url = WhatsAppAgentService.buildInstagramBroadcastLink(group.inviteLink);
+            channelKey = 'ig_broadcast';
+            navigator.clipboard?.writeText(text);
+        } else if (platform === 'tiktok') {
+            url = group.inviteLink || 'https://www.tiktok.com/messages';
+            channelKey = 'tiktok_dm';
+            navigator.clipboard?.writeText(text);
+        } else {
+            url = WhatsAppAgentService.buildWhatsAppLink('', text);
+            channelKey = 'whatsapp_group';
+        }
+
+        WhatsAppAgentService.logDispatch({
+            title: `Broadcast a ${group.name} (${platform.toUpperCase()})`,
             target: group.name,
-            channel: 'whatsapp_group',
+            channel: channelKey,
             copyPreview: text
         });
 
@@ -689,8 +762,8 @@ export default function WhatsAppAgent() {
             
             {/* ═══ HEADER PRINCIPAL ═══ */}
             <div style={{
-                background: 'linear-gradient(135deg, rgba(37, 211, 102, 0.12) 0%, rgba(124, 92, 252, 0.08) 50%, rgba(17, 17, 26, 0.95) 100%)',
-                border: '1px solid rgba(37, 211, 102, 0.25)',
+                background: 'linear-gradient(135deg, rgba(37, 211, 102, 0.12) 0%, rgba(225, 48, 108, 0.1) 40%, rgba(0, 242, 254, 0.08) 75%, rgba(17, 17, 26, 0.95) 100%)',
+                border: '1px solid rgba(168, 85, 247, 0.3)',
                 borderRadius: '20px',
                 padding: '28px 32px',
                 marginBottom: '28px',
@@ -703,18 +776,18 @@ export default function WhatsAppAgent() {
                             width: '64px',
                             height: '64px',
                             borderRadius: '18px',
-                            background: 'linear-gradient(135deg, #25D366, #128C7E)',
+                            background: 'linear-gradient(135deg, #a855f7, #ec4899, #00f2fe)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            boxShadow: '0 8px 24px rgba(37, 211, 102, 0.35)'
+                            boxShadow: '0 8px 24px rgba(168, 85, 247, 0.35)'
                         }}>
-                            <MessageSquare size={32} color="#fff" />
+                            <Send size={30} color="#fff" />
                         </div>
                         <div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                                 <h1 style={{ fontSize: '26px', fontWeight: 800, margin: 0, color: '#fff' }}>
-                                    Pulse — Agente de Difusión Semanal & WhatsApp
+                                    Pulse — Agente de Difusión Multicanal
                                 </h1>
                                 <span style={{
                                     display: 'inline-flex',
@@ -722,19 +795,41 @@ export default function WhatsAppAgent() {
                                     gap: '6px',
                                     padding: '4px 10px',
                                     borderRadius: '20px',
-                                    background: 'rgba(37, 211, 102, 0.15)',
-                                    color: '#25D366',
+                                    background: 'rgba(168, 85, 247, 0.15)',
+                                    color: '#c084fc',
                                     fontSize: '12px',
                                     fontWeight: 600,
-                                    border: '1px solid rgba(37, 211, 102, 0.3)'
+                                    border: '1px solid rgba(168, 85, 247, 0.3)'
                                 }}>
-                                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#25D366', boxShadow: '0 0 8px #25D366' }}></span>
-                                    ONLINE • Gemini 2.5 + Embedded Engine
+                                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#a855f7', boxShadow: '0 0 8px #a855f7' }}></span>
+                                    ONLINE • Motor Omnicanal & Automatizaciones
                                 </span>
                             </div>
-                            <p style={{ margin: '6px 0 0 0', color: 'var(--text-secondary)', fontSize: '14px', maxWidth: '780px' }}>
-                                Orquestador autónomo para la cartelera semanal de eventos. Redacta y despacha mensajes segmentados para clientes VIP, listas de invitados y grupos comunitarios de WhatsApp en 1-click.
+                            <p style={{ margin: '6px 0 0 0', color: 'var(--text-secondary)', fontSize: '14px', maxWidth: '820px' }}>
+                                Orquestador de difusión y outreach automatizado. Despacha mensajes individuales en WhatsApp, comunidades y grupos, difusión en canales de Instagram, DMs de Instagram, mensajes de TikTok y flujos con webhooks.
                             </p>
+
+                            {/* Badges de Canales Activos */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '12px' }}>
+                                <span style={{ fontSize: '11.5px', background: 'rgba(37, 211, 102, 0.15)', color: '#25D366', padding: '3px 9px', borderRadius: '12px', border: '1px solid rgba(37, 211, 102, 0.3)', fontWeight: 600 }}>
+                                    💬 WhatsApp 1:1
+                                </span>
+                                <span style={{ fontSize: '11.5px', background: 'rgba(18, 140, 126, 0.15)', color: '#34d399', padding: '3px 9px', borderRadius: '12px', border: '1px solid rgba(18, 140, 126, 0.3)', fontWeight: 600 }}>
+                                    👥 Comunidades & Grupos WA
+                                </span>
+                                <span style={{ fontSize: '11.5px', background: 'rgba(225, 48, 108, 0.15)', color: '#f43f5e', padding: '3px 9px', borderRadius: '12px', border: '1px solid rgba(225, 48, 108, 0.3)', fontWeight: 600 }}>
+                                    📢 Canales Difusión IG
+                                </span>
+                                <span style={{ fontSize: '11.5px', background: 'rgba(193, 53, 132, 0.15)', color: '#e879f9', padding: '3px 9px', borderRadius: '12px', border: '1px solid rgba(193, 53, 132, 0.3)', fontWeight: 600 }}>
+                                    📸 Instagram DMs
+                                </span>
+                                <span style={{ fontSize: '11.5px', background: 'rgba(0, 242, 254, 0.15)', color: '#00f2fe', padding: '3px 9px', borderRadius: '12px', border: '1px solid rgba(0, 242, 254, 0.3)', fontWeight: 600 }}>
+                                    🎵 TikTok DMs
+                                </span>
+                                <span style={{ fontSize: '11.5px', background: 'rgba(139, 92, 246, 0.15)', color: '#a78bfa', padding: '3px 9px', borderRadius: '12px', border: '1px solid rgba(139, 92, 246, 0.3)', fontWeight: 600 }}>
+                                    ⚡ Webhooks & Auto
+                                </span>
+                            </div>
                         </div>
                     </div>
 
@@ -937,7 +1032,7 @@ export default function WhatsAppAgent() {
                         transition: 'all 0.2s ease'
                     }}
                 >
-                    <Calendar size={17} /> Parrilla Semanal (Lunes a Domingo)
+                    <Calendar size={17} /> Parrilla Semanal Multicanal
                 </button>
 
                 <button
@@ -978,7 +1073,7 @@ export default function WhatsAppAgent() {
                         transition: 'all 0.2s ease'
                     }}
                 >
-                    <Users size={17} /> Outreach Directo a Clientes VIP (1 a 1)
+                    <Users size={17} /> Outreach Directo (1 a 1) — WA, IG & TikTok
                 </button>
 
                 <button
@@ -998,7 +1093,7 @@ export default function WhatsAppAgent() {
                         transition: 'all 0.2s ease'
                     }}
                 >
-                    <Share2 size={17} /> Comunidades & Grupos de WhatsApp ({groups.length})
+                    <Share2 size={17} /> Comunidades, Grupos & Canales ({groups.length})
                 </button>
 
                 <button
@@ -1018,7 +1113,7 @@ export default function WhatsAppAgent() {
                         transition: 'all 0.2s ease'
                     }}
                 >
-                    <Smartphone size={17} /> Simulador WhatsApp en Vivo
+                    <Smartphone size={17} /> Simulador Multicanal en Vivo
                 </button>
 
                 <button
@@ -1147,9 +1242,55 @@ export default function WhatsAppAgent() {
                         </div>
                     </div>
 
+                    {/* Multi-Channel Format Switcher */}
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        marginBottom: '20px',
+                        background: 'rgba(0,0,0,0.3)',
+                        padding: '12px 16px',
+                        borderRadius: '12px',
+                        border: '1px solid var(--border-subtle)',
+                        overflowX: 'auto'
+                    }}>
+                        <span style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--text-secondary)', marginRight: '6px', whiteSpace: 'nowrap' }}>
+                            🎯 Adaptar Formato por Canal:
+                        </span>
+                        {[
+                            { id: 'all', label: '💬 WhatsApp 1:1 / Grupos', color: '#25D366' },
+                            { id: 'ig_broadcast', label: '📢 Canal Difusión IG', color: '#E1306C' },
+                            { id: 'ig_dm', label: '📸 Instagram DMs', color: '#C13584' },
+                            { id: 'tiktok_dm', label: '🎵 TikTok DMs & Outreach', color: '#00f2fe' },
+                            { id: 'automation_webhook', label: '⚡ Payload JSON / Webhook', color: '#8b5cf6' }
+                        ].map(ch => (
+                            <button
+                                key={`sched-ch-${ch.id}`}
+                                onClick={() => setSelectedScheduleChannel(ch.id)}
+                                style={{
+                                    padding: '6px 12px',
+                                    borderRadius: '8px',
+                                    border: selectedScheduleChannel === ch.id ? `1px solid ${ch.color}` : '1px solid transparent',
+                                    background: selectedScheduleChannel === ch.id ? `${ch.color}25` : 'rgba(255,255,255,0.04)',
+                                    color: selectedScheduleChannel === ch.id ? ch.color : 'var(--text-secondary)',
+                                    fontSize: '12px',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    whiteSpace: 'nowrap',
+                                    transition: 'all 0.15s ease'
+                                }}
+                            >
+                                {ch.label}
+                            </button>
+                        ))}
+                    </div>
+
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '20px' }}>
                         {campaign?.weeklySchedule?.map((item) => {
                             const isSent = item.status === 'sent';
+                            const displayedCopy = selectedScheduleChannel === 'all'
+                                ? item.whatsappCopy
+                                : WhatsAppAgentService.adaptCopyForChannel(item.whatsappCopy, selectedScheduleChannel);
                             return (
                                 <div 
                                     key={item.id}
@@ -1209,10 +1350,18 @@ export default function WhatsAppAgent() {
                                             🎯 Destino: <strong>{item.targetAudience}</strong> • Tipo: <strong>{item.type}</strong>
                                         </div>
 
-                                        {/* WhatsApp Preview Bubble */}
+                                        {/* Dynamic Channel Preview Bubble */}
                                         <div style={{
-                                            background: 'rgba(18, 140, 126, 0.12)',
-                                            border: '1px solid rgba(37, 211, 102, 0.2)',
+                                            background: selectedScheduleChannel === 'ig_broadcast' || selectedScheduleChannel === 'ig_dm'
+                                                ? 'rgba(225, 48, 108, 0.08)'
+                                                : selectedScheduleChannel === 'tiktok_dm'
+                                                ? 'rgba(0, 242, 254, 0.08)'
+                                                : 'rgba(18, 140, 126, 0.12)',
+                                            border: selectedScheduleChannel === 'ig_broadcast' || selectedScheduleChannel === 'ig_dm'
+                                                ? '1px solid rgba(225, 48, 108, 0.25)'
+                                                : selectedScheduleChannel === 'tiktok_dm'
+                                                ? '1px solid rgba(0, 242, 254, 0.25)'
+                                                : '1px solid rgba(37, 211, 102, 0.2)',
                                             borderRadius: '10px',
                                             padding: '14px',
                                             fontSize: '13px',
@@ -1224,11 +1373,11 @@ export default function WhatsAppAgent() {
                                             maxHeight: '220px',
                                             overflowY: 'auto'
                                         }}>
-                                            {item.whatsappCopy}
+                                            {displayedCopy}
                                         </div>
 
-                                        {/* Action Buttons */}
-                                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: 'auto' }}>
+                                        {/* Multi-Channel Action Buttons */}
+                                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: 'auto' }}>
                                             <button
                                                 className="btn btn-primary"
                                                 onClick={() => handleOpenScheduleWhatsApp(item)}
@@ -1237,44 +1386,106 @@ export default function WhatsAppAgent() {
                                                     background: '#25D366',
                                                     color: '#000',
                                                     fontWeight: 700,
-                                                    padding: '9px 14px',
+                                                    padding: '8px 10px',
                                                     borderRadius: '8px',
                                                     display: 'flex',
                                                     alignItems: 'center',
                                                     justifyContent: 'center',
-                                                    gap: '6px',
-                                                    fontSize: '13px',
+                                                    gap: '5px',
+                                                    fontSize: '12px',
                                                     border: 'none'
                                                 }}
+                                                title="Despachar a WhatsApp (wa.me)"
                                             >
-                                                <Send size={15} /> Despachar (wa.me)
+                                                <Send size={13} /> WhatsApp
                                             </button>
 
                                             <button
                                                 className="btn btn-secondary"
-                                                onClick={() => handleCopy(item.id, item.whatsappCopy)}
+                                                onClick={() => {
+                                                    const adapted = WhatsAppAgentService.adaptCopyForChannel(item.whatsappCopy, 'ig_dm');
+                                                    navigator.clipboard?.writeText(adapted);
+                                                    WhatsAppAgentService.logDispatch({
+                                                        title: `Despacho ${item.day}: ${item.title} (Instagram)`,
+                                                        target: 'Instagram DMs',
+                                                        channel: 'ig_dm',
+                                                        copyPreview: adapted
+                                                    });
+                                                    loadLogs();
+                                                    window.open('https://instagram.com/direct/inbox/', '_blank');
+                                                }}
                                                 style={{
-                                                    padding: '9px 12px',
+                                                    background: 'rgba(225, 48, 108, 0.15)',
+                                                    border: '1px solid rgba(225, 48, 108, 0.35)',
+                                                    color: '#f43f5e',
+                                                    fontWeight: 600,
+                                                    padding: '8px 10px',
                                                     borderRadius: '8px',
                                                     display: 'flex',
                                                     alignItems: 'center',
-                                                    gap: '6px',
-                                                    fontSize: '13px',
+                                                    gap: '4px',
+                                                    fontSize: '12px'
+                                                }}
+                                                title="Copiar texto adaptado y abrir Instagram Direct"
+                                            >
+                                                <Share2 size={13} /> IG
+                                            </button>
+
+                                            <button
+                                                className="btn btn-secondary"
+                                                onClick={() => {
+                                                    const adapted = WhatsAppAgentService.adaptCopyForChannel(item.whatsappCopy, 'tiktok_dm');
+                                                    navigator.clipboard?.writeText(adapted);
+                                                    WhatsAppAgentService.logDispatch({
+                                                        title: `Despacho ${item.day}: ${item.title} (TikTok)`,
+                                                        target: 'TikTok DMs',
+                                                        channel: 'tiktok_dm',
+                                                        copyPreview: adapted
+                                                    });
+                                                    loadLogs();
+                                                    window.open('https://www.tiktok.com/messages', '_blank');
+                                                }}
+                                                style={{
+                                                    background: 'rgba(0, 242, 254, 0.12)',
+                                                    border: '1px solid rgba(0, 242, 254, 0.3)',
+                                                    color: '#00f2fe',
+                                                    fontWeight: 600,
+                                                    padding: '8px 10px',
+                                                    borderRadius: '8px',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '4px',
+                                                    fontSize: '12px'
+                                                }}
+                                                title="Copiar texto adaptado y abrir TikTok"
+                                            >
+                                                <Zap size={13} /> TikTok
+                                            </button>
+
+                                            <button
+                                                className="btn btn-secondary"
+                                                onClick={() => handleCopy(item.id, displayedCopy)}
+                                                style={{
+                                                    padding: '8px 10px',
+                                                    borderRadius: '8px',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '4px',
+                                                    fontSize: '12px',
                                                     color: copiedId === item.id ? '#25D366' : 'var(--text-primary)'
                                                 }}
                                                 title="Copiar texto formateado"
                                             >
-                                                {copiedId === item.id ? <Check size={16} /> : <Copy size={16} />}
-                                                {copiedId === item.id ? '¡Copiado!' : 'Copiar'}
+                                                {copiedId === item.id ? <Check size={14} /> : <Copy size={14} />}
                                             </button>
 
                                             <button
                                                 className="btn btn-secondary"
                                                 onClick={() => setEditingScheduleItem(item)}
-                                                style={{ padding: '9px 12px', borderRadius: '8px', fontSize: '13px' }}
+                                                style={{ padding: '8px 10px', borderRadius: '8px', fontSize: '12px' }}
                                                 title="Editar copy"
                                             >
-                                                <Edit3 size={15} />
+                                                <Edit3 size={14} />
                                             </button>
 
                                             <button
@@ -1283,10 +1494,10 @@ export default function WhatsAppAgent() {
                                                     setSimulatedDayId(item.id);
                                                     setActiveTab('simulator');
                                                 }}
-                                                style={{ padding: '9px 12px', borderRadius: '8px', fontSize: '13px' }}
+                                                style={{ padding: '8px 10px', borderRadius: '8px', fontSize: '12px' }}
                                                 title="Ver en simulador de teléfono"
                                             >
-                                                <Smartphone size={15} />
+                                                <Smartphone size={14} />
                                             </button>
                                         </div>
                                     </div>
@@ -2049,10 +2260,10 @@ export default function WhatsAppAgent() {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', marginBottom: '20px' }}>
                             <div>
                                 <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <Users size={20} color="var(--accent-primary)" /> Directorio de Clientes & Contactos
+                                    <Users size={20} color="var(--accent-primary)" /> Directorio de Clientes & Outreach Multicanal (1 a 1)
                                 </h3>
                                 <p style={{ margin: '4px 0 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
-                                    Dispara mensajes personalizados 1 a 1 a WhatsApp con el nombre del cliente pre-cargado.
+                                    Dispara mensajes personalizados 1 a 1 en WhatsApp, Instagram DMs o TikTok con el nombre del cliente pre-cargado.
                                 </p>
                             </div>
 
@@ -2197,12 +2408,12 @@ export default function WhatsAppAgent() {
                                                         )}
                                                     </div>
                                                     <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
-                                                        📞 {contact.phone || 'Sin teléfono'} • {contact.instagram || 'Sin IG'}
+                                                        📞 {contact.phone || 'Sin tel'} • 📸 {contact.instagram || 'Sin IG'} • 🎵 {contact.tiktok || contact.instagram || 'Sin TikTok'}
                                                     </div>
                                                 </div>
                                             </div>
 
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                                                 <button
                                                     className="btn btn-primary"
                                                     onClick={() => handleSendDirectWhatsApp(contact, effectiveVipCopy)}
@@ -2210,16 +2421,57 @@ export default function WhatsAppAgent() {
                                                         background: '#25D366',
                                                         color: '#000',
                                                         fontWeight: 700,
-                                                        padding: '8px 14px',
+                                                        padding: '7px 11px',
                                                         borderRadius: '8px',
                                                         display: 'flex',
                                                         alignItems: 'center',
-                                                        gap: '6px',
-                                                        fontSize: '12.5px',
+                                                        gap: '5px',
+                                                        fontSize: '12px',
                                                         border: 'none'
                                                     }}
+                                                    title="Enviar mensaje personalizado a WhatsApp"
                                                 >
-                                                    <Send size={14} /> Enviar WhatsApp
+                                                    <Send size={13} /> WhatsApp
+                                                </button>
+
+                                                <button
+                                                    className="btn btn-secondary"
+                                                    onClick={() => handleSendDirectInstagram(contact, effectiveVipCopy)}
+                                                    style={{
+                                                        background: 'rgba(225, 48, 108, 0.15)',
+                                                        border: '1px solid rgba(225, 48, 108, 0.35)',
+                                                        color: '#f43f5e',
+                                                        fontWeight: 600,
+                                                        padding: '7px 11px',
+                                                        borderRadius: '8px',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '5px',
+                                                        fontSize: '12px'
+                                                    }}
+                                                    title={`Copiar texto y abrir Instagram DM a @${contact.instagram || 'inbox'}`}
+                                                >
+                                                    <Share2 size={13} /> IG DM
+                                                </button>
+
+                                                <button
+                                                    className="btn btn-secondary"
+                                                    onClick={() => handleSendDirectTikTok(contact, effectiveVipCopy)}
+                                                    style={{
+                                                        background: 'rgba(0, 242, 254, 0.12)',
+                                                        border: '1px solid rgba(0, 242, 254, 0.3)',
+                                                        color: '#00f2fe',
+                                                        fontWeight: 600,
+                                                        padding: '7px 11px',
+                                                        borderRadius: '8px',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '5px',
+                                                        fontSize: '12px'
+                                                    }}
+                                                    title={`Copiar texto y abrir TikTok a @${contact.tiktok || contact.instagram || 'messages'}`}
+                                                >
+                                                    <Zap size={13} /> TikTok
                                                 </button>
                                             </div>
                                         </div>
@@ -2345,17 +2597,17 @@ export default function WhatsAppAgent() {
             )}
 
             {/* ═══════════════════════════════════════════════════════════ */}
-            {/* TAB 3: COMUNIDADES & GRUPOS DE WHATSAPP                     */}
+            {/* TAB 3: COMUNIDADES, GRUPOS & CANALES DE DIFUSIÓN            */}
             {/* ═══════════════════════════════════════════════════════════ */}
             {activeTab === 'groups' && (
                 <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '14px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '14px' }}>
                         <div>
                             <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <Share2 size={20} color="#3b82f6" /> Directorio de Grupos & Comunidades de WhatsApp
+                                <Share2 size={20} color="#3b82f6" /> Directorio de Comunidades, Grupos & Canales de Difusión
                             </h3>
                             <p style={{ margin: '4px 0 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
-                                Administra tus canales masivos, comunidades de clientes VIP y grupos de promotores.
+                                Administra tus canales de difusión en Instagram, comunidades y grupos de WhatsApp y grupos de TikTok.
                             </p>
                         </div>
 
@@ -2364,93 +2616,145 @@ export default function WhatsAppAgent() {
                             onClick={() => openGroupModal()}
                             style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 18px' }}
                         >
-                            <Plus size={16} /> Añadir Grupo / Comunidad
+                            <Plus size={16} /> Añadir Canal o Grupo
                         </button>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
-                        {groups.map(group => (
-                            <div 
-                                key={group.id}
-                                className="card"
-                                style={{ padding: '20px', background: 'var(--bg-card)', borderRadius: '16px', display: 'flex', flexDirection: 'column' }}
-                            >
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                                    <div>
-                                        <h4 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: 700, color: '#fff' }}>
-                                            {group.name}
-                                        </h4>
-                                        <span className="tag tag-active" style={{ fontSize: '11px' }}>
-                                            {group.category}
-                                        </span>
-                                    </div>
-                                    <div style={{ display: 'flex', gap: '6px' }}>
-                                        <button 
-                                            onClick={() => openGroupModal(group)}
-                                            style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px' }}
-                                            title="Editar grupo"
-                                        >
-                                            <Edit3 size={15} />
-                                        </button>
-                                        <button 
-                                            onClick={() => handleDeleteGroup(group.id)}
-                                            style={{ background: 'transparent', border: 'none', color: 'var(--accent-red)', cursor: 'pointer', padding: '4px' }}
-                                            title="Eliminar grupo"
-                                        >
-                                            <Trash2 size={15} />
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '0 0 14px 0', flex: 1 }}>
-                                    {group.notes || 'Comunidad oficial para difusiones semanales.'}
-                                </p>
-
-                                <div style={{
-                                    padding: '10px 14px',
-                                    background: 'rgba(0,0,0,0.25)',
-                                    borderRadius: '10px',
+                    {/* Platform Filter Pills */}
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '20px' }}>
+                        {[
+                            { id: 'all', label: `Todos (${groups.length})` },
+                            { id: 'whatsapp', label: `💬 WhatsApp (${groups.filter(g => !g.platform || g.platform === 'whatsapp').length})` },
+                            { id: 'instagram_broadcast', label: `📢 Canales IG (${groups.filter(g => g.platform === 'instagram_broadcast' || g.platform === 'instagram_group').length})` },
+                            { id: 'tiktok', label: `🎵 TikTok (${groups.filter(g => g.platform === 'tiktok').length})` }
+                        ].map(f => (
+                            <button
+                                key={`grp-filter-${f.id}`}
+                                onClick={() => setGroupsPlatformFilter(f.id)}
+                                style={{
+                                    padding: '6px 14px',
+                                    borderRadius: '20px',
+                                    border: groupsPlatformFilter === f.id ? '1px solid var(--accent-primary)' : '1px solid var(--border-subtle)',
+                                    background: groupsPlatformFilter === f.id ? 'rgba(124, 92, 252, 0.2)' : 'rgba(0,0,0,0.2)',
+                                    color: groupsPlatformFilter === f.id ? '#fff' : 'var(--text-secondary)',
                                     fontSize: '12px',
-                                    color: 'var(--text-tertiary)',
-                                    marginBottom: '16px',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    gap: '4px'
-                                }}>
-                                    <div>👥 Miembros estimados: <strong style={{ color: '#fff' }}>{group.memberCount || 0}</strong></div>
-                                    <div>📅 Días de posteo: <strong style={{ color: '#25D366' }}>{(group.postDays || []).join(', ')}</strong></div>
-                                    {group.inviteLink && (
-                                        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                            🔗 <a href={group.inviteLink} target="_blank" rel="noreferrer" style={{ color: 'var(--accent-primary)' }}>{group.inviteLink}</a>
-                                        </div>
-                                    )}
-                                </div>
-
-                                <button
-                                    className="btn btn-primary"
-                                    onClick={() => {
-                                        const mondayCopy = campaign?.weeklySchedule?.[0]?.whatsappCopy || 'Cartelera semanal disponible.';
-                                        handleSendGroupWhatsApp(group, mondayCopy);
-                                    }}
-                                    style={{
-                                        background: '#25D366',
-                                        color: '#000',
-                                        fontWeight: 700,
-                                        padding: '10px',
-                                        borderRadius: '8px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        gap: '6px',
-                                        fontSize: '13px',
-                                        border: 'none',
-                                        width: '100%'
-                                    }}
-                                >
-                                    <Send size={15} /> Publicar Cartelera en Grupo
-                                </button>
-                            </div>
+                                    fontWeight: 600,
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                {f.label}
+                            </button>
                         ))}
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
+                        {groups
+                            .filter(g => {
+                                if (groupsPlatformFilter === 'all') return true;
+                                if (groupsPlatformFilter === 'whatsapp') return !g.platform || g.platform === 'whatsapp';
+                                if (groupsPlatformFilter === 'instagram_broadcast') return g.platform === 'instagram_broadcast' || g.platform === 'instagram_group';
+                                if (groupsPlatformFilter === 'tiktok') return g.platform === 'tiktok';
+                                return true;
+                            })
+                            .map(group => {
+                                const plat = group.platform || 'whatsapp';
+                                const isIG = plat === 'instagram_broadcast' || plat === 'instagram_group';
+                                const isTT = plat === 'tiktok';
+                                return (
+                                    <div 
+                                        key={group.id}
+                                        className="card"
+                                        style={{ padding: '20px', background: 'var(--bg-card)', borderRadius: '16px', display: 'flex', flexDirection: 'column' }}
+                                    >
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                                            <div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                                                    <span style={{
+                                                        fontSize: '11px',
+                                                        padding: '2px 8px',
+                                                        borderRadius: '6px',
+                                                        background: isIG ? 'rgba(225, 48, 108, 0.15)' : isTT ? 'rgba(0, 242, 254, 0.15)' : 'rgba(37, 211, 102, 0.15)',
+                                                        color: isIG ? '#f43f5e' : isTT ? '#00f2fe' : '#25D366',
+                                                        fontWeight: 700
+                                                    }}>
+                                                        {isIG ? '📢 Canal IG' : isTT ? '🎵 TikTok' : '💬 WhatsApp'}
+                                                    </span>
+                                                    <span className="tag tag-active" style={{ fontSize: '10.5px' }}>
+                                                        {group.category}
+                                                    </span>
+                                                </div>
+                                                <h4 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: 700, color: '#fff' }}>
+                                                    {group.name}
+                                                </h4>
+                                            </div>
+                                            <div style={{ display: 'flex', gap: '6px' }}>
+                                                <button 
+                                                    onClick={() => openGroupModal(group)}
+                                                    style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px' }}
+                                                    title="Editar grupo"
+                                                >
+                                                    <Edit3 size={15} />
+                                                </button>
+                                                <button 
+                                                    onClick={() => handleDeleteGroup(group.id)}
+                                                    style={{ background: 'transparent', border: 'none', color: 'var(--accent-red)', cursor: 'pointer', padding: '4px' }}
+                                                    title="Eliminar grupo"
+                                                >
+                                                    <Trash2 size={15} />
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '0 0 14px 0', flex: 1 }}>
+                                            {group.notes || 'Canal oficial para difusiones semanales.'}
+                                        </p>
+
+                                        <div style={{
+                                            padding: '10px 14px',
+                                            background: 'rgba(0,0,0,0.25)',
+                                            borderRadius: '10px',
+                                            fontSize: '12px',
+                                            color: 'var(--text-tertiary)',
+                                            marginBottom: '16px',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: '4px'
+                                        }}>
+                                            <div>👥 Miembros / Audiencia: <strong style={{ color: '#fff' }}>{group.memberCount || 0}</strong></div>
+                                            <div>📅 Días de posteo: <strong style={{ color: isIG ? '#f43f5e' : isTT ? '#00f2fe' : '#25D366' }}>{(group.postDays || []).join(', ')}</strong></div>
+                                            {group.inviteLink && (
+                                                <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                    🔗 <a href={group.inviteLink} target="_blank" rel="noreferrer" style={{ color: 'var(--accent-primary)' }}>{group.inviteLink}</a>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <button
+                                            className="btn btn-primary"
+                                            onClick={() => {
+                                                const mondayCopy = campaign?.weeklySchedule?.[0]?.whatsappCopy || 'Cartelera semanal disponible.';
+                                                handleSendGroupWhatsApp(group, mondayCopy);
+                                            }}
+                                            style={{
+                                                background: isIG ? 'linear-gradient(135deg, #e1306c, #c13584)' : isTT ? 'linear-gradient(135deg, #00f2fe, #4facfe)' : '#25D366',
+                                                color: isIG || isTT ? '#fff' : '#000',
+                                                fontWeight: 700,
+                                                padding: '10px',
+                                                borderRadius: '8px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                gap: '6px',
+                                                fontSize: '13px',
+                                                border: 'none',
+                                                width: '100%'
+                                            }}
+                                        >
+                                            <Send size={15} /> {isIG ? 'Publicar en Canal de Difusión IG' : isTT ? 'Publicar en TikTok' : 'Publicar en Grupo WhatsApp'}
+                                        </button>
+                                    </div>
+                                );
+                            })}
                     </div>
                 </div>
             )}
@@ -2464,8 +2768,36 @@ export default function WhatsAppAgent() {
                     {/* Controls Left */}
                     <div className="card" style={{ padding: '20px', background: 'var(--bg-card)' }}>
                         <h4 style={{ margin: '0 0 14px 0', fontSize: '16px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <Smartphone size={18} color="#25D366" /> Selector de Mensaje a Simular
+                            <Smartphone size={18} color="var(--accent-primary)" /> Selector de Mensaje & Plataforma
                         </h4>
+
+                        {/* Platform Selector */}
+                        <div style={{ display: 'flex', gap: '6px', marginBottom: '16px' }}>
+                            {[
+                                { id: 'whatsapp', label: '💬 WhatsApp', color: '#25D366' },
+                                { id: 'instagram', label: '📸 Instagram', color: '#E1306C' },
+                                { id: 'tiktok', label: '🎵 TikTok', color: '#00f2fe' }
+                            ].map(p => (
+                                <button
+                                    key={`sim-plat-${p.id}`}
+                                    onClick={() => setSimulatorPlatform(p.id)}
+                                    style={{
+                                        flex: 1,
+                                        padding: '7px 8px',
+                                        borderRadius: '8px',
+                                        border: simulatorPlatform === p.id ? `1px solid ${p.color}` : '1px solid var(--border-subtle)',
+                                        background: simulatorPlatform === p.id ? `${p.color}25` : 'rgba(0,0,0,0.2)',
+                                        color: simulatorPlatform === p.id ? p.color : 'var(--text-secondary)',
+                                        fontWeight: 600,
+                                        fontSize: '12px',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.15s ease'
+                                    }}
+                                >
+                                    {p.label}
+                                </button>
+                            ))}
+                        </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
                             {campaign?.weeklySchedule?.map(s => (
@@ -2478,8 +2810,8 @@ export default function WhatsAppAgent() {
                                     style={{
                                         padding: '10px 14px',
                                         borderRadius: '8px',
-                                        background: simulatedDayId === s.id && !simulatedCustomText ? 'rgba(37, 211, 102, 0.15)' : 'rgba(0,0,0,0.2)',
-                                        border: simulatedDayId === s.id && !simulatedCustomText ? '1px solid #25D366' : '1px solid var(--border-subtle)',
+                                        background: simulatedDayId === s.id && !simulatedCustomText ? 'rgba(124, 92, 252, 0.15)' : 'rgba(0,0,0,0.2)',
+                                        border: simulatedDayId === s.id && !simulatedCustomText ? '1px solid var(--accent-primary)' : '1px solid var(--border-subtle)',
                                         color: '#fff',
                                         textAlign: 'left',
                                         cursor: 'pointer',
@@ -2501,7 +2833,7 @@ export default function WhatsAppAgent() {
                         </h5>
                         <textarea 
                             rows={4}
-                            placeholder="Escribe aquí con formato WhatsApp (*negrita*, _cursiva_, emojis)..."
+                            placeholder="Escribe aquí tu texto de prueba..."
                             value={simulatedCustomText}
                             onChange={(e) => setSimulatedCustomText(e.target.value)}
                             style={{
@@ -2519,7 +2851,7 @@ export default function WhatsAppAgent() {
 
                         <button
                             className="btn btn-primary"
-                            onClick={() => handleCopy('sim-text', currentSimulatedText)}
+                            onClick={() => handleCopy('sim-text', WhatsAppAgentService.adaptCopyForChannel(currentSimulatedText, simulatorPlatform === 'whatsapp' ? 'whatsapp_direct' : simulatorPlatform === 'instagram' ? 'ig_dm' : 'tiktok_dm'))}
                             style={{ width: '100%', padding: '10px', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                         >
                             {copiedId === 'sim-text' ? <Check size={16} /> : <Copy size={16} />}
@@ -2529,10 +2861,10 @@ export default function WhatsAppAgent() {
                         {/* Live Test to WhatsApp Mobile */}
                         <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--border-subtle)' }}>
                             <h5 style={{ margin: '0 0 6px 0', fontSize: '13px', color: '#25D366', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <Send size={14} /> Enviar prueba a mi WhatsApp
+                                <Send size={14} /> Enviar prueba rápida a mi celular
                             </h5>
                             <p style={{ margin: '0 0 10px 0', fontSize: '12px', color: 'var(--text-tertiary)' }}>
-                                Envía este texto formateado a tu propio celular para verificar cómo se ve en la app oficial de WhatsApp:
+                                Envía este mensaje formateado a tu propio número para validar cómo se recibe en vivo:
                             </p>
                             <div style={{ display: 'flex', gap: '8px' }}>
                                 <input 
@@ -2588,9 +2920,9 @@ export default function WhatsAppAgent() {
                         boxShadow: '0 20px 60px rgba(0,0,0,0.8), 0 0 0 10px #1f2937',
                         border: '2px solid rgba(255,255,255,0.1)'
                     }}>
-                        {/* Phone Header / WhatsApp Topbar */}
+                        {/* Phone Header */}
                         <div style={{
-                            background: '#1f2c34',
+                            background: simulatorPlatform === 'whatsapp' ? '#1f2c34' : simulatorPlatform === 'instagram' ? '#1c1c1e' : '#121212',
                             borderRadius: '24px 24px 0 0',
                             padding: '12px 16px',
                             display: 'flex',
@@ -2598,23 +2930,38 @@ export default function WhatsAppAgent() {
                             gap: '12px',
                             borderBottom: '1px solid rgba(255,255,255,0.05)'
                         }}>
-                            <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#25D366', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color: '#000', fontSize: '15px' }}>
-                                P
+                            <div style={{
+                                width: '36px',
+                                height: '36px',
+                                borderRadius: '50%',
+                                background: simulatorPlatform === 'whatsapp' ? '#25D366' : simulatorPlatform === 'instagram' ? 'linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)' : '#00f2fe',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontWeight: 800,
+                                color: '#000',
+                                fontSize: '15px'
+                            }}>
+                                {simulatorPlatform === 'whatsapp' ? 'P' : simulatorPlatform === 'instagram' ? '📸' : '🎵'}
                             </div>
                             <div style={{ flex: 1 }}>
-                                <div style={{ fontWeight: 700, fontSize: '14px', color: '#e9edef' }}>VIP Nightlife & Events PTY</div>
-                                <div style={{ fontSize: '11px', color: '#8696a0' }}>en línea • Comunidad oficial</div>
+                                <div style={{ fontWeight: 700, fontSize: '14px', color: '#e9edef' }}>
+                                    {simulatorPlatform === 'whatsapp' ? 'VIP Nightlife & Events PTY' : simulatorPlatform === 'instagram' ? 'arrive.agency / Canal VIP' : '@events.panama'}
+                                </div>
+                                <div style={{ fontSize: '11px', color: '#8696a0' }}>
+                                    {simulatorPlatform === 'whatsapp' ? 'en línea • Comunidad oficial' : simulatorPlatform === 'instagram' ? 'Canal de difusión • 14.2k miembros' : 'Mensaje directo'}
+                                </div>
                             </div>
                         </div>
 
-                        {/* WhatsApp Chat Body */}
+                        {/* Chat Body */}
                         <div style={{
                             minHeight: '440px',
                             maxHeight: '520px',
                             overflowY: 'auto',
                             padding: '18px 12px',
-                            background: '#0b141a',
-                            backgroundImage: 'radial-gradient(rgba(255,255,255,0.03) 1px, transparent 0)',
+                            background: simulatorPlatform === 'whatsapp' ? '#0b141a' : '#000',
+                            backgroundImage: simulatorPlatform === 'whatsapp' ? 'radial-gradient(rgba(255,255,255,0.03) 1px, transparent 0)' : 'none',
                             backgroundSize: '16px 16px',
                             display: 'flex',
                             flexDirection: 'column',
@@ -2623,7 +2970,7 @@ export default function WhatsAppAgent() {
                             {/* Message Bubble */}
                             <div style={{
                                 alignSelf: 'flex-end',
-                                background: '#005c4b',
+                                background: simulatorPlatform === 'whatsapp' ? '#005c4b' : simulatorPlatform === 'instagram' ? '#3797f0' : '#2b2d31',
                                 color: '#e9edef',
                                 padding: '12px 14px',
                                 borderRadius: '10px 10px 2px 10px',
@@ -2635,18 +2982,18 @@ export default function WhatsAppAgent() {
                                 boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
                                 position: 'relative'
                             }}>
-                                {currentSimulatedText}
+                                {WhatsAppAgentService.adaptCopyForChannel(currentSimulatedText, simulatorPlatform === 'whatsapp' ? 'whatsapp_direct' : simulatorPlatform === 'instagram' ? 'ig_dm' : 'tiktok_dm')}
                                 <div style={{
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'flex-end',
                                     gap: '4px',
                                     fontSize: '10px',
-                                    color: '#8696a0',
+                                    color: simulatorPlatform === 'whatsapp' ? '#8696a0' : 'rgba(255,255,255,0.7)',
                                     marginTop: '6px'
                                 }}>
                                     <span>{new Date().toLocaleTimeString('es-PA', { hour: '2-digit', minute: '2-digit' })}</span>
-                                    <span style={{ color: '#53bdeb' }}>✓✓</span>
+                                    {simulatorPlatform === 'whatsapp' && <span style={{ color: '#53bdeb' }}>✓✓</span>}
                                 </div>
                             </div>
                         </div>
@@ -2711,8 +3058,18 @@ export default function WhatsAppAgent() {
                                         }}
                                     >
                                         <div>
-                                            <div style={{ fontWeight: 700, fontSize: '14px', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                <span style={{ color: '#25D366' }}>●</span> {log.title}
+                                            <div style={{ fontWeight: 700, fontSize: '14px', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                                <span style={{
+                                                    fontSize: '10.5px',
+                                                    padding: '2px 7px',
+                                                    borderRadius: '6px',
+                                                    background: log.channel?.includes('ig') ? 'rgba(225, 48, 108, 0.2)' : log.channel?.includes('tiktok') ? 'rgba(0, 242, 254, 0.2)' : 'rgba(37, 211, 102, 0.2)',
+                                                    color: log.channel?.includes('ig') ? '#f43f5e' : log.channel?.includes('tiktok') ? '#00f2fe' : '#25D366',
+                                                    fontWeight: 700
+                                                }}>
+                                                    {log.channel === 'ig_dm' ? '📸 Instagram DM' : log.channel === 'ig_broadcast' ? '📢 Canal IG' : log.channel === 'tiktok_dm' ? '🎵 TikTok' : log.channel === 'whatsapp_direct' ? '💬 WhatsApp 1:1' : '👥 WhatsApp Grupo'}
+                                                </span>
+                                                <span>{log.title}</span>
                                             </div>
                                             <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '3px' }}>
                                                 Destino: <strong>{log.target}</strong> {log.recipientPhone ? `(${log.recipientPhone})` : ''}
@@ -2823,16 +3180,29 @@ export default function WhatsAppAgent() {
                     <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
                         <div className="modal-header">
                             <h3 style={{ margin: 0, fontSize: '18px' }}>
-                                {editingGroup ? 'Editar Grupo de WhatsApp' : 'Añadir Nuevo Grupo / Comunidad'}
+                                {editingGroup ? 'Editar Canal o Grupo' : 'Añadir Nuevo Canal / Grupo de Difusión'}
                             </h3>
                             <button className="btn-icon" onClick={() => setShowGroupModal(false)}>✕</button>
                         </div>
                         <div className="modal-body">
-                            <label className="form-label">Nombre del Grupo / Comunidad *</label>
+                            <label className="form-label">Plataforma / Canal *</label>
+                            <select
+                                className="form-input"
+                                value={groupForm.platform || 'whatsapp'}
+                                onChange={(e) => setGroupForm({ ...groupForm, platform: e.target.value })}
+                                style={{ marginBottom: '14px' }}
+                            >
+                                <option value="whatsapp">💬 WhatsApp (Grupo o Comunidad)</option>
+                                <option value="instagram_broadcast">📢 Instagram (Canal de Difusión / Broadcast)</option>
+                                <option value="instagram_group">📸 Instagram (Grupo de DMs)</option>
+                                <option value="tiktok">🎵 TikTok (Grupo / Comunidad)</option>
+                            </select>
+
+                            <label className="form-label">Nombre del Canal / Grupo *</label>
                             <input 
                                 type="text"
                                 className="form-input"
-                                placeholder="ej: 🔥 VIP Casco & Nightlife"
+                                placeholder="ej: 🔥 VIP Casco & Nightlife o Canal Oficial IG"
                                 value={groupForm.name}
                                 onChange={(e) => setGroupForm({ ...groupForm, name: e.target.value })}
                                 style={{ marginBottom: '14px' }}

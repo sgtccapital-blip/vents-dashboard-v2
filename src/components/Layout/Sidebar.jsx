@@ -1,19 +1,25 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import {
     LayoutDashboard, FolderKanban, Brain, Server,
-    Lightbulb, User, ChevronLeft, ChevronRight, Zap, Share2, BrainCircuit, Sparkles, BookOpen, MessageSquare, Building2, DatabaseZap, LayoutTemplate, Network, MessageCircle, Monitor, Cpu, CalendarDays, Calendar, Briefcase, AudioWaveform
+    Lightbulb, User, ChevronLeft, ChevronRight, Zap, Share2, BrainCircuit, Sparkles, BookOpen, MessageSquare, Building2, DatabaseZap, LayoutTemplate, Network, MessageCircle, Monitor, Cpu, CalendarDays, Calendar, Briefcase, AudioWaveform, Film, CalendarCheck, Wallet, Send
 } from 'lucide-react';
 import { useState } from 'react';
 
 const navItems = [
     { path: '/', icon: Sparkles, label: 'Command Center (HQ)', section: 'AGENCIA' },
+    { path: '/semana', icon: CalendarCheck, label: 'Mi semana', section: 'AGENCIA' },
     { path: '/eventos', icon: CalendarDays, label: 'Proyectos & Eventos', section: 'AGENCIA' },
+    { path: '/content-hub', icon: Film, label: 'Master Content Hub', section: 'CONTENT STUDIO' },
+    { path: '/creative-brief', icon: Sparkles, label: 'Creative Brief', section: 'CONTENT STUDIO' },
+    { path: '/production-calendar', icon: CalendarCheck, label: 'Production Calendar', section: 'CONTENT STUDIO' },
     { path: '/workspace', icon: LayoutTemplate, label: 'Workspace', section: 'OPERATIONS' },
     { path: '/calendar', icon: Calendar, label: 'Master Calendar', section: 'OPERATIONS' },
     { path: '/contactos', icon: User, label: 'Contactos', section: 'OPERATIONS' },
     { path: '/social', icon: Share2, label: 'Redes Sociales', section: 'OPERATIONS' },
     { path: '/portfolio', icon: Briefcase, label: 'Portfolio OS', section: 'OPERATIONS' },
-    { path: '/whatsapp-agent', icon: MessageSquare, label: 'Agente WhatsApp & Difusión', section: 'INTELLIGENCE' },
+    { path: '/finanzas', icon: Wallet, label: 'Finanzas', section: 'OPERATIONS' },
+    { path: '/office', icon: Building2, label: 'AI Office HQ', section: 'INTELLIGENCE' },
+    { path: '/whatsapp-agent', icon: Send, label: 'Agente de Difusión', section: 'INTELLIGENCE' },
     { path: '/agent-brain', icon: BrainCircuit, label: 'Agent & RAG', section: 'INTELLIGENCE' },
     { path: '/jarvis', icon: AudioWaveform, label: 'Jarvis', section: 'INTELLIGENCE' },
 ];

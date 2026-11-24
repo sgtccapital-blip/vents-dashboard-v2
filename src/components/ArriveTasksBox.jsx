@@ -7,96 +7,7 @@ import {
 import { useApp } from '../context/AppContext';
 import './ArriveAgency.css';
 
-const DEFAULT_ARRIVE_TASKS = [
-    {
-        id: 'arr-task-1',
-        text: 'Convocatoria y selección de 8 chicas para Cena VIP en Terraplén Rooftop',
-        division: 'models',
-        tag: '#CenaChicas',
-        venue: 'Terraplén Rooftop',
-        due: 'Jueves 8:30 PM',
-        priority: 'high',
-        assignedTo: 'Pulse (PR Hostess)',
-        done: false
-    },
-    {
-        id: 'arr-task-2',
-        text: 'Confirmación 1 a 1 por WhatsApp con menú degustación y cortesías en Furia',
-        division: 'models',
-        tag: '#CenaChicas',
-        venue: 'Furia',
-        due: 'Viernes 9:00 PM',
-        priority: 'high',
-        assignedTo: 'Booker ARRIVE',
-        done: false
-    },
-    {
-        id: 'arr-task-3',
-        text: 'Editar y publicar Reel recap del fin de semana con audio en tendencia en @arriveagency',
-        division: 'services',
-        tag: '#Reels',
-        venue: 'Arrive Services',
-        due: 'Lunes',
-        priority: 'medium',
-        assignedTo: 'Creative Editor',
-        done: false
-    },
-    {
-        id: 'arr-task-4',
-        text: 'Programar carrusel showcase de servicios creativos y casos de branding',
-        division: 'services',
-        tag: '#SocialMedia',
-        venue: 'Digital Projects',
-        due: 'Martes',
-        priority: 'medium',
-        assignedTo: 'Social Media Manager',
-        done: true
-    },
-    {
-        id: 'arr-task-5',
-        text: 'Coordinar line-up de DJ residente y cobertura audiovisual en Terraplén',
-        division: 'nightlife',
-        tag: '#EventosSemanales',
-        venue: 'Terraplén Rooftop',
-        due: 'Jueves',
-        priority: 'high',
-        assignedTo: 'Nightlife Lead',
-        done: false
-    },
-    {
-        id: 'arr-task-6',
-        text: 'Confirmar lista de mesas VIP y consumo mínimo para noche temática de viernes en Furia',
-        division: 'nightlife',
-        tag: '#VIP',
-        venue: 'Furia',
-        due: 'Viernes',
-        priority: 'high',
-        assignedTo: 'VIP Hostess',
-        done: false
-    },
-    {
-        id: 'arr-task-7',
-        text: 'Briefing de producción y selección de outfits para próximo Content Day',
-        division: 'studio',
-        tag: '#ContentDay',
-        venue: 'ARRIVE Studio',
-        due: 'Próxima semana',
-        priority: 'medium',
-        assignedTo: 'Studio Director',
-        done: false
-    },
-    {
-        id: 'arr-task-8',
-        text: 'Reserva de mesa principal y welcome drinks para grupo chicas en Piano Bar Casco',
-        division: 'nightlife',
-        tag: '#CenaChicas',
-        venue: 'Piano Bar',
-        due: 'Sábado 9:30 PM',
-        priority: 'medium',
-        assignedTo: 'PR Coordinator',
-        done: false
-    }
-];
+// Sin tareas de ejemplo: la caja muestra solo tareas reales.
 
 export default function ArriveTasksBox() {
     const { tasks, projects, addTask, toggleTask, deleteTask, addActivity } = useApp();
@@ -135,8 +46,7 @@ export default function ArriveTasksBox() {
         ))
     );
 
-    // If no tasks in DB yet, show DEFAULT_ARRIVE_TASKS
-    const displayTasks = arriveTasks.length > 0 ? arriveTasks : DEFAULT_ARRIVE_TASKS;
+    const displayTasks = arriveTasks;
 
     // Filter tasks based on active pill
     const filteredTasks = displayTasks.filter(task => {

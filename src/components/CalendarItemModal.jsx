@@ -110,7 +110,7 @@ export default function CalendarItemModal({ item, onClose }) {
                     {isEditing ? (
                         <input 
                             type="text" 
-                            placeholder="Ej. Mateo L., Gabriel G., Fanny" 
+                            placeholder="Ej. Gabriel, Joshua, Suira, Mario, Dalia" 
                             value={formData.assignee || ''} 
                             onChange={e => setFormData({...formData, assignee: e.target.value})}
                             style={{ padding: '6px 10px', background: 'var(--bg-canvas)', border: '1px solid var(--border-subtle)', borderRadius: '6px', color: 'var(--text-primary)', flex: 1 }}

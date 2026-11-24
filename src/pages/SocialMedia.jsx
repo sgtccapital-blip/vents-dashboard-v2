@@ -944,44 +944,69 @@ export default function SocialMedia() {
                ═══════════════════════════════════════════════════════════════════ */}
             {selectedAccountFilter === 'all' ? (
                 <>
-                    <div className="social-tabs-nav">
-                <button 
-                    className={`social-tab-btn ${currentTab === 'pipeline' ? 'active' : ''}`}
-                    onClick={() => setCurrentTab('pipeline')}
-                >
-                    <Film size={15} /> Pipeline
-                </button>
-                <button 
-                    className={`social-tab-btn ${currentTab === 'eventos_artes' ? 'active' : ''}`}
-                    onClick={() => setCurrentTab('eventos_artes')}
-                >
-                    <Palette size={15} /> Artes por evento
-                </button>
-                <button 
-                    className={`social-tab-btn ${currentTab === 'calendar' ? 'active' : ''}`}
-                    onClick={() => setCurrentTab('calendar')}
-                >
-                    <CalendarDays size={15} /> Calendario
-                </button>
-                <button 
-                    className={`social-tab-btn ${currentTab === 'library' ? 'active' : ''}`}
-                    onClick={() => setCurrentTab('library')}
-                >
-                    <Library size={15} /> Biblioteca
-                </button>
-                <button 
-                    className={`social-tab-btn ${currentTab === 'raw' ? 'active' : ''}`}
-                    onClick={() => setCurrentTab('raw')}
-                >
-                    <FolderOpen size={15} /> Material raw
-                </button>
-                <button 
-                    className={`social-tab-btn ${currentTab === 'accounts' ? 'active' : ''}`}
-                    onClick={() => setCurrentTab('accounts')}
-                >
-                    <Dna size={15} /> Cuentas
-                </button>
-            </div>
+                    <div className="social-tabs-nav" style={{ flexWrap: 'wrap', justifyContent: 'space-between' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            <button 
+                                className={`social-tab-btn ${currentTab === 'pipeline' ? 'active' : ''}`}
+                                onClick={() => setCurrentTab('pipeline')}
+                            >
+                                <Film size={15} /> Pipeline
+                            </button>
+                            <button 
+                                className={`social-tab-btn ${currentTab === 'eventos_artes' ? 'active' : ''}`}
+                                onClick={() => setCurrentTab('eventos_artes')}
+                            >
+                                <Palette size={15} /> Artes por evento
+                            </button>
+                            <button 
+                                className={`social-tab-btn ${currentTab === 'calendar' ? 'active' : ''}`}
+                                onClick={() => setCurrentTab('calendar')}
+                            >
+                                <CalendarDays size={15} /> Calendario
+                            </button>
+                            <button 
+                                className={`social-tab-btn ${currentTab === 'library' ? 'active' : ''}`}
+                                onClick={() => setCurrentTab('library')}
+                            >
+                                <Library size={15} /> Biblioteca
+                            </button>
+                            <button 
+                                className={`social-tab-btn ${currentTab === 'raw' ? 'active' : ''}`}
+                                onClick={() => setCurrentTab('raw')}
+                            >
+                                <FolderOpen size={15} /> Material raw
+                            </button>
+                            <button 
+                                className={`social-tab-btn ${currentTab === 'accounts' ? 'active' : ''}`}
+                                onClick={() => setCurrentTab('accounts')}
+                            >
+                                <Dna size={15} /> Cuentas
+                            </button>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            <button 
+                                className="social-tab-btn"
+                                style={{ background: 'var(--accent-primary-dim)', color: 'var(--accent-primary)', borderColor: 'var(--border-accent)' }}
+                                onClick={() => navigate('/content-hub')}
+                            >
+                                <Film size={14} /> Master Content Hub
+                            </button>
+                            <button 
+                                className="social-tab-btn"
+                                style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24', borderColor: 'rgba(245, 158, 11, 0.3)' }}
+                                onClick={() => navigate('/creative-brief')}
+                            >
+                                <Sparkles size={14} /> Creative Brief
+                            </button>
+                            <button 
+                                className="social-tab-btn"
+                                style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', borderColor: 'rgba(16, 185, 129, 0.3)' }}
+                                onClick={() => navigate('/production-calendar')}
+                            >
+                                <CalendarDays size={14} /> Production Calendar
+                            </button>
+                        </div>
+                    </div>
 
             {/* Toolbar: Search & Format Filter */}
             {(currentTab === 'pipeline' || currentTab === 'calendar') && (

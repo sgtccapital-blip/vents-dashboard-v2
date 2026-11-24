@@ -133,7 +133,7 @@ function splitForSpeech(text, maxLen = 240) {
     for (const raw of sentences) {
         const s = raw.trim();
         if (!s) continue;
-        const limit = parts.length === 0 ? 120 : maxLen;
+        const limit = parts.length === 0 ? 80 : maxLen;
         if (current && (current + ' ' + s).length > limit) { parts.push(current); current = s; }
         else current = current ? `${current} ${s}` : s;
     }

@@ -1,7 +1,7 @@
 # AirCloud • Live Operations Briefing (Bóveda y Rodaje en Vivo)
 
 *Documento de telemetría operativa sincronizado automáticamente para el RAG de eventos y agentes IA.*
-*Última actualización: 2026-10-14 18:11:25*
+*Última actualización: 2026-10-17 16:33:53*
 
 ## 1. Resumen Ejecutivo del Rodaje
 - **Sistema**: AirCloud P2P Vault (macOS)
@@ -17,11 +17,11 @@
 ### 📁 Carpeta: Tom (12 toma(s) • 2.13 GB)
 - **`C1374.MP4`** | 192.14 MB | Subido: 2026-10-14 03:12:02
 - **`C1373.MP4`** | 256.14 MB | Subido: 2026-10-14 03:11:58
-- **`C1372.MP4`** | 256.14 MB | Subido: 2026-10-14 03:11:57
-- **`C1371.MP4`** | 128.14 MB | Subido: 2026-10-14 03:11:57
-- **`C1370.MP4`** | 128.14 MB | Subido: 2026-10-14 03:11:56
-- **`C1369.MP4`** | 256.14 MB | Subido: 2026-10-14 03:11:53
-- **`C1368.MP4`** | 128.14 MB | Subido: 2026-10-14 03:11:53
+- **`Tom_Toma_01.MP4`** | 256.14 MB | Subido: 2026-10-14 03:11:57
+- **`Tom_Toma_02.MP4`** | 128.14 MB | Subido: 2026-10-14 03:11:57
+- **`Tom_Toma_03.MP4`** | 128.14 MB | Subido: 2026-10-14 03:11:56
+- **`Tom_Toma_04.MP4`** | 256.14 MB | Subido: 2026-10-14 03:11:53
+- **`Tom_Toma_05.MP4`** | 128.14 MB | Subido: 2026-10-14 03:11:53
 - **`C1367.MP4`** | 128.14 MB | Subido: 2026-10-14 03:11:52
 - **`C1366.MP4`** | 128.14 MB | Subido: 2026-10-14 03:11:47
 - **`Tom_Toma_02.MP4`** | 128.14 MB | Subido: 2026-10-14 03:11:47

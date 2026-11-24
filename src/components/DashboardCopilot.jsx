@@ -360,7 +360,7 @@ export default function DashboardCopilot() {
             { pattern: /portfolio|portafolio/, path: '/portfolio', name: 'Portfolio OS' },
             { pattern: /contactos|promotores|modelos|chicas/, path: '/contactos', name: 'Contactos & Promotores' },
             { pattern: /social|redes|instagram/, path: '/social', name: 'Redes Sociales' },
-            { pattern: /whatsapp|difusi[oó]n/, path: '/whatsapp-agent', name: 'Agente WhatsApp' },
+            { pattern: /whatsapp|difusi[oó]n|broadcast|outreach|tiktok|canales/, path: '/whatsapp-agent', name: 'Agente de Difusión' },
             { pattern: /cerebro|brain|consola|openclaw|agent|rag/, path: '/agent-brain', name: 'Agent & RAG' },
             { pattern: /home|inicio|dashboard|command center/, path: '/', name: 'Command Center' }
         ];

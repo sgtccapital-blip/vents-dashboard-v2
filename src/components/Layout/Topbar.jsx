@@ -1,7 +1,7 @@
-import { Search, Menu, Database } from 'lucide-react';
+import { Search, Menu } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { taskStats, eventStats } from '../../lib/status';
+import { taskStats, eventStats, isDone } from '../../lib/status';
 
 const ProgressRing = ({ percent, size = 36, stroke = 3 }) => {
     const radius = (size - stroke) / 2;
@@ -37,17 +37,25 @@ const pageTitles = {
     '/': 'Command Center',
     '/arrive': 'ARRIVE Agency OS — Creative, Talent & Experiences',
     '/portfolio': 'Portfolio OS',
+    '/semana': 'Mi semana',
+    '/finanzas': 'Finanzas',
     '/workspace': 'Workspace 2.0',
+    '/content-hub': 'Master Content Hub',
+    '/creative-brief': 'Creative Brief',
+    '/production-calendar': 'Production Calendar',
     '/calendar': 'Master Calendar',
     '/eventos': 'Proyectos & Eventos',
     '/social': 'Redes Sociales',
+    '/whatsapp-agent': 'Agente de Difusión',
+    '/difusion': 'Agente de Difusión',
     '/agent-brain': 'Agent & RAG',
+    '/jarvis': 'Jarvis AI',
 };
 
 export default function Topbar({ collapsed, searchQuery, onSearchChange, onMobileMenuToggle, onCloudSyncToggle }) {
     const location = useLocation();
     const navigate = useNavigate();
-    const { tasks, events, contacts, supabaseStatus } = useApp();
+    const { tasks, events, projects, contacts, supabaseStatus } = useApp();
 
     // Resultados del buscador: eventos, tareas y contactos que contienen el texto
     const searchResults = (() => {
@@ -55,8 +63,10 @@ export default function Topbar({ collapsed, searchQuery, onSearchChange, onMobil
         if (q.length < 2) return [];
         const has = (...fields) => fields.some(f => typeof f === 'string' && f.toLowerCase().includes(q));
         return [
+            ...(projects || []).filter(p => has(p.name, p.description, p.tagline)).map(p => ({ key: `p-${p.id}`, kind: 'Proyecto', label: p.name, to: `/eventos/${p.id}` })),
             ...(events || []).filter(e => has(e.name, e.venue, e.location)).map(e => ({ key: `e-${e.id}`, kind: 'Evento', label: e.name, to: `/eventos/${e.id}` })),
-            ...(tasks || []).filter(t => has(t.text, t.title, t.eventName, t.projectName)).map(t => ({ key: `t-${t.id}`, kind: 'Tarea', label: t.text || t.title, to: '/workspace' })),
+            // Busca también por responsable: "dalia" lista sus tareas.
+            ...(tasks || []).filter(t => !isDone(t) && has(t.text, t.title, t.assignedTo, t.assignee)).map(t => ({ key: `t-${t.id}`, kind: 'Tarea', label: t.text || t.title, to: '/semana' })),
             ...(contacts || []).filter(c => has(c.name, c.company, c.role, c.phone, c.email)).map(c => ({ key: `c-${c.id}`, kind: 'Contacto', label: c.name, to: '/contactos' })),
         ].slice(0, 8);
     })();
@@ -84,39 +94,6 @@ export default function Topbar({ collapsed, searchQuery, onSearchChange, onMobil
         return '🌙 Buena noche';
     };
 
-    // Database status UI config (Local db.json or Supabase cloud sync)
-    let statusColor = 'var(--accent-green)';
-    let statusLabel = 'DB Local Activa';
-    let dotColor = 'var(--accent-green)';
-    let isLive = true;
-
-    if (supabaseStatus?.status === 'connected') {
-        statusColor = 'var(--accent-green)';
-        statusLabel = 'Cloud Sync';
-        dotColor = 'var(--accent-green)';
-        isLive = true;
-    } else if (supabaseStatus?.status === 'connected_missing_table') {
-        statusColor = 'var(--accent-orange)';
-        statusLabel = 'Table Missing';
-        dotColor = 'var(--accent-orange)';
-    } else if (supabaseStatus?.status === 'conflict') {
-        statusColor = 'var(--accent-orange)';
-        statusLabel = 'Conflicto Nube';
-        dotColor = 'var(--accent-orange)';
-        isLive = false;
-    } else if (supabaseStatus?.status === 'unauthorized' || supabaseStatus?.status === 'error') {
-        statusColor = 'var(--accent-red)';
-        statusLabel = 'Sync Error';
-        dotColor = 'var(--accent-red)';
-        isLive = false;
-    } else if (supabaseStatus?.ephemeralStorage) {
-        // En Render sin Supabase ni disco: los datos se borran en el próximo deploy
-        statusColor = 'var(--accent-red)';
-        statusLabel = 'Datos temporales';
-        dotColor = 'var(--accent-red)';
-        isLive = false;
-    }
-
     return (
         <header className={`topbar ${collapsed ? 'collapsed' : ''}`}>
             <div className="topbar-left">
@@ -138,36 +115,6 @@ export default function Topbar({ collapsed, searchQuery, onSearchChange, onMobil
             </div>
 
             <div className="topbar-right">
-                {/* Cloud Sync Status Badge */}
-                <div 
-                    className="cloud-sync-badge" 
-                    onClick={onCloudSyncToggle}
-                    style={{ 
-                        cursor: 'pointer', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: '6px', 
-                        padding: '5px 12px', 
-                        borderRadius: '20px', 
-                        background: 'rgba(255, 255, 255, 0.04)', 
-                        border: '1px solid var(--border-subtle)', 
-                        transition: 'all 0.2s ease',
-                        marginRight: '12px',
-                        userSelect: 'none'
-                    }}
-                >
-                    <Database size={13} style={{ color: statusColor }} />
-                    <span style={{ color: 'var(--text-secondary)', fontSize: '11px', fontWeight: 500 }}>{statusLabel}</span>
-                    <span className="status-dot" style={{ 
-                        width: '6px', 
-                        height: '6px', 
-                        borderRadius: '50%', 
-                        background: dotColor, 
-                        boxShadow: isLive ? '0 0 8px var(--accent-green)' : 'none',
-                        animation: isLive ? 'pulse-green 2.5s infinite' : 'none'
-                    }} />
-                </div>
-
                 <div className="search-bar desktop-only" style={{ position: 'relative' }}>
                     <Search size={16} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
                     <input
