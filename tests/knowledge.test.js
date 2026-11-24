@@ -247,3 +247,18 @@ test('el limitador de embeddings respeta el máximo por minuto', async () => {
     await reserve(50); // pasaría de 90 en el mismo minuto: espera a que se libere
     assert.ok(waits.length > 0 && t >= 60000);
 });
+
+test('el limitador también respeta los tokens por minuto y los resúmenes se vectorizan antes que las transcripciones', async () => {
+    const { createRateLimiter } = await import('../src/services/knowledge/embeddings.js');
+    let t = 0;
+    const reserve = createRateLimiter(90, { tokensPerMinute: 1000, now: () => t, sleep: async ms => { t += ms; } });
+    await reserve(1, 900);
+    await reserve(1, 200);
+    assert.ok(t >= 60000);
+
+    const store = new KnowledgeStore(tmpDir(), { dims: 2, model: 'fake' });
+    store.upsertDoc({ id: 't', source: 'chatgpt', kind: 'transcript', title: 'x', meta: {} }, ['a', 'b']);
+    store.upsertDoc({ id: 'd', source: 'chatgpt', kind: 'digest', title: 'y', meta: {} }, ['c']);
+    store.upsertDoc({ id: 'p', source: 'chatgpt', kind: 'profile', title: 'z', meta: {} }, ['d']);
+    assert.deepEqual(store.missingVectors(2).map(c => c.docId), ['p', 'd']);
+});

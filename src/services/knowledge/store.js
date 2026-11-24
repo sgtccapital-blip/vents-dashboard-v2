@@ -118,13 +118,16 @@ export class KnowledgeStore {
         return true;
     }
 
-    /** Trozos que todavía no tienen vector (sin clave de Gemini o la llamada falló). */
+    /**
+     * Trozos que todavía no tienen vector, primero lo que más usan los agentes:
+     * perfil, memorias de proyecto y de agentes, resúmenes, datos del dashboard y al final las transcripciones.
+     */
     missingVectors(limit = Infinity) {
+        const rank = kind => ({ profile: 0, project_memory: 0, memory: 1, digest: 2, transcript: 4 }[kind] ?? 3);
         const out = [];
-        for (let i = 0; i < this.chunks.length && out.length < limit; i++) {
-            if (!this.vectors[i]) out.push(this.chunks[i]);
-        }
-        return out;
+        for (let i = 0; i < this.chunks.length; i++) if (!this.vectors[i]) out.push(this.chunks[i]);
+        out.sort((a, b) => rank(this.docs.get(a.docId)?.kind) - rank(this.docs.get(b.docId)?.kind));
+        return out.slice(0, limit);
     }
 
     setVector(chunkId, vec) {

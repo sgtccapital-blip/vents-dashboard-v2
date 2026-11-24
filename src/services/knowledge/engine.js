@@ -75,7 +75,7 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
         if (!embedder.available()) return 0;
         let done = 0;
         while (done < limit) {
-            const slice = store.missingVectors(Math.min(50, limit - done));
+            const slice = store.missingVectors(Math.min(20, limit - done));
             if (!slice.length) break;
             const vectors = await embedder.embedDocuments(slice.map(c => store.textForEmbedding(c)));
             slice.forEach((c, i) => store.setVector(c.id, vectors[i]));

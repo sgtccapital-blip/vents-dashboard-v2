@@ -2,7 +2,7 @@
 export const EMBED_MODEL = () => process.env.KNOWLEDGE_EMBED_MODEL || 'gemini-embedding-2';
 export const EMBED_DIMS = () => Number(process.env.KNOWLEDGE_EMBED_DIMS) || 768;
 
-const BATCH = 50;
+const BATCH = 20;
 const MAX_CHARS = 7000; // ~2k tokens: de sobra para un trozo de 1600 caracteres más el título
 
 export class QuotaError extends Error {}
@@ -13,24 +13,31 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
  * Limitador por minuto: el plan gratuito de Gemini cuenta cada texto como una petición (100/min).
  * Se deja margen para las consultas de los agentes. KNOWLEDGE_EMBED_RPM lo sube si hay facturación.
  */
-export function createRateLimiter(perMinute, { now = () => Date.now(), sleep: wait = sleep } = {}) {
-    let used = []; // [timestamp, n]
-    return async function reserve(n) {
+export function createRateLimiter(perMinute, { tokensPerMinute = Infinity, now = () => Date.now(), sleep: wait = sleep } = {}) {
+    let used = []; // [timestamp, peticiones, tokens]
+    return async function reserve(n, tokens = 0) {
         n = Math.min(n, perMinute);
+        tokens = Math.min(tokens, tokensPerMinute);
         for (;;) {
             const t = now();
             used = used.filter(([ts]) => t - ts < 60000);
-            const inWindow = used.reduce((sum, [, k]) => sum + k, 0);
-            if (inWindow + n <= perMinute) { used.push([t, n]); return; }
+            const reqs = used.reduce((sum, [, k]) => sum + k, 0);
+            const toks = used.reduce((sum, [, , k]) => sum + k, 0);
+            if (reqs + n <= perMinute && toks + tokens <= tokensPerMinute) { used.push([t, n, tokens]); return; }
             await wait(Math.max(250, 60000 - (t - used[0][0]) + 50));
         }
     };
 }
 
+// Aproximación conservadora: ~3,5 caracteres por token en español.
+const estimateTokens = texts => texts.reduce((n, t) => n + Math.ceil(String(t).length / 3.5), 0);
+
 export function createGeminiEmbedder(getApiKey) {
     const model = EMBED_MODEL();
     const dims = EMBED_DIMS();
-    const reserve = createRateLimiter(Number(process.env.KNOWLEDGE_EMBED_RPM) || 90);
+    const reserve = createRateLimiter(Number(process.env.KNOWLEDGE_EMBED_RPM) || 90, {
+        tokensPerMinute: Number(process.env.KNOWLEDGE_EMBED_TPM) || 25000,
+    });
 
     async function call(texts, taskType) {
         const apiKey = getApiKey();
@@ -43,7 +50,7 @@ export function createGeminiEmbedder(getApiKey) {
                 taskType,
             })),
         };
-        await reserve(texts.length);
+        await reserve(texts.length, estimateTokens(body.requests.map(r => r.content.parts[0].text)));
         for (let attempt = 0; ; attempt++) {
             const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:batchEmbedContents`, {
                 method: 'POST',
