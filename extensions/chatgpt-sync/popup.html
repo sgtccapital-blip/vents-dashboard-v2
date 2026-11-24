@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<style>
+  body { font: 13px/1.45 -apple-system, system-ui, sans-serif; width: 320px; margin: 0; padding: 14px; background: #15151f; color: #e8e8f0; }
+  h1 { font-size: 14px; margin: 0 0 10px; }
+  label { display: block; font-size: 11px; color: #9a9ab0; margin: 10px 0 3px; }
+  input { width: 100%; box-sizing: border-box; padding: 7px 9px; border-radius: 7px; border: 1px solid #333345; background: #0d0d14; color: #fff; font-size: 12px; }
+  button { margin-top: 10px; padding: 7px 10px; border-radius: 7px; border: 0; background: #7c5cfc; color: #fff; font-weight: 600; cursor: pointer; font-size: 12px; }
+  button.ghost { background: #26263a; }
+  .row { display: flex; gap: 6px; flex-wrap: wrap; }
+  #status { margin-top: 12px; padding: 9px; border-radius: 8px; background: #1e1e2c; font-size: 12px; white-space: pre-wrap; }
+  .ok { color: #34d399; } .err { color: #f87171; }
+</style>
+</head>
+<body>
+  <h1>ChatGPT → Command Center</h1>
+  <label for="url">Dashboard</label>
+  <input id="url" placeholder="http://localhost:8090">
+  <label for="token">Llave (Agent &amp; RAG → Agentes conectados)</label>
+  <input id="token" type="password" placeholder="cc_… (déjalo vacío para mantener la actual)">
+  <div class="row">
+    <button id="save">Guardar</button>
+    <button id="sync" class="ghost">Sincronizar ahora</button>
+    <button id="resync" class="ghost" title="Vuelve a revisar todo el historial">Revisar todo</button>
+  </div>
+  <div id="status">Cargando…</div>
+  <script src="popup.js"></script>
+</body>
+</html>

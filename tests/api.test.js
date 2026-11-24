@@ -53,6 +53,9 @@ before(async () => {
             API_TOKEN: TOKEN,
             SUPABASE_URL: '', SUPABASE_KEY: '', VITE_SUPABASE_URL: '', VITE_SUPABASE_KEY: '',
             RENDER: '',
+            // El motor de conocimiento no debe llamar a Gemini ni leer la carpeta de Descargas real.
+            GEMINI_API_KEY: '',
+            CHATGPT_EXPORT_DIR: path.join(tmp, 'downloads'),
         },
         stdio: 'ignore',
     });
@@ -66,8 +69,9 @@ before(async () => {
     throw new Error('El servidor de prueba no arrancó');
 });
 
-after(() => {
-    server?.kill();
+after(async () => {
+    // Al recibir SIGTERM el servidor guarda el índice de conocimiento: se espera a que termine antes de borrar.
+    if (server && server.exitCode === null) await new Promise(r => { server.once('exit', r); server.kill(); });
     fs.rmSync(tmp, { recursive: true, force: true });
 });
 
@@ -123,6 +127,21 @@ test('status y done nunca se contradicen', async () => {
     const created = await (await api('/tasks', { method: 'POST', body: json({ text: 'nueva' }) })).json();
     assert.equal(created.status, 'pending');
     assert.equal(created.done, false);
+});
+
+test('las tareas se guardan con un solo formato aunque lleguen con nombres distintos', async () => {
+    const created = await (await api('/tasks', { method: 'POST', body: json({ title: 'Con alias', dueDate: '2026-12-01', assignee: 'Dalia' }) })).json();
+    let stored = await (await api(`/tasks/${created.id}`)).json();
+    assert.equal(stored.text, 'Con alias');
+    assert.equal(stored.due, '2026-12-01');
+    assert.equal(stored.assignedTo, 'Dalia');
+    assert.equal(stored.projectId, null);
+
+    // Cambiar un nombre actualiza también su alias: nunca quedan dos fechas distintas.
+    await api(`/tasks/${created.id}`, { method: 'PUT', body: json({ due: '2026-12-05' }) });
+    stored = await (await api(`/tasks/${created.id}`)).json();
+    assert.equal(stored.due, '2026-12-05');
+    assert.equal(stored.dueDate, '2026-12-05');
 });
 
 test('los estados de evento se normalizan y se rechazan los inválidos', async () => {
@@ -202,7 +221,7 @@ test('jarvis skills: listar, crear, controlar música, pedir comida y ejecutar m
         body: json({
             restaurant: 'Sushi Market Casco',
             items: ['Dragon Roll', 'Spicy Tuna Bowl'],
-            diners: ['GG', 'Mateo L.']
+            diners: ['Gabriel', 'Joshua', 'Suira']
         })
     });
     assert.equal(foodRes.status, 200);
@@ -270,4 +289,147 @@ test('jarvis config: se guarda y solo acepta campos conocidos', async () => {
     assert.equal(saved.hack, undefined);
     const tts = await api('/jarvis/tts', { method: 'POST', body: json({ text: '' }) });
     assert.ok([400, 503].includes(tts.status));
+});
+
+test('jarvis live tools: snapshot del dashboard y solo herramientas conocidas', async () => {
+    const snap = await (await api('/jarvis/live/tool', { method: 'POST', body: json({ name: 'get_dashboard_snapshot' }) })).json();
+    assert.equal(typeof snap.result.totalEvents, 'number');
+    assert.ok(Array.isArray(snap.result.activeTasks));
+    const bad = await api('/jarvis/live/tool', { method: 'POST', body: json({ name: 'rm_rf' }) });
+    assert.equal(bad.status, 400);
+    const task = await (await api('/jarvis/live/tool', { method: 'POST', body: json({ name: 'add_task', args: { text: 'Desde Jarvis en vivo' } }) })).json();
+    assert.ok(task.result);
+});
+
+test('conocimiento: importa la exportación de ChatGPT y el RAG la encuentra', async () => {
+    const r401 = await fetch(`${BASE}/knowledge/status`);
+    assert.equal(r401.status, 401);
+
+    const conv = {
+        id: 'conv-test', title: 'Plan de precios Hang Out', create_time: 1760000000, update_time: 1760000500, current_node: 'b',
+        mapping: {
+            a: { id: 'a', parent: null, children: ['b'], message: { author: { role: 'user' }, content: { content_type: 'text', parts: ['Definamos el precio de la entrada de Hang Out: quince dólares en preventa'] } } },
+            b: { id: 'b', parent: 'a', children: [], message: { author: { role: 'assistant' }, content: { content_type: 'text', parts: ['Perfecto, preventa a 15 y puerta a 20.'] } } },
+        },
+    };
+    const form = new FormData();
+    form.append('file', new Blob([JSON.stringify([conv])], { type: 'application/json' }), 'conversations.json');
+    const imp = await (await fetch(`${BASE}/knowledge/chatgpt/import`, { method: 'POST', headers: { Authorization: `Bearer ${TOKEN}` }, body: form })).json();
+    assert.equal(imp.added, 1);
+
+    // Sin IA configurada queda indexada en crudo (solo palabras clave), sin perderse.
+    let status;
+    for (let i = 0; i < 50; i++) {
+        status = await (await api('/knowledge/status')).json();
+        if (!status.worker.running && status.chatgpt.indexedRaw === 1) break;
+        await new Promise(r => setTimeout(r, 100));
+    }
+    assert.equal(status.chatgpt.indexedRaw, 1);
+
+    const found = await (await api('/knowledge/search', { method: 'POST', body: json({ query: 'precio preventa hang out' }) })).json();
+    assert.equal(found.results[0].docId, 'chatgpt:conv-test');
+
+    const brain = await (await api('/brain/query', { method: 'POST', body: json({ question: 'precio de la preventa' }) })).json();
+    assert.ok(brain.context.includes('preventa'));
+
+    const detail = await (await api('/knowledge/chatgpt/conversations/conv-test')).json();
+    assert.equal(detail.messages.length, 2);
+
+    const mem = await api('/knowledge/memory', { method: 'POST', body: json({ title: 'Nota de agente', content: 'El venue Furia cierra a las 3am', agent: 'test' }) });
+    assert.equal(mem.status, 201);
+    const memFound = await (await api('/knowledge/search', { method: 'POST', body: json({ query: 'Furia cierra', source: 'memory' }) })).json();
+    assert.equal(memFound.count, 1);
+});
+
+test('hub de agentes: MCP con tokens por agente, permisos y registro de actividad', async () => {
+    const { Client } = await import('@modelcontextprotocol/sdk/client/index.js');
+    const { StreamableHTTPClientTransport } = await import('@modelcontextprotocol/sdk/client/streamableHttp.js');
+    const ROOT_URL = BASE.replace(/\/api$/, '');
+    const connect = async (url, headers = {}) => {
+        const client = new Client({ name: 'test-agent', version: '1.0.0' });
+        await client.connect(new StreamableHTTPClientTransport(new URL(url), { requestInit: { headers } }));
+        return client;
+    };
+
+    // Sin token: 401
+    const anon = await fetch(`${ROOT_URL}/mcp`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: json({ jsonrpc: '2.0', id: 1, method: 'tools/list' }) });
+    assert.equal(anon.status, 401);
+
+    const writer = await (await api('/agent-hub/tokens', { method: 'POST', body: json({ name: 'Claude Code', scope: 'write' }) })).json();
+    const reader = await (await api('/agent-hub/tokens', { method: 'POST', body: json({ name: 'Solo lectura', scope: 'read' }) })).json();
+    assert.match(writer.token, /^cc_/);
+    assert.equal(writer.record.hash, undefined);
+
+    const client = await connect(`${ROOT_URL}/mcp`, { Authorization: `Bearer ${writer.token}` });
+    const names = (await client.listTools()).tools.map(t => t.name);
+    for (const n of ['get_context', 'search_knowledge', 'get_project', 'list_tasks', 'create_task', 'update_task', 'save_memory', 'log_activity']) assert.ok(names.includes(n), n);
+
+    const ctx = JSON.parse((await client.callTool({ name: 'get_context', arguments: {} })).content[0].text);
+    assert.equal(typeof ctx.tasks.pending, 'number');
+
+    const created = JSON.parse((await client.callTool({ name: 'create_task', arguments: { text: 'Tarea creada por MCP', priority: 'high' } })).content[0].text);
+    assert.equal(created.status, 'pending');
+    const done = JSON.parse((await client.callTool({ name: 'update_task', arguments: { id: created.id, status: 'done', note: 'listo' } })).content[0].text);
+    assert.equal(done.status, 'done');
+    const stored = await (await api(`/tasks/${created.id}`)).json();
+    assert.equal(stored.createdBy, 'Claude Code');
+
+    // Formato que exige ChatGPT: search → { results: [{ id, title, url }] }, fetch → { id, title, text, url }
+    const found = JSON.parse((await client.callTool({ name: 'search', arguments: { query: 'precio preventa hang out' } })).content[0].text);
+    assert.ok(found.results.length > 0 && found.results.every(r => r.id && r.title && r.url));
+    const doc = JSON.parse((await client.callTool({ name: 'fetch', arguments: { id: found.results[0].id } })).content[0].text);
+    assert.ok(doc.text.length > 0 && doc.url);
+
+    const bad = await client.callTool({ name: 'get_project', arguments: { project: 'no-existe-xyz' } });
+    assert.equal(bad.isError, true);
+    await client.close();
+
+    // Token de solo lectura: no ve herramientas de escritura. El token también funciona en la URL.
+    const ro = await connect(`${ROOT_URL}/mcp/${reader.token}`);
+    const roNames = (await ro.listTools()).tools.map(t => t.name);
+    assert.ok(roNames.includes('search_knowledge') && !roNames.includes('create_task'));
+    await ro.close();
+
+    const activity = await (await api('/agent-hub/activity?agent=Claude%20Code')).json();
+    assert.ok(activity.some(a => a.tool === 'create_task' && a.ok));
+    assert.ok(activity.some(a => a.tool === 'get_project' && !a.ok));
+    const feed = await (await api('/activity')).json();
+    assert.ok(feed.some(a => a.text.includes('Claude Code')));
+
+    // Revocado: deja de funcionar
+    await api(`/agent-hub/tokens/${reader.record.id}`, { method: 'DELETE' });
+    const revoked = await fetch(`${ROOT_URL}/mcp/${reader.token}`, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' }, body: json({ jsonrpc: '2.0', id: 1, method: 'tools/list' }) });
+    assert.equal(revoked.status, 401);
+});
+
+test('ingesta de la extensión: requiere llave con escritura y suma conversaciones al RAG', async () => {
+    const ROOT_URL = BASE.replace(/\/api$/, '');
+    assert.equal((await fetch(`${ROOT_URL}/ingest/chatgpt/state`)).status, 401);
+    const ro = await (await api('/agent-hub/tokens', { method: 'POST', body: json({ name: 'RO', scope: 'read' }) })).json();
+    assert.equal((await fetch(`${ROOT_URL}/ingest/chatgpt/state`, { headers: { Authorization: `Bearer ${ro.token}` } })).status, 403);
+
+    const ext = await (await api('/agent-hub/tokens', { method: 'POST', body: json({ name: 'ChatGPT Sync', scope: 'write' }) })).json();
+    const h = { Authorization: `Bearer ${ext.token}`, 'Content-Type': 'application/json' };
+    const conv = {
+        id: 'ext-1', title: 'Idea de merch Hang Out', update_time: 1764000000, create_time: 1763990000, current_node: 'b',
+        mapping: {
+            a: { id: 'a', parent: null, children: ['b'], message: { author: { role: 'user' }, content: { content_type: 'text', parts: ['Quiero vender gorras de Hang Out a 25 dólares'] } } },
+            b: { id: 'b', parent: 'a', children: [], message: { author: { role: 'assistant' }, content: { content_type: 'text', parts: ['Buena idea, empieza con 50 unidades.'] } } },
+        },
+    };
+    const r = await (await fetch(`${ROOT_URL}/ingest/chatgpt/conversations`, { method: 'POST', headers: h, body: json({ conversations: [conv] }) })).json();
+    assert.equal(r.added, 1);
+    const state = await (await fetch(`${ROOT_URL}/ingest/chatgpt/state`, { headers: h })).json();
+    assert.ok(state.known['ext-1']);
+    await fetch(`${ROOT_URL}/ingest/chatgpt/report`, { method: 'POST', headers: h, body: json({ scanned: 10, changed: 1, sent: 1 }) });
+
+    let found;
+    for (let i = 0; i < 30; i++) {
+        found = await (await api('/knowledge/search', { method: 'POST', body: json({ query: 'gorras merch hang out' }) })).json();
+        if (found.results[0]?.docId === 'chatgpt:ext-1') break;
+        await new Promise(res => setTimeout(res, 100));
+    }
+    assert.equal(found.results[0].docId, 'chatgpt:ext-1');
+    const st = await (await api('/knowledge/status')).json();
+    assert.equal(st.chatgpt.extension.run.scanned, 10);
 });

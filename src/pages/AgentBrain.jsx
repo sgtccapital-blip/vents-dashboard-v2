@@ -5,13 +5,16 @@ import OpenClawBrainService, { OPENCLAW_MODES, SLASH_COMMANDS } from '../service
 import RagIndexer from '../services/RagIndexer';
 import { useAutopilotEngine } from '../hooks/useAutopilotEngine';
 import ReactMarkdown from 'react-markdown';
+import ChatGptKnowledge from '../components/knowledge/ChatGptKnowledge';
+import AgentHubPanel from '../components/knowledge/AgentHubPanel';
+import ReferencesPanel from '../components/knowledge/ReferencesPanel';
 import {
     Bot, Send, Sparkles, Database, UploadCloud, FolderSync,
     BrainCircuit, CheckCircle2, AlertCircle, RefreshCw, Zap,
     Play, Square, Activity, Terminal, Trash2, ArrowRight, Settings, X,
     Copy, Check, Layers, ExternalLink, Globe, Cpu, Code, Radio, ShieldCheck,
     FileText, CheckSquare, Search, Eye, Download, BookOpen, Sliders, ChevronRight,
-    SlidersHorizontal, Compass, PieChart, Wrench, Shield, FileCheck
+    SlidersHorizontal, Compass, PieChart, Wrench, Shield, FileCheck, Link2
 } from 'lucide-react';
 
 export default function AgentBrain() {
@@ -20,7 +23,7 @@ export default function AgentBrain() {
     const { refreshData, activityFeed, addActivity, openclawLogs, triggerOpenClawAction, projects, events, tasks, notes } = appContext;
 
     // --- Active Tab State ---
-    const [activeTab, setActiveTab] = useState('chat'); // 'chat' | 'rag_inspector' | 'topology' | 'skills_market' | 'openclaw_bridge'
+    const [activeTab, setActiveTab] = useState('chat'); // 'chat' | 'chatgpt_memory' | 'agent_hub' | 'rag_inspector' | 'topology' | 'skills_market' | 'openclaw_bridge'
 
     // --- Mode State ---
     const [selectedMode, setSelectedMode] = useState('ejecutivo');
@@ -657,6 +660,60 @@ export default function AgentBrain() {
                     <Search size={16} /> Inspector & Playground RAG
                 </button>
                 <button
+                    onClick={() => setActiveTab('chatgpt_memory')}
+                    style={{
+                        padding: '8px 16px',
+                        borderRadius: '8px',
+                        background: activeTab === 'chatgpt_memory' ? '#10b981' : 'rgba(16, 185, 129, 0.12)',
+                        border: 'none',
+                        color: 'white',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        whiteSpace: 'nowrap'
+                    }}
+                >
+                    <BookOpen size={16} /> Memoria ChatGPT
+                </button>
+                <button
+                    onClick={() => setActiveTab('agent_hub')}
+                    style={{
+                        padding: '8px 16px',
+                        borderRadius: '8px',
+                        background: activeTab === 'agent_hub' ? '#0ea5e9' : 'rgba(56, 189, 248, 0.12)',
+                        border: 'none',
+                        color: 'white',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        whiteSpace: 'nowrap'
+                    }}
+                >
+                    <Globe size={16} /> Agentes conectados
+                </button>
+                <button
+                    onClick={() => setActiveTab('references')}
+                    style={{
+                        padding: '8px 16px',
+                        borderRadius: '8px',
+                        background: activeTab === 'references' ? '#a855f7' : 'rgba(168, 85, 247, 0.12)',
+                        border: 'none',
+                        color: 'white',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        whiteSpace: 'nowrap'
+                    }}
+                >
+                    <Link2 size={16} /> Referencias
+                </button>
+                <button
                     onClick={() => setActiveTab('topology')}
                     style={{
                         padding: '8px 16px',
@@ -937,6 +994,12 @@ export default function AgentBrain() {
                 {/* ═════════════════════════════════════════════════════════════════ */}
                 {/* 2. RAG INSPECTOR & PLAYGROUND TAB                               */}
                 {/* ═════════════════════════════════════════════════════════════════ */}
+                {activeTab === 'chatgpt_memory' && <ChatGptKnowledge />}
+
+                {activeTab === 'agent_hub' && <AgentHubPanel />}
+
+                {activeTab === 'references' && <ReferencesPanel />}
+
                 {activeTab === 'rag_inspector' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                         

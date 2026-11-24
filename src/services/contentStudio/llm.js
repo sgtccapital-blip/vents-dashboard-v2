@@ -8,7 +8,7 @@ import { z } from 'zod';
 const claudeModel = () => process.env.CLAUDE_MODEL || 'claude-opus-5-5';
 const geminiModel = () => process.env.GEMINI_STUDIO_MODEL || process.env.GEMINI_MODEL || 'gemini-3.8-flash';
 // Respaldo cuando el modelo principal está saturado (503) o no disponible.
-const geminiModels = () => [...new Set([geminiModel(), 'gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'])];
+const geminiModels = (preferred) => [...new Set([preferred, geminiModel(), 'gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'].filter(Boolean))];
 
 export function availableProviders({ geminiApiKey } = {}) {
     const providers = [];
@@ -60,7 +60,7 @@ async function withGemini({ system, prompt, schema, geminiApiKey, images = [], m
 }
 
 /**
- * @param {{ system: string, prompt: string, schema: z.ZodType, images?: {mediaType: string, data: string}[], geminiApiKey?: string, provider?: 'claude'|'gemini' }} opts
+ * @param {{ system: string, prompt: string, schema: z.ZodType, images?: {mediaType: string, data: string}[], geminiApiKey?: string, geminiModel?: string, provider?: 'claude'|'gemini' }} opts
  */
 export async function generateStructured(opts) {
     const providers = availableProviders(opts);
@@ -72,7 +72,7 @@ export async function generateStructured(opts) {
     const attempts = [];
     for (const provider of order.filter(p => providers.includes(p))) {
         if (provider === 'claude') attempts.push({ provider, run: () => withClaude({ ...opts, images: opts.images || [] }) });
-        else for (const model of geminiModels()) attempts.push({ provider, run: () => withGemini({ ...opts, images: opts.images || [], model }) });
+        else for (const model of geminiModels(opts.geminiModel)) attempts.push({ provider, run: () => withGemini({ ...opts, images: opts.images || [], model }) });
     }
     for (const { provider, run } of attempts) {
         for (let attempt = 0; attempt < 3; attempt++) {

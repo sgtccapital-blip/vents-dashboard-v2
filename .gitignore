@@ -45,3 +45,8 @@ backups/
 
 # ADN de cuentas (generado desde la base de datos por server.js)
 content-dna/
+
+# Motor de conocimiento: conversaciones de ChatGPT, resúmenes y vectores (privado)
+/knowledge/
+/agents-hub/
+/db.json.bak

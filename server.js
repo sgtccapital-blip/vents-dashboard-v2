@@ -28,6 +28,9 @@ import openCloudEngine from './src/services/openCloudEngine.js';
 import { normalizeTaskStatus, normalizeEventStatus, TASK_STATUSES, EVENT_STATUSES } from './src/lib/status.js';
 import { dnaToMarkdown, dnaCompleteness, accountSlug } from './src/lib/accountDna.js';
 import { registerContentStudio } from './src/services/contentStudio/routes.js';
+import { registerKnowledge } from './src/services/knowledge/routes.js';
+import { registerAgentHub } from './src/services/agentHub/routes.js';
+import { generateStructured, availableProviders } from './src/services/contentStudio/llm.js';
 import { loadBrands } from './scripts/build-brands.mjs';
 
 dotenv.config();
@@ -36,7 +39,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT || 8090;
+// El puerto 5300 está reservado para AirCloud P2P Vault. Dashboard Events opera en 8090 por defecto.
+const PORT = (process.env.PORT && process.env.PORT !== '5300') ? process.env.PORT : 8090;
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'db.json');
 const SEED_PATH = path.join(__dirname, 'db.seed.json');
 const VAULT_PATH = process.env.VAULT_PATH || path.join(__dirname, '_agent_inbox');
@@ -391,7 +395,37 @@ function runBrainVault() {
 }
 const scheduleBrainVault = debounce(runBrainVault, 5000);
 
+// Las tareas llegan desde el dashboard, los agentes y WhatsApp con nombres de campo distintos.
+// Se guardan siempre con el mismo formato: `text`, `due`, `assignedTo`, `status` (y sus alias en espejo
+// para que ninguna pantalla que lea el nombre viejo se quede sin dato).
+const TASK_FIELD_ALIASES = [['text', 'title'], ['due', 'dueDate'], ['assignedTo', 'assignee']];
+
+// En un update, el campo que el cliente mandó gana sobre su alias guardado.
+function mirrorTaskAliases(changes) {
+    for (const [main, alias] of TASK_FIELD_ALIASES) {
+        if (main in changes) changes[alias] = changes[main];
+        else if (alias in changes) changes[main] = changes[alias];
+    }
+    return changes;
+}
+
+function normalizeStoredTask(task) {
+    if (!task || typeof task !== 'object') return task;
+    for (const [main, alias] of TASK_FIELD_ALIASES) {
+        const value = task[main] || task[alias] || '';
+        task[main] = value;
+        task[alias] = value;
+    }
+    const status = normalizeTaskStatus(task.status) || (task.done ? 'done' : 'pending');
+    task.status = status;
+    task.done = status === 'done';
+    if (!task.projectId) task.projectId = null;
+    if (!task.eventId) task.eventId = null;
+    return task;
+}
+
 function writeDB(data) {
+    if (Array.isArray(data?.tasks)) data.tasks.forEach(normalizeStoredTask);
     writeDBFile(data);
 
     if (SUPABASE_URL && SUPABASE_KEY && !SUPABASE_URL.includes('tu-proyecto') && !SUPABASE_KEY.includes('tu-anon')) {
@@ -420,6 +454,7 @@ function validateEntity(entityName, item, prev = null) {
     }
 
     if (entityName === 'tasks') {
+        mirrorTaskAliases(item);
         if ('done' in item && typeof item.done !== 'boolean') {
             throw new ValidationError('`done` debe ser true o false.');
         }
@@ -457,6 +492,32 @@ function getCollection(db, entityName) {
         throw new ValidationError(`La colección ${entityName} no es una lista en db.json.`, 500);
     }
     return db[entityName];
+}
+
+// Alta y edición de registros compartidas por la API REST y el servidor MCP de agentes.
+function createEntity(entityName, data) {
+    const db = readDB();
+    const list = getCollection(db, entityName);
+    const newItem = validateEntity(entityName, { ...data, id: data?.id || newId(entityName) });
+    if (list.some(i => i.id === newItem.id)) throw new ValidationError(`Ya existe un registro con id ${newItem.id}`, 409);
+    list.push(newItem);
+    writeDB(db);
+    const RAGEngine = app.get('ragEngine');
+    if (RAGEngine) RAGEngine.upsertEntity(entityName, newItem).catch(e => console.error('[RAG] Upsert API error', e.message));
+    return newItem;
+}
+
+function updateEntity(entityName, id, data) {
+    const db = readDB();
+    const list = getCollection(db, entityName);
+    const idx = list.findIndex(i => i.id === id);
+    if (idx === -1) return null;
+    const changes = validateEntity(entityName, { ...data }, list[idx]);
+    list[idx] = { ...list[idx], ...changes, id: list[idx].id };
+    writeDB(db);
+    const RAGEngine = app.get('ragEngine');
+    if (RAGEngine) RAGEngine.upsertEntity(entityName, list[idx]).catch(e => console.error('[RAG] Upsert API error', e.message));
+    return list[idx];
 }
 
 function createCRUDRoutes(entityName) {
@@ -499,37 +560,14 @@ function createCRUDRoutes(entityName) {
 
     // POST (create)
     router.post('/', (req, res) => {
-        const db = readDB();
-        const list = getCollection(db, entityName);
-        const newItem = validateEntity(entityName, { ...req.body, id: req.body?.id || newId(entityName) });
-        if (list.some(i => i.id === newItem.id)) {
-            return res.status(409).json({ error: `Ya existe un registro con id ${newItem.id}` });
-        }
-        list.push(newItem);
-        writeDB(db);
-
-        // Auto-Upsert
-        const RAGEngine = req.app.get('ragEngine');
-        if (RAGEngine) RAGEngine.upsertEntity(entityName, newItem).catch(e => console.error('[RAG] Upsert API error', e.message));
-
-        res.status(201).json(newItem);
+        res.status(201).json(createEntity(entityName, req.body));
     });
 
     // PUT (update by ID)
     router.put('/:id', (req, res) => {
-        const db = readDB();
-        const list = getCollection(db, entityName);
-        const idx = list.findIndex(i => i.id === req.params.id);
-        if (idx === -1) return res.status(404).json({ error: `${entityName} not found` });
-        const changes = validateEntity(entityName, { ...req.body }, list[idx]);
-        list[idx] = { ...list[idx], ...changes, id: list[idx].id };
-        writeDB(db);
-
-        // Auto-Upsert
-        const RAGEngine = req.app.get('ragEngine');
-        if (RAGEngine) RAGEngine.upsertEntity(entityName, list[idx]).catch(e => console.error('[RAG] Upsert API error', e.message));
-
-        res.json(list[idx]);
+        const updated = updateEntity(entityName, req.params.id, req.body);
+        if (!updated) return res.status(404).json({ error: `${entityName} not found` });
+        res.json(updated);
     });
 
     // DELETE by ID
@@ -876,6 +914,35 @@ entities.forEach(entity => {
 
 // ─── Estudio de contenido: Drive raw → ideas → desarrollo → producción ───
 registerContentStudio(app, { readDB, writeDB, loadBrands, accountSlug, contentDnaPath: CONTENT_DNA_PATH, rootDir: __dirname, cron });
+
+// ─── Conocimiento: ChatGPT + dashboard + memorias de agentes en un índice con embeddings ───
+// Se guarda junto a db.json en knowledge/ (fuera de git): conversaciones crudas, resúmenes y vectores.
+const knowledge = registerKnowledge(app, {
+    readDB,
+    getGeminiKey: () => { try { return geminiKeyFor(readDB()); } catch { return process.env.GEMINI_API_KEY || ''; } },
+    generateStructured, availableProviders,
+    dataDir: process.env.KNOWLEDGE_DIR || path.join(path.dirname(DB_PATH), 'knowledge'),
+    uploadDir: path.join(__dirname, '_uploads_tmp'),
+    extensionDir: path.join(__dirname, 'extensions', 'chatgpt-sync'),
+    cron,
+});
+
+// Entrada del feed de actividad (Home) para lo que hacen los agentes externos.
+function addActivityFeed(text, color = '#10b981') {
+    const db = readDB();
+    if (!db.activityFeed) db.activityFeed = [];
+    db.activityFeed.unshift({ id: `act-${Date.now()}`, text, color, timestamp: new Date().toISOString() });
+    db.activityFeed = db.activityFeed.slice(0, 50);
+    writeDB(db);
+}
+
+// ─── Hub de agentes: servidor MCP en /mcp con un token por agente ───
+// Claude, ChatGPT, OpenClaw, Hermes y cualquier cliente MCP leen el contexto y escriben aquí.
+registerAgentHub(app, {
+    dataDir: process.env.AGENT_HUB_DIR || path.join(path.dirname(DB_PATH), 'agents-hub'),
+    readDB, knowledge, createEntity, updateEntity, addActivityFeed,
+    isAdminRequest: isAuthenticated,
+});
 
 // ─── Activity Feed (append-only) ──────────────────────────────
 
@@ -1726,8 +1793,8 @@ function executeOpenClawAction(actionName, data, db) {
                 status: 'pending',
                 projectId: data.projectId || (rawText.toLowerCase().includes('podcast') ? 'proj-podcast-live' : rawText.toLowerCase().includes('wedding') || rawText.toLowerCase().includes('boda') ? 'proj-wedding-content' : null),
                 eventId: data.eventId || null,
-                assignedTo: data.assignee || data.assignedTo || 'Mateo L. (Operations Lead)',
-                assignee: data.assignee || data.assignedTo || 'Mateo L. (Operations Lead)',
+                assignedTo: data.assignee || data.assignedTo || 'Joshua (Operations Lead)',
+                assignee: data.assignee || data.assignedTo || 'Joshua (Operations Lead)',
                 due: data.due || data.dueDate || null,
                 dueDate: data.due || data.dueDate || null,
                 agency: 'arrive',
@@ -1783,8 +1850,8 @@ function executeOpenClawAction(actionName, data, db) {
                     status: 'pending',
                     projectId: t.projectId || (rawText.toLowerCase().includes('podcast') ? 'proj-podcast-live' : rawText.toLowerCase().includes('wedding') || rawText.toLowerCase().includes('boda') ? 'proj-wedding-content' : null),
                     eventId: t.eventId || null,
-                    assignedTo: t.assignee || t.assignedTo || 'Mateo L. (Operations Lead)',
-                    assignee: t.assignee || t.assignedTo || 'Mateo L. (Operations Lead)',
+                    assignedTo: t.assignee || t.assignedTo || 'Joshua (Operations Lead)',
+                    assignee: t.assignee || t.assignedTo || 'Joshua (Operations Lead)',
                     due: t.due || t.dueDate || null,
                     dueDate: t.due || t.dueDate || null,
                     agency: 'arrive',
@@ -2062,8 +2129,8 @@ function executeOpenClawAction(actionName, data, db) {
                 tag: '#FoodConcierge',
                 done: false,
                 status: 'pending',
-                assignedTo: 'Mateo L. (Operations Lead)',
-                assignee: 'Mateo L. (Operations Lead)',
+                assignedTo: 'Joshua (Operations Lead)',
+                assignee: 'Joshua (Operations Lead)',
                 due: new Date().toISOString().split('T')[0],
                 agency: 'arrive',
                 createdAt: new Date().toISOString()
@@ -2306,7 +2373,7 @@ app.get('/api/jarvis/skills', (req, res) => {
                 description: 'Genera propuesta de pedido de Café Unido para el equipo de producción con link directo a WhatsApp.',
                 enabled: true,
                 steps: [
-                    { type: 'food', restaurant: 'Café Unido Casco', items: ['Geisha Cold Brew', 'Avocado Sourdough Toast'], diners: ['GG', 'Mateo L.'], label: 'Armar pedido Café Unido' },
+                    { type: 'food', restaurant: 'Café Unido Casco', items: ['Geisha Cold Brew', 'Avocado Sourdough Toast'], diners: ['Gabriel', 'Joshua', 'Suira'], label: 'Armar pedido Café Unido' },
                     { type: 'task', text: 'Coordinar retiro o entrega de almuerzo en Casco Antiguo', venue: 'ARRIVE Agency', priority: 'medium', label: 'Registrar tarea logística' },
                     { type: 'notification', text: '🍔 Jarvis preparó pedido de almuerzo para el equipo.', label: 'Notificar en Activity Feed' }
                 ],
@@ -2508,6 +2575,83 @@ app.post('/api/jarvis/tts', async (req, res) => {
     res.status(502).json({ error: `No se pudo generar la voz: ${lastErr?.message}` });
 });
 
+// 6.6c Jarvis en tiempo real (Gemini Live): voz de entrada y salida en streaming, ~1-2 s de respuesta.
+// El navegador recibe un token efímero de un solo uso; la API key nunca sale del servidor.
+const JARVIS_LIVE_TOOLS = [
+    {
+        name: 'search_knowledge',
+        description: 'Busca en la base de conocimiento RAG de ARRIVE (documentos, briefs, procesos, marcas, contratos). Úsala ante cualquier duda operativa que no esté en el contexto.',
+        parameters: { type: 'OBJECT', properties: { query: { type: 'STRING', description: 'Qué buscar' } }, required: ['query'] }
+    },
+    {
+        name: 'get_dashboard_snapshot',
+        description: 'Devuelve el estado actualizado del dashboard (eventos, tareas pendientes, proyectos, actividad, música). Úsala si la conversación lleva rato o el usuario dice que algo cambió.',
+        parameters: { type: 'OBJECT', properties: {} }
+    }
+];
+
+app.post('/api/jarvis/live/session', async (req, res) => {
+    const db = readDB();
+    const apiKey = geminiKeyFor(db);
+    if (!apiKey) return res.status(503).json({ error: 'Falta GEMINI_API_KEY para el modo en tiempo real' });
+    const cfg = getJarvisConfig(db);
+    const history = Array.isArray(req.body?.history) ? req.body.history.slice(-10) : [];
+    try {
+        const { GoogleGenAI } = await import('@google/genai');
+        const ai = new GoogleGenAI({ apiKey });
+        const token = await ai.authTokens.create({
+            config: {
+                uses: 1,
+                expireTime: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+                newSessionExpireTime: new Date(Date.now() + 60 * 1000).toISOString(),
+                httpOptions: { apiVersion: 'v1alpha' }
+            }
+        });
+        const recent = history.length
+            ? `\n\n[CONVERSACIÓN RECIENTE CON JARVIS]\n${history.map(m => `${m.role === 'user' ? 'GG' : 'Jarvis'}: ${String(m.text || '').slice(0, 400)}`).join('\n')}`
+            : '';
+        const systemInstruction = buildAgentSystemPrompt(db, { agent: 'jarvis', voice: true })
+            + '\n\n[MODO VOZ EN TIEMPO REAL]: Estás en una conversación por voz continua. Responde de inmediato, breve y natural; puedes ser interrumpido. Cuando uses una herramienta, confirma el resultado en una frase.'
+            + recent
+            + (cfg.language === 'es' ? '\n\n[LANGUAGE]: Always reply in Spanish.'
+                : cfg.language === 'en' ? '\n\n[LANGUAGE]: Always reply in English.'
+                : '\n\n[LANGUAGE — MOST IMPORTANT RULE]: Detect the language of EACH user turn and reply in that same language. If the user speaks or writes English, your entire reply is in English (even though this context is in Spanish). Si el usuario habla en español, respondes en español.');
+        res.json({
+            token: token.name,
+            model: process.env.JARVIS_LIVE_MODEL || 'gemini-3.1-flash-live-preview',
+            config: {
+                responseModalities: ['AUDIO'],
+                speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: cfg.voiceName } } },
+                systemInstruction,
+                tools: [{ functionDeclarations: [...OPENCLAW_TOOL_DECLARATIONS[0].functionDeclarations, ...JARVIS_LIVE_TOOLS] }],
+                inputAudioTranscription: {},
+                outputAudioTranscription: {},
+                contextWindowCompression: { slidingWindow: {} }
+            }
+        });
+    } catch (err) {
+        res.status(502).json({ error: `No se pudo abrir la sesión en tiempo real: ${err.message}` });
+    }
+});
+
+app.post('/api/jarvis/live/tool', async (req, res) => {
+    const { name, args = {} } = req.body || {};
+    const db = readDB();
+    if (name === 'search_knowledge') {
+        const ragEngine = req.app.get('ragEngine') || EmbeddedRAGEngine;
+        const found = await ragEngine.query(String(args.query || ''), 4, [], 'default');
+        return res.json({ result: found?.context || 'Sin resultados en la base de conocimiento.' });
+    }
+    if (name === 'get_dashboard_snapshot') {
+        const snap = buildDashboardSnapshot(db);
+        delete snap.cateringCasco;
+        return res.json({ result: snap });
+    }
+    const allowed = OPENCLAW_TOOL_DECLARATIONS[0].functionDeclarations.map(f => f.name);
+    if (!allowed.includes(name)) return res.status(400).json({ error: `Herramienta desconocida: ${name}` });
+    res.json({ result: executeOpenClawAction(name, args, db) });
+});
+
 // 6.7 OpenJarvis Core Engine Endpoints (Stanford Personal AI on Personal Devices)
 function getOpenJarvisBinary() {
     const home = process.env.HOME || '/Users/admin';
@@ -2682,6 +2826,7 @@ function buildJarvisBrainContext(db) {
 
 // ─── Jarvis: configuración editable desde el dashboard (personalidad, idioma y voz) ───
 const JARVIS_DEFAULT_CONFIG = {
+    voiceMode: 'live',              // 'live' (Gemini Live, voz en streaming) | 'classic' (escuchar → pensar → hablar)
     voiceEngine: 'gemini',          // 'gemini' (voz neural en la nube) | 'browser' (voz del sistema, sin internet)
     voiceName: 'Charon',
     language: 'auto',               // 'auto' | 'es' | 'en'
@@ -2751,7 +2896,7 @@ ${voice ? '- Esta respuesta se va a LEER EN VOZ ALTA: máximo 3 frases cortas, s
 - Contactos registrados: ${(db.contacts || []).length}
 - Actividad reciente: ${JSON.stringify((db.activityFeed || []).slice(0, 8).map(a => a.text))}
 ${cfg.instructions ? `\n[INSTRUCCIONES PERSONALIZADAS DE GG PARA JARVIS — tienen prioridad]\n${cfg.instructions}` : ''}
-${cfg.language === 'auto' ? (detectSpokenLanguage(prompt) === 'en'
+${cfg.language === 'auto' && prompt ? (detectSpokenLanguage(prompt) === 'en'
         ? '\n[LANGUAGE FOR THIS REPLY]: The user wrote in ENGLISH. Your whole reply MUST be in English, regardless of the language of the data above.'
         : '\n[IDIOMA DE ESTA RESPUESTA]: El usuario habló en español. Responde en español.') : ''}`;
 }
@@ -2872,6 +3017,254 @@ app.post('/api/jarvis/openjarvis/exec', (req, res) => {
     }
 });
 
+// Prompt de sistema del agente unificado (lo usan el chat y la sesión de voz en tiempo real de Jarvis)
+// Memoria fija para todos los agentes: el perfil de trabajo del usuario y la memoria de sus proyectos,
+// construidos a partir de sus conversaciones con ChatGPT. Va en cada prompt, no solo cuando se busca algo.
+function userMemoryBlock() {
+    let profile = null, projects = [];
+    try { profile = knowledge.profile(); projects = knowledge.projects(); } catch { return ''; }
+    if (!profile && !projects.length) return '';
+    const proj = projects.slice(0, 12).map(p => {
+        const s = p.synthesis || {};
+        const line = (label, arr) => (arr?.length ? ` ${label}: ${arr.slice(0, 4).join('; ')}.` : '');
+        return `- ${p.name}: ${s.overview || ''}${line('Decisiones vigentes', s.decisions)}${line('Abierto', s.openQuestions)}${line('Cómo lo piensa', s.howUserThinks)}`;
+    }).join('\n');
+    return `[MEMORIA DEL USUARIO — sacada de todas sus conversaciones con ChatGPT; respétala y no contradigas decisiones vigentes]:
+${profile?.text || ''}
+${proj ? `\nMemoria por proyecto (lo último que se habló en ChatGPT):\n${proj}` : ''}`;
+}
+
+function buildAgentSystemPrompt(db, { ragContext = '', systemRole = '', agent, voice, prompt = '' } = {}) {
+    // Inyectar Contexto Operativo en Tiempo Real
+    const liveProjects = (db.projects || []).map(p => ({ id: p.id, name: p.name, status: p.status, priority: p.priority, lead: p.leadAgent || p.lead }));
+    const liveEvents = (db.events || []).map(e => ({ id: e.id, name: e.name, date: e.date, status: e.status, location: e.location, budget: e.budget }));
+    const allPendingTasks = (db.tasks || []).filter(t => !t.done);
+    const pendingTasks = allPendingTasks.slice(0, 30).map(t => ({ id: t.id, text: t.text || t.title, priority: t.priority, venue: t.venue || t.category, due: t.due || t.dueDate, assignedTo: t.assignedTo || t.assignee }));
+    const activeModels = (db.imageGirls || []).slice(0, 10).map(m => ({ id: m.id, name: m.name, status: m.status, category: m.category }));
+    const activePromoters = (db.promoters || []).slice(0, 10).map(p => ({ id: p.id, name: p.name, venue: p.venue, status: p.status }));
+
+    // Inyectar Clientes y Marcas de ARRIVE Agency
+    const arriveClients = (db.projects || []).filter(p => p.agency === 'arrive' || p.isClient || p.id?.startsWith('client-')).map(c => ({
+        id: c.id,
+        name: c.name,
+        industry: c.industry || 'Marca',
+        slogan: c.slogan || '',
+        lead: c.lead || 'GG',
+        tone: c.brand?.toneOfVoice || '',
+        dos: c.brand?.dos || '',
+        donts: c.brand?.donts || ''
+    }));
+
+    return `Eres el Asistente Ejecutivo Super Pro y Director de Operaciones AI de ARRIVE Agency & Command Center (asistente de confianza de GG).
+Tienes conocimiento total y absoluto de todas las operaciones, eventos, negocios, servicios y equipo de ARRIVE.
+
+[IDENTIDAD Y ROL]:
+- Actúas como un Chief of Staff de alto nivel: ejecutivo, proactivo, ultra organizado, con pensamiento estratégico y ejecución instantánea.
+- Respondes en español impecable, con tono seguro, moderno, ejecutivo y orientado a resultados.
+
+[LOS 4 VENUES Y LOCACIONES CLAVE DE ARRIVE]:
+1. Terraplén Rooftop (Casco Antiguo): Coctelería de autor, sunsets, gastronomía fusión, vibes sofisticadas y exclusivas.
+2. Furia Panamá: High-energy dinner party & nightclub, botellería premium, DJs internacionales y locales, fiesta de alto voltaje.
+3. Primavera Club: Social club chic, terraza, coctelería botánica, atardeceres y eventos lifestyle.
+4. Piano Bar Casco: Speakeasy íntimo en Casco Antiguo, coctelería clásica y jazz/house elegante.
+
+[NUEVAS LÍNEAS DE NEGOCIO Y EXPANSIÓN DE ARRIVE]:
+- Wedding Content Creation: Cobertura de bodas en tiempo real con iPhones/cámaras profesionales, entrega de Reels y TikToks la misma noche, contenido behind-the-scenes para novias exclusivas.
+- Podcast On-The-Go / Live Podcasting: Estudio móvil de podcasting que se traslada a eventos, bodas, marcas y rooftops con micrófonos y cámaras multi-ángulo.
+- ARRIVE Models & Image Girls: Casting, convocatorias de cenas VIP para chicas en restaurantes/rooftops, embajadoras de marca y hospitality VIP.
+
+[ESTRUCTURA DEL EQUIPO ASIGNABLE]:
+- Gabriel (Director General & Fundador / Estrategia Máxima de la Agencia, Negocios y Alianzas)
+- Mario (Director Creativo & Content Strategist / Creative & Strategy, Ideas Creativas, Línea Gráfica y Pitch Decks)
+- Suira (Lead Filmmaker & Productora Audiovisual / ARRIVE Studio, Rodajes, Cámaras, Motion, Edición 4K y Color Grading)
+- Joshua (Operations Lead & Logística de Agencia / Planificación de Tareas, Facturación, Retainers y Proveedores)
+- Dalia / Delia (Asistente Ejecutiva & Secretaria / Administración de Oficina, Agenda Directiva, Minutas, Reservas y Compras)
+
+[DIRECTIVA CRÍTICA PARA NOTAS DE VOZ Y TAREAS MÚLTIPLES]:
+Cuando el usuario te hable, te dicte una nota de voz o te escriba una lista de pendientes para la semana (por ejemplo: "Para esta semana necesitamos: 1. Confirmar DJ de Furia, 2. Cotizar flores para Terraplén, 3. Coordinar modelos con Fanny, 4. Grabar tomas para Wedding Content"):
+1. Procesa cada elemento individualmente.
+2. Infiere la prioridad correcta ('critical', 'high', 'medium', 'low').
+3. Identifica la locación o división correspondiente ('Furia Panamá', 'Terraplén Rooftop', 'Primavera Club', 'Piano Bar Casco', 'ARRIVE Services', 'ARRIVE Studio', 'ARRIVE Models').
+4. Asigna al miembro del equipo más adecuado.
+5. Infiere o calcula la fecha límite adecuada (YYYY-MM-DD).
+6. EJECUTA SIEMPRE el tool 'batch_add_tasks' o 'add_task' para que se guarden en la base de datos de inmediato.
+7. Presenta un reporte ejecutivo estructurado confirmando todas las tareas agendadas y los próximos pasos.
+
+[ESTADO EN TIEMPO REAL DEL DASHBOARD]:
+- Eventos Programados (${liveEvents.length}): ${JSON.stringify(liveEvents.slice(0, 8))}
+- Proyectos Activos (${liveProjects.length}): ${JSON.stringify(liveProjects)}
+- Tareas Pendientes en Cola (${allPendingTasks.length} en total; muestra de las primeras 15): ${JSON.stringify(pendingTasks.slice(0, 15))}
+- Modelos Image Girls (${activeModels.length}): ${JSON.stringify(activeModels.slice(0, 5))}
+- Promotores (${activePromoters.length}): ${JSON.stringify(activePromoters.slice(0, 5))}
+
+${buildJarvisBrainContext(db)}
+
+${userMemoryBlock()}
+
+[BASE RAG DE CONOCIMIENTO — lo más relevante para este mensaje: conversaciones con ChatGPT, proyectos, tareas y memorias]:
+${ragContext || 'Información de la base de datos local y memoria operativa activa.'}
+
+${systemRole || ''}${agent === 'jarvis' ? `\n\n${buildJarvisAgentPrompt(db, { voice: !!voice, prompt })}` : `\n\n[FECHA ACTUAL (Panamá)]: ${todayInPanama().human}`}`;
+}
+
+// Herramientas que el agente puede ejecutar sobre el dashboard
+const OPENCLAW_TOOL_DECLARATIONS = [
+    {
+        functionDeclarations: [
+            {
+                name: "batch_add_tasks",
+                description: "Crea múltiples tareas simultáneamente a partir de una nota de voz, lista de pendientes o plan semanal de ARRIVE Agency",
+                parameters: {
+                    type: "OBJECT",
+                    properties: {
+                        tasks: {
+                            type: "ARRAY",
+                            description: "Lista de tareas estructuradas",
+                            items: {
+                                type: "OBJECT",
+                                properties: {
+                                    text: { type: "STRING", description: "Descripción clara de la tarea" },
+                                    priority: { type: "STRING", enum: ["critical", "high", "medium", "low"], description: "Prioridad" },
+                                    venue: { type: "STRING", description: "Locación o división (ej: Terraplén Rooftop, Furia Panamá, Primavera Club, Piano Bar Casco, ARRIVE Services, ARRIVE Studio, ARRIVE Models)" },
+                                    assignee: { type: "STRING", description: "Responsable asignado: Gabriel (Dir. General), Mario (Director Creativo), Suira (Lead Filmmaker), Joshua (Operations Lead), Dalia (Asistente Ejecutiva/Secretaria)" },
+                                    dueDate: { type: "STRING", description: "Fecha límite en formato YYYY-MM-DD" },
+                                    projectId: { type: "STRING", description: "ID del proyecto relacionado si aplica" },
+                                    tag: { type: "STRING", description: "Tag temático (ej: #Nightlife, #Bodas, #Podcast, #Producción)" }
+                                },
+                                required: ["text"]
+                            }
+                        }
+                    },
+                    required: ["tasks"]
+                }
+            },
+            {
+                name: "add_task",
+                description: "Crea una nueva tarea en el Dashboard de eventos y operaciones",
+                parameters: {
+                    type: "OBJECT",
+                    properties: {
+                        text: { type: "STRING", description: "Descripción clara de la tarea" },
+                        priority: { type: "STRING", enum: ["critical", "high", "medium", "low"], description: "Nivel de prioridad" },
+                        venue: { type: "STRING", description: "Locación o división (ej: Terraplén Rooftop, Furia Panamá, Piano Bar, Wedding Content, Podcast On-The-Go)" },
+                        assignee: { type: "STRING", description: "Responsable asignado: Gabriel (Dir. General), Mario (Director Creativo), Suira (Lead Filmmaker), Joshua (Operations Lead), Dalia (Asistente/Secretaria)" },
+                        dueDate: { type: "STRING", description: "Fecha límite (YYYY-MM-DD)" },
+                        projectId: { type: "STRING", description: "ID de proyecto opcional" }
+                    },
+                    required: ["text"]
+                }
+            },
+            {
+                name: "update_task",
+                description: "Actualiza el estado, prioridad, fecha límite o responsable de una tarea existente",
+                parameters: {
+                    type: "OBJECT",
+                    properties: {
+                        query: { type: "STRING", description: "Nombre o palabra clave de la tarea a actualizar" },
+                        status: { type: "STRING", enum: ["pending", "in_progress", "done"], description: "Nuevo estado" },
+                        priority: { type: "STRING", enum: ["critical", "high", "medium", "low"], description: "Nueva prioridad" },
+                        assignee: { type: "STRING", description: "Nuevo responsable" },
+                        dueDate: { type: "STRING", description: "Nueva fecha límite (YYYY-MM-DD)" }
+                    },
+                    required: ["query"]
+                }
+            },
+            {
+                name: "complete_task",
+                description: "Marca una tarea existente como completada",
+                parameters: {
+                    type: "OBJECT",
+                    properties: {
+                        text: { type: "STRING", description: "Nombre o palabra clave de la tarea a marcar como completada" }
+                    },
+                    required: ["text"]
+                }
+            },
+            {
+                name: "create_event",
+                description: "Agenda un nuevo evento en el calendario y base de eventos",
+                parameters: {
+                    type: "OBJECT",
+                    properties: {
+                        name: { type: "STRING", description: "Nombre del evento" },
+                        date: { type: "STRING", description: "Fecha en formato YYYY-MM-DD" },
+                        location: { type: "STRING", description: "Ubicación del evento (Terraplén, Furia, Primavera, Piano Bar, etc.)" },
+                        budget: { type: "STRING", description: "Presupuesto estimado en USD" },
+                        description: { type: "STRING", description: "Detalles del evento" }
+                    },
+                    required: ["name"]
+                }
+            },
+            {
+                name: "create_project",
+                description: "Crea un nuevo proyecto en el Command Center",
+                parameters: {
+                    type: "OBJECT",
+                    properties: {
+                        name: { type: "STRING", description: "Nombre del proyecto" },
+                        description: { type: "STRING", description: "Objetivo y descripción del proyecto" },
+                        category: { type: "STRING", description: "agency, software, business, marketing o eventos" }
+                    },
+                    required: ["name"]
+                }
+            },
+            {
+                name: "create_client_post",
+                description: "Programa o propone una publicación o Reel para una marca de ARRIVE Agency",
+                parameters: {
+                    type: "OBJECT",
+                    properties: {
+                        clientName: { type: "STRING", description: "Nombre de la marca (ej: Terraplén Rooftop, Furia Panamá, Piano Bar)" },
+                        title: { type: "STRING", description: "Concepto del post o reel" },
+                        format: { type: "STRING", enum: ["Reel 9:16", "Carrusel HD", "Story Seq", "TikTok / UGC"], description: "Formato" },
+                        hook: { type: "STRING", description: "Gancho viral" },
+                        caption: { type: "STRING", description: "Copy sugerido" }
+                    },
+                    required: ["clientName", "title"]
+                }
+            },
+            {
+                name: "control_music",
+                description: "Controla el reproductor y sintetizador de audio de Jarvis para ambientar oficinas, focus time o eventos en Casco Antiguo",
+                parameters: {
+                    type: "OBJECT",
+                    properties: {
+                        action: { type: "STRING", enum: ["play", "pause", "stop"], description: "Acción de reproducción" },
+                        preset: { type: "STRING", enum: ["deep_focus", "casco_sunset", "furia", "lofi", "speakeasy_jazz"], description: "Preset musical seleccionado" },
+                        volume: { type: "NUMBER", description: "Volumen del audio (0 a 100)" }
+                    },
+                    required: ["action"]
+                }
+            },
+            {
+                name: "order_food",
+                description: "Arma y coordina un pedido de comida o catering para el equipo en Casco Antiguo / Panamá",
+                parameters: {
+                    type: "OBJECT",
+                    properties: {
+                        restaurant: { type: "STRING", description: "Restaurante (Sushi Market Casco, Café Unido Casco, Tacos La Neta, Makoto Panama VIP, American Bites)" },
+                        items: { type: "ARRAY", items: { type: "STRING" }, description: "Platos o ítems solicitados" },
+                        diners: { type: "ARRAY", items: { type: "STRING" }, description: "Miembros del equipo para quienes es la comida (Gabriel, Joshua, Suira, Mario, Dalia)" },
+                        notes: { type: "STRING", description: "Indicaciones especiales de entrega o preparación" }
+                    },
+                    required: ["restaurant"]
+                }
+            },
+            {
+                name: "execute_jarvis_skill",
+                description: "Ejecuta una macro o habilidad automatizada previamente aprendida por Jarvis",
+                parameters: {
+                    type: "OBJECT",
+                    properties: {
+                        skillNameOrTrigger: { type: "STRING", description: "Nombre o disparador de la habilidad aprendida (ej: 'sunset casco', 'deep focus', 'pedir almuerzo')" }
+                    },
+                    required: ["skillNameOrTrigger"]
+                }
+            }
+        ]
+    }
+];
+
 // Modelos de Gemini saturados o colgados: se saltan 2 minutos para no esperar su timeout en cada mensaje
 const modelCooldown = new Map();
 function isModelCoolingDown(model) {
@@ -2893,84 +3286,12 @@ async function handleOpenClawChat(req, res) {
     // Inyectar RAG Knowledge
     let ragContext = '';
     const ragEngine = req.app.get('ragEngine') || EmbeddedRAGEngine;
-    const ragSearchResult = ragEngine.query(prompt, namespace, 4);
+    const ragSearchResult = await ragEngine.query(prompt, 5, history, namespace).catch(() => null);
     if (ragSearchResult && ragSearchResult.sources && ragSearchResult.sources.length > 0) {
         ragContext = ragSearchResult.context;
     }
 
-    // Inyectar Contexto Operativo en Tiempo Real
-    const liveProjects = (db.projects || []).map(p => ({ id: p.id, name: p.name, status: p.status, priority: p.priority, lead: p.leadAgent || p.lead }));
-    const liveEvents = (db.events || []).map(e => ({ id: e.id, name: e.name, date: e.date, status: e.status, location: e.location, budget: e.budget }));
-    const allPendingTasks = (db.tasks || []).filter(t => !t.done);
-    const pendingTasks = allPendingTasks.slice(0, 30).map(t => ({ id: t.id, text: t.text || t.title, priority: t.priority, venue: t.venue || t.category, due: t.due || t.dueDate, assignedTo: t.assignedTo || t.assignee }));
-    const activeModels = (db.imageGirls || []).slice(0, 10).map(m => ({ id: m.id, name: m.name, status: m.status, category: m.category }));
-    const activePromoters = (db.promoters || []).slice(0, 10).map(p => ({ id: p.id, name: p.name, venue: p.venue, status: p.status }));
-
-    // Inyectar Clientes y Marcas de ARRIVE Agency
-    const arriveClients = (db.projects || []).filter(p => p.agency === 'arrive' || p.isClient || p.id?.startsWith('client-')).map(c => ({
-        id: c.id,
-        name: c.name,
-        industry: c.industry || 'Marca',
-        slogan: c.slogan || '',
-        lead: c.lead || 'GG',
-        tone: c.brand?.toneOfVoice || '',
-        dos: c.brand?.dos || '',
-        donts: c.brand?.donts || ''
-    }));
-
-    const systemMessageContent = `Eres el Asistente Ejecutivo Super Pro y Director de Operaciones AI de ARRIVE Agency & Command Center (asistente de confianza de GG).
-Tienes conocimiento total y absoluto de todas las operaciones, eventos, negocios, servicios y equipo de ARRIVE.
-
-[IDENTIDAD Y ROL]:
-- Actúas como un Chief of Staff de alto nivel: ejecutivo, proactivo, ultra organizado, con pensamiento estratégico y ejecución instantánea.
-- Respondes en español impecable, con tono seguro, moderno, ejecutivo y orientado a resultados.
-
-[LOS 4 VENUES Y LOCACIONES CLAVE DE ARRIVE]:
-1. Terraplén Rooftop (Casco Antiguo): Coctelería de autor, sunsets, gastronomía fusión, vibes sofisticadas y exclusivas.
-2. Furia Panamá: High-energy dinner party & nightclub, botellería premium, DJs internacionales y locales, fiesta de alto voltaje.
-3. Primavera Club: Social club chic, terraza, coctelería botánica, atardeceres y eventos lifestyle.
-4. Piano Bar Casco: Speakeasy íntimo en Casco Antiguo, coctelería clásica y jazz/house elegante.
-
-[NUEVAS LÍNEAS DE NEGOCIO Y EXPANSIÓN DE ARRIVE]:
-- Wedding Content Creation: Cobertura de bodas en tiempo real con iPhones/cámaras profesionales, entrega de Reels y TikToks la misma noche, contenido behind-the-scenes para novias exclusivas.
-- Podcast On-The-Go / Live Podcasting: Estudio móvil de podcasting que se traslada a eventos, bodas, marcas y rooftops con micrófonos y cámaras multi-ángulo.
-- ARRIVE Models & Image Girls: Casting, convocatorias de cenas VIP para chicas en restaurantes/rooftops, embajadoras de marca y hospitality VIP.
-
-[ESTRUCTURA DEL EQUIPO ASIGNABLE]:
-- GG (Director General de la Agencia / Estrategia Máxima)
-- Mateo L. (Operations Lead / Logística y Planificación de Tareas)
-- Gabriel G. (Director Creativo / Content & Pitch Decks)
-- Andrés V. (Lead Filmmaker / Producción Audiovisual y Podcast On-The-Go)
-- Fanny (Lead de Modelos, Image Girls y Castings)
-- Joshua (Producción Técnica, Montajes y Logística)
-- Mario (Coordinación de Eventos y Hospitalidad de Venues)
-- Andrea (Estrategia Creativa y Redes Sociales)
-- Jeikob (Sonido, Audio y Grabación)
-- Fivvr (Diseño Externo y Edición de Apoyo)
-
-[DIRECTIVA CRÍTICA PARA NOTAS DE VOZ Y TAREAS MÚLTIPLES]:
-Cuando el usuario te hable, te dicte una nota de voz o te escriba una lista de pendientes para la semana (por ejemplo: "Para esta semana necesitamos: 1. Confirmar DJ de Furia, 2. Cotizar flores para Terraplén, 3. Coordinar modelos con Fanny, 4. Grabar tomas para Wedding Content"):
-1. Procesa cada elemento individualmente.
-2. Infiere la prioridad correcta ('critical', 'high', 'medium', 'low').
-3. Identifica la locación o división correspondiente ('Furia Panamá', 'Terraplén Rooftop', 'Primavera Club', 'Piano Bar Casco', 'ARRIVE Services', 'ARRIVE Studio', 'ARRIVE Models').
-4. Asigna al miembro del equipo más adecuado.
-5. Infiere o calcula la fecha límite adecuada (YYYY-MM-DD).
-6. EJECUTA SIEMPRE el tool 'batch_add_tasks' o 'add_task' para que se guarden en la base de datos de inmediato.
-7. Presenta un reporte ejecutivo estructurado confirmando todas las tareas agendadas y los próximos pasos.
-
-[ESTADO EN TIEMPO REAL DEL DASHBOARD]:
-- Eventos Programados (${liveEvents.length}): ${JSON.stringify(liveEvents.slice(0, 8))}
-- Proyectos Activos (${liveProjects.length}): ${JSON.stringify(liveProjects)}
-- Tareas Pendientes en Cola (${allPendingTasks.length} en total; muestra de las primeras 15): ${JSON.stringify(pendingTasks.slice(0, 15))}
-- Modelos Image Girls (${activeModels.length}): ${JSON.stringify(activeModels.slice(0, 5))}
-- Promotores (${activePromoters.length}): ${JSON.stringify(activePromoters.slice(0, 5))}
-
-${buildJarvisBrainContext(db)}
-
-[BASE RAG DE CONOCIMIENTO]:
-${ragContext || 'Información de la base de datos local y memoria operativa activa.'}
-
-${systemRole || ''}${agent === 'jarvis' ? `\n\n${buildJarvisAgentPrompt(db, { voice: !!voice, prompt })}` : `\n\n[FECHA ACTUAL (Panamá)]: ${todayInPanama().human}`}`;
+    const systemMessageContent = buildAgentSystemPrompt(db, { ragContext, systemRole, agent, voice, prompt });
 
     // ─── 1. INTEGRACIÓN CON GOOGLE GEMINI (Multi-Model Resiliente con Fast Fallback) ───
     if (geminiApiKey) {
@@ -2997,162 +3318,7 @@ ${systemRole || ''}${agent === 'jarvis' ? `\n\n${buildJarvisAgentPrompt(db, { vo
             }
         ];
 
-        const toolsDeclaration = [
-            {
-                functionDeclarations: [
-                    {
-                        name: "batch_add_tasks",
-                        description: "Crea múltiples tareas simultáneamente a partir de una nota de voz, lista de pendientes o plan semanal de ARRIVE Agency",
-                        parameters: {
-                            type: "OBJECT",
-                            properties: {
-                                tasks: {
-                                    type: "ARRAY",
-                                    description: "Lista de tareas estructuradas",
-                                    items: {
-                                        type: "OBJECT",
-                                        properties: {
-                                            text: { type: "STRING", description: "Descripción clara de la tarea" },
-                                            priority: { type: "STRING", enum: ["critical", "high", "medium", "low"], description: "Prioridad" },
-                                            venue: { type: "STRING", description: "Locación o división (ej: Terraplén Rooftop, Furia Panamá, Primavera Club, Piano Bar Casco, ARRIVE Services, ARRIVE Studio, ARRIVE Models)" },
-                                            assignee: { type: "STRING", description: "Responsable asignado (ej: Mateo L., Gabriel G., Andrés V., Fanny, Joshua, Mario, Andrea, Jeikob, GG)" },
-                                            dueDate: { type: "STRING", description: "Fecha límite en formato YYYY-MM-DD" },
-                                            projectId: { type: "STRING", description: "ID del proyecto relacionado si aplica" },
-                                            tag: { type: "STRING", description: "Tag temático (ej: #Nightlife, #Bodas, #Podcast, #Producción)" }
-                                        },
-                                        required: ["text"]
-                                    }
-                                }
-                            },
-                            required: ["tasks"]
-                        }
-                    },
-                    {
-                        name: "add_task",
-                        description: "Crea una nueva tarea en el Dashboard de eventos y operaciones",
-                        parameters: {
-                            type: "OBJECT",
-                            properties: {
-                                text: { type: "STRING", description: "Descripción clara de la tarea" },
-                                priority: { type: "STRING", enum: ["critical", "high", "medium", "low"], description: "Nivel de prioridad" },
-                                venue: { type: "STRING", description: "Locación o división (ej: Terraplén Rooftop, Furia Panamá, Piano Bar, Wedding Content, Podcast On-The-Go)" },
-                                assignee: { type: "STRING", description: "Responsable asignado: Mateo L., Gabriel G., Andrés V., Fanny, Joshua, Mario, Andrea, Jeikob, GG" },
-                                dueDate: { type: "STRING", description: "Fecha límite (YYYY-MM-DD)" },
-                                projectId: { type: "STRING", description: "ID de proyecto opcional" }
-                            },
-                            required: ["text"]
-                        }
-                    },
-                    {
-                        name: "update_task",
-                        description: "Actualiza el estado, prioridad, fecha límite o responsable de una tarea existente",
-                        parameters: {
-                            type: "OBJECT",
-                            properties: {
-                                query: { type: "STRING", description: "Nombre o palabra clave de la tarea a actualizar" },
-                                status: { type: "STRING", enum: ["pending", "in_progress", "done"], description: "Nuevo estado" },
-                                priority: { type: "STRING", enum: ["critical", "high", "medium", "low"], description: "Nueva prioridad" },
-                                assignee: { type: "STRING", description: "Nuevo responsable" },
-                                dueDate: { type: "STRING", description: "Nueva fecha límite (YYYY-MM-DD)" }
-                            },
-                            required: ["query"]
-                        }
-                    },
-                    {
-                        name: "complete_task",
-                        description: "Marca una tarea existente como completada",
-                        parameters: {
-                            type: "OBJECT",
-                            properties: {
-                                text: { type: "STRING", description: "Nombre o palabra clave de la tarea a marcar como completada" }
-                            },
-                            required: ["text"]
-                        }
-                    },
-                    {
-                        name: "create_event",
-                        description: "Agenda un nuevo evento en el calendario y base de eventos",
-                        parameters: {
-                            type: "OBJECT",
-                            properties: {
-                                name: { type: "STRING", description: "Nombre del evento" },
-                                date: { type: "STRING", description: "Fecha en formato YYYY-MM-DD" },
-                                location: { type: "STRING", description: "Ubicación del evento (Terraplén, Furia, Primavera, Piano Bar, etc.)" },
-                                budget: { type: "STRING", description: "Presupuesto estimado en USD" },
-                                description: { type: "STRING", description: "Detalles del evento" }
-                            },
-                            required: ["name"]
-                        }
-                    },
-                    {
-                        name: "create_project",
-                        description: "Crea un nuevo proyecto en el Command Center",
-                        parameters: {
-                            type: "OBJECT",
-                            properties: {
-                                name: { type: "STRING", description: "Nombre del proyecto" },
-                                description: { type: "STRING", description: "Objetivo y descripción del proyecto" },
-                                category: { type: "STRING", description: "agency, software, business, marketing o eventos" }
-                            },
-                            required: ["name"]
-                        }
-                    },
-                    {
-                        name: "create_client_post",
-                        description: "Programa o propone una publicación o Reel para una marca de ARRIVE Agency",
-                        parameters: {
-                            type: "OBJECT",
-                            properties: {
-                                clientName: { type: "STRING", description: "Nombre de la marca (ej: Terraplén Rooftop, Furia Panamá, Piano Bar)" },
-                                title: { type: "STRING", description: "Concepto del post o reel" },
-                                format: { type: "STRING", enum: ["Reel 9:16", "Carrusel HD", "Story Seq", "TikTok / UGC"], description: "Formato" },
-                                hook: { type: "STRING", description: "Gancho viral" },
-                                caption: { type: "STRING", description: "Copy sugerido" }
-                            },
-                            required: ["clientName", "title"]
-                        }
-                    },
-                    {
-                        name: "control_music",
-                        description: "Controla el reproductor y sintetizador de audio de Jarvis para ambientar oficinas, focus time o eventos en Casco Antiguo",
-                        parameters: {
-                            type: "OBJECT",
-                            properties: {
-                                action: { type: "STRING", enum: ["play", "pause", "stop"], description: "Acción de reproducción" },
-                                preset: { type: "STRING", enum: ["deep_focus", "casco_sunset", "furia", "lofi", "speakeasy_jazz"], description: "Preset musical seleccionado" },
-                                volume: { type: "NUMBER", description: "Volumen del audio (0 a 100)" }
-                            },
-                            required: ["action"]
-                        }
-                    },
-                    {
-                        name: "order_food",
-                        description: "Arma y coordina un pedido de comida o catering para el equipo en Casco Antiguo / Panamá",
-                        parameters: {
-                            type: "OBJECT",
-                            properties: {
-                                restaurant: { type: "STRING", description: "Restaurante (Sushi Market Casco, Café Unido Casco, Tacos La Neta, Makoto Panama VIP, American Bites)" },
-                                items: { type: "ARRAY", items: { type: "STRING" }, description: "Platos o ítems solicitados" },
-                                diners: { type: "ARRAY", items: { type: "STRING" }, description: "Miembros del equipo para quienes es la comida (GG, Mateo, Gabriel, etc.)" },
-                                notes: { type: "STRING", description: "Indicaciones especiales de entrega o preparación" }
-                            },
-                            required: ["restaurant"]
-                        }
-                    },
-                    {
-                        name: "execute_jarvis_skill",
-                        description: "Ejecuta una macro o habilidad automatizada previamente aprendida por Jarvis",
-                        parameters: {
-                            type: "OBJECT",
-                            properties: {
-                                skillNameOrTrigger: { type: "STRING", description: "Nombre o disparador de la habilidad aprendida (ej: 'sunset casco', 'deep focus', 'pedir almuerzo')" }
-                            },
-                            required: ["skillNameOrTrigger"]
-                        }
-                    }
-                ]
-            }
-        ];
+        const toolsDeclaration = OPENCLAW_TOOL_DECLARATIONS;
 
         for (const modelName of candidateModels) {
             try {
@@ -3304,15 +3470,12 @@ ${systemRole || ''}${agent === 'jarvis' ? `\n\n${buildJarvisAgentPrompt(db, { vo
             }
 
             // Detectar responsable
-            let assignee = 'Mateo L. (Operations Lead)';
-            if (lineLower.includes('fanny') || division === 'models') assignee = 'Fanny (Models & Castings)';
-            else if (lineLower.includes('andrés') || lineLower.includes('andres') || lineLower.includes('video') || division === 'studio') assignee = 'Andrés V. (Lead Filmmaker)';
-            else if (lineLower.includes('gabriel') || lineLower.includes('deck') || lineLower.includes('creativ')) assignee = 'Gabriel G. (Director Creativo)';
-            else if (lineLower.includes('joshua') || lineLower.includes('sonido') || lineLower.includes('montaje')) assignee = 'Joshua (Producción & Tech)';
-            else if (lineLower.includes('mario') || lineLower.includes('hospitalidad')) assignee = 'Mario (Event Coordination)';
-            else if (lineLower.includes('andrea') || lineLower.includes('redes') || lineLower.includes('post')) assignee = 'Andrea (Creative Strategy)';
-            else if (lineLower.includes('jeikob') || lineLower.includes('audio')) assignee = 'Jeikob (Audio Lead)';
-            else if (lineLower.includes('gg')) assignee = 'GG (Director General)';
+            let assignee = 'Joshua (Operations Lead)';
+            if (lineLower.includes('suira') || lineLower.includes('video') || lineLower.includes('film') || lineLower.includes('camara') || lineLower.includes('cámara') || lineLower.includes('edicion') || lineLower.includes('edición') || lineLower.includes('montaje') || lineLower.includes('recap') || lineLower.includes('tomas') || division === 'studio') assignee = 'Suira (Lead Filmmaker)';
+            else if (lineLower.includes('mario') || lineLower.includes('creativ') || lineLower.includes('deck') || lineLower.includes('pitch') || lineLower.includes('diseño') || lineLower.includes('diseno') || lineLower.includes('branding') || lineLower.includes('concepto')) assignee = 'Mario (Director Creativo)';
+            else if (lineLower.includes('dalia') || lineLower.includes('delia') || lineLower.includes('asistente') || lineLower.includes('secretaria') || lineLower.includes('agenda') || lineLower.includes('minuta') || lineLower.includes('reserva') || lineLower.includes('compra')) assignee = 'Dalia (Asistente Ejecutiva)';
+            else if (lineLower.includes('joshua') || lineLower.includes('operacion') || lineLower.includes('logistica') || lineLower.includes('factura') || lineLower.includes('retainer') || lineLower.includes('proveedor')) assignee = 'Joshua (Operations Lead)';
+            else if (lineLower.includes('gabriel') || lineLower.includes('alianza') || lineLower.includes('negocio') || lineLower.includes('contrato') || lineLower.includes('direccion') || lineLower.includes('visión')) assignee = 'Gabriel (Director General)';
 
             // Detectar prioridad
             let priority = 'medium';
@@ -3421,10 +3584,10 @@ ${nextEvents.map(e => `- **${e.name}** | 📍 ${e.location || 'Panamá'} | 📅 
         const newTask = executeOpenClawAction('add_task', {
             text,
             priority: pLower.includes('alta') || pLower.includes('urgente') ? 'high' : 'medium',
-            assignedTo: 'Mateo L. (Operations Lead)'
+            assignedTo: 'Joshua (Operations Lead)'
         }, db);
         executedTools.push({ name: 'add_task', args: { text }, result: newTask });
-        replyText = `📋 **Tarea registrada**: "${newTask.task.text}". Agregada a la lista de pendientes y asignada al equipo de operaciones.`;
+        replyText = `📋 **Tarea registrada**: "${newTask.task.text}". Agregada a la lista de pendientes y asignada a Joshua (Operations Lead).`;
 
     } else if (!replyText && (pLower.includes('musica') || pLower.includes('música') || pLower.includes('play') || pLower.includes('pon musica') || pLower.includes('pon música') || pLower.includes('techno') || pLower.includes('sunset') || pLower.includes('lofi') || pLower.includes('jazz') || pLower.includes('pausa') || pLower.includes('volumen'))) {
         const action = (pLower.includes('pausa') || pLower.includes('deten') || pLower.includes('stop') || pLower.includes('mute')) ? 'pause' : 'play';
@@ -3473,7 +3636,7 @@ ${nextEvents.map(e => `- **${e.name}** | 📍 ${e.location || 'Panamá'} | 📅 
             sampleItems = ['2x Double Bacon Cheddar Smash', '1x Truffle Parm Fries', '2x Milkshake de Vainilla'];
         }
 
-        const diners = ['GG', 'Mateo L. (Operations)', 'Gabriel G. (Creative)'];
+        const diners = ['Gabriel', 'Joshua', 'Suira', 'Mario', 'Dalia'];
         const foodRes = executeOpenClawAction('order_food', {
             restaurant,
             items: sampleItems,
@@ -3838,6 +4001,551 @@ Sé claro, completo y usa markdown para formatear.`;
     }
 });
 
+// ─── AI OFFICE HQ & COMMAND CENTER API ──────────────────────────────
+const DEFAULT_OFFICE_AGENTS = [
+    {
+        id: 'agent-bart',
+        name: 'BART (COO)',
+        role: 'Chief Operating Officer & Head Orchestrator',
+        departmentId: 'dept-executive',
+        hierarchy: 'executive',
+        avatar: '👔',
+        stationId: 'desk-bart',
+        model: 'gemini-2.5-flash',
+        autonomyLevel: 4,
+        skills: ['orchestration', 'task_decomposition', 'qa_verification', 'rag_synthesis', 'budget_guardrails'],
+        tools: ['browser_exec', 'rag_search', 'db_write', 'inbox_dispatch'],
+        status: 'available',
+        metrics: { tasksCompleted: 142, successRate: 98.5, avgResponseTimeMs: 420, totalTokensConsumed: 124500 }
+    },
+    {
+        id: 'agent-nexus',
+        name: 'Nexus (Marketing)',
+        role: 'Director de Crecimiento & Ads',
+        departmentId: 'dept-marketing',
+        hierarchy: 'director',
+        avatar: '🚀',
+        stationId: 'desk-nexus',
+        model: 'gemini-2.5-flash',
+        autonomyLevel: 2,
+        skills: ['ad_strategy', 'meta_ads', 'funnel_analytics', 'growth_hacking'],
+        tools: ['meta_ads_api', 'google_analytics', 'rag_search'],
+        status: 'available',
+        metrics: { tasksCompleted: 87, successRate: 96.0, avgResponseTimeMs: 510, totalTokensConsumed: 98200 }
+    },
+    {
+        id: 'agent-echo',
+        name: 'Echo (Social)',
+        role: 'Social Media & Viral Content Specialist',
+        departmentId: 'dept-creative',
+        hierarchy: 'specialist',
+        avatar: '🎬',
+        stationId: 'desk-echo',
+        model: 'gemini-2.5-flash',
+        autonomyLevel: 2,
+        skills: ['reels_scripting', 'tiktok_hooks', 'copywriting', 'storytelling'],
+        tools: ['contentStudio', 'youtube_transcript', 'rag_search'],
+        status: 'available',
+        metrics: { tasksCompleted: 114, successRate: 97.4, avgResponseTimeMs: 480, totalTokensConsumed: 89400 }
+    },
+    {
+        id: 'agent-atlas',
+        name: 'Atlas (Logistics)',
+        role: 'Operations & Venues Logistics Lead',
+        departmentId: 'dept-operations',
+        hierarchy: 'director',
+        avatar: '📦',
+        stationId: 'desk-atlas',
+        model: 'gemini-2.5-flash',
+        autonomyLevel: 2,
+        skills: ['venue_operations', 'inventory_management', 'promoter_dispatch', 'scheduling'],
+        tools: ['gcal_api', 'db_write', 'rag_search'],
+        status: 'available',
+        metrics: { tasksCompleted: 95, successRate: 99.1, avgResponseTimeMs: 390, totalTokensConsumed: 62100 }
+    },
+    {
+        id: 'agent-closerops',
+        name: 'CloserOps (Sales)',
+        role: 'High-Ticket & VIP Tables Relations',
+        departmentId: 'dept-sales',
+        hierarchy: 'specialist',
+        avatar: '💎',
+        stationId: 'desk-closerops',
+        model: 'gemini-2.5-flash',
+        autonomyLevel: 2,
+        skills: ['crm_closing', 'vip_tables_booking', 'negotiation', 'lead_qualification'],
+        tools: ['whatsapp_api', 'crm_contacts', 'rag_search'],
+        status: 'available',
+        metrics: { tasksCompleted: 73, successRate: 94.2, avgResponseTimeMs: 550, totalTokensConsumed: 71300 }
+    },
+    {
+        id: 'agent-scout',
+        name: 'Scout (Sourcing)',
+        role: 'Procurement & Supplier Intelligence',
+        departmentId: 'dept-intel',
+        hierarchy: 'specialist',
+        avatar: '🔍',
+        stationId: 'desk-scout',
+        model: 'gemini-2.5-flash',
+        autonomyLevel: 1,
+        skills: ['vendor_pricing', 'quotation_comparison', 'market_scraping'],
+        tools: ['browser_exec', 'pdf_parse', 'rag_search'],
+        status: 'available',
+        metrics: { tasksCompleted: 58, successRate: 95.8, avgResponseTimeMs: 620, totalTokensConsumed: 54000 }
+    },
+    {
+        id: 'agent-sentinel',
+        name: 'Sentinel (Analyst)',
+        role: 'Tenders & Competitive Intelligence Analyst',
+        departmentId: 'dept-intel',
+        hierarchy: 'specialist',
+        avatar: '🛡️',
+        stationId: 'desk-sentinel',
+        model: 'gemini-2.5-flash',
+        autonomyLevel: 1,
+        skills: ['panamacompra_scraping', 'tender_evaluation', 'compliance_audit'],
+        tools: ['browser_exec', 'pdf_parse', 'rag_search'],
+        status: 'available',
+        metrics: { tasksCompleted: 64, successRate: 98.0, avgResponseTimeMs: 590, totalTokensConsumed: 68900 }
+    },
+    {
+        id: 'agent-pulse',
+        name: 'Pulse (Community)',
+        role: 'Community Lead & Multi-Channel Broadcast',
+        departmentId: 'dept-community',
+        hierarchy: 'specialist',
+        avatar: '⚡',
+        stationId: 'desk-pulse',
+        model: 'gemini-2.5-flash',
+        autonomyLevel: 2,
+        skills: ['whatsapp_broadcast', 'instagram_broadcast', 'tiktok_dm', 'promoter_tracking'],
+        tools: ['whatsapp_api', 'broadcast_service', 'rag_search'],
+        status: 'available',
+        metrics: { tasksCompleted: 156, successRate: 98.9, avgResponseTimeMs: 340, totalTokensConsumed: 91200 }
+    },
+    {
+        id: 'agent-antigravity',
+        name: 'Antigravity (Engineer)',
+        role: 'Lead Software Architect & UI Engineer',
+        departmentId: 'dept-tech',
+        hierarchy: 'director',
+        avatar: '⚡',
+        stationId: 'desk-antigravity',
+        model: 'gemini-2.5-flash',
+        autonomyLevel: 3,
+        skills: ['react_architecture', 'vite_bundler', 'tailwind_glassmorphism', 'api_design'],
+        tools: ['fs_write', 'git_exec', 'inbox_watcher'],
+        status: 'available',
+        metrics: { tasksCompleted: 189, successRate: 99.5, avgResponseTimeMs: 290, totalTokensConsumed: 184000 }
+    }
+];
+
+const DEFAULT_OFFICE_DEPARTMENTS = [
+    { id: 'dept-executive', name: 'Dirección General & Estrategia', color: '#3b82f6', leadAgentId: 'agent-bart', description: 'Orquestación macro, prioridades de negocio y supervisión de COO.' },
+    { id: 'dept-creative', name: 'Creative Studio & Contenido', color: '#ec4899', leadAgentId: 'agent-echo', description: 'Desarrollo de guiones, hooks de video y dirección artística.' },
+    { id: 'dept-marketing', name: 'Marketing & Crecimiento', color: '#f59e0b', leadAgentId: 'agent-nexus', description: 'Tráfico pago, performance, embudos y campañas de lanzamiento.' },
+    { id: 'dept-operations', name: 'Operaciones & Venues', color: '#10b981', leadAgentId: 'agent-atlas', description: 'Logística de venues (Terraplén, Furia, Piano Bar, HangOut) y eventos.' },
+    { id: 'dept-sales', name: 'Ventas VIP & CRM', color: '#8b5cf6', leadAgentId: 'agent-closerops', description: 'Mesas VIP, reservas corporativas y seguimiento de clientes clave.' },
+    { id: 'dept-intel', name: 'Inteligencia & Sourcing', color: '#6366f1', leadAgentId: 'agent-scout', description: 'Cotizaciones con proveedores, análisis de mercado y licitaciones.' },
+    { id: 'dept-community', name: 'Difusión & Comunidades', color: '#22c55e', leadAgentId: 'agent-pulse', description: 'Mensajería masiva en WhatsApp, Instagram Broadcast y TikTok.' },
+    { id: 'dept-tech', name: 'Ingeniería & Software Lab', color: '#06b6d4', leadAgentId: 'agent-antigravity', description: 'Desarrollo de producto digital, frontend React y automatizaciones.' }
+];
+
+const DEFAULT_OFFICE_ROOMS = [
+    { id: 'room-reception', name: 'Recepción & Intake', code: 'REC-01', color: '#64748b', icon: '🛎️', desc: 'Ingreso de nuevos proyectos, briefs y misiones del CEO' },
+    { id: 'room-ceo', name: 'Despacho Privado del CEO', code: 'CEO-01', color: '#eab308', icon: '👑', desc: 'Command Center corporativo, métricas ejecutivas y Kill Switch' },
+    { id: 'room-executive', name: 'Executive Suite (BART COO)', code: 'COO-01', color: '#3b82f6', icon: '👔', desc: 'Orquestación en vivo, triaje y supervisión de departamentos' },
+    { id: 'room-meeting', name: 'War Room / Sala de Juntas', code: 'CONF-01', color: '#8b5cf6', icon: '🤝', desc: 'Deliberación multiagente, estrategia y sincronización general' },
+    { id: 'room-creative', name: 'Creative & Content Studio', code: 'CRT-01', color: '#ec4899', icon: '🎬', desc: 'Guiones de video, storytelling y assets visuales' },
+    { id: 'room-marketing', name: 'Marketing & Growth Hub', code: 'MKT-01', color: '#f59e0b', icon: '🚀', desc: 'Estrategia de lanzamiento, ads y adquisición de clientes' },
+    { id: 'room-operations', name: 'Operations & Venues Center', code: 'OPS-01', color: '#10b981', icon: '📦', desc: 'Coordinación de venues nocturnos, cenas VIP y suministros' },
+    { id: 'room-sales', name: 'VIP Sales & CRM Lounge', code: 'SLS-01', color: '#a855f7', icon: '💎', desc: 'Cierre de mesas VIP, patrocinios y relaciones institucionales' },
+    { id: 'room-community', name: 'Centro de Difusión Multicanal', code: 'DIF-01', color: '#22c55e', icon: '⚡', desc: 'WhatsApp 1:1, Grupos, Canales de IG, DMs y TikTok' },
+    { id: 'room-tech', name: 'Engineering & Software Lab', code: 'DEV-01', color: '#06b6d4', icon: '💻', desc: 'Desarrollo frontend, arquitectura de componentes e integraciones' },
+    { id: 'room-server', name: 'Server Room & MCP Gateway', code: 'SRV-01', color: '#ef4444', icon: '🖥️', desc: 'Servidores backend, workers de OpenClaw y protocolos MCP' },
+    { id: 'room-library', name: 'Knowledge Library & BrainVault', code: 'LIB-01', color: '#38bdf8', icon: '📚', desc: 'Memoria corporativa, RAG, Playbooks y documentación viva' }
+];
+
+// Helper to sync and get all office agents
+function getOfficeAgents(db) {
+    if (!db.agents || db.agents.length === 0) {
+        db.agents = JSON.parse(JSON.stringify(DEFAULT_OFFICE_AGENTS));
+        return db.agents;
+    }
+    // Merge default roster ensuring all key agents exist with office properties
+    DEFAULT_OFFICE_AGENTS.forEach(defAgent => {
+        const existing = db.agents.find(a => a.id === defAgent.id || (a.name && a.name.includes(defAgent.name.split(' ')[0])));
+        if (!existing) {
+            db.agents.push(JSON.parse(JSON.stringify(defAgent)));
+        } else {
+            // Ensure department, avatar and stationId are mapped
+            if (!existing.departmentId) existing.departmentId = defAgent.departmentId;
+            if (!existing.avatar) existing.avatar = defAgent.avatar;
+            if (!existing.stationId) existing.stationId = defAgent.stationId;
+            if (!existing.status) existing.status = 'available';
+            if (!existing.model) existing.model = defAgent.model;
+            if (!existing.skills || existing.skills.length === 0) existing.skills = defAgent.skills;
+            if (!existing.tools || existing.tools.length === 0) existing.tools = defAgent.tools;
+            if (!existing.metrics) existing.metrics = defAgent.metrics;
+        }
+    });
+    return db.agents;
+}
+
+// 1. GET /api/office/state — Full real-time snapshot of the virtual office
+app.get('/api/office/state', (req, res) => {
+    try {
+        const db = readDB();
+        const agents = getOfficeAgents(db);
+        const activeTasks = (db.agentTasks || []).filter(t => t.status === 'in_progress' || t.status === 'pending' || t.status === 'waiting_approval');
+        const completedTasks = (db.agentTasks || []).filter(t => t.status === 'completed' || t.status === 'done').slice(-20);
+        const approvals = db.approvalRequests || [];
+        const activityFeed = (db.activityFeed || []).slice(0, 30);
+
+        // Compute real-time stats
+        const executingCount = agents.filter(a => a.status === 'executing' || a.status === 'planning').length;
+        const waitingApprovalCount = approvals.filter(ap => ap.status === 'pending').length;
+        const totalTokensConsumed = agents.reduce((acc, a) => acc + (a.metrics?.totalTokensConsumed || 0), 0);
+
+        res.json({
+            success: true,
+            agents,
+            departments: DEFAULT_OFFICE_DEPARTMENTS,
+            rooms: DEFAULT_OFFICE_ROOMS,
+            activeTasks,
+            completedTasks,
+            approvals,
+            activityFeed,
+            stats: {
+                totalAgents: agents.length,
+                activeExecuting: executingCount,
+                availableCount: agents.filter(a => a.status === 'available').length,
+                waitingApprovalCount,
+                totalTokensConsumed,
+                estimatedSpendUSD: parseFloat((totalTokensConsumed * 0.000002).toFixed(2)),
+                systemStatus: 'nominal'
+            }
+        });
+    } catch (err) {
+        console.error('[Office API] Error getting state:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 2. POST /api/office/dispatch — CEO Command Bar: BART COO Triages and Dispatches
+app.post('/api/office/dispatch', async (req, res) => {
+    try {
+        const { mission, priority, targetDepartment, targetAgent, estimatedBudget, companyId, companyName } = req.body;
+        if (!mission || !mission.trim()) {
+            return res.status(400).json({ error: 'La misión no puede estar vacía.' });
+        }
+
+        const db = readDB();
+        const agents = getOfficeAgents(db);
+        if (!db.agentTasks) db.agentTasks = [];
+        if (!db.approvalRequests) db.approvalRequests = [];
+        if (!db.activityFeed) db.activityFeed = [];
+
+        // 1. Determine Assigned Agent
+        let assignedAgentName = 'BART (COO)';
+        let assignedAgentId = 'agent-bart';
+        let actionType = 'native_orch';
+
+        if (targetAgent) {
+            const found = agents.find(a => a.id === targetAgent || a.name.toLowerCase().includes(targetAgent.toLowerCase()));
+            if (found) {
+                assignedAgentName = found.name;
+                assignedAgentId = found.id;
+            }
+        } else {
+            // Intelligent Triaging via BART COO logic
+            const mLower = mission.toLowerCase();
+            if (mLower.includes('redes') || mLower.includes('social') || mLower.includes('reels') || mLower.includes('tiktok') || mLower.includes('guion') || mLower.includes('copy')) {
+                assignedAgentName = 'Echo (Social)';
+                assignedAgentId = 'agent-echo';
+            } else if (mLower.includes('campaña') || mLower.includes('lanzamiento') || mLower.includes('ads') || mLower.includes('marketing') || mLower.includes('growth')) {
+                assignedAgentName = 'Nexus (Marketing)';
+                assignedAgentId = 'agent-nexus';
+            } else if (mLower.includes('venue') || mLower.includes('logistica') || mLower.includes('operacion') || mLower.includes('suministro') || mLower.includes('dj') || mLower.includes('barra')) {
+                assignedAgentName = 'Atlas (Logistics)';
+                assignedAgentId = 'agent-atlas';
+            } else if (mLower.includes('venta') || mLower.includes('mesa vip') || mLower.includes('crm') || mLower.includes('cliente') || mLower.includes('lead') || mLower.includes('sponsor')) {
+                assignedAgentName = 'CloserOps (Sales)';
+                assignedAgentId = 'agent-closerops';
+            } else if (mLower.includes('cotiz') || mLower.includes('costo') || mLower.includes('proveedor') || mLower.includes('compras')) {
+                assignedAgentName = 'Scout (Sourcing)';
+                assignedAgentId = 'agent-scout';
+            } else if (mLower.includes('licitaci') || mLower.includes('pliego') || mLower.includes('analisis de mercado') || mLower.includes('competidor')) {
+                assignedAgentName = 'Sentinel (Analyst)';
+                assignedAgentId = 'agent-sentinel';
+            } else if (mLower.includes('whatsapp') || mLower.includes('comunidad') || mLower.includes('broadcast') || mLower.includes('difusion') || mLower.includes('invitaci')) {
+                assignedAgentName = 'Pulse (Community)';
+                assignedAgentId = 'agent-pulse';
+            } else if (mLower.includes('codigo') || mLower.includes('ui') || mLower.includes('frontend') || mLower.includes('componente') || mLower.includes('react') || mLower.includes('bug')) {
+                assignedAgentName = 'Antigravity (Engineer)';
+                assignedAgentId = 'agent-antigravity';
+                actionType = 'antigravity_inbox';
+            }
+        }
+
+        // 2. Priority Scoring
+        const roi = parseFloat(req.body.roi) || (priority === 'critical' ? 9 : priority === 'high' ? 7.5 : 5);
+        const urge = priority === 'critical' ? 9.5 : priority === 'high' ? 7.5 : 5;
+        const strat = 8;
+        const risk = 2;
+        const priorityScore = parseFloat(((roi * 0.4) + (urge * 0.3) + (strat * 0.2) - (risk * 0.1)).toFixed(1));
+
+        // 3. Autonomy Levels
+        const impact = parseFloat(estimatedBudget) || 0;
+        let autonomyLevel = 1;
+        let status = 'in_progress';
+
+        if (impact > 5000 || priority === 'critical_auth') {
+            autonomyLevel = 4;
+            status = 'waiting_approval';
+        } else if (impact > 500) {
+            autonomyLevel = 3;
+            status = 'waiting_approval';
+        } else if (impact > 100) {
+            autonomyLevel = 2;
+        }
+
+        const taskId = `atask-${Date.now()}`;
+        const newTask = {
+            id: taskId,
+            task: mission,
+            title: mission.length > 50 ? mission.substring(0, 47) + '...' : mission,
+            description: req.body.description || `Misión asignada por el CEO: "${mission}"`,
+            priorityScore,
+            autonomyLevel,
+            impactEstimate: impact,
+            status,
+            assignedAgent: assignedAgentName,
+            assignedAgentId,
+            delegatedBy: 'BART (COO)',
+            companyId: companyId || '',
+            companyName: companyName || 'ARRIVE Ecosystem',
+            actionType,
+            progress: status === 'waiting_approval' ? 0 : 25,
+            currentStep: status === 'waiting_approval' ? 'Esperando confirmación del CEO en Gobernanza' : 'BART analizando e iniciando ejecución',
+            createdAt: new Date().toISOString()
+        };
+
+        db.agentTasks.unshift(newTask);
+
+        // Update target agent's live status
+        const targetAgentObj = db.agents.find(a => a.id === assignedAgentId);
+        if (targetAgentObj) {
+            targetAgentObj.status = status === 'waiting_approval' ? 'waiting_approval' : 'executing';
+            targetAgentObj.activeTaskId = taskId;
+            targetAgentObj.currentTaskName = mission;
+            targetAgentObj.activeCompany = companyName || 'ARRIVE Ecosystem';
+            targetAgentObj.lastSeen = new Date().toISOString();
+        }
+
+        // If approval needed, register in db.approvalRequests
+        if (status === 'waiting_approval') {
+            db.approvalRequests.unshift({
+                id: `appr-${Date.now()}`,
+                taskId,
+                agentId: assignedAgentId,
+                agentName: assignedAgentName,
+                actionRequested: mission,
+                impactEstimate: impact,
+                autonomyRequired: autonomyLevel,
+                status: 'pending',
+                createdAt: new Date().toISOString()
+            });
+        }
+
+        // Si es para Antigravity, crear ticket en _agent_inbox/
+        if (actionType === 'antigravity_inbox') {
+            try {
+                const safeName = mission.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
+                const fileName = `TASK_${new Date().toISOString().split('T')[0].replace(/-/g,'')}_${safeName}.md`;
+                const inboxPath = path.join(VAULT_PATH, fileName);
+                const fileContent = `---\nFROM: BART (COO)\nTO: Antigravity\nPRIORITY_SCORE: ${priorityScore}\nAUTONOMY_LEVEL: ${autonomyLevel}\nSTATUS: ${status}\n---\n\n# MISIÓN:\n${mission}\n\n# DETALLES:\n${req.body.description || 'Implementar cumpliendo con la arquitectura de AI Office HQ.'}\n`;
+                fs.writeFileSync(inboxPath, fileContent);
+            } catch (inboxErr) {
+                console.warn('[Office Dispatch] Inbox ticket error:', inboxErr.message);
+            }
+        }
+
+        // Inyectar en Activity Feed
+        db.activityFeed.unshift({
+            id: `act-${Date.now()}`,
+            agent: 'BART (COO)',
+            text: `🎯 BART delegó a ${assignedAgentName} [Score ${priorityScore} | Lvl ${autonomyLevel}]: "${mission.substring(0, 60)}"`,
+            color: status === 'waiting_approval' ? '#eab308' : '#3b82f6',
+            timestamp: new Date().toISOString()
+        });
+
+        db.activityFeed = db.activityFeed.slice(0, 50);
+        writeDB(db);
+
+        res.status(201).json({
+            success: true,
+            task: newTask,
+            assignedAgent: assignedAgentName,
+            priorityScore,
+            autonomyLevel,
+            status
+        });
+    } catch (err) {
+        console.error('[Office Dispatch] Error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 3. POST /api/office/agent/:id/status — Set agent live status
+app.post('/api/office/agent/:id/status', (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status, currentStep, activeTaskId } = req.body;
+        const validStatuses = ['offline', 'available', 'planning', 'executing', 'waiting_approval', 'blocked', 'error', 'in_meeting', 'resting'];
+        if (status && !validStatuses.includes(status)) {
+            return res.status(400).json({ error: `Estado inválido. Válidos: ${validStatuses.join(', ')}` });
+        }
+
+        const db = readDB();
+        const agents = getOfficeAgents(db);
+        const agent = agents.find(a => a.id === id);
+        if (!agent) return res.status(404).json({ error: 'Agente no encontrado' });
+
+        if (status) agent.status = status;
+        if (currentStep) agent.currentStep = currentStep;
+        if (activeTaskId !== undefined) agent.activeTaskId = activeTaskId;
+        agent.lastSeen = new Date().toISOString();
+
+        writeDB(db);
+        res.json({ success: true, agent });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 4. POST /api/office/approval/:id/decision — CEO Approve / Reject
+app.post('/api/office/approval/:id/decision', (req, res) => {
+    try {
+        const { id } = req.params;
+        const { decision, notes } = req.body; // 'approved' | 'rejected'
+        if (decision !== 'approved' && decision !== 'rejected') {
+            return res.status(400).json({ error: "La decisión debe ser 'approved' o 'rejected'" });
+        }
+
+        const db = readDB();
+        const appr = (db.approvalRequests || []).find(a => a.id === id);
+        if (!appr) return res.status(404).json({ error: 'Solicitud no encontrada' });
+
+        appr.status = decision;
+        appr.reviewedAt = new Date().toISOString();
+        appr.decisionNotes = notes || '';
+
+        // Update corresponding task
+        const task = (db.agentTasks || []).find(t => t.id === appr.taskId);
+        if (task) {
+            task.status = decision === 'approved' ? 'in_progress' : 'cancelled';
+            task.currentStep = decision === 'approved' ? 'Aprobado por el CEO. En ejecución.' : 'Rechazado por el CEO.';
+            task.updatedAt = new Date().toISOString();
+        }
+
+        // Update agent status
+        const agents = getOfficeAgents(db);
+        const agent = agents.find(a => a.id === appr.agentId);
+        if (agent) {
+            agent.status = decision === 'approved' ? 'executing' : 'available';
+        }
+
+        // Activity log
+        if (!db.activityFeed) db.activityFeed = [];
+        db.activityFeed.unshift({
+            id: `act-${Date.now()}`,
+            agent: 'CEO (Gabriel)',
+            text: `👑 CEO ${decision === 'approved' ? 'APROBÓ' : 'RECHAZÓ'} la solicitud de ${appr.agentName}: "${appr.actionRequested.substring(0, 50)}"`,
+            color: decision === 'approved' ? '#10b981' : '#ef4444',
+            timestamp: new Date().toISOString()
+        });
+
+        writeDB(db);
+        res.json({ success: true, approval: appr, task });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 5. POST /api/office/kill-switch — Emergency Stop
+app.post('/api/office/kill-switch', (req, res) => {
+    try {
+        const db = readDB();
+        const agents = getOfficeAgents(db);
+        
+        // Reset executing agents to available/resting
+        agents.forEach(a => {
+            if (a.status === 'executing' || a.status === 'planning') {
+                a.status = 'available';
+                a.activeTaskId = null;
+            }
+        });
+
+        // Pause active tasks
+        (db.agentTasks || []).forEach(t => {
+            if (t.status === 'in_progress') {
+                t.status = 'pending';
+                t.currentStep = 'Pausado por Kill Switch del CEO';
+            }
+        });
+
+        if (!db.activityFeed) db.activityFeed = [];
+        db.activityFeed.unshift({
+            id: `act-${Date.now()}`,
+            agent: 'CEO (Gabriel)',
+            text: '🛑 KILL SWITCH ACTIVADO: Todas las ejecuciones de agentes han sido detenidas por seguridad.',
+            color: '#ef4444',
+            timestamp: new Date().toISOString()
+        });
+
+        writeDB(db);
+        res.json({ success: true, message: 'Kill switch ejecutado. Operaciones detenidas.' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 6. POST /api/office/war-room/call — Summon agents to War Room
+app.post('/api/office/war-room/call', (req, res) => {
+    try {
+        const { topic, participantIds } = req.body;
+        const db = readDB();
+        const agents = getOfficeAgents(db);
+        
+        const summonedIds = participantIds && participantIds.length > 0 
+            ? participantIds 
+            : ['agent-bart', 'agent-nexus', 'agent-echo', 'agent-atlas'];
+
+        agents.forEach(a => {
+            if (summonedIds.includes(a.id)) {
+                a.status = 'in_meeting';
+                a.currentStep = `En War Room: "${(topic || 'Alineación Estratégica').substring(0, 40)}"`;
+            }
+        });
+
+        if (!db.activityFeed) db.activityFeed = [];
+        db.activityFeed.unshift({
+            id: `act-${Date.now()}`,
+            agent: 'BART (COO)',
+            text: `📢 WAR ROOM CONVOCADO: "${topic || 'Alineación Estratégica General'}" con ${summonedIds.length} directores.`,
+            color: '#8b5cf6',
+            timestamp: new Date().toISOString()
+        });
+
+        writeDB(db);
+        res.json({ success: true, topic, summonedCount: summonedIds.length });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
 // ─── Native Agent Skills & Chat ──────────────────────────────────
 const SKILLS_WORKSPACE_PATH = path.join(process.env.HOME || '/Users/gg', '.openclaw/workspace/skills');
 
@@ -3916,7 +4624,7 @@ app.post('/api/orch/chat', async (req, res) => {
         try {
             if (RAGEngine && message) {
                 const ragResult = await RAGEngine.query(String(message), 5, context || []);
-                ragContext = ragResult?.answer || ragResult?.context || '';
+                ragContext = ragResult?.context || '';
             }
         } catch (e) {
             console.warn('[Orchestrator Chat] RAG query failed:', e.message);
@@ -3964,6 +4672,8 @@ ${availableAgentsContext || 'No hay agentes registrados.'}
 
 Pending Agent Tasks:
 ${pendingAgentTasks || 'No hay tareas de agentes pendientes.'}
+
+${userMemoryBlock()}
 
 Contexto extra/memoria (si la hay):
 ${ragContext ? ragContext : "No relevant memory context found."}
@@ -4582,6 +5292,23 @@ const EmbeddedRAGEngine = {
     },
 
     async query(question, topK = 5, historyContext = [], namespace = 'default') {
+        // Motor nuevo: búsqueda por significado sobre ChatGPT + dashboard + memorias de agentes.
+        if (question && knowledge.store.stats().docs > 0) {
+            try {
+                const { results, mode } = await knowledge.search({ query: question, topK, namespace });
+                if (results.length) {
+                    return {
+                        answer: `Se encontraron ${results.length} fuentes relevantes (${mode === 'hybrid' ? 'búsqueda semántica' : 'palabras clave'}).`,
+                        context: results.map(r => `[Fuente: ${r.doc.title} (${r.doc.source}/${r.doc.kind}${r.doc.meta?.date ? `, ${String(r.doc.meta.date).slice(0, 10)}` : ''})]:\n${r.text}`).join('\n\n'),
+                        sources: results.map(r => ({ id: r.doc.meta?.legacyId || r.docId, title: r.doc.title, category: r.doc.kind, namespace: r.doc.meta?.namespace || r.doc.source, source: r.doc.source, similarity: r.similarity })),
+                        count: results.length,
+                        mode,
+                    };
+                }
+            } catch (err) {
+                console.warn('[RAG] Motor de conocimiento no respondió, uso búsqueda básica:', err.message);
+            }
+        }
         const db = readDB();
         const allDocs = (db.ragDocuments || []).concat(db.customDocuments || []);
         const filteredDocs = allDocs.filter(d => !namespace || namespace === 'default' || d.namespace === namespace || !d.namespace);
@@ -4636,6 +5363,7 @@ const EmbeddedRAGEngine = {
             ready: true,
             provider: 'OpenClaw RAG Engine (Embedded & Vector)',
             indexed: docs.length,
+            knowledge: knowledge.store.stats(),
             namespaces,
             lastSync: new Date().toISOString()
         };
@@ -4652,7 +5380,8 @@ app.get('/api/rag/status', async (req, res) => {
 
 app.post('/api/rag/sync', async (req, res) => {
     const result = await EmbeddedRAGEngine.indexAllData();
-    res.json(result);
+    const knowledgeSync = await knowledge.syncDashboard().catch(err => ({ error: err.message }));
+    res.json({ ...result, knowledge: knowledgeSync });
 });
 
 // Detalle completo de un documento específico
@@ -4660,14 +5389,50 @@ app.get('/api/rag-doc/:id', (req, res) => {
     const db = readDB();
     const allDocs = (db.ragDocuments || []).concat(db.customDocuments || []);
     const doc = allDocs.find(d => d.id === req.params.id);
-    if (!doc) return res.status(404).json({ error: 'Documento no encontrado' });
-    res.json(doc);
+    if (doc) return res.json(doc);
+    // Documentos del motor de conocimiento (ChatGPT, memorias de proyecto, memorias de agentes)
+    const kdoc = knowledge.store.getDoc(req.params.id);
+    if (!kdoc) return res.status(404).json({ error: 'Documento no encontrado' });
+    const chunks = knowledge.store.chunksOf(kdoc.id);
+    res.json({
+        id: kdoc.id, title: kdoc.title, filename: kdoc.title, category: kdoc.kind, source: kdoc.source,
+        namespace: kdoc.meta?.namespace || kdoc.source, meta: kdoc.meta, addedAt: kdoc.updatedAt,
+        // Los trozos se solapan un poco; para leer basta con unirlos.
+        content: chunks.map(c => c.text).join('\n\n'),
+    });
 });
 
 // Búsqueda semántica con scoring porcentual y snippets
 app.post('/api/rag/search', async (req, res) => {
     const { query, namespace = 'default', category, topK = 6 } = req.body;
     if (!query) return res.status(400).json({ error: 'Falta término de búsqueda' });
+
+    if (knowledge.store.stats().docs > 0) {
+        try {
+            const { results, mode } = await knowledge.search({ query, topK: Number(topK) || 6, namespace, kind: category && category !== 'all' ? category : undefined });
+            const keywordMax = Math.max(1, ...results.map(r => r.keywordScore));
+            return res.json({
+                query, mode,
+                count: results.length,
+                totalInNamespace: knowledge.store.stats().docs,
+                results: results.map(r => ({
+                    id: r.doc.meta?.legacyId || r.docId,
+                    title: r.doc.title,
+                    filename: r.doc.title,
+                    category: r.doc.kind,
+                    source: r.doc.source,
+                    namespace: r.doc.meta?.namespace || r.doc.source,
+                    similarity: r.similarity != null ? Math.round(r.similarity * 100) : Math.max(15, Math.round(r.keywordScore / keywordMax * 80)),
+                    score: Number(r.score.toFixed(4)),
+                    snippet: r.snippet,
+                    textLength: r.text.length,
+                    addedAt: r.doc.meta?.date || r.doc.updatedAt,
+                })),
+            });
+        } catch (err) {
+            console.warn('[RAG] Motor de conocimiento no respondió, uso búsqueda básica:', err.message);
+        }
+    }
 
     const db = readDB();
     const allDocs = (db.ragDocuments || []).concat(db.customDocuments || []);

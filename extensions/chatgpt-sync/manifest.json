@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "ARRIVE · ChatGPT → Command Center",
+  "version": "1.0.0",
+  "description": "Sincroniza tus conversaciones de ChatGPT con el RAG de tu Command Center local.",
+  "permissions": ["storage", "alarms"],
+  "host_permissions": ["https://chatgpt.com/*", "http://localhost/*", "http://127.0.0.1/*"],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    { "matches": ["https://chatgpt.com/*"], "js": ["sync-core.js", "content.js"], "run_at": "document_idle" }
+  ],
+  "action": { "default_popup": "popup.html", "default_title": "ChatGPT → Command Center" }
+}

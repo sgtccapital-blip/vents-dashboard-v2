@@ -7,6 +7,11 @@ import { defineConfig, globalIgnores } from 'eslint/config'
 export default defineConfig([
   globalIgnores(['dist', 'repo_git', 'paperclip', 'openclaw-core', 'openclaw-rag', 'backups', 'BrainVault', '_agent_inbox', '_uploads_tmp', 'node_modules']),
   {
+    // Extensión de Chrome: scripts clásicos con la API `chrome`.
+    files: ['extensions/**/*.js'],
+    languageOptions: { sourceType: 'script', globals: { ...globals.browser, ...globals.webextensions, module: 'readonly' } },
+  },
+  {
     files: ['**/*.{js,jsx}'],
     extends: [
       js.configs.recommended,
@@ -28,7 +33,7 @@ export default defineConfig([
   },
   {
     // Código que corre en Node (servidor y scripts), no en el navegador
-    files: ['server.js', '*.cjs', 'seed-db.js', 'scratch.js', 'get_coords.js', 'inject_*.js', 'tests/**/*.js', 'src/services/openCloudEngine.js', 'src/services/contentStudio/**/*.js', 'scripts/**/*.mjs'],
+    files: ['server.js', '*.cjs', 'seed-db.js', 'scratch.js', 'get_coords.js', 'inject_*.js', 'tests/**/*.js', 'src/services/openCloudEngine.js', 'src/services/contentStudio/**/*.js', 'src/services/knowledge/**/*.js', 'src/services/agentHub/**/*.js', 'scripts/**/*.mjs'],
     languageOptions: {
       globals: { ...globals.node },
     },
