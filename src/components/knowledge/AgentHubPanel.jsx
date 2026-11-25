@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Plug, KeyRound, Copy, Check, Trash2, Activity, AlertCircle, CheckCircle2, ChevronDown, ChevronRight, RefreshCw } from 'lucide-react';
 
+import { setupSnippets } from './agentHubSnippets';
+
 const API = '/api/agent-hub';
 const getJson = async (url, opts) => {
     const r = await fetch(url, opts);
@@ -14,7 +16,7 @@ const input = { background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-s
 const mono = { fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: '12px' };
 const fmt = d => (d ? new Date(d).toLocaleString('es', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—');
 
-function CopyBlock({ label, text }) {
+export function CopyBlock({ label, text }) {
     const [copied, setCopied] = useState(false);
     const copy = () => { navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1500); };
     return (
@@ -33,17 +35,6 @@ export const CHATGPT_INSTRUCTIONS = `Tengo conectado "ARRIVE Command Center" (MC
 - Cuando cerremos una decisión, definamos un dato clave (precio, fecha, proveedor, stack) o aprendamos algo importante, guárdalo con save_memory, autoexplicativo y con su proyecto.
 - Cuando salga un pendiente concreto, créalo con create_task.
 - Al terminar un trabajo largo, resúmelo en una frase con log_activity.`;
-
-function setupSnippets(url, token, publicUrl) {
-    return [
-        ...(publicUrl ? [['ChatGPT: URL del conector (autenticación: ninguna, la llave va en la URL)', `${publicUrl}/${token}`]] : []),
-        ['Claude Code (terminal)', `claude mcp add --transport http arrive-command-center ${url} --header "Authorization: Bearer ${token}"`],
-        ['OpenClaw, Hermes o cualquier cliente MCP por HTTP (token en la URL)', `${url}/${token}`],
-        ['Claude Desktop, Cursor y clientes que solo usan stdio (JSON de configuración)', JSON.stringify({
-            mcpServers: { 'arrive-command-center': { command: 'npx', args: ['-y', 'mcp-remote', url, '--header', `Authorization: Bearer ${token}`] } },
-        }, null, 2)],
-    ];
-}
 
 export default function AgentHubPanel() {
     const [info, setInfo] = useState(null);

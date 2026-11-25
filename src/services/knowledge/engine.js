@@ -440,6 +440,31 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
         return { changed, removed, pendingVectors: store.missingVectors().length, total: docs.length };
     }
 
+    /**
+     * Reemplaza todos los documentos de una fuente externa (p. ej. la biblioteca de repos) por `docs`.
+     * Solo re-trocea lo que cambió; lo que ya no viene se borra del índice.
+     * docs: [{ id, kind, title, text, meta }]
+     */
+    function indexSource(source, docs) {
+        const seen = new Set();
+        let changed = 0;
+        for (const d of docs) {
+            const id = `${source}:${d.id}`;
+            seen.add(id);
+            const h = hash(`${d.title}\n${d.text}\n${JSON.stringify(d.meta || {})}`);
+            if (store.getDoc(id)?.hash === h) continue;
+            store.upsertDoc({ id, source, kind: d.kind, title: d.title, hash: h, meta: { namespace: source, ...d.meta } }, chunkText(d.text || d.title, 2000, 200));
+            changed++;
+        }
+        let removed = 0;
+        for (const doc of store.listDocs(x => x.source === source)) {
+            if (!seen.has(doc.id)) { store.removeDoc(doc.id, { save: false }); removed++; }
+        }
+        if (changed || removed) store.scheduleSave();
+        embedSafe();
+        return { changed, removed };
+    }
+
     // ─── Memorias que guardan agentes o el usuario ───
     async function saveMemory({ title, content, source = 'agent', agent = '', projectId = '', tags = [] }) {
         if (!content) throw new Error('Falta content');
@@ -575,7 +600,7 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
         store,
         /** Espera a que terminen los vectores pendientes (útil en pruebas y scripts). */
         waitForEmbeddings: () => embedSafe(),
-        importExport, importConversations, indexPendingTranscripts, syncState, ingestFromExtension, reportExtensionRun, runWorker, syncDashboard, saveMemory, search, scanWatchDir, embedMissing,
+        importExport, importConversations, indexPendingTranscripts, syncState, ingestFromExtension, reportExtensionRun, runWorker, syncDashboard, indexSource, saveMemory, search, scanWatchDir, embedMissing,
         refreshProjectMemory, refreshProfile,
         status, listConversations, getConversation, excludeConversation, retryErrors, setConfig,
         pause() { worker.paused = true; },

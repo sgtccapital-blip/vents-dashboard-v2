@@ -9,7 +9,8 @@ Cómo trabajar:
 1. Al empezar una tarea llama a get_context: trae el perfil de trabajo del usuario, proyectos activos, próximos eventos y pendientes.
 2. Antes de proponer o decidir algo de un proyecto usa get_project y search_knowledge: probablemente ya se habló antes (decisiones, precios, criterios).
 3. Respeta las decisiones vigentes y la forma de pensar del usuario que aparecen en la memoria.
-4. Cuando termines algo o se decida algo, déjalo registrado: create_task / update_task para pendientes, save_memory para decisiones o datos importantes, log_activity para contar qué hiciste.
+4. Si te conectaron para trabajar tareas, revisa get_my_office_tasks: el CEO te asigna trabajo desde AI Office HQ y espera el resultado con submit_office_result.
+5. Cuando termines algo o se decida algo, déjalo registrado: create_task / update_task para pendientes, save_memory para decisiones o datos importantes, log_activity para contar qué hiciste.
 Responde en el idioma del usuario (normalmente español).`;
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -51,10 +52,10 @@ function findProject(db, ref) {
 
 /**
  * @param ctx  { agent, scope: 'read'|'write', tokenId }
- * @param deps { readDB, knowledge, createEntity, updateEntity, addActivityFeed, hub }
+ * @param deps { readDB, knowledge, createEntity, updateEntity, addActivityFeed, hub, studio }
  */
 export function buildMcpServer(ctx, deps) {
-    const { readDB, knowledge, createEntity, updateEntity, addActivityFeed, hub } = deps;
+    const { readDB, knowledge, createEntity, updateEntity, addActivityFeed, hub, studio, library, office } = deps;
     const server = new McpServer({ name: 'arrive-command-center', version: '1.0.0' }, { instructions: SERVER_INSTRUCTIONS });
     const canWrite = ctx.scope === 'write';
 
@@ -111,7 +112,7 @@ export function buildMcpServer(ctx, deps) {
         input: {
             query: z.string().describe('Pregunta o tema en lenguaje natural'),
             top_k: z.number().int().min(1).max(20).optional().describe('Cuántos resultados (por defecto 8)'),
-            source: z.enum(['chatgpt', 'dashboard', 'memory', 'reference']).optional().describe('Limitar a una fuente'),
+            source: z.enum(['chatgpt', 'dashboard', 'memory', 'reference', 'library']).optional().describe('Limitar a una fuente'),
             project_id: z.string().optional().describe('Limitar a un proyecto del dashboard'),
         },
     }, async ({ query, top_k = 8, source, project_id }) => {
@@ -126,6 +127,69 @@ export function buildMcpServer(ctx, deps) {
             })),
         };
     });
+
+    // ─── Biblioteca de repos y skills ───
+    if (library) {
+        tool('search_library', {
+            title: 'Buscar en la biblioteca de repos y skills',
+            description: 'Busca por significado en los repos de GitHub que el usuario guardó (README, notas, etiquetas) y en sus skills (SKILL.md) y agentes. Úsalo antes de construir algo desde cero: puede que ya haya una skill, librería o ejemplo guardado para eso.',
+            input: {
+                query: z.string().describe('Qué necesitas (p. ej. "generar PDFs", "scraping de Instagram", "componentes React de dashboard")'),
+                kind: z.enum(['repo', 'skill', 'agent']).optional().describe('Limitar a repos, skills o agentes'),
+                top_k: z.number().int().min(1).max(20).optional(),
+            },
+        }, async ({ query, kind, top_k = 8 }) => {
+            const { mode, results } = await knowledge.search({ query, topK: top_k, source: 'library', kind });
+            const seen = new Set();
+            return {
+                mode,
+                // Un resultado por skill/repo: el mejor trozo de cada uno.
+                results: results.filter(r => !seen.has(r.docId) && seen.add(r.docId)).map(r => ({ title: r.doc.title, kind: r.doc.kind, repo: r.doc.meta?.repo, path: r.doc.meta?.itemPath || null, url: r.doc.meta?.url, tags: r.doc.meta?.tags, text: r.text })),
+                hint: 'Para leer una skill completa usa get_library_item con repo y path.',
+            };
+        });
+
+        tool('list_library', {
+            title: 'Listar la biblioteca',
+            description: 'Todos los repos guardados con su descripción, etiquetas, notas, estado (por probar, usando, favorito) y las skills/agentes que contienen.',
+        }, async () => ({
+            stats: library.stats(),
+            repos: library.list().map(r => ({
+                id: r.id, url: r.url, description: clip(r.description, 200), tags: r.tags, interest: r.interest, notes: clip(r.notes, 300), stars: r.stars, language: r.language, status: r.status, localPath: r.localPath,
+                skills: r.skills.map(s => ({ name: s.name, path: s.path, description: clip(s.description, 160) })),
+                agents: r.agents.map(s => ({ name: s.name, path: s.path, description: clip(s.description, 160) })),
+            })),
+        }));
+
+        tool('get_library_item', {
+            title: 'Leer una skill o un repo',
+            description: 'Devuelve el SKILL.md completo (o el agente) con la lista de archivos y la ruta local donde está clonado, para leerlo o copiarlo a un proyecto. Sin path devuelve el README del repo.',
+            input: {
+                repo: z.string().describe('dueño/repo'),
+                path: z.string().optional().describe('Ruta del SKILL.md o del agente dentro del repo (de search_library o list_library)'),
+            },
+        }, async ({ repo, path: itemPath }) => {
+            if (itemPath) return library.getItem(repo, itemPath);
+            const r = library.get(repo);
+            if (!r) throw new Error('Repo no encontrado en la biblioteca');
+            return { id: r.id, url: r.url, description: r.description, localPath: library.repoDir(r.id), notes: r.notes, tags: r.tags, readme: clip(library.getReadme(r.id), 20000) };
+        });
+
+        tool('add_to_library', {
+            write: true,
+            title: 'Guardar un repo en la biblioteca',
+            description: 'Guarda un repo de GitHub que valga la pena (librería, skill, ejemplo, herramienta) en la biblioteca del usuario: se clona, se detectan sus skills y queda en la búsqueda de todos los agentes. Explica en notes para qué sirve y para qué proyecto.',
+            input: {
+                url: z.string().describe('https://github.com/dueño/repo'),
+                notes: z.string().optional().describe('Para qué sirve y por qué se guarda'),
+                tags: z.array(z.string()).optional(),
+            },
+        }, async ({ url, notes = '', tags = [] }) => {
+            const r = library.addRepo({ url, notes, tags, addedBy: ctx.agent });
+            addActivityFeed?.(`📚 ${ctx.agent} guardó ${r.id} en la biblioteca`, '#a78bfa');
+            return { id: r.id, status: r.status, message: 'Clonando; sus skills aparecerán en search_library en unos segundos.' };
+        });
+    }
 
     tool('list_projects', {
         title: 'Listar proyectos',
@@ -299,26 +363,28 @@ export function buildMcpServer(ctx, deps) {
     tool('add_reference', {
         write: true,
         title: 'Guardar referencia de video',
-        description: 'Agrega uno o varios links (YouTube, Instagram, TikTok, Vimeo, X…) a la biblioteca de referencias. La IA ve el video, lo desglosa (pasos, herramientas, técnicas, estilo, cómo recrearlo) y lo mete al RAG en unos minutos. Úsalo cuando el usuario comparta un tutorial o una referencia visual.',
+        description: 'Agrega uno o varios links (YouTube, Instagram, TikTok, Vimeo, X…) a la biblioteca de referencias (Redes Sociales → Referencias). Gemini ve el video completo, mide cortes y ritmo, y arma un playbook (gancho, estructura, edición, técnica con parámetros, herramientas, paso a paso con minutos, cómo recrearlo con la máquina y adaptaciones por cuenta) que entra al RAG en unos minutos. Úsalo cuando el usuario comparta un tutorial o una referencia visual.',
         input: {
             urls: z.array(z.string().url()).min(1).max(20),
-            note: z.string().optional().describe('Para qué se guarda (qué queremos aprender o copiar)'),
-            account: z.string().optional().describe('Cuenta/marca a la que aplica, si es una'),
-            tags: z.array(z.string()).optional(),
+            type: z.enum(['viral', 'tutorial']).optional().describe('tutorial: enseña una técnica; viral: referencia de formato/estilo (por defecto)'),
+            notes: z.string().optional().describe('Para qué se guarda (qué queremos aprender o copiar)'),
+            account_ids: z.array(z.string()).optional().describe('ids de cuentas de redes a las que aplica'),
         },
-    }, async ({ urls, note = '', account = '', tags = [] }) => {
-        if (!knowledge.references) throw new Error('La biblioteca de referencias no está activa');
-        return knowledge.references.add({ urls, note, account, tags, agent: ctx.agent });
+    }, async ({ urls, type = 'viral', notes = '', account_ids = [] }) => {
+        if (!studio?.addReferences) throw new Error('La biblioteca de referencias no está activa');
+        const r = studio.addReferences({ urls, type, notes, accountIds: account_ids, addedBy: ctx.agent });
+        if (r.added.length) addActivityFeed(`🎬 ${ctx.agent} agregó ${r.added.length} referencia${r.added.length > 1 ? 's' : ''} para analizar`);
+        return r;
     });
 
     tool('get_reference', {
         title: 'Ver referencia de video',
-        description: 'Desglose completo de una referencia guardada (pasos, técnicas, estilo, transcripción). El id sale de search_knowledge (docId "reference:<id>") o de add_reference.',
+        description: 'Playbook completo de una referencia guardada: gancho, estructura con tiempos, edición, técnica con parámetros, herramientas, paso a paso, cómo recrearla y adaptaciones. El id sale de search_knowledge (docId "reference:<id>") o de add_reference.',
         input: { id: z.string() },
     }, async ({ id }) => {
-        const it = knowledge.references?.get(id.replace(/^reference:/, ''));
-        if (!it) throw new Error('Referencia no encontrada');
-        return it;
+        const r = studio?.getReference(id.replace(/^reference:/, ''));
+        if (!r) throw new Error('Referencia no encontrada');
+        return r;
     });
 
     tool('log_activity', {
@@ -330,6 +396,46 @@ export function buildMcpServer(ctx, deps) {
         addActivityFeed(`🤖 ${ctx.agent}: ${message}`);
         return { logged: true };
     });
+
+    // ─── AI Office HQ: cola de trabajo asignada por el CEO ───
+    if (office) {
+        tool('get_my_office_tasks', {
+            title: 'Mis tareas de AI Office HQ',
+            description: 'Tareas que el CEO te asignó en AI Office HQ (y las abiertas que cualquiera puede tomar), con instrucciones y correcciones pedidas. Revísalo al empezar a trabajar. Flujo: claim_office_task → report_office_progress (opcional) → submit_office_result.',
+            input: { include_open: z.boolean().optional().describe('Incluir tareas sin asignar (por defecto sí)') },
+        }, async ({ include_open = true }) => ({ tasks: office.tasksForAgent(ctx, { includeOpen: include_open }) }));
+
+        tool('claim_office_task', {
+            write: true,
+            title: 'Tomar tarea de la oficina',
+            description: 'Marca una tarea de AI Office HQ como tuya y en curso. Hazlo antes de trabajarla para que el CEO vea que la tienes.',
+            input: { task_id: z.string() },
+        }, async ({ task_id }) => office.claim(ctx, task_id));
+
+        tool('report_office_progress', {
+            write: true,
+            title: 'Reportar avance',
+            description: 'Cuenta en qué paso vas y el porcentaje aproximado de una tarea de AI Office HQ que ya tomaste.',
+            input: {
+                task_id: z.string(),
+                progress: z.number().min(0).max(100).optional(),
+                step: z.string().max(200).optional().describe('Qué estás haciendo ahora, en una frase'),
+            },
+        }, async ({ task_id, progress, step }) => office.reportProgress(ctx, task_id, { progress, step }));
+
+        tool('submit_office_result', {
+            write: true,
+            title: 'Entregar resultado',
+            description: 'Entrega el resultado final (markdown completo, no un resumen) de una tarea de AI Office HQ. Queda en revisión del CEO, que puede aprobarla o pedirte cambios (aparecerán en get_my_office_tasks). Si no pudiste hacerla, usa failed=true y explica por qué en error.',
+            input: {
+                task_id: z.string(),
+                result: z.string().optional().describe('El entregable completo en markdown'),
+                failed: z.boolean().optional(),
+                error: z.string().max(500).optional(),
+                model: z.string().max(60).optional().describe('Modelo que usaste (ej. gpt-5, claude-opus-5-5)'),
+            },
+        }, async ({ task_id, result, failed = false, error = '', model = '' }) => office.submitResult(ctx, task_id, { result, failed, error, model }));
+    }
 
     return server;
 }

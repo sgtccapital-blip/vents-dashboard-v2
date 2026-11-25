@@ -414,6 +414,8 @@ export function registerContentStudio(app, { readDB, writeDB, loadBrands, accoun
 
     // ─── Referencias y tutoriales: videos virales y técnicas para recrear ───
     const libraryDir = path.join(contentDnaPath, '_library', 'references');
+    // server.js engancha aquí el RAG: cada referencia analizada entra al índice de conocimiento.
+    const hooks = { onReferenceChange: () => {} };
     const refQueue = [];
     let refRunning = null;
     const upload = multer({
@@ -461,23 +463,53 @@ export function registerContentStudio(app, { readDB, writeDB, loadBrands, accoun
         if (!req.file && !b.url) return res.status(400).json({ error: 'Pega un link o sube el video' });
         if (b.url && !/^https?:\/\//.test(b.url)) return res.status(400).json({ error: 'Link no válido' });
         const db = readDB();
-        const ref = {
-            id: req.refId || `ref-${Date.now()}`,
-            type,
-            url: b.url || null,
-            title: b.title || '',
-            notes: b.notes || '',
-            lang: b.lang || 'auto',
+        const dup = b.url && (db.references || []).find(r => r.url && normalizeRefUrl(r.url) === normalizeRefUrl(b.url));
+        if (dup) {
+            if (req.file) fs.rmSync(path.dirname(req.file.path), { recursive: true, force: true });
+            return res.status(409).json({ error: 'Ese link ya está en la biblioteca', reference: dup });
+        }
+        const ref = newReference({
+            id: req.refId, type, url: b.url, title: b.title, notes: b.notes, lang: b.lang,
             accountIds: b.accountIds ? [].concat(b.accountIds).flatMap(x => String(x).split(',')).filter(Boolean) : [],
             sourcePath: req.file ? path.relative(projectRoot, req.file.path) : null,
-            status: 'queued',
-            createdAt: new Date().toISOString(),
-        };
+        });
         db.references = [...(db.references || []), ref];
         writeDB(db);
         queueAnalysis(ref.id);
         res.status(201).json(ref);
     });
+
+    function newReference({ id, type, url, title, notes, lang, accountIds = [], sourcePath = null, addedBy = 'dashboard' }) {
+        return {
+            id: id || `ref-${Date.now()}${Math.random().toString(36).slice(2, 5)}`,
+            type: type === 'tutorial' ? 'tutorial' : 'viral',
+            url: url || null,
+            title: title || '',
+            notes: notes || '',
+            lang: lang || 'auto',
+            accountIds, sourcePath, addedBy,
+            status: 'queued',
+            createdAt: new Date().toISOString(),
+        };
+    }
+
+    /** Para agentes (MCP): agrega links sin pasar por el formulario. */
+    function addReferences({ urls, type = 'viral', notes = '', accountIds = [], addedBy = 'agente' }) {
+        const db = readDB();
+        const added = [];
+        const duplicates = [];
+        for (const url of urls) {
+            if (!/^https?:\/\//.test(url)) continue;
+            const dup = (db.references || []).find(r => r.url && normalizeRefUrl(r.url) === normalizeRefUrl(url));
+            if (dup) { duplicates.push({ id: dup.id, url, title: dup.title }); continue; }
+            const ref = newReference({ type, url, notes, accountIds, addedBy });
+            db.references = [...(db.references || []), ref];
+            added.push(ref);
+        }
+        writeDB(db);
+        added.forEach(r => queueAnalysis(r.id));
+        return { added: added.map(r => ({ id: r.id, url: r.url, type: r.type, status: r.status })), duplicates };
+    }
 
     app.patch('/api/studio/references/:id', (req, res) => {
         const db = readDB();
@@ -488,6 +520,7 @@ export function registerContentStudio(app, { readDB, writeDB, loadBrands, accoun
         delete changes.createdAt;
         Object.assign(ref, changes);
         writeDB(db);
+        if (ref.status === 'ready') hooks.onReferenceChange(ref.id);
         res.json(ref);
     });
 
@@ -508,6 +541,7 @@ export function registerContentStudio(app, { readDB, writeDB, loadBrands, accoun
         if (db.references.length === before) return res.status(404).json({ error: 'Referencia no encontrada' });
         writeDB(db);
         fs.rmSync(path.join(libraryDir, req.params.id), { recursive: true, force: true });
+        hooks.onReferenceChange(req.params.id);
         res.json({ deleted: req.params.id });
     });
 
@@ -639,4 +673,50 @@ export function registerContentStudio(app, { readDB, writeDB, loadBrands, accoun
             console.warn('[Studio] Sync Drive falló:', err.message);
         }
     }, { timezone: 'America/Panama' });
+
+    // Al arrancar: lo que quedó a medias por un reinicio del servidor vuelve a la cola.
+    setTimeout(() => {
+        for (const r of readDB().references || []) if (['queued', 'analyzing'].includes(r.status)) queueAnalysis(r.id);
+    }, 5000);
+
+    // Referencias que fallaron por cuota o saturación de la IA: se reintentan solas (hasta 5 veces).
+    cron.schedule('*/30 * * * *', () => {
+        const db = readDB();
+        let changed = false;
+        for (const r of db.references || []) {
+            if (r.status !== 'error' || (r.retries || 0) >= 5) continue;
+            if (!/429|quota|RESOURCE_EXHAUSTED|503|UNAVAILABLE|high demand|saturad|ningún modelo|No se pudo generar/i.test(r.error || '')) continue;
+            Object.assign(r, { status: 'queued', error: null, retries: (r.retries || 0) + 1 });
+            changed = true;
+            queueAnalysis(r.id);
+        }
+        if (changed) writeDB(db);
+    });
+
+    return {
+        hooks,
+        addReferences,
+        getReference: id => {
+            const r = (readDB().references || []).find(x => x.id === id);
+            if (!r) return null;
+            const playbook = r.playbookPath && fs.existsSync(path.join(projectRoot, r.playbookPath)) ? fs.readFileSync(path.join(projectRoot, r.playbookPath), 'utf-8') : '';
+            return { id: r.id, type: r.type, url: r.url, title: r.title, notes: r.notes, accountIds: r.accountIds, status: r.status, error: r.error || null, stats: r.stats || null, analyzedBy: r.analyzedBy || null, playbook, analysis: r.analysis || null };
+        },
+    };
+}
+
+/** Mismo video aunque el link traiga parámetros de rastreo o sea la versión corta/shorts de YouTube. */
+export function normalizeRefUrl(raw) {
+    try {
+        const u = new URL(String(raw).trim());
+        u.hash = '';
+        const host = u.hostname.replace(/^www\.|^m\./, '');
+        if (host === 'youtu.be') return `youtube:${u.pathname.slice(1)}`;
+        if (/youtube\.com$/.test(host)) {
+            const v = u.pathname.match(/^\/shorts\/([^/]+)/)?.[1] || u.searchParams.get('v');
+            if (v) return `youtube:${v}`;
+        }
+        for (const k of [...u.searchParams.keys()]) if (/^(utm_|igsh|igshid|si|fbclid|feature|is_from_webapp|sender_device|_r|_t)/i.test(k)) u.searchParams.delete(k);
+        return `${host}${u.pathname.replace(/\/$/, '')}${u.search}`;
+    } catch { return String(raw).trim(); }
 }

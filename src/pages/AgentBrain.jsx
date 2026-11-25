@@ -7,7 +7,8 @@ import { useAutopilotEngine } from '../hooks/useAutopilotEngine';
 import ReactMarkdown from 'react-markdown';
 import ChatGptKnowledge from '../components/knowledge/ChatGptKnowledge';
 import AgentHubPanel from '../components/knowledge/AgentHubPanel';
-import ReferencesPanel from '../components/knowledge/ReferencesPanel';
+import LibraryPanel from '../components/knowledge/LibraryPanel';
+import ReferencesPanel from '../components/studio/ReferencesPanel';
 import {
     Bot, Send, Sparkles, Database, UploadCloud, FolderSync,
     BrainCircuit, CheckCircle2, AlertCircle, RefreshCw, Zap,
@@ -998,7 +999,14 @@ export default function AgentBrain() {
 
                 {activeTab === 'agent_hub' && <AgentHubPanel />}
 
-                {activeTab === 'references' && <ReferencesPanel />}
+                {activeTab === 'references' && (
+                    <div>
+                        <p style={{ margin: '0 0 12px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                            La misma biblioteca de Redes Sociales → Referencias. Cada video analizado entra al RAG y los agentes lo encuentran con search_knowledge.
+                        </p>
+                        <ReferencesPanel accounts={appContext.socialMedia || []} />
+                    </div>
+                )}
 
                 {activeTab === 'rag_inspector' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -1424,7 +1432,10 @@ export default function AgentBrain() {
                 {/* ═════════════════════════════════════════════════════════════════ */}
                 {activeTab === 'skills_market' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                        
+
+                        {/* Biblioteca de repos de GitHub y sus skills */}
+                        <LibraryPanel />
+
                         {/* Skills Catalog */}
                         <div className="card" style={{ padding: '24px' }}>
                             <div style={{ marginBottom: '20px' }}>

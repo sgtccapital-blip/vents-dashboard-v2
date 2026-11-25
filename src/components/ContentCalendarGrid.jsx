@@ -26,18 +26,18 @@ const FORMAT_OPTIONS = ['Texto', 'Imagen + Texto', 'Carrusel', 'Video', 'Story S
 const PANAMERICAN_SEED = [
     {
         id: 'pan-w1-story-tue', accountId: 'social-panamericanbc', contentType: 'Story', dayIndex: 1, weekOffset: 0,
-        topic: 'Anuncio Especial @212club.pa', format: 'Story Slides', status: 'ready',
-        caption: '🔥 Este viernes la noche despega con los mejores DJs locales. ¡Reserva tu mesa en bio!',
+        topic: 'Anuncio Especial de la Semana', format: 'Story Slides', status: 'ready',
+        caption: '🔥 Este fin de semana la experiencia despega con los mejores talentos y la mejor atmósfera. ¡Reserva en el link de la bio!',
         slides: 'Slide 1: "¿Listos para el fin de semana?"\nSlide 2: Lineup Revelado\nSlide 3: Link en bio para reservaciones',
-        cta: 'DM o link en bio para reservaciones', hashtags: '#212club #panama #nightlife',
-        notes: 'Diseñar slides con branding 212.', imageUrl: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=600&auto=format&fit=crop&q=80', scheduledTime: '18:00', createdAt: new Date().toISOString(),
+        cta: 'DM o link en bio para reservaciones', hashtags: '#panama #nightlife #events',
+        notes: 'Diseñar slides con branding oficial.', imageUrl: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=600&auto=format&fit=crop&q=80', scheduledTime: '18:00', createdAt: new Date().toISOString(),
     },
     {
         id: 'pan-w1-post-thu', accountId: 'social-panamericanbc', contentType: 'Post', dayIndex: 3, weekOffset: 0,
         topic: 'Lineup Oficial Fin de Semana', format: 'Carrusel', status: 'draft',
         caption: 'Este fin de semana se vive la mejor experiencia sonora en Panamá 🎧✨\n\nDesliza para ver la cartelera completa.',
         slides: 'Slide 1: Main Lineup\nSlide 2: DJ Guest 1\nSlide 3: VIP Table Info',
-        cta: '📩 Escríbenos al DM para lista VIP', hashtags: '#212club #panama #nightlife #electronicmusic',
+        cta: '📩 Escríbenos al DM para lista VIP', hashtags: '#panama #nightlife #electronicmusic',
         notes: 'Carrusel de lineup. Usar fotos con alto contraste.', imageUrl: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=600&auto=format&fit=crop&q=80', scheduledTime: '20:00', createdAt: new Date().toISOString(),
     },
 ];
@@ -476,7 +476,7 @@ export default function ContentCalendarGrid({
                                     {selectedEntry.contentType}
                                 </span>
                                 <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                                    {(() => { const acc = accounts.find(a => a.id === selectedEntry.accountId); return acc ? (acc.handler || acc.platform) : '@212club.pa'; })()}
+                                    {(() => { const acc = accounts.find(a => a.id === selectedEntry.accountId) || activeAccounts[0]; return acc ? (acc.handler || acc.platform) : '@cuenta'; })()}
                                 </span>
                             </div>
                             <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
@@ -587,7 +587,7 @@ export default function ContentCalendarGrid({
                                     <div>
                                         <label style={labelStyle}><Hash size={11} /> Hashtags</label>
                                         <input type="text" value={selectedEntry.hashtags || ''} onChange={e => updateEntry(selectedEntry.id, 'hashtags', e.target.value)}
-                                            placeholder="#212club #panama #nightlife" style={inputStyle} />
+                                            placeholder="#panama #nightlife #eventos" style={inputStyle} />
                                     </div>
 
                                     {/* Media Upload */}
@@ -639,11 +639,14 @@ export default function ContentCalendarGrid({
                                             <label style={{ ...labelStyle, margin: 0 }}><Type size={11} /> Caption / Copy Principal (Instagram/TikTok)</label>
                                             <button 
                                                 onClick={() => {
+                                                    const currentAcc = accounts.find(a => a.id === selectedEntry.accountId) || activeAccounts[0];
+                                                    const targetHandle = currentAcc?.handler || '@cuenta';
+                                                    const targetName = targetHandle.replace('@', '');
                                                     const topicText = selectedEntry.topic || 'Evento especial';
-                                                    const generatedCopy = `🔥 ¡Este fin de semana en @212club.pa!\n\n${topicText} ✨ Viviremos una noche inolvidable llena de buena música, excelentes tragos y la mejor atmósfera de la ciudad.\n\n📍 Nos vemos en 212 Club Panama.\n🍾 Reservas de mesas VIP disponibles directas en el link de la bio.`;
+                                                    const generatedCopy = `🔥 ¡Este fin de semana en ${targetHandle}!\n\n${topicText} ✨ Viviremos una noche inolvidable llena de buena música, excelentes tragos y la mejor atmósfera.\n\n📍 Te esperamos en ${targetName}.\n🍾 Reservas de mesas VIP disponibles directas en el link de la bio.`;
                                                     updateEntry(selectedEntry.id, 'caption', generatedCopy);
                                                     if (!selectedEntry.cta) updateEntry(selectedEntry.id, 'cta', '📩 Reserva tu mesa VIP al DM o link en bio');
-                                                    if (!selectedEntry.hashtags) updateEntry(selectedEntry.hashtags || selectedEntry.id, 'hashtags', '#212club #panamanightlife #panamacity #party');
+                                                    if (!selectedEntry.hashtags) updateEntry(selectedEntry.hashtags || selectedEntry.id, 'hashtags', `#${targetName.replace(/[^a-zA-Z0-9]/g, '')} #panamanightlife #panamacity #events`);
                                                 }}
                                                 style={{
                                                     fontSize: '10px', fontWeight: 700, padding: '3px 8px', borderRadius: '6px',
@@ -711,12 +714,15 @@ export default function ContentCalendarGrid({
                                                 background: 'linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)'
                                             }}>
                                                 <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 800, color: '#fff' }}>
-                                                    212
+                                                    {(() => {
+                                                        const acc = accounts.find(a => a.id === selectedEntry.accountId) || activeAccounts[0];
+                                                        return acc?.handler ? acc.handler.replace('@', '').slice(0, 3).toUpperCase() : 'IG';
+                                                    })()}
                                                 </div>
                                             </div>
                                             <div>
                                                 <div style={{ fontSize: '13px', fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                    {(() => { const acc = accounts.find(a => a.id === selectedEntry.accountId); return acc ? (acc.handler || acc.platform) : '212club.pa'; })()}
+                                                    {(() => { const acc = accounts.find(a => a.id === selectedEntry.accountId) || activeAccounts[0]; return acc ? (acc.handler || acc.platform) : 'cuenta.pa'; })()}
                                                     <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#3897f0', display: 'inline-block' }} />
                                                 </div>
                                                 <div style={{ fontSize: '11px', color: '#a8a8a8' }}>Panama City, Panama</div>
@@ -773,7 +779,7 @@ export default function ContentCalendarGrid({
                                         {/* Caption text */}
                                         <div style={{ fontSize: '12px', lineHeight: '1.4', color: '#f5f5f5', whiteSpace: 'pre-line' }}>
                                             <span style={{ fontWeight: 700, marginRight: '6px', color: '#fff' }}>
-                                                {(() => { const acc = accounts.find(a => a.id === selectedEntry.accountId); return acc ? (acc.handler || acc.platform) : '212club.pa'; })()}
+                                                {(() => { const acc = accounts.find(a => a.id === selectedEntry.accountId) || activeAccounts[0]; return acc ? (acc.handler || acc.platform) : 'cuenta.pa'; })()}
                                             </span>
                                             {selectedEntry.caption || 'Agrega un caption en el editor para visualizarlo aquí...'}
                                         </div>

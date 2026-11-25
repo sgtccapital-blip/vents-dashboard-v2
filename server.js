@@ -30,6 +30,9 @@ import { dnaToMarkdown, dnaCompleteness, accountSlug } from './src/lib/accountDn
 import { registerContentStudio } from './src/services/contentStudio/routes.js';
 import { registerKnowledge } from './src/services/knowledge/routes.js';
 import { registerAgentHub } from './src/services/agentHub/routes.js';
+import { registerLibrary } from './src/services/library/routes.js';
+import { createOfficeService, normalizeStatus as normalizeOfficeStatus } from './src/services/office/officeService.js';
+import { runModel, listModels, defaultModel, modelCatalog, RETIRED_MODELS } from './src/services/office/modelRunner.js';
 import { generateStructured, availableProviders } from './src/services/contentStudio/llm.js';
 import { loadBrands } from './scripts/build-brands.mjs';
 
@@ -913,7 +916,7 @@ entities.forEach(entity => {
 });
 
 // ─── Estudio de contenido: Drive raw → ideas → desarrollo → producción ───
-registerContentStudio(app, { readDB, writeDB, loadBrands, accountSlug, contentDnaPath: CONTENT_DNA_PATH, rootDir: __dirname, cron });
+const studio = registerContentStudio(app, { readDB, writeDB, loadBrands, accountSlug, contentDnaPath: CONTENT_DNA_PATH, rootDir: __dirname, cron });
 
 // ─── Conocimiento: ChatGPT + dashboard + memorias de agentes en un índice con embeddings ───
 // Se guarda junto a db.json en knowledge/ (fuera de git): conversaciones crudas, resúmenes y vectores.
@@ -925,6 +928,15 @@ const knowledge = registerKnowledge(app, {
     uploadDir: path.join(__dirname, '_uploads_tmp'),
     extensionDir: path.join(__dirname, 'extensions', 'chatgpt-sync'),
     cron,
+});
+// Cada referencia analizada (o borrada) en Redes Sociales → Referencias se refleja en el RAG al momento.
+studio.hooks.onReferenceChange = () => knowledge.syncDashboard().catch(e => console.warn('[Knowledge] Referencias al RAG:', e.message));
+
+// ─── Biblioteca: repos de GitHub clonados en local, sus skills/agentes al RAG e instalables en proyectos ───
+const library = registerLibrary(app, {
+    dataDir: process.env.LIBRARY_DIR || path.join(path.dirname(DB_PATH), 'library'),
+    projectDir: __dirname,
+    knowledge, cron,
 });
 
 // Entrada del feed de actividad (Home) para lo que hacen los agentes externos.
@@ -938,9 +950,19 @@ function addActivityFeed(text, color = '#10b981') {
 
 // ─── Hub de agentes: servidor MCP en /mcp con un token por agente ───
 // Claude, ChatGPT, OpenClaw, Hermes y cualquier cliente MCP leen el contexto y escriben aquí.
-registerAgentHub(app, {
+// AI Office HQ: cola de tareas para agentes internos (multi-modelo) y externos (MCP).
+let agentHub = null;
+const office = createOfficeService({
+    readDB, writeDB,
+    broadcast: (type, payload) => broadcastOfficeEvent(type, payload),
+    getHub: () => agentHub,
+    getAgents: db => getOfficeAgents(db),
+    buildPrompt: async opts => (await buildAgentPrompt(opts)).prompt,
+});
+
+agentHub = registerAgentHub(app, {
     dataDir: process.env.AGENT_HUB_DIR || path.join(path.dirname(DB_PATH), 'agents-hub'),
-    readDB, knowledge, createEntity, updateEntity, addActivityFeed,
+    readDB, knowledge, studio, library, createEntity, updateEntity, addActivityFeed, office,
     isAdminRequest: isAuthenticated,
 });
 
@@ -3850,6 +3872,68 @@ app.post('/api/orch/memory', async (req, res) => {
 });
 
 // ─── Native Agent Execution Engine (The "OpenClaw" Replacer) ───
+// Prompt de ejecución de un agente: su SOP + contexto RAG de la empresa y del ecosistema.
+// Lo usan /api/orch/execute-task y la cola de AI Office HQ.
+const COMPANY_NAMESPACES = {
+    'panamerican-bc': 'panamerican',
+    'inversiones-lbl': 'lbl',
+    'sabores-panama': 'lbl',
+    'gabmar-investments': 'gabmar',
+    'novatech-solutions': 'novatech',
+    'metro-supply': 'metro',
+};
+
+async function buildAgentPrompt({ agentName, task, description, companyId, companyName, previousResult }) {
+    const namespace = COMPANY_NAMESPACES[companyId] || 'default';
+    let sopContent = 'Eres un asistente AI operativo del Command Center OS.';
+    const safeAgentName = String(agentName).split(' ')[0];
+    try {
+        const files = fs.readdirSync(AGENTS_WORKSPACE_PATH);
+        const sopFile = files.find(f => f.toLowerCase().includes(safeAgentName.toLowerCase()));
+        if (sopFile) sopContent = fs.readFileSync(path.join(AGENTS_WORKSPACE_PATH, sopFile), 'utf-8');
+    } catch { /* sin carpeta de SOPs */ }
+
+    let memoryContext = 'Sin contexto RAG disponible para esta empresa.';
+    let ragSources = '';
+    let ecosystemContext = '';
+    const RAGEngine = app.get('ragEngine');
+    if (RAGEngine) {
+        try {
+            const ragResult = await RAGEngine.query(`Contexto necesario para la empresa ${companyName || 'del ecosistema'} para realizar la tarea: ${task}. ${description || ''}`, 5, null, namespace);
+            memoryContext = ragResult.answer || memoryContext;
+            ragSources = (ragResult.sources || []).map(s => `${s.type}: ${s.name}`).join(', ');
+        } catch (e) { console.warn('[Agent prompt] RAG:', e.message); }
+        try {
+            ecosystemContext = (await RAGEngine.query(`Información general del ecosistema relevante para: ${task}`, 2)).answer || '';
+        } catch { /* opcional */ }
+    }
+
+    const prompt = `INSTRUCCIONES DEL SISTEMA (SOP DEL AGENTE):
+${sopContent}
+
+EMPRESA/CLIENTE:
+${companyName || 'Ecosistema General'}
+
+CONTEXTO DE LA EMPRESA (RAG - Namespace: ${namespace}):
+${memoryContext}
+
+CONTEXTO GENERAL DEL ECOSISTEMA:
+${ecosystemContext || 'N/A'}
+
+TAREA A EJECUTAR:
+${task}
+
+DETALLES ADICIONALES:
+${description || 'Ninguno'}
+${previousResult ? `\nTU ENTREGA ANTERIOR (corrígela según lo pedido arriba):\n${previousResult}\n` : ''}
+INSTRUCCIÓN CRÍTICA:
+Eres ${agentName}. Ejecuta la tarea con precisión, usando todo el contexto disponible de la empresa.
+Tu respuesta debe ser el RESULTADO FINAL de la tarea — no digas que "la harás", HAZLA.
+Si es un manual, escríbelo. Si es un análisis, analiza. Si es una estrategia, desarróllala.
+Sé claro, completo y usa markdown para formatear.`;
+    return { prompt, namespace, ragSources, memoryContext };
+}
+
 app.post('/api/orch/execute-task', async (req, res) => {
     let { taskId, agentName, task, description, companyId, companyName } = req.body;
     
@@ -3868,16 +3952,7 @@ app.post('/api/orch/execute-task', async (req, res) => {
 
     if (!agentName || !task) return res.status(400).json({ error: 'Missing agentName or task' });
 
-    // ── Company → Namespace Mapping ──
-    const namespaceMap = {
-        'panamerican-bc': 'panamerican',
-        'inversiones-lbl': 'lbl',
-        'sabores-panama': 'lbl',
-        'gabmar-investments': 'gabmar',
-        'novatech-solutions': 'novatech',
-        'metro-supply': 'metro',
-    };
-    const namespace = namespaceMap[companyId] || 'default';
+    const namespace = COMPANY_NAMESPACES[companyId] || 'default';
 
     console.log(`\n[Execute] ═══════════════════════════════════════════`);
     console.log(`[Execute] Task: ${task}`);
@@ -3886,84 +3961,22 @@ app.post('/api/orch/execute-task', async (req, res) => {
     console.log(`[Execute] ═══════════════════════════════════════════`);
 
     try {
-        const RAGEngine = app.get('ragEngine');
-        if (!RAGEngine) throw new Error('RAG Engine not loaded');
+        const { prompt: fullPrompt, ragSources, memoryContext } = await buildAgentPrompt({ agentName, task, description, companyId, companyName });
 
-        // 1. Load Agent SOP
-        let sopContent = "Eres un asistente AI operativo del Command Center OS.";
-        const safeAgentName = agentName.split(' ')[0]; // E.g., "Bart (COO)" -> "Bart"
-        try {
-            const files = fs.readdirSync(AGENTS_WORKSPACE_PATH);
-            const sopFile = files.find(f => f.toLowerCase().includes(safeAgentName.toLowerCase()));
-            if (sopFile) {
-                sopContent = fs.readFileSync(path.join(AGENTS_WORKSPACE_PATH, sopFile), 'utf-8');
-                console.log(`[Execute] ✅ SOP loaded: ${sopFile}`);
-            } else {
-                console.log(`[Execute] ⚠️ No SOP found for ${safeAgentName}, using default`);
-            }
-        } catch (e) { console.warn(`[Execute] Could not load SOP for ${safeAgentName}`); }
-
-        // 2. Fetch RAG Context from the correct namespace
-        console.log(`[Execute] Querying RAG namespace "${namespace}"...`);
-        const ragQuery = `Contexto necesario para la empresa ${companyName || 'del ecosistema'} para realizar la tarea: ${task}. ${description || ''}`;
-        const ragResult = await RAGEngine.query(ragQuery, 5, null, namespace);
-        const memoryContext = ragResult.answer || 'Sin contexto RAG disponible para esta empresa.';
-        const ragSources = (ragResult.sources || []).map(s => `${s.type}: ${s.name}`).join(', ');
-        console.log(`[Execute] ✅ RAG returned context (sources: ${ragSources || 'none'})`);
-
-        // 3. Also query root namespace for cross-company ecosystem context
-        let ecosystemContext = '';
-        try {
-            const ecoResult = await RAGEngine.query(`Información general del ecosistema relevante para: ${task}`, 2);
-            ecosystemContext = ecoResult.answer || '';
-        } catch (e) { /* silent */ }
-
-        // 4. Build the full execution prompt
-        const fullPrompt = `INSTRUCCIONES DEL SISTEMA (SOP DEL AGENTE):
-${sopContent}
-
-EMPRESA/CLIENTE:
-${companyName || 'Ecosistema General'}
-
-CONTEXTO DE LA EMPRESA (RAG - Namespace: ${namespace}):
-${memoryContext}
-
-CONTEXTO GENERAL DEL ECOSISTEMA:
-${ecosystemContext || 'N/A'}
-
-TAREA A EJECUTAR:
-${task}
-
-DETALLES ADICIONALES:
-${description || 'Ninguno'}
-
-INSTRUCCIÓN CRÍTICA:
-Eres ${agentName}. Ejecuta la tarea con precisión, usando todo el contexto disponible de la empresa. 
-Tu respuesta debe ser el RESULTADO FINAL de la tarea — no digas que "la harás", HAZLA.
-Si es un manual, escríbelo. Si es un análisis, analiza. Si es una estrategia, desarróllala.
-Sé claro, completo y usa markdown para formatear.`;
-
-        // 5. Call Gemini for real execution
+        // 5. Ejecuta con el modelo configurado del agente (Gemini, Claude, OpenAI u OpenRouter)
         const activeDb = readDB();
         const agentConfig = (activeDb.agents || []).find(a => a.name === agentName);
-        const modelId = agentConfig?.model || 'gemini-2.5-flash';
+        const modelId = req.body.model || agentConfig?.model || defaultModel();
 
-        console.log(`[Execute] Calling Gemini (${modelId}) for ${agentName}...`);
-        
+        console.log(`[Execute] Running ${modelId} for ${agentName}...`);
+
         let finalResult;
         try {
-            const { GoogleGenAI } = await import('@google/genai');
-            const genai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-            const response = await genai.models.generateContent({
-                model: modelId,
-                contents: fullPrompt,
-                config: { maxOutputTokens: 4096 }
-            });
-            finalResult = response.text || 'Gemini no devolvió contenido.';
-            console.log(`[Execute] ✅ Gemini execution complete (${finalResult.length} chars)`);
-        } catch (geminiErr) {
-            console.error(`[Execute] ⚠️ Gemini call failed: ${geminiErr.message}`);
-            finalResult = `⚠️ Gemini no disponible. Contexto RAG recuperado:\n\n${memoryContext}`;
+            finalResult = (await runModel({ model: modelId, prompt: fullPrompt, maxTokens: 4096 })).text;
+            console.log(`[Execute] ✅ ${modelId} execution complete (${finalResult.length} chars)`);
+        } catch (modelErr) {
+            console.error(`[Execute] ⚠️ ${modelId} call failed: ${modelErr.message}`);
+            finalResult = `⚠️ ${modelId} no disponible (${modelErr.message}). Contexto RAG recuperado:\n\n${memoryContext}`;
         }
 
         // 6. Save Result and Update DB
@@ -4011,7 +4024,7 @@ const DEFAULT_OFFICE_AGENTS = [
         hierarchy: 'executive',
         avatar: '👔',
         stationId: 'desk-bart',
-        model: 'gemini-2.5-flash',
+        model: defaultModel(),
         autonomyLevel: 4,
         skills: ['orchestration', 'task_decomposition', 'qa_verification', 'rag_synthesis', 'budget_guardrails'],
         tools: ['browser_exec', 'rag_search', 'db_write', 'inbox_dispatch'],
@@ -4026,7 +4039,7 @@ const DEFAULT_OFFICE_AGENTS = [
         hierarchy: 'director',
         avatar: '🚀',
         stationId: 'desk-nexus',
-        model: 'gemini-2.5-flash',
+        model: defaultModel(),
         autonomyLevel: 2,
         skills: ['ad_strategy', 'meta_ads', 'funnel_analytics', 'growth_hacking'],
         tools: ['meta_ads_api', 'google_analytics', 'rag_search'],
@@ -4041,7 +4054,7 @@ const DEFAULT_OFFICE_AGENTS = [
         hierarchy: 'specialist',
         avatar: '🎬',
         stationId: 'desk-echo',
-        model: 'gemini-2.5-flash',
+        model: defaultModel(),
         autonomyLevel: 2,
         skills: ['reels_scripting', 'tiktok_hooks', 'copywriting', 'storytelling'],
         tools: ['contentStudio', 'youtube_transcript', 'rag_search'],
@@ -4056,7 +4069,7 @@ const DEFAULT_OFFICE_AGENTS = [
         hierarchy: 'director',
         avatar: '📦',
         stationId: 'desk-atlas',
-        model: 'gemini-2.5-flash',
+        model: defaultModel(),
         autonomyLevel: 2,
         skills: ['venue_operations', 'inventory_management', 'promoter_dispatch', 'scheduling'],
         tools: ['gcal_api', 'db_write', 'rag_search'],
@@ -4071,7 +4084,7 @@ const DEFAULT_OFFICE_AGENTS = [
         hierarchy: 'specialist',
         avatar: '💎',
         stationId: 'desk-closerops',
-        model: 'gemini-2.5-flash',
+        model: defaultModel(),
         autonomyLevel: 2,
         skills: ['crm_closing', 'vip_tables_booking', 'negotiation', 'lead_qualification'],
         tools: ['whatsapp_api', 'crm_contacts', 'rag_search'],
@@ -4086,7 +4099,7 @@ const DEFAULT_OFFICE_AGENTS = [
         hierarchy: 'specialist',
         avatar: '🔍',
         stationId: 'desk-scout',
-        model: 'gemini-2.5-flash',
+        model: defaultModel(),
         autonomyLevel: 1,
         skills: ['vendor_pricing', 'quotation_comparison', 'market_scraping'],
         tools: ['browser_exec', 'pdf_parse', 'rag_search'],
@@ -4101,7 +4114,7 @@ const DEFAULT_OFFICE_AGENTS = [
         hierarchy: 'specialist',
         avatar: '🛡️',
         stationId: 'desk-sentinel',
-        model: 'gemini-2.5-flash',
+        model: defaultModel(),
         autonomyLevel: 1,
         skills: ['panamacompra_scraping', 'tender_evaluation', 'compliance_audit'],
         tools: ['browser_exec', 'pdf_parse', 'rag_search'],
@@ -4116,7 +4129,7 @@ const DEFAULT_OFFICE_AGENTS = [
         hierarchy: 'specialist',
         avatar: '⚡',
         stationId: 'desk-pulse',
-        model: 'gemini-2.5-flash',
+        model: defaultModel(),
         autonomyLevel: 2,
         skills: ['whatsapp_broadcast', 'instagram_broadcast', 'tiktok_dm', 'promoter_tracking'],
         tools: ['whatsapp_api', 'broadcast_service', 'rag_search'],
@@ -4131,7 +4144,7 @@ const DEFAULT_OFFICE_AGENTS = [
         hierarchy: 'director',
         avatar: '⚡',
         stationId: 'desk-antigravity',
-        model: 'gemini-2.5-flash',
+        model: defaultModel(),
         autonomyLevel: 3,
         skills: ['react_architecture', 'vite_bundler', 'tailwind_glassmorphism', 'api_design'],
         tools: ['fs_write', 'git_exec', 'inbox_watcher'],
@@ -4183,29 +4196,45 @@ function getOfficeAgents(db) {
             if (!existing.avatar) existing.avatar = defAgent.avatar;
             if (!existing.stationId) existing.stationId = defAgent.stationId;
             if (!existing.status) existing.status = 'available';
-            if (!existing.model) existing.model = defAgent.model;
+            if (!existing.model || RETIRED_MODELS.includes(existing.model)) existing.model = defaultModel();
             if (!existing.skills || existing.skills.length === 0) existing.skills = defAgent.skills;
             if (!existing.tools || existing.tools.length === 0) existing.tools = defAgent.tools;
             if (!existing.metrics) existing.metrics = defAgent.metrics;
         }
     });
+    db.agents.forEach(a => { if (RETIRED_MODELS.includes(a.model)) a.model = defaultModel(); });
     return db.agents;
 }
 
-// 1. GET /api/office/state — Full real-time snapshot of the virtual office
+// ─── Real-Time Server-Sent Events (SSE) Bus ──────────────────────────
+const officeSseClients = new Set();
+
+function broadcastOfficeEvent(eventType, payload) {
+    const msg = `data: ${JSON.stringify({ type: eventType, data: payload, timestamp: new Date().toISOString() })}\n\n`;
+    for (const client of officeSseClients) {
+        try {
+            client.write(msg);
+        } catch {
+            officeSseClients.delete(client);
+        }
+    }
+}
+
+// 1. GET /api/office/state — Foto en tiempo real: agentes internos + conectados por MCP, cola y métricas reales
 app.get('/api/office/state', (req, res) => {
     try {
         const db = readDB();
-        const agents = getOfficeAgents(db);
-        const activeTasks = (db.agentTasks || []).filter(t => t.status === 'in_progress' || t.status === 'pending' || t.status === 'waiting_approval');
-        const completedTasks = (db.agentTasks || []).filter(t => t.status === 'completed' || t.status === 'done').slice(-20);
+        getOfficeAgents(db);
+        const agents = office.allAgents(db);
+        const tasks = (db.agentTasks || []).map(t => ({ ...t, status: normalizeOfficeStatus(t.status), running: office.isRunning(t.id) }));
+        const open = ['queued', 'in_progress', 'waiting_approval', 'review'];
+        const activeTasks = tasks.filter(t => open.includes(t.status));
+        const closedTasks = tasks.filter(t => !open.includes(t.status))
+            .sort((a, b) => String(b.completedAt || b.updatedAt || b.createdAt).localeCompare(String(a.completedAt || a.updatedAt || a.createdAt)))
+            .slice(0, 40);
         const approvals = db.approvalRequests || [];
-        const activityFeed = (db.activityFeed || []).slice(0, 30);
-
-        // Compute real-time stats
+        const metrics = office.computeStats(db, agents);
         const executingCount = agents.filter(a => a.status === 'executing' || a.status === 'planning').length;
-        const waitingApprovalCount = approvals.filter(ap => ap.status === 'pending').length;
-        const totalTokensConsumed = agents.reduce((acc, a) => acc + (a.metrics?.totalTokensConsumed || 0), 0);
 
         res.json({
             success: true,
@@ -4213,16 +4242,23 @@ app.get('/api/office/state', (req, res) => {
             departments: DEFAULT_OFFICE_DEPARTMENTS,
             rooms: DEFAULT_OFFICE_ROOMS,
             activeTasks,
-            completedTasks,
+            completedTasks: closedTasks,
             approvals,
-            activityFeed,
+            activityFeed: (db.activityFeed || []).slice(0, 30),
+            documents: (db.documents || []).slice(0, 50),
+            models: listModels(),
+            metrics,
             stats: {
                 totalAgents: agents.length,
+                internalAgents: agents.filter(a => a.kind === 'internal').length,
+                connectedAgents: agents.filter(a => a.kind === 'external').length,
+                onlineConnected: agents.filter(a => a.kind === 'external' && a.online).length,
                 activeExecuting: executingCount,
                 availableCount: agents.filter(a => a.status === 'available').length,
-                waitingApprovalCount,
-                totalTokensConsumed,
-                estimatedSpendUSD: parseFloat((totalTokensConsumed * 0.000002).toFixed(2)),
+                waitingApprovalCount: approvals.filter(ap => ap.status === 'pending').length,
+                reviewCount: activeTasks.filter(t => t.status === 'review').length,
+                totalTokensConsumed: metrics.totals.tokens,
+                estimatedSpendUSD: metrics.totals.costUSD,
                 systemStatus: 'nominal'
             }
         });
@@ -4241,7 +4277,7 @@ app.post('/api/office/dispatch', async (req, res) => {
         }
 
         const db = readDB();
-        const agents = getOfficeAgents(db);
+        getOfficeAgents(db);
         if (!db.agentTasks) db.agentTasks = [];
         if (!db.approvalRequests) db.approvalRequests = [];
         if (!db.activityFeed) db.activityFeed = [];
@@ -4251,8 +4287,9 @@ app.post('/api/office/dispatch', async (req, res) => {
         let assignedAgentId = 'agent-bart';
         let actionType = 'native_orch';
 
+        const everyone = office.allAgents(db);
         if (targetAgent) {
-            const found = agents.find(a => a.id === targetAgent || a.name.toLowerCase().includes(targetAgent.toLowerCase()));
+            const found = everyone.find(a => a.id === targetAgent) || everyone.find(a => a.name.toLowerCase().includes(String(targetAgent).toLowerCase()));
             if (found) {
                 assignedAgentName = found.name;
                 assignedAgentId = found.id;
@@ -4298,8 +4335,10 @@ app.post('/api/office/dispatch', async (req, res) => {
         // 3. Autonomy Levels
         const impact = parseFloat(estimatedBudget) || 0;
         let autonomyLevel = 1;
-        let status = 'in_progress';
+        let status = 'queued';
 
+        const assignedObj = everyone.find(a => a.id === assignedAgentId);
+        const assignedKind = assignedObj?.kind || 'internal';
         if (impact > 5000 || priority === 'critical_auth') {
             autonomyLevel = 4;
             status = 'waiting_approval';
@@ -4326,8 +4365,14 @@ app.post('/api/office/dispatch', async (req, res) => {
             companyId: companyId || '',
             companyName: companyName || 'ARRIVE Ecosystem',
             actionType,
-            progress: status === 'waiting_approval' ? 0 : 25,
-            currentStep: status === 'waiting_approval' ? 'Esperando confirmación del CEO en Gobernanza' : 'BART analizando e iniciando ejecución',
+            assignedKind,
+            model: assignedKind === 'internal' ? (req.body.model || assignedObj?.model || defaultModel()) : null,
+            runs: [],
+            history: [{ at: new Date().toISOString(), text: `Creada por el CEO y asignada a ${assignedAgentName}` }],
+            progress: 0,
+            currentStep: status === 'waiting_approval'
+                ? 'Esperando confirmación del CEO en Gobernanza'
+                : assignedKind === 'external' ? `Esperando que ${assignedAgentName} la tome por MCP` : `En cola para ${assignedAgentName}`,
             createdAt: new Date().toISOString()
         };
 
@@ -4335,8 +4380,8 @@ app.post('/api/office/dispatch', async (req, res) => {
 
         // Update target agent's live status
         const targetAgentObj = db.agents.find(a => a.id === assignedAgentId);
-        if (targetAgentObj) {
-            targetAgentObj.status = status === 'waiting_approval' ? 'waiting_approval' : 'executing';
+        if (targetAgentObj && status === 'waiting_approval') {
+            targetAgentObj.status = 'waiting_approval';
             targetAgentObj.activeTaskId = taskId;
             targetAgentObj.currentTaskName = mission;
             targetAgentObj.activeCompany = companyName || 'ARRIVE Ecosystem';
@@ -4358,17 +4403,16 @@ app.post('/api/office/dispatch', async (req, res) => {
             });
         }
 
-        // Si es para Antigravity, crear ticket en _agent_inbox/
-        if (actionType === 'antigravity_inbox') {
-            try {
-                const safeName = mission.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
-                const fileName = `TASK_${new Date().toISOString().split('T')[0].replace(/-/g,'')}_${safeName}.md`;
-                const inboxPath = path.join(VAULT_PATH, fileName);
-                const fileContent = `---\nFROM: BART (COO)\nTO: Antigravity\nPRIORITY_SCORE: ${priorityScore}\nAUTONOMY_LEVEL: ${autonomyLevel}\nSTATUS: ${status}\n---\n\n# MISIÓN:\n${mission}\n\n# DETALLES:\n${req.body.description || 'Implementar cumpliendo con la arquitectura de AI Office HQ.'}\n`;
-                fs.writeFileSync(inboxPath, fileContent);
-            } catch (inboxErr) {
-                console.warn('[Office Dispatch] Inbox ticket error:', inboxErr.message);
-            }
+        // Crear ticket en _agent_inbox/ para el canal de filtro de agentes
+        try {
+            const agentPrefix = (assignedAgentId || 'agent').replace('agent-', '').toUpperCase();
+            const safeName = mission.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
+            const fileName = `TASK_${new Date().toISOString().split('T')[0].replace(/-/g,'')}_${agentPrefix}_${safeName}.md`;
+            const inboxPath = path.join(VAULT_PATH, fileName);
+            const fileContent = `---\nFROM: BART (COO)\nTO: ${assignedAgentName}\nAGENT_ID: ${assignedAgentId}\nPRIORITY_SCORE: ${priorityScore}\nAUTONOMY_LEVEL: ${autonomyLevel}\nSTATUS: ${status}\nCREATED_AT: ${new Date().toISOString()}\n---\n\n# MISIÓN:\n${mission}\n\n# CONTEXTO DE EMPRESA:\n- Empresa objetivo: ${companyName || 'ARRIVE Agency'}\n- Nivel de Autonomía: Nivel ${autonomyLevel}\n- Criterio de entrega: Documento o avance de tarea registrado en el Command Center.\n\n# DETALLES:\n${req.body.description || 'Procesar como canal de filtro autónomo, ejecutar entregables y avanzar tarea a review/done.'}\n`;
+            fs.writeFileSync(inboxPath, fileContent);
+        } catch (inboxErr) {
+            console.warn('[Office Dispatch] Inbox ticket error:', inboxErr.message);
         }
 
         // Inyectar en Activity Feed
@@ -4382,10 +4426,17 @@ app.post('/api/office/dispatch', async (req, res) => {
 
         db.activityFeed = db.activityFeed.slice(0, 50);
         writeDB(db);
+        broadcastOfficeEvent('task_dispatched', { task: newTask, assignedAgent: assignedAgentName });
+
+        // Los agentes internos arrancan solos; los externos la toman por MCP (get_my_office_tasks).
+        if (status === 'queued' && assignedKind === 'internal' && req.body.autoRun !== false) {
+            office.startInternalRun(taskId);
+            status = normalizeOfficeStatus(readDB().agentTasks.find(t => t.id === taskId)?.status);
+        }
 
         res.status(201).json({
             success: true,
-            task: newTask,
+            task: { ...newTask, status },
             assignedAgent: assignedAgentName,
             priorityScore,
             autonomyLevel,
@@ -4418,6 +4469,7 @@ app.post('/api/office/agent/:id/status', (req, res) => {
         agent.lastSeen = new Date().toISOString();
 
         writeDB(db);
+        broadcastOfficeEvent('agent_status_changed', { agentId: id, status, currentStep });
         res.json({ success: true, agent });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -4444,17 +4496,17 @@ app.post('/api/office/approval/:id/decision', (req, res) => {
         // Update corresponding task
         const task = (db.agentTasks || []).find(t => t.id === appr.taskId);
         if (task) {
-            task.status = decision === 'approved' ? 'in_progress' : 'cancelled';
-            task.currentStep = decision === 'approved' ? 'Aprobado por el CEO. En ejecución.' : 'Rechazado por el CEO.';
+            task.status = decision === 'approved' ? 'queued' : 'cancelled';
+            task.currentStep = decision === 'approved'
+                ? (task.assignedKind === 'external' ? `Aprobado. Esperando que ${task.assignedAgent} la tome por MCP` : 'Aprobado por el CEO. En cola.')
+                : 'Rechazado por el CEO.';
             task.updatedAt = new Date().toISOString();
         }
 
-        // Update agent status
+        // El agente queda libre; si es interno y se aprobó, arranca abajo.
         const agents = getOfficeAgents(db);
         const agent = agents.find(a => a.id === appr.agentId);
-        if (agent) {
-            agent.status = decision === 'approved' ? 'executing' : 'available';
-        }
+        if (agent && agent.status === 'waiting_approval') agent.status = 'available';
 
         // Activity log
         if (!db.activityFeed) db.activityFeed = [];
@@ -4467,6 +4519,8 @@ app.post('/api/office/approval/:id/decision', (req, res) => {
         });
 
         writeDB(db);
+        if (task && decision === 'approved' && task.assignedKind !== 'external') office.startInternalRun(task.id);
+        broadcastOfficeEvent('approval_decided', { approval: appr, task });
         res.json({ success: true, approval: appr, task });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -4487,10 +4541,11 @@ app.post('/api/office/kill-switch', (req, res) => {
             }
         });
 
-        // Pause active tasks
+        // Pause active tasks (y descarta lo que esté corriendo en los modelos)
+        office.haltAll();
         (db.agentTasks || []).forEach(t => {
             if (t.status === 'in_progress') {
-                t.status = 'pending';
+                t.status = 'queued';
                 t.currentStep = 'Pausado por Kill Switch del CEO';
             }
         });
@@ -4505,6 +4560,7 @@ app.post('/api/office/kill-switch', (req, res) => {
         });
 
         writeDB(db);
+        broadcastOfficeEvent('kill_switch_triggered', { timestamp: new Date().toISOString() });
         res.json({ success: true, message: 'Kill switch ejecutado. Operaciones detenidas.' });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -4539,12 +4595,491 @@ app.post('/api/office/war-room/call', (req, res) => {
         });
 
         writeDB(db);
+        broadcastOfficeEvent('war_room_called', { topic, summonedIds });
         res.json({ success: true, topic, summonedCount: summonedIds.length });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
+// 7. GET /api/office/events — Server-Sent Events (SSE) Real-Time Stream
+app.get('/api/office/events', (req, res) => {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders?.();
+
+    officeSseClients.add(res);
+
+    // Initial greeting / handshake
+    res.write(`data: ${JSON.stringify({ type: 'connected', timestamp: new Date().toISOString() })}\n\n`);
+
+    // Keepalive ping every 25s
+    const keepAlive = setInterval(() => {
+        try {
+            res.write(': keepalive\n\n');
+        } catch {
+            clearInterval(keepAlive);
+            officeSseClients.delete(res);
+        }
+    }, 25000);
+
+    req.on('close', () => {
+        clearInterval(keepAlive);
+        officeSseClients.delete(res);
+    });
+});
+
+// 8. POST /api/office/war-room/simulate — Multi-Agent Live Deliberation
+app.post('/api/office/war-room/simulate', async (req, res) => {
+    try {
+        const { topic, companyName } = req.body;
+        const targetTopic = topic || 'Estrategia de lanzamiento y activación comercial';
+        const targetCompany = companyName || 'HangOut Panamá';
+
+        const turns = [
+            {
+                agentId: 'agent-bart',
+                name: 'BART (COO)',
+                avatar: '👔',
+                color: '#3b82f6',
+                message: `Bienvenido equipo. El CEO ha convocado sesión extraordinaria de War Room para: "${targetTopic}" en ${targetCompany}. Nexus, necesitamos proyecciones de pauta y audiencia de apertura.`,
+                time: '00:01'
+            },
+            {
+                agentId: 'agent-nexus',
+                name: 'Nexus (Marketing)',
+                avatar: '🚀',
+                color: '#f97316',
+                message: `Analizado. Segmentaremos campaña hiperlocal en Casco Antiguo y San Francisco con $250 iniciales. Objetivo: 350 registros para lista de acceso VIP con CPL menor a $0.85 USD. Echo, define los hooks de video para Reels y TikTok.`,
+                time: '00:04'
+            },
+            {
+                agentId: 'agent-echo',
+                name: 'Echo (Social)',
+                avatar: '🎬',
+                color: '#ec4899',
+                message: `Copys listos. Propondré 3 formatos de alto impacto: 1) POV "La nueva terraza secreta que abrió en Panamá", 2) Recap dinámico del DJ set con audio en tendencia, 3) Guion con llamado a WhatsApp para reservar mesa. Atlas, valida fechas operativas.`,
+                time: '00:07'
+            },
+            {
+                agentId: 'agent-atlas',
+                name: 'Atlas (Logistics)',
+                avatar: '📦',
+                color: '#10b981',
+                message: `Fechas confirmadas: Apertura Viernes 8:00 PM. Barra con cócteles de autor listos, sistema de sonido probado y 4 promotores asignados a puerta. CloserOps, abre preventa de mesas VIP.`,
+                time: '00:10'
+            },
+            {
+                agentId: 'agent-closerops',
+                name: 'CloserOps (Sales)',
+                avatar: '💎',
+                color: '#a855f7',
+                message: `Excelente. Hemos pre-bloqueado 6 mesas VIP con consumo mínimo de $350. Lanzaremos contacto directo por WhatsApp a nuestros clientes recurrentes de Terraplén y Furia.`,
+                time: '00:12'
+            },
+            {
+                agentId: 'agent-bart',
+                name: 'BART (COO)',
+                avatar: '👔',
+                color: '#3b82f6',
+                message: `Plan estratégico aprobado y consolidado. Desglosando 3 entregables ejecutivos en el dashboard: 1) Guiones en Content Hub, 2) Tarea logística en Calendario, 3) Campaña en Agente de Difusión. ¡A ejecutar!`,
+                time: '00:15'
+            }
+        ];
+
+        const deliverables = [
+            {
+                id: `deliv-1-${Date.now()}`,
+                type: 'content',
+                title: `3 Guiones de Video Corto para ${targetCompany}`,
+                targetModule: '/content-hub',
+                assignedAgent: 'Echo (Social)',
+                status: 'ready'
+            },
+            {
+                id: `deliv-2-${Date.now()}`,
+                type: 'task',
+                title: `Checklist de Operaciones & Sonido en ${targetCompany}`,
+                targetModule: '/workspace',
+                assignedAgent: 'Atlas (Logistics)',
+                status: 'pending'
+            },
+            {
+                id: `deliv-3-${Date.now()}`,
+                type: 'broadcast',
+                title: `Copy para Invitación VIP en WhatsApp`,
+                targetModule: '/difusion',
+                assignedAgent: 'Pulse (Community)',
+                status: 'ready'
+            }
+        ];
+
+        const db = readDB();
+        if (!db.activityFeed) db.activityFeed = [];
+        db.activityFeed.unshift({
+            id: `act-${Date.now()}`,
+            agent: 'BART (COO)',
+            text: `🎯 War Room concluido: "${targetTopic}" con 3 entregables generados.`,
+            color: '#8b5cf6',
+            timestamp: new Date().toISOString()
+        });
+        db.activityFeed = db.activityFeed.slice(0, 50);
+        writeDB(db);
+
+        broadcastOfficeEvent('war_room_simulated', { topic: targetTopic, turns, deliverables });
+
+        res.json({
+            success: true,
+            topic: targetTopic,
+            companyName: targetCompany,
+            turns,
+            deliverables
+        });
+    } catch (err) {
+        console.error('[War Room Sim] Error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 9. POST /api/office/deliverable/inject — Auto-Inject into Dashboard Modules
+app.post('/api/office/deliverable/inject', (req, res) => {
+    try {
+        const { type, title, assignedAgent } = req.body;
+        const db = readDB();
+
+        let targetModule = '/workspace';
+
+        if (type === 'task') {
+            if (!db.tasks) db.tasks = [];
+            const newTask = {
+                id: `task-${Date.now()}`,
+                text: title,
+                title,
+                done: false,
+                status: 'pending',
+                assignedTo: assignedAgent || 'BART',
+                createdAt: new Date().toISOString()
+            };
+            db.tasks.unshift(newTask);
+            targetModule = '/workspace';
+        } else if (type === 'content') {
+            if (!db.notes) db.notes = [];
+            db.notes.unshift({
+                id: `note-${Date.now()}`,
+                title: `[AI Studio] ${title}`,
+                content: `Guión generado automáticamente en War Room por ${assignedAgent || 'Echo'}.\n\nFormato: Reel / TikTok (60s)\nHook: "¿Sabías que acaba de abrir la terraza más exclusiva de Casco?"\nLlamado a la acción: Comenta VIP para enviarte invitación.`,
+                createdAt: new Date().toISOString()
+            });
+            targetModule = '/content-hub';
+        } else if (type === 'broadcast') {
+            if (!db.whatsappCampaigns) db.whatsappCampaigns = [];
+            db.whatsappCampaigns.unshift({
+                id: `wac-${Date.now()}`,
+                title: title,
+                copy: `🍸 *Invitación Exclusiva*: Tenemos el agrado de invitarte este viernes a la apertura de HangOut Panamá. Degustación y mesa VIP. ¿Confirmas tu asistencia?`,
+                status: 'draft',
+                createdAt: new Date().toISOString()
+            });
+            targetModule = '/difusion';
+        }
+
+        if (!db.activityFeed) db.activityFeed = [];
+        db.activityFeed.unshift({
+            id: `act-${Date.now()}`,
+            agent: 'BART (COO)',
+            text: `📥 Entregable inyectado en ${targetModule}: "${title}"`,
+            color: '#10b981',
+            timestamp: new Date().toISOString()
+        });
+
+        writeDB(db);
+        broadcastOfficeEvent('deliverable_injected', { type, title, targetModule });
+
+        res.json({ success: true, targetModule, message: `Entregable inyectado en ${targetModule}` });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 10. GET /api/office/inbox — Get all pending tickets in filter channel
+app.get('/api/office/inbox', (req, res) => {
+    try {
+        const db = readDB();
+        const diskTickets = [];
+
+        try {
+            if (fs.existsSync(VAULT_PATH)) {
+                const files = fs.readdirSync(VAULT_PATH).filter(f => f.startsWith('TASK_') && f.endsWith('.md'));
+                files.forEach(f => {
+                    try {
+                        const content = fs.readFileSync(path.join(VAULT_PATH, f), 'utf8');
+                        const m = content.match(/---\s*([\s\S]*?)\s*---/);
+                        const frontmatter = {};
+                        if (m) {
+                            m[1].split('\n').forEach(line => {
+                                const [k, ...v] = line.split(':');
+                                if (k && v.length) frontmatter[k.trim()] = v.join(':').trim();
+                            });
+                        }
+                        diskTickets.push({
+                            fileName: f,
+                            from: frontmatter.FROM || 'BART (COO)',
+                            to: frontmatter.TO || 'Agent',
+                            agentId: frontmatter.AGENT_ID || null,
+                            priorityScore: parseFloat(frontmatter.PRIORITY_SCORE) || 5,
+                            autonomyLevel: parseInt(frontmatter.AUTONOMY_LEVEL) || 2,
+                            status: frontmatter.STATUS || 'pending',
+                            createdAt: frontmatter.CREATED_AT || fs.statSync(path.join(VAULT_PATH, f)).mtime.toISOString(),
+                            content: content.replace(/---\s*[\s\S]*?\s*---/, '').trim()
+                        });
+                    } catch { /* skip unparseable */ }
+                });
+            }
+        } catch (e) {
+            console.warn('[Office Inbox] Error scanning inbox files:', e.message);
+        }
+
+        const tasks = db.agentTasks || [];
+        res.json({
+            success: true,
+            diskTickets,
+            activeTasks: tasks.filter(t => t.status !== 'done' && t.status !== 'cancelled'),
+            totalInboxCount: diskTickets.length + tasks.filter(t => t.status === 'pending').length
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 11. GET /api/office/agent/:id/documents — List documents authored by agent
+app.get('/api/office/agent/:id/documents', (req, res) => {
+    try {
+        const { id } = req.params;
+        const db = readDB();
+        const docs = (db.documents || []).filter(d => d.agentId === id || d.authorId === id);
+        res.json({ success: true, documents: docs });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 12. POST /api/office/agent/:id/document — Agent creates/uploads a document
+app.post('/api/office/agent/:id/document', (req, res) => {
+    try {
+        const { id } = req.params;
+        const { title, type, content, company, tags } = req.body;
+        if (!title || !content) {
+            return res.status(400).json({ error: 'Título y contenido requeridos' });
+        }
+
+        const db = readDB();
+        const agents = getOfficeAgents(db);
+        const agent = agents.find(a => a.id === id) || { name: 'Agente', role: 'Specialist' };
+
+        const docId = `doc-${Date.now()}`;
+        const newDoc = {
+            id: docId,
+            title,
+            type: type || 'report', // 'brief' | 'script' | 'sop' | 'copy' | 'report'
+            content,
+            agentId: id,
+            agentName: agent.name,
+            company: company || agent.activeCompany || 'ARRIVE Agency',
+            tags: tags || [agent.departmentId || 'general'],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+
+        if (!db.documents) db.documents = [];
+        db.documents.unshift(newDoc);
+
+        // Also sync into db.notes for Content Studio / RAG accessibility
+        if (!db.notes) db.notes = [];
+        db.notes.unshift({
+            id: `note-${docId}`,
+            title: `[${agent.name.split(' ')[0]}] ${title}`,
+            content: content,
+            category: type || 'Agent Document',
+            createdAt: new Date().toISOString()
+        });
+
+        // Persist to disk under BrainVault/AGENTS_OUTPUT/
+        try {
+            const vaultOutDir = path.join(__dirname, 'BrainVault', 'AGENTS_OUTPUT', id);
+            if (!fs.existsSync(vaultOutDir)) {
+                fs.mkdirSync(vaultOutDir, { recursive: true });
+            }
+            const safeDocName = title.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 40);
+            fs.writeFileSync(path.join(vaultOutDir, `${safeDocName}.md`), `# ${title}\n**Autor:** ${agent.name}\n**Fecha:** ${new Date().toISOString()}\n**Empresa:** ${company || 'ARRIVE Agency'}\n\n${content}`);
+        } catch (vaultErr) {
+            console.warn('[Agent Document] Vault write error:', vaultErr.message);
+        }
+
+        // Log activity
+        if (!db.activityFeed) db.activityFeed = [];
+        db.activityFeed.unshift({
+            id: `act-${Date.now()}`,
+            agent: agent.name,
+            text: `📄 Creó documento: "${title}" (${newDoc.type.toUpperCase()})`,
+            color: '#10b981',
+            timestamp: new Date().toISOString()
+        });
+
+        writeDB(db);
+        broadcastOfficeEvent('document_created', { document: newDoc, agentId: id });
+
+        res.status(201).json({ success: true, document: newDoc });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 13. POST /api/office/task/:id/progress — Agent or CEO advances task progress
+app.post('/api/office/task/:id/progress', (req, res) => {
+    try {
+        const { id } = req.params;
+        const { currentStep, progress, status, note } = req.body;
+
+        const db = readDB();
+        const task = (db.agentTasks || []).find(t => t.id === id);
+        if (!task) return res.status(404).json({ error: 'Tarea no encontrada' });
+
+        if (currentStep) task.currentStep = currentStep;
+        if (progress !== undefined) task.progress = Math.min(100, Math.max(0, parseInt(progress) || 0));
+        if (status) task.status = status;
+        task.updatedAt = new Date().toISOString();
+
+        // If completed or marked done
+        if (status === 'done' || task.progress >= 100) {
+            task.status = 'done';
+            task.progress = 100;
+            task.completedAt = new Date().toISOString();
+
+            // Release assigned agent
+            const agents = getOfficeAgents(db);
+            const agent = agents.find(a => a.id === task.assignedAgentId);
+            if (agent && agent.status === 'executing') {
+                agent.status = 'available';
+                agent.activeTaskId = null;
+            }
+
+            // Sync with main db.tasks if linked
+            if (db.tasks) {
+                const mainTask = db.tasks.find(t => t.id === task.taskId || t.title === task.task);
+                if (mainTask) {
+                    mainTask.done = true;
+                    mainTask.status = 'done';
+                }
+            }
+        }
+
+        // Log activity
+        if (!db.activityFeed) db.activityFeed = [];
+        db.activityFeed.unshift({
+            id: `act-${Date.now()}`,
+            agent: task.assignedAgent || 'Agente',
+            text: `📈 Avanzó tarea "${task.task}": ${task.currentStep || 'Progreso ' + task.progress + '%'}`,
+            color: task.status === 'done' ? '#10b981' : '#38bdf8',
+            timestamp: new Date().toISOString()
+        });
+
+        writeDB(db);
+        broadcastOfficeEvent('task_progressed', { task });
+
+        res.json({ success: true, task });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 14. POST /api/office/task/:id/approve — Approve deliverable & complete task
+app.post('/api/office/task/:id/approve', (req, res) => {
+    try {
+        const { id } = req.params;
+        const { approver = 'BART (COO)', notes = 'Aprobado satisfactoriamente' } = req.body;
+
+        const db = readDB();
+        const task = (db.agentTasks || []).find(t => t.id === id);
+        if (!task) return res.status(404).json({ error: 'Tarea no encontrada' });
+
+        task.status = 'done';
+        task.progress = 100;
+        task.currentStep = `Completado y aprobado por ${approver}`;
+        task.approvedBy = approver;
+        task.approvalNotes = notes;
+        task.completedAt = new Date().toISOString();
+        task.updatedAt = new Date().toISOString();
+
+        // Release agent
+        const agents = getOfficeAgents(db);
+        const agent = agents.find(a => a.id === task.assignedAgentId);
+        if (agent) {
+            agent.status = 'available';
+            agent.activeTaskId = null;
+        }
+
+        // Activity feed
+        if (!db.activityFeed) db.activityFeed = [];
+        db.activityFeed.unshift({
+            id: `act-${Date.now()}`,
+            agent: approver,
+            text: `✅ ${approver} APROBÓ el entregable de ${task.assignedAgent}: "${task.task}"`,
+            color: '#10b981',
+            timestamp: new Date().toISOString()
+        });
+
+        writeDB(db);
+        broadcastOfficeEvent('task_approved', { task, approver });
+
+        res.json({ success: true, task });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
+// 15. Cola de trabajo real: ejecutar, revisar, reasignar y configurar modelos
+const officeRoute = fn => (req, res) => {
+    try {
+        res.json({ success: true, ...fn(req) });
+    } catch (err) {
+        res.status(err.status || 500).json({ error: err.message });
+    }
+};
+
+app.get('/api/office/models', (req, res) => res.json(listModels()));
+
+app.post('/api/office/task/:id/run', officeRoute(req => office.startInternalRun(req.params.id)));
+
+app.post('/api/office/task/:id/review', officeRoute(req => ({ task: office.review(req.params.id, req.body || {}) })));
+
+app.post('/api/office/task/:id/reassign', officeRoute(req => {
+    const task = office.reassign(req.params.id, req.body?.agentId);
+    const run = task.assignedKind === 'internal' && req.body?.run !== false ? office.startInternalRun(task.id) : null;
+    return { task, run };
+}));
+
+app.get('/api/office/task/:id', officeRoute(req => {
+    const task = (readDB().agentTasks || []).find(t => t.id === req.params.id);
+    if (!task) throw Object.assign(new Error('Tarea no encontrada'), { status: 404 });
+    return { task: { ...task, status: normalizeOfficeStatus(task.status), running: office.isRunning(task.id) } };
+}));
+
+// Modelo de un agente interno (cada agente puede usar un proveedor distinto según su uso).
+app.post('/api/office/agent/:id/config', officeRoute(req => {
+    const { model } = req.body || {};
+    const db = readDB();
+    const agent = getOfficeAgents(db).find(a => a.id === req.params.id);
+    if (!agent) throw Object.assign(new Error('Agente interno no encontrado'), { status: 404 });
+    if (model) {
+        if (!modelCatalog().some(m => m.id === model)) throw Object.assign(new Error(`Modelo desconocido: ${model}`), { status: 400 });
+        agent.model = model;
+    }
+    writeDB(db);
+    broadcastOfficeEvent('agent_config_changed', { agentId: agent.id, model: agent.model });
+    return { agent };
+}));
 
 // ─── Native Agent Skills & Chat ──────────────────────────────────
 const SKILLS_WORKSPACE_PATH = path.join(process.env.HOME || '/Users/gg', '.openclaw/workspace/skills');

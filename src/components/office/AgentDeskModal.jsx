@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import {
-    X, Bot, Sparkles, Send, CheckSquare, BrainCircuit, Wrench,
-    Activity, BarChart3, Sliders, CheckCircle2, AlertCircle, Clock,
-    Layers, Building2, Play, Pause, RotateCcw, Shield, ExternalLink,
-    Zap, Terminal, MessageSquare, Save, Users, FileText, ChevronRight
+    X, Sparkles, Send, CheckSquare, BrainCircuit, Wrench,
+    Activity, BarChart3, Sliders, Save, MessageSquare,
+    ExternalLink, FileText, Play, Copy, Check
 } from 'lucide-react';
+import { playOfficeClick, playOfficeTyping, playOfficeSuccess } from '../../lib/officeAudio';
+import './AiOffice.css';
 
 export default function AgentDeskModal({
     agent,
@@ -12,11 +13,14 @@ export default function AgentDeskModal({
     onUpdateStatus,
     tasks = [],
     activity = [],
-    onExecuteTask,
-    onSendMessage
+    documents = [],
+    onSendMessage,
+    onCreateDocument,
+    models,
+    stats,
+    onSaveConfig,
+    onOpenTask
 }) {
-    if (!agent) return null;
-
     const [activeTab, setActiveTab] = useState('overview');
     const [chatInput, setChatInput] = useState('');
     const [chatMessages, setChatMessages] = useState([
@@ -28,19 +32,35 @@ export default function AgentDeskModal({
     ]);
     const [isThinking, setIsThinking] = useState(false);
     const [autonomyLevel, setAutonomyLevel] = useState(agent.autonomyLevel || 2);
-    const [selectedModel, setSelectedModel] = useState(agent.model || 'gemini-2.5-flash');
+    const [selectedModel, setSelectedModel] = useState(agent?.model || models?.defaultModel || '');
+    const [saveError, setSaveError] = useState('');
     const [saveSuccess, setSaveSuccess] = useState(false);
 
-    // Agent's tasks
+    // Documents State
+    const [isCreatingDoc, setIsCreatingDoc] = useState(false);
+    const [docTitle, setDocTitle] = useState('');
+    const [docType, setDocType] = useState('script');
+    const [docContent, setDocContent] = useState('');
+    const [isSavingDoc, setIsSavingDoc] = useState(false);
+    const [selectedDocPreview, setSelectedDocPreview] = useState(null);
+    const [copiedDoc, setCopiedDoc] = useState(false);
+
+    if (!agent) return null;
+
     const agentTasks = tasks.filter(t =>
         t.assignedAgentId === agent.id ||
         (t.assignedAgent && t.assignedAgent.toLowerCase().includes(agent.name.split(' ')[0].toLowerCase()))
     );
 
-    // Agent's activity feed
     const agentActivity = activity.filter(a =>
         a.agent === agent.name ||
         (a.text && a.text.toLowerCase().includes(agent.name.split(' ')[0].toLowerCase()))
+    );
+
+    const agentDocs = (documents || []).filter(d =>
+        d.agentId === agent.id ||
+        d.authorId === agent.id ||
+        (d.agentName && d.agentName.toLowerCase().includes(agent.name.split(' ')[0].toLowerCase()))
     );
 
     const handleSendChat = async (e) => {
@@ -48,34 +68,26 @@ export default function AgentDeskModal({
         if (!chatInput.trim() || isThinking) return;
 
         const userText = chatInput.trim();
+        playOfficeClick();
         setChatInput('');
         setChatMessages(prev => [...prev, { role: 'user', text: userText, time: 'Ahora' }]);
         setIsThinking(true);
 
         try {
+            playOfficeTyping();
             if (onSendMessage) {
                 const response = await onSendMessage(agent, userText);
+                playOfficeTyping();
                 setChatMessages(prev => [...prev, {
                     role: 'agent',
-                    text: response || 'Entendido. Estoy procesando la información con mi contexto de departamento.',
+                    text: response || 'Entendido. Estoy coordinando con BART (COO) para procesar tu solicitud.',
                     time: 'Ahora'
                 }]);
-            } else {
-                // Fallback simulation/response
-                setTimeout(() => {
-                    setChatMessages(prev => [...prev, {
-                        role: 'agent',
-                        text: `He recibido tu indicación: "${userText}". Coordinaré con BART (COO) para alinear la ejecución.`,
-                        time: 'Ahora'
-                    }]);
-                    setIsThinking(false);
-                }, 800);
-                return;
             }
         } catch (err) {
             setChatMessages(prev => [...prev, {
                 role: 'agent',
-                text: `Error al conectar con el modelo: ${err.message}`,
+                text: `Error al procesar: ${err.message}`,
                 time: 'Ahora'
             }]);
         } finally {
@@ -83,21 +95,54 @@ export default function AgentDeskModal({
         }
     };
 
-    const handleSaveSettings = () => {
-        if (onUpdateStatus) {
-            onUpdateStatus(agent.id, {
-                autonomyLevel,
-                model: selectedModel
-            });
+    const handleSaveDoc = async () => {
+        if (!docTitle.trim() || !docContent.trim() || isSavingDoc) return;
+        setIsSavingDoc(true);
+        playOfficeClick();
+        try {
+            if (onCreateDocument) {
+                await onCreateDocument(agent.id, {
+                    title: docTitle.trim(),
+                    type: docType,
+                    content: docContent.trim(),
+                    company: agent.activeCompany || 'ARRIVE Agency'
+                });
+            }
+            playOfficeSuccess();
+            setDocTitle('');
+            setDocContent('');
+            setIsCreatingDoc(false);
+        } catch (err) {
+            console.error('Error saving document:', err);
+        } finally {
+            setIsSavingDoc(false);
         }
-        setSaveSuccess(true);
-        setTimeout(() => setSaveSuccess(false), 2000);
     };
+
+    const handleCopyDoc = (text) => {
+        navigator.clipboard.writeText(text);
+        setCopiedDoc(true);
+        setTimeout(() => setCopiedDoc(false), 2000);
+    };
+
+    const handleSaveSettings = async () => {
+        setSaveError('');
+        try {
+            if (onSaveConfig && selectedModel !== agent.model) await onSaveConfig(agent.id, { model: selectedModel });
+            if (onUpdateStatus) onUpdateStatus(agent.id, { autonomyLevel });
+            setSaveSuccess(true);
+            setTimeout(() => setSaveSuccess(false), 2000);
+        } catch (err) {
+            setSaveError(err.message);
+        }
+    };
+    const chosenModel = models?.models?.find(m => m.id === selectedModel);
 
     const tabs = [
         { id: 'overview', label: 'Overview', icon: Sparkles },
         { id: 'chat', label: 'Chat', icon: MessageSquare },
         { id: 'tasks', label: `Tareas (${agentTasks.length})`, icon: CheckSquare },
+        { id: 'documents', label: `Documentos (${agentDocs.length})`, icon: FileText },
         { id: 'memory', label: 'Memoria & RAG', icon: BrainCircuit },
         { id: 'tools', label: 'Tools', icon: Wrench },
         { id: 'activity', label: 'Actividad', icon: Activity },
@@ -106,44 +151,75 @@ export default function AgentDeskModal({
     ];
 
     return (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
-            <div className="bg-[#0B0F17] border border-white/15 w-full max-w-4xl h-[85vh] max-h-[750px] rounded-3xl shadow-2xl flex flex-col overflow-hidden">
-                
+        <div className="office-modal-backdrop" onClick={onClose}>
+            <div className="office-modal-frame" onClick={(e) => e.stopPropagation()}>
                 {/* MODAL HEADER */}
-                <div className="p-6 border-b border-white/10 flex items-center justify-between bg-gradient-to-r from-white/5 to-transparent">
-                    <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center text-3xl shadow-inner">
+                <div className="office-modal-header">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                        <div style={{
+                            width: '52px',
+                            height: '52px',
+                            borderRadius: '16px',
+                            background: 'rgba(255, 255, 255, 0.08)',
+                            border: '1px solid rgba(255, 255, 255, 0.15)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '28px'
+                        }}>
                             {agent.avatar || '🤖'}
                         </div>
                         <div>
-                            <div className="flex items-center gap-2.5">
-                                <h2 className="text-xl font-bold text-white tracking-wide">{agent.name}</h2>
-                                <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-semibold uppercase tracking-wider border ${
-                                    agent.status === 'executing' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
-                                    agent.status === 'waiting_approval' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' :
-                                    agent.status === 'in_meeting' ? 'bg-purple-500/20 text-purple-400 border-purple-500/30' :
-                                    'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
-                                }`}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <h2 style={{ fontSize: '18px', fontWeight: '800', color: '#ffffff', margin: 0 }}>
+                                    {agent.name}
+                                </h2>
+                                <span style={{
+                                    fontSize: '10px',
+                                    fontWeight: '700',
+                                    textTransform: 'uppercase',
+                                    padding: '3px 9px',
+                                    borderRadius: '20px',
+                                    background: agent.status === 'executing' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(16, 185, 129, 0.2)',
+                                    color: agent.status === 'executing' ? '#60a5fa' : '#34d399',
+                                    border: '1px solid rgba(255, 255, 255, 0.1)'
+                                }}>
                                     {agent.status || 'available'}
                                 </span>
-                                <span className="text-xs font-mono text-gray-400 bg-white/5 px-2 py-0.5 rounded border border-white/10">
+                                <span style={{
+                                    fontSize: '11px',
+                                    color: '#94a3b8',
+                                    fontFamily: 'monospace',
+                                    background: 'rgba(255, 255, 255, 0.05)',
+                                    padding: '2px 8px',
+                                    borderRadius: '6px'
+                                }}>
                                     Nivel {agent.autonomyLevel || 2}
                                 </span>
                             </div>
-                            <p className="text-xs text-gray-400 mt-1">{agent.role} · Estación: {agent.stationId || 'HQ Central'}</p>
+                            <p style={{ fontSize: '12px', color: '#94a3b8', margin: '4px 0 0 0' }}>
+                                {agent.role} · Estación: {agent.stationId || 'HQ Central'}
+                            </p>
                         </div>
                     </div>
 
                     <button
                         onClick={onClose}
-                        className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-xl transition"
+                        style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: '#94a3b8',
+                            cursor: 'pointer',
+                            padding: '8px',
+                            borderRadius: '10px'
+                        }}
                     >
                         <X size={20} />
                     </button>
                 </div>
 
-                {/* TABS NAVIGATION */}
-                <div className="flex items-center gap-1 px-6 border-b border-white/10 bg-[#070A0F] overflow-x-auto scrollbar-none py-2">
+                {/* MODAL TABS */}
+                <div className="office-modal-tabs">
                     {tabs.map(tab => {
                         const Icon = tab.icon;
                         const isActive = activeTab === tab.id;
@@ -151,46 +227,47 @@ export default function AgentDeskModal({
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
-                                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition ${
-                                    isActive
-                                        ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30 shadow-sm'
-                                        : 'text-gray-400 hover:text-white hover:bg-white/5'
-                                }`}
+                                className={`office-tab-btn ${isActive ? 'active' : ''}`}
                             >
                                 <Icon size={14} />
-                                {tab.label}
+                                <span>{tab.label}</span>
                             </button>
                         );
                     })}
                 </div>
 
-                {/* TAB CONTENT BODY */}
-                <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                {/* MODAL CONTENT */}
+                <div className="office-modal-content">
                     {/* TAB 1: OVERVIEW */}
                     {activeTab === 'overview' && (
-                        <div className="space-y-6">
-                            {/* Status Quick Switcher */}
-                            <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
-                                <label className="text-xs font-semibold text-gray-300 block mb-3 uppercase tracking-wider">
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                            {/* Status Switcher */}
+                            <div style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '16px', padding: '16px' }}>
+                                <label style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', color: '#94a3b8', display: 'block', marginBottom: '10px' }}>
                                     Cambiar Estado Operativo:
                                 </label>
-                                <div className="flex flex-wrap gap-2">
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                                     {[
-                                        { id: 'available', label: 'Disponible', color: 'emerald' },
-                                        { id: 'planning', label: 'Planificando', color: 'purple' },
-                                        { id: 'executing', label: 'Ejecutando', color: 'blue' },
-                                        { id: 'in_meeting', label: 'En War Room', color: 'violet' },
-                                        { id: 'resting', label: 'En Reposo', color: 'indigo' },
-                                        { id: 'offline', label: 'Desconectado', color: 'gray' }
+                                        { id: 'available', label: 'Disponible' },
+                                        { id: 'planning', label: 'Planificando' },
+                                        { id: 'executing', label: 'Ejecutando' },
+                                        { id: 'in_meeting', label: 'En War Room' },
+                                        { id: 'resting', label: 'En Reposo' },
+                                        { id: 'offline', label: 'Desconectado' }
                                     ].map(st => (
                                         <button
                                             key={st.id}
                                             onClick={() => onUpdateStatus && onUpdateStatus(agent.id, { status: st.id })}
-                                            className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition ${
-                                                agent.status === st.id
-                                                    ? 'bg-white/20 text-white border-white/40 shadow'
-                                                    : 'bg-white/5 text-gray-400 border-white/10 hover:text-white hover:bg-white/10'
-                                            }`}
+                                            style={{
+                                                padding: '6px 14px',
+                                                borderRadius: '10px',
+                                                fontSize: '12px',
+                                                fontWeight: '600',
+                                                background: agent.status === st.id ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.04)',
+                                                border: agent.status === st.id ? '1px solid rgba(255, 255, 255, 0.4)' : '1px solid rgba(255, 255, 255, 0.08)',
+                                                color: '#ffffff',
+                                                cursor: 'pointer'
+                                            }}
                                         >
                                             {st.label}
                                         </button>
@@ -198,46 +275,46 @@ export default function AgentDeskModal({
                                 </div>
                             </div>
 
-                            {/* Active Mission Card */}
-                            <div className="bg-gradient-to-br from-blue-950/30 to-purple-950/20 rounded-2xl p-5 border border-blue-500/20">
-                                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-400">Misión o Foco Actual</span>
-                                <h3 className="text-base font-semibold text-white mt-1">
-                                    {agent.currentTaskName || 'Listo para recibir asignaciones de BART o del CEO'}
+                            {/* Active Mission */}
+                            <div style={{ background: 'radial-gradient(circle at 10% 0%, rgba(59, 130, 246, 0.15) 0%, transparent 80%), rgba(255, 255, 255, 0.02)', border: '1px solid rgba(59, 130, 246, 0.25)', borderRadius: '16px', padding: '18px' }}>
+                                <span style={{ fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', color: '#60a5fa' }}>Foco o Misión Actual</span>
+                                <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#ffffff', margin: '6px 0 4px 0' }}>
+                                    {agent.currentTaskName || 'Disponible para recibir instrucciones del CEO o de BART (COO)'}
                                 </h3>
-                                <p className="text-xs text-gray-400 mt-1">
-                                    Empresa activa: <strong className="text-gray-200">{agent.activeCompany || 'ARRIVE Agency'}</strong>
+                                <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0 }}>
+                                    Empresa activa: <strong style={{ color: '#ffffff' }}>{agent.activeCompany || 'ARRIVE Agency'}</strong>
                                 </p>
                             </div>
 
-                            {/* Skills Grid */}
+                            {/* Skills List */}
                             <div>
-                                <h4 className="text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2.5">Skills Especializadas</h4>
-                                <div className="flex flex-wrap gap-2">
+                                <h4 style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', color: '#94a3b8', marginBottom: '8px' }}>Skills Asignadas</h4>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                                     {(agent.skills || ['orchestration', 'rag_synthesis', 'task_execution']).map((skill, i) => (
-                                        <span key={i} className="text-xs bg-white/5 text-gray-300 border border-white/10 px-3 py-1 rounded-lg font-mono">
+                                        <span key={i} style={{ fontSize: '11.5px', background: 'rgba(255, 255, 255, 0.05)', color: '#cbd5e1', border: '1px solid rgba(255, 255, 255, 0.1)', padding: '4px 10px', borderRadius: '8px', fontFamily: 'monospace' }}>
                                             {skill}
                                         </span>
                                     ))}
                                 </div>
                             </div>
 
-                            {/* Key Stats Bar */}
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-                                <div className="bg-white/5 p-3.5 rounded-xl border border-white/10 text-center">
-                                    <span className="text-[10px] text-gray-400 uppercase">Tareas Hechas</span>
-                                    <p className="text-lg font-bold text-white mt-0.5">{agent.metrics?.tasksCompleted || 45}</p>
+                            {/* Key Stats */}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
+                                <div style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', padding: '12px', borderRadius: '12px', textAlign: 'center' }}>
+                                    <span style={{ fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase' }}>Tareas Hechas</span>
+                                    <div style={{ fontSize: '18px', fontWeight: '800', color: '#ffffff', marginTop: '2px' }}>{stats?.done ?? 0}</div>
                                 </div>
-                                <div className="bg-white/5 p-3.5 rounded-xl border border-white/10 text-center">
-                                    <span className="text-[10px] text-gray-400 uppercase">Tasa de Éxito</span>
-                                    <p className="text-lg font-bold text-emerald-400 mt-0.5">{agent.metrics?.successRate || 98}%</p>
+                                <div style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', padding: '12px', borderRadius: '12px', textAlign: 'center' }}>
+                                    <span style={{ fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase' }}>Tasa de Éxito</span>
+                                    <div style={{ fontSize: '18px', fontWeight: '800', color: '#34d399', marginTop: '2px' }}>{stats?.successRate == null ? '—' : `${stats.successRate}%`}</div>
                                 </div>
-                                <div className="bg-white/5 p-3.5 rounded-xl border border-white/10 text-center">
-                                    <span className="text-[10px] text-gray-400 uppercase">Velocidad Promedio</span>
-                                    <p className="text-lg font-bold text-blue-400 mt-0.5">{agent.metrics?.avgResponseTimeMs || 420} ms</p>
+                                <div style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', padding: '12px', borderRadius: '12px', textAlign: 'center' }}>
+                                    <span style={{ fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase' }}>Tiempo medio</span>
+                                    <div style={{ fontSize: '18px', fontWeight: '800', color: '#60a5fa', marginTop: '2px' }}>{stats?.avgMs == null ? '—' : `${(stats.avgMs / 1000).toFixed(1)} s`}</div>
                                 </div>
-                                <div className="bg-white/5 p-3.5 rounded-xl border border-white/10 text-center">
-                                    <span className="text-[10px] text-gray-400 uppercase">Tokens Usados</span>
-                                    <p className="text-lg font-bold text-purple-400 mt-0.5">{((agent.metrics?.totalTokensConsumed || 50000) / 1000).toFixed(0)}k</p>
+                                <div style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', padding: '12px', borderRadius: '12px', textAlign: 'center' }}>
+                                    <span style={{ fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase' }}>Tokens</span>
+                                    <div style={{ fontSize: '18px', fontWeight: '800', color: '#c084fc', marginTop: '2px' }}>{(((stats?.tokensIn || 0) + (stats?.tokensOut || 0)) / 1000).toFixed(1)}k</div>
                                 </div>
                             </div>
                         </div>
@@ -245,55 +322,94 @@ export default function AgentDeskModal({
 
                     {/* TAB 2: CHAT */}
                     {activeTab === 'chat' && (
-                        <div className="flex flex-col h-[480px]">
-                            <div className="flex-1 overflow-y-auto space-y-3.5 pr-2">
+                        <div style={{ display: 'flex', flexDirection: 'column', height: '460px' }}>
+                            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', paddingRight: '8px' }}>
                                 {chatMessages.map((msg, i) => (
                                     <div
                                         key={i}
-                                        className={`flex gap-3 max-w-[85%] ${
-                                            msg.role === 'user' ? 'ml-auto flex-row-reverse' : ''
-                                        }`}
+                                        style={{
+                                            display: 'flex',
+                                            gap: '10px',
+                                            maxWidth: '85%',
+                                            alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                                            flexDirection: msg.role === 'user' ? 'row-reverse' : 'row'
+                                        }}
                                     >
-                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-sm ${
-                                            msg.role === 'user' ? 'bg-blue-600 text-white' : 'bg-white/10 text-white'
-                                        }`}>
+                                        <div style={{
+                                            width: '32px',
+                                            height: '32px',
+                                            borderRadius: '8px',
+                                            background: msg.role === 'user' ? '#2563eb' : 'rgba(255, 255, 255, 0.08)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            fontSize: '14px',
+                                            flexShrink: 0
+                                        }}>
                                             {msg.role === 'user' ? '👑' : agent.avatar || '🤖'}
                                         </div>
-                                        <div className={`p-3.5 rounded-2xl text-xs leading-relaxed ${
-                                            msg.role === 'user'
-                                                ? 'bg-blue-600 text-white rounded-tr-none'
-                                                : 'bg-white/5 border border-white/10 text-gray-200 rounded-tl-none'
-                                        }`}>
+                                        <div style={{
+                                            padding: '12px 16px',
+                                            borderRadius: '16px',
+                                            fontSize: '12.5px',
+                                            lineHeight: 1.5,
+                                            background: msg.role === 'user' ? '#2563eb' : 'rgba(255, 255, 255, 0.05)',
+                                            border: msg.role === 'user' ? 'none' : '1px solid rgba(255, 255, 255, 0.1)',
+                                            color: '#ffffff'
+                                        }}>
                                             {msg.text}
-                                            <span className="block text-[9px] opacity-50 mt-1 text-right">{msg.time}</span>
+                                            <span style={{ display: 'block', fontSize: '9px', opacity: 0.6, marginTop: '4px', textAlign: 'right' }}>
+                                                {msg.time}
+                                            </span>
                                         </div>
                                     </div>
                                 ))}
                                 {isThinking && (
-                                    <div className="flex gap-3 max-w-[85%]">
-                                        <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-sm">
+                                    <div style={{ display: 'flex', gap: '10px', maxWidth: '85%' }}>
+                                        <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(255, 255, 255, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                             {agent.avatar || '🤖'}
                                         </div>
-                                        <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 text-xs text-gray-400 animate-pulse flex items-center gap-2">
-                                            <Sparkles size={14} className="animate-spin" />
-                                            <span>{agent.name} está razonando con RAG...</span>
+                                        <div style={{ padding: '12px 16px', borderRadius: '16px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', fontSize: '12px', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <Sparkles size={14} />
+                                            <span>{agent.name} está pensando con RAG...</span>
                                         </div>
                                     </div>
                                 )}
                             </div>
 
-                            <form onSubmit={handleSendChat} className="mt-4 pt-3 border-t border-white/10 flex gap-2">
+                            <form onSubmit={handleSendChat} style={{ display: 'flex', gap: '10px', marginTop: '16px', paddingTop: '12px', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
                                 <input
                                     type="text"
                                     value={chatInput}
                                     onChange={(e) => setChatInput(e.target.value)}
                                     placeholder={`Escribe una instrucción directa para ${agent.name}...`}
-                                    className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
+                                    style={{
+                                        flex: 1,
+                                        background: 'rgba(255, 255, 255, 0.04)',
+                                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                                        borderRadius: '12px',
+                                        padding: '10px 14px',
+                                        fontSize: '12.5px',
+                                        color: '#ffffff',
+                                        outline: 'none'
+                                    }}
                                 />
                                 <button
                                     type="submit"
                                     disabled={!chatInput.trim() || isThinking}
-                                    className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5 transition"
+                                    style={{
+                                        background: '#2563eb',
+                                        color: '#ffffff',
+                                        border: 'none',
+                                        borderRadius: '12px',
+                                        padding: '10px 18px',
+                                        fontSize: '12px',
+                                        fontWeight: '700',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px'
+                                    }}
                                 >
                                     <Send size={14} />
                                     <span>Enviar</span>
@@ -304,65 +420,293 @@ export default function AgentDeskModal({
 
                     {/* TAB 3: TASKS */}
                     {activeTab === 'tasks' && (
-                        <div className="space-y-3">
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                             {agentTasks.length === 0 ? (
-                                <div className="text-center py-12 text-gray-400">
-                                    <CheckSquare size={36} className="mx-auto mb-2 opacity-30" />
-                                    <p className="text-xs">No hay tareas activas asignadas a este agente.</p>
+                                <p style={{ fontSize: '12px', color: '#64748b', textAlign: 'center', padding: '30px' }}>
+                                    No hay tareas registradas para este agente.
+                                </p>
+                            ) : (
+                                agentTasks.map(t => {
+                                    let moduleLink = '/workspace';
+                                    let moduleName = 'Workspace';
+                                    const taskText = (t.task || t.title || '').toLowerCase();
+                                    if (agent.departmentId === 'dept-creative' || taskText.includes('guion') || taskText.includes('video') || taskText.includes('contenido')) {
+                                        moduleLink = '/content-hub';
+                                        moduleName = 'Content Hub';
+                                    } else if (agent.departmentId === 'dept-community' || taskText.includes('difusión') || taskText.includes('whatsapp') || taskText.includes('mensaje')) {
+                                        moduleLink = '/difusion';
+                                        moduleName = 'Centro de Difusión';
+                                    }
+
+                                    const taskProgress = t.progress !== undefined ? t.progress : (t.status === 'done' ? 100 : 35);
+
+                                    return (
+                                        <div key={t.id} style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '14px', padding: '16px' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ fontSize: '13.5px', fontWeight: '700', color: '#ffffff' }}>{t.task || t.title}</span>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <span style={{
+                                                        fontSize: '10px',
+                                                        padding: '3px 8px',
+                                                        borderRadius: '12px',
+                                                        background: t.status === 'done' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(59, 130, 246, 0.15)',
+                                                        color: t.status === 'done' ? '#34d399' : '#60a5fa',
+                                                        fontWeight: '700',
+                                                        textTransform: 'uppercase'
+                                                    }}>
+                                                        {t.status}
+                                                    </span>
+                                                    <a
+                                                        href={moduleLink}
+                                                        onClick={() => { playOfficeClick(); onClose(); }}
+                                                        style={{
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            gap: '4px',
+                                                            fontSize: '11px',
+                                                            color: '#38bdf8',
+                                                            textDecoration: 'none',
+                                                            background: 'rgba(56, 189, 248, 0.1)',
+                                                            padding: '4px 9px',
+                                                            borderRadius: '8px',
+                                                            border: '1px solid rgba(56, 189, 248, 0.3)',
+                                                            fontWeight: '600'
+                                                        }}
+                                                    >
+                                                        <span>Ver en {moduleName}</span>
+                                                        <ExternalLink size={11} />
+                                                    </a>
+                                                </div>
+                                            </div>
+
+                                            {/* Progress Bar & Current Step */}
+                                            <div style={{ marginTop: '12px' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#94a3b8', marginBottom: '4px' }}>
+                                                    <span><strong>Paso actual:</strong> {t.currentStep || 'En proceso de ejecución...'}</span>
+                                                    <span style={{ color: '#38bdf8', fontWeight: 'bold' }}>{taskProgress}%</span>
+                                                </div>
+                                                <div style={{ width: '100%', height: '6px', background: 'rgba(255, 255, 255, 0.08)', borderRadius: '3px', overflow: 'hidden' }}>
+                                                    <div style={{ width: `${taskProgress}%`, height: '100%', background: t.status === 'done' ? '#10b981' : '#38bdf8', transition: 'width 0.3s' }} />
+                                                </div>
+                                            </div>
+
+                                            {/* Action Buttons for Advancing & Approving */}
+                                            {t.status !== 'done' && (
+                                                <div style={{ display: 'flex', gap: '8px', marginTop: '12px', paddingTop: '10px', borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                                                    <button className="occ-btn sm primary" onClick={() => onOpenTask && onOpenTask(t)}>
+                                                        <Play size={12} />
+                                                        <span>{t.status === 'review' ? 'Revisar entrega' : 'Abrir tarea'}</span>
+                                                    </button>
+                                                    <button
+                                                        onClick={() => {
+                                                            setDocTitle(`Entregable: ${t.task || t.title}`);
+                                                            setActiveTab('documents');
+                                                            setIsCreatingDoc(true);
+                                                        }}
+                                                        style={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '5px',
+                                                            background: 'rgba(255, 255, 255, 0.05)',
+                                                            border: '1px solid rgba(255, 255, 255, 0.12)',
+                                                            color: '#cbd5e1',
+                                                            padding: '5px 10px',
+                                                            borderRadius: '8px',
+                                                            fontSize: '11.5px',
+                                                            fontWeight: '600',
+                                                            cursor: 'pointer'
+                                                        }}
+                                                    >
+                                                        <FileText size={12} />
+                                                        <span>Crear Documento</span>
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
+                    )}
+
+                    {/* TAB 4: DOCUMENTS */}
+                    {activeTab === 'documents' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div>
+                                    <h4 style={{ fontSize: '14px', fontWeight: '700', color: '#ffffff', margin: 0 }}>
+                                        Documentos & Entregables de {agent.name.split(' ')[0]}
+                                    </h4>
+                                    <p style={{ fontSize: '11.5px', color: '#94a3b8', margin: '2px 0 0 0' }}>
+                                        Archivos generados en BrainVault y conectados a la base de conocimiento RAG.
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => setIsCreatingDoc(!isCreatingDoc)}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        background: '#2563eb',
+                                        color: '#ffffff',
+                                        border: 'none',
+                                        borderRadius: '10px',
+                                        padding: '8px 14px',
+                                        fontSize: '12px',
+                                        fontWeight: '700',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    <FileText size={14} />
+                                    <span>{isCreatingDoc ? 'Cerrar Editor' : '+ Crear Documento'}</span>
+                                </button>
+                            </div>
+
+                            {/* Inline Document Composer */}
+                            {isCreatingDoc && (
+                                <div style={{ background: '#0a0d14', border: '1px solid rgba(59, 130, 246, 0.4)', borderRadius: '16px', padding: '18px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                    <div style={{ display: 'flex', gap: '10px' }}>
+                                        <input
+                                            type="text"
+                                            placeholder="Título del documento (ej: Guion TikTok #1, Checklist Apertura...)"
+                                            value={docTitle}
+                                            onChange={(e) => setDocTitle(e.target.value)}
+                                            style={{
+                                                flex: 1,
+                                                background: 'rgba(255, 255, 255, 0.05)',
+                                                border: '1px solid rgba(255, 255, 255, 0.1)',
+                                                borderRadius: '10px',
+                                                padding: '10px 14px',
+                                                color: '#ffffff',
+                                                fontSize: '13px'
+                                            }}
+                                        />
+                                        <select
+                                            value={docType}
+                                            onChange={(e) => setDocType(e.target.value)}
+                                            style={{
+                                                background: '#0e131f',
+                                                border: '1px solid rgba(255, 255, 255, 0.15)',
+                                                borderRadius: '10px',
+                                                padding: '10px 12px',
+                                                color: '#ffffff',
+                                                fontSize: '12px'
+                                            }}
+                                        >
+                                            <option value="script">🎬 Guion de Video (Script)</option>
+                                            <option value="brief">✨ Estrategia / Brief</option>
+                                            <option value="sop">📦 Checklist / SOP</option>
+                                            <option value="copy">📱 Copy de Difusión</option>
+                                            <option value="report">📊 Reporte de Inteligencia</option>
+                                        </select>
+                                    </div>
+
+                                    <textarea
+                                        rows={7}
+                                        placeholder="Escribe o pega el contenido en formato Markdown..."
+                                        value={docContent}
+                                        onChange={(e) => setDocContent(e.target.value)}
+                                        style={{
+                                            background: 'rgba(255, 255, 255, 0.03)',
+                                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                                            borderRadius: '10px',
+                                            padding: '12px',
+                                            color: '#f8fafc',
+                                            fontFamily: 'monospace',
+                                            fontSize: '12px',
+                                            lineHeight: 1.5,
+                                            resize: 'vertical'
+                                        }}
+                                    />
+
+                                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                                        <button
+                                            onClick={() => setIsCreatingDoc(false)}
+                                            style={{ background: 'transparent', border: '1px solid rgba(255, 255, 255, 0.15)', color: '#94a3b8', borderRadius: '8px', padding: '7px 14px', fontSize: '12px', cursor: 'pointer' }}
+                                        >
+                                            Cancelar
+                                        </button>
+                                        <button
+                                            onClick={handleSaveDoc}
+                                            disabled={!docTitle.trim() || !docContent.trim() || isSavingDoc}
+                                            style={{ background: '#10b981', color: '#ffffff', border: 'none', borderRadius: '8px', padding: '7px 16px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                                        >
+                                            <Save size={14} />
+                                            <span>{isSavingDoc ? 'Guardando...' : 'Publicar Documento'}</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Documents List */}
+                            {agentDocs.length === 0 ? (
+                                <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px dashed rgba(255, 255, 255, 0.1)', borderRadius: '16px', padding: '36px', textAlign: 'center' }}>
+                                    <FileText size={32} style={{ color: '#64748b', margin: '0 auto 8px auto', display: 'block' }} />
+                                    <p style={{ fontSize: '13px', color: '#cbd5e1', margin: 0, fontWeight: '600' }}>
+                                        Este agente aún no ha publicado documentos.
+                                    </p>
+                                    <p style={{ fontSize: '11.5px', color: '#64748b', margin: '4px 0 0 0' }}>
+                                        Usa el botón "+ Crear Documento" para registrar guiones, minutas o SOPs.
+                                    </p>
                                 </div>
                             ) : (
-                                agentTasks.map(t => (
-                                    <div key={t.id} className="bg-white/5 border border-white/10 rounded-2xl p-4 flex flex-col gap-2">
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-xs font-semibold text-white">{t.task || t.title}</span>
-                                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium border ${
-                                                t.status === 'completed' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
-                                                t.status === 'in_progress' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
-                                                'bg-amber-500/20 text-amber-400 border-amber-500/30'
-                                            }`}>
-                                                {t.status}
+                                agentDocs.map(doc => (
+                                    <div key={doc.id} style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '14px', padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                        <div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <span style={{ fontSize: '14px', fontWeight: '700', color: '#ffffff' }}>{doc.title}</span>
+                                                <span style={{ fontSize: '10px', textTransform: 'uppercase', padding: '2px 7px', borderRadius: '8px', background: 'rgba(139, 92, 246, 0.15)', color: '#c084fc', fontWeight: '700' }}>
+                                                    {doc.type || 'DOC'}
+                                                </span>
+                                            </div>
+                                            <p style={{ fontSize: '11.5px', color: '#94a3b8', margin: '6px 0 0 0', maxHeight: '42px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                {doc.content.substring(0, 140)}...
+                                            </p>
+                                            <span style={{ fontSize: '10.5px', color: '#64748b', display: 'block', marginTop: '8px' }}>
+                                                Creado el {new Date(doc.createdAt).toLocaleDateString()} a las {new Date(doc.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                             </span>
                                         </div>
-                                        <p className="text-xs text-gray-400">{t.description || t.currentStep}</p>
-                                        <div className="flex items-center justify-between text-[11px] text-gray-500 pt-2 border-t border-white/5">
-                                            <span>Score: {t.priorityScore || 5.0} · Nivel {t.autonomyLevel || 1}</span>
-                                            <span>{t.createdAt ? new Date(t.createdAt).toLocaleDateString() : 'Hoy'}</span>
-                                        </div>
+                                        <button
+                                            onClick={() => setSelectedDocPreview(doc)}
+                                            style={{
+                                                background: 'rgba(255, 255, 255, 0.05)',
+                                                border: '1px solid rgba(255, 255, 255, 0.15)',
+                                                color: '#ffffff',
+                                                borderRadius: '8px',
+                                                padding: '6px 12px',
+                                                fontSize: '11.5px',
+                                                fontWeight: '600',
+                                                cursor: 'pointer',
+                                                whiteSpace: 'nowrap'
+                                            }}
+                                        >
+                                            Ver Documento
+                                        </button>
                                     </div>
                                 ))
                             )}
                         </div>
                     )}
 
-                    {/* TAB 4: MEMORY */}
+                    {/* TAB 5: MEMORY */}
                     {activeTab === 'memory' && (
-                        <div className="space-y-4">
-                            <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
-                                <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-2">Memoria Contextual & Insights</h4>
-                                <p className="text-xs text-gray-300 leading-relaxed">
-                                    Este agente consulta el namespace de RAG correspondiente a las operaciones de {agent.activeCompany || 'ARRIVE Agency'} y mantiene sincronización con <code>BrainVault/ARSENAL/</code>.
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                            <div style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '14px', padding: '16px' }}>
+                                <h4 style={{ fontSize: '12px', fontWeight: '700', color: '#ffffff', margin: '0 0 6px 0' }}>Memoria Semántica & Contexto</h4>
+                                <p style={{ fontSize: '12px', color: '#cbd5e1', lineHeight: 1.5, margin: 0 }}>
+                                    Este agente consulta el RAG embebido y los documentos de <code>BrainVault/OPERATIONS/</code> y <code>BrainVault/ARSENAL/</code>.
                                 </p>
-                            </div>
-                            <div className="p-4 bg-blue-950/20 border border-blue-500/20 rounded-2xl text-xs text-blue-300 flex items-start gap-2.5">
-                                <BrainCircuit size={16} className="shrink-0 mt-0.5 text-blue-400" />
-                                <div>
-                                    <strong className="block font-semibold">Memoria de Trabajo Activa:</strong>
-                                    <span>Conocimiento sobre venues (Terraplén Rooftop, Furia, Piano Bar), eventos y dinners VIP chicas.</span>
-                                </div>
                             </div>
                         </div>
                     )}
 
-                    {/* TAB 5: TOOLS */}
+                    {/* TAB 6: TOOLS */}
                     {activeTab === 'tools' && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '10px' }}>
                             {(agent.tools || ['rag_search', 'browser_exec', 'db_write']).map((tool, i) => (
-                                <div key={i} className="bg-white/5 border border-white/10 p-3.5 rounded-xl flex items-center justify-between">
-                                    <div className="flex items-center gap-2.5">
-                                        <Wrench size={16} className="text-blue-400" />
-                                        <span className="text-xs font-mono text-gray-200">{tool}</span>
-                                    </div>
-                                    <span className="text-[10px] text-emerald-400 font-bold">ACTIVO</span>
+                                <div key={i} style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', padding: '12px 14px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span style={{ fontSize: '12px', color: '#e2e8f0', fontFamily: 'monospace' }}>{tool}</span>
+                                    <span style={{ fontSize: '10px', color: '#34d399', fontWeight: '700' }}>ACTIVO</span>
                                 </div>
                             ))}
                         </div>
@@ -370,15 +714,16 @@ export default function AgentDeskModal({
 
                     {/* TAB 6: ACTIVITY */}
                     {activeTab === 'activity' && (
-                        <div className="space-y-2.5">
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             {agentActivity.length === 0 ? (
-                                <p className="text-xs text-gray-400 text-center py-8">Sin eventos registrados recientemente para este agente.</p>
+                                <p style={{ fontSize: '12px', color: '#64748b', textAlign: 'center', padding: '30px' }}>
+                                    Sin eventos recientes registrados.
+                                </p>
                             ) : (
                                 agentActivity.map((act, i) => (
-                                    <div key={i} className="text-xs p-3 bg-white/5 border border-white/10 rounded-xl flex items-center gap-3">
-                                        <Activity size={14} className="text-blue-400 shrink-0" />
-                                        <span className="text-gray-300 flex-1">{act.text}</span>
-                                        <span className="text-[10px] text-gray-500 font-mono shrink-0">{new Date(act.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                    <div key={i} style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', padding: '10px 14px', borderRadius: '10px', fontSize: '12px', display: 'flex', justifyContent: 'space-between' }}>
+                                        <span style={{ color: '#cbd5e1' }}>{act.text}</span>
+                                        <span style={{ color: '#64748b', fontSize: '10.5px' }}>{new Date(act.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                     </div>
                                 ))
                             )}
@@ -387,47 +732,59 @@ export default function AgentDeskModal({
 
                     {/* TAB 7: PERFORMANCE */}
                     {activeTab === 'performance' && (
-                        <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="bg-white/5 border border-white/10 p-4 rounded-2xl">
-                                    <span className="text-xs text-gray-400">Tasa de Conclusión Exitosa</span>
-                                    <div className="text-2xl font-bold text-emerald-400 mt-1">98.5%</div>
-                                    <div className="w-full bg-white/10 h-2 rounded-full mt-3 overflow-hidden">
-                                        <div className="bg-emerald-500 h-full w-[98.5%]" />
-                                    </div>
-                                </div>
-                                <div className="bg-white/5 border border-white/10 p-4 rounded-2xl">
-                                    <span className="text-xs text-gray-400">Eficiencia de Tokens</span>
-                                    <div className="text-2xl font-bold text-blue-400 mt-1">94.2%</div>
-                                    <div className="w-full bg-white/10 h-2 rounded-full mt-3 overflow-hidden">
-                                        <div className="bg-blue-500 h-full w-[94.2%]" />
-                                    </div>
-                                </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
+                            <div style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', padding: '18px', borderRadius: '14px' }}>
+                                <span style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase' }}>Hechas / Fallidas</span>
+                                <div style={{ fontSize: '24px', fontWeight: '800', color: '#34d399', marginTop: '6px' }}>{stats?.done ?? 0} / {stats?.failed ?? 0}</div>
+                            </div>
+                            <div style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', padding: '18px', borderRadius: '14px' }}>
+                                <span style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase' }}>Gasto estimado</span>
+                                <div style={{ fontSize: '24px', fontWeight: '800', color: '#60a5fa', marginTop: '6px' }}>${(stats?.costUSD ?? 0).toFixed(4)}</div>
+                                <span style={{ fontSize: '11px', color: '#64748b' }}>{stats?.runs ?? 0} corridas · {stats?.review ?? 0} por revisar</span>
                             </div>
                         </div>
                     )}
 
                     {/* TAB 8: SETTINGS */}
                     {activeTab === 'settings' && (
-                        <div className="space-y-5">
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
                             <div>
-                                <label className="text-xs font-semibold text-gray-300 block mb-2">Modelo LLM Asignado:</label>
+                                <label style={{ fontSize: '12px', fontWeight: '600', color: '#cbd5e1', display: 'block', marginBottom: '8px' }}>
+                                    Modelo LLM Asignado:
+                                </label>
                                 <select
                                     value={selectedModel}
                                     onChange={(e) => setSelectedModel(e.target.value)}
-                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500"
+                                    style={{
+                                        width: '100%',
+                                        background: '#0a0e17',
+                                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                                        borderRadius: '10px',
+                                        padding: '10px 12px',
+                                        fontSize: '12.5px',
+                                        color: '#ffffff'
+                                    }}
                                 >
-                                    <option value="gemini-2.5-flash" className="bg-[#0B0F17]">Gemini 2.5 Flash (Ultra Rápido & Razonamiento)</option>
-                                    <option value="gemini-2.5-pro" className="bg-[#0B0F17]">Gemini 2.5 Pro (Máxima Complejidad & Profundidad)</option>
-                                    <option value="gemini-3.5-flash-lite" className="bg-[#0B0F17]">Gemini 3.5 Flash Lite (Micro Tareas)</option>
-                                    <option value="claude-3-7-sonnet" className="bg-[#0B0F17]">Claude 3.7 Sonnet (Orquestación & Código)</option>
+                                    {(models?.providers || []).map(p => (
+                                        <optgroup key={p.id} label={`${p.label}${p.enabled ? '' : ` — falta ${p.env}`}`}>
+                                            {(models?.models || []).filter(m => m.provider === p.id).map(m => (
+                                                <option key={m.id} value={m.id} disabled={!m.enabled && m.id !== agent.model}>{m.label} · {m.use}</option>
+                                            ))}
+                                        </optgroup>
+                                    ))}
                                 </select>
+                                {chosenModel && !chosenModel.enabled && (
+                                    <div className="occ-notice" style={{ marginTop: '8px' }}>Este modelo no tiene llave en .env: las tareas de {agent.name} quedarán en cola hasta que la agregues.</div>
+                                )}
+                                <p style={{ fontSize: '11.5px', color: '#64748b', margin: '8px 0 0' }}>
+                                    Las tareas que le asignes y el chat de su cabina corren con este modelo.
+                                </p>
                             </div>
 
                             <div>
-                                <div className="flex items-center justify-between mb-2">
-                                    <label className="text-xs font-semibold text-gray-300">Nivel de Autonomía (1 a 4):</label>
-                                    <span className="text-xs font-bold text-blue-400">Nivel {autonomyLevel}</span>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                                    <label style={{ fontSize: '12px', fontWeight: '600', color: '#cbd5e1' }}>Nivel de Autonomía:</label>
+                                    <span style={{ fontSize: '12px', fontWeight: '700', color: '#60a5fa' }}>Nivel {autonomyLevel}</span>
                                 </div>
                                 <input
                                     type="range"
@@ -435,27 +792,104 @@ export default function AgentDeskModal({
                                     max="4"
                                     value={autonomyLevel}
                                     onChange={(e) => setAutonomyLevel(parseInt(e.target.value))}
-                                    className="w-full accent-blue-500"
+                                    style={{ width: '100%', accentColor: '#2563eb' }}
                                 />
-                                <div className="flex justify-between text-[10px] text-gray-500 mt-1">
-                                    <span>Nivel 1: Lectura/Drafts</span>
-                                    <span>Nivel 2: Autónomo &lt; $500</span>
-                                    <span>Nivel 3: Aprobación CEO</span>
-                                    <span>Nivel 4: Crítico</span>
-                                </div>
                             </div>
 
                             <button
                                 onClick={handleSaveSettings}
-                                className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition"
+                                style={{
+                                    background: '#2563eb',
+                                    color: '#ffffff',
+                                    border: 'none',
+                                    borderRadius: '12px',
+                                    padding: '12px',
+                                    fontSize: '12.5px',
+                                    fontWeight: '700',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '8px'
+                                }}
                             >
-                                <Save size={14} />
+                                <Save size={15} />
                                 <span>{saveSuccess ? '¡Guardado Correctamente!' : 'Guardar Configuración'}</span>
                             </button>
+                            {saveError && <div className="occ-notice">{saveError}</div>}
                         </div>
                     )}
                 </div>
             </div>
+
+            {/* FULL DOCUMENT PREVIEW MODAL */}
+            {selectedDocPreview && (
+                <div
+                    style={{
+                        position: 'fixed',
+                        inset: 0,
+                        zIndex: 10001,
+                        background: 'rgba(0, 0, 0, 0.85)',
+                        backdropFilter: 'blur(12px)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '24px'
+                    }}
+                    onClick={() => setSelectedDocPreview(null)}
+                >
+                    <div
+                        style={{
+                            width: '100%',
+                            maxWidth: '720px',
+                            maxHeight: '80vh',
+                            background: '#0a0d15',
+                            border: '1px solid rgba(255, 255, 255, 0.15)',
+                            borderRadius: '20px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            overflow: 'hidden'
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', background: '#0e1320' }}>
+                            <div>
+                                <h3 style={{ fontSize: '15px', fontWeight: '800', color: '#ffffff', margin: 0 }}>{selectedDocPreview.title}</h3>
+                                <span style={{ fontSize: '11px', color: '#94a3b8' }}>Autor: {selectedDocPreview.agentName || agent.name} · {selectedDocPreview.type?.toUpperCase()}</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <button
+                                    onClick={() => handleCopyDoc(selectedDocPreview.content)}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '5px',
+                                        background: 'rgba(255, 255, 255, 0.08)',
+                                        border: '1px solid rgba(255, 255, 255, 0.15)',
+                                        color: '#ffffff',
+                                        padding: '5px 10px',
+                                        borderRadius: '8px',
+                                        fontSize: '11.5px',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    {copiedDoc ? <Check size={13} style={{ color: '#10b981' }} /> : <Copy size={13} />}
+                                    <span>{copiedDoc ? 'Copiado' : 'Copiar'}</span>
+                                </button>
+                                <button
+                                    onClick={() => setSelectedDocPreview(null)}
+                                    style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px' }}
+                                >
+                                    <X size={18} />
+                                </button>
+                            </div>
+                        </div>
+                        <div style={{ flex: 1, overflowY: 'auto', padding: '24px', fontSize: '13px', lineHeight: 1.6, color: '#e2e8f0', whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>
+                            {selectedDocPreview.content}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

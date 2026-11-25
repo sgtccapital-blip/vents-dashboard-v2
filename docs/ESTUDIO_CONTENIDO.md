@@ -70,6 +70,7 @@ Para enseñarle a la máquina formatos virales y técnicas de edición:
 
 1. **Agregar:** pega el link (Instagram, TikTok, YouTube, X…) o sube el video. Elige si es **video viral** (para recrear el formato) o **tutorial** (para aprender una técnica). Las notas y las cuentas son opcionales.
 2. **Análisis automático:** se descarga con `yt-dlp`, se miden los cortes de escena y el ritmo con ffmpeg, se extrae un frame por plano, se transcribe la voz con Whisper y la IA (viendo los frames) arma la receta: gancho, estructura segundo a segundo, edición (ritmo, transiciones, efectos, texto, subtítulos, color, audio), por qué funciona, la técnica con pasos y parámetros, cómo la hace la máquina y adaptaciones por cuenta.
+   Si hay cuota de Gemini, **Gemini ve el video completo** (imagen y audio; YouTube directo por link, el resto subido y borrado al terminar) y suma herramientas, paso a paso con minutos y lo que se dice; si no, se analiza con los frames por plano. Los tutoriales de más de 20 min no pasan por Whisper. Las que fallan por cuota se reintentan solas cada 30 min, y cada referencia lista entra al RAG (`docs/CONOCIMIENTO.md`).
 3. **Recrear para una cuenta:** crea la idea en Producción ligada a la referencia; al desarrollarla, el guion de edición sigue la estructura y el ritmo de la referencia con la línea de la cuenta.
 4. **Técnicas por construir:** si un tutorial enseña algo que la máquina todavía no tiene, queda marcado y el botón "Instrucción para Claude Code" da el pedido para programarlo como plantilla.
 

@@ -106,12 +106,16 @@ test('AI Office HQ: Escenario de prueba — "Campaña de lanzamiento de HangOut 
     assert.equal(data.success, true);
     assert.equal(data.assignedAgent, 'Nexus (Marketing)', 'BART debe delegar misiones de lanzamiento a Nexus');
     assert.ok(data.priorityScore > 6, 'Prioridad alta debe tener score > 6');
-    assert.equal(data.status, 'in_progress');
+    // Sin llave de Gemini en las pruebas: la tarea queda en cola explicando qué falta, no simula que corre.
+    assert.equal(data.status, 'queued');
 
     const stateRes = await api('/office/state');
     const stateData = await stateRes.json();
+    const task = stateData.activeTasks.find(t => t.id === data.task.id);
+    assert.match(task.currentStep, /no está configurado/);
     const nexus = stateData.agents.find(a => a.id === 'agent-nexus');
-    assert.equal(nexus.status, 'executing');
+    assert.equal(nexus.kind, 'internal');
+    assert.notEqual(nexus.status, 'executing');
 });
 
 test('AI Office HQ: Gobernanza — Misión de alto presupuesto (> $5000) genera solicitud de aprobación para el CEO', async () => {
@@ -188,4 +192,164 @@ test('AI Office HQ: Kill Switch detiene inmediatamente las operaciones activas',
     const stateRes = await api('/office/state');
     const stateData = await stateRes.json();
     assert.equal(stateData.stats.activeExecuting, 0, 'No deben quedar agentes en ejecución activa tras kill switch');
+});
+
+test('AI Office HQ: Creación y listado de documentos por agente', async () => {
+    const r = await api('/office/agent/agent-echo/document', {
+        method: 'POST',
+        body: JSON.stringify({
+            title: 'Guion TikTok #1 Lanzamiento HangOut',
+            type: 'script',
+            content: 'POV: Descubriendo la terraza secreta de Casco Antiguo...',
+            company: 'HangOut Panamá'
+        })
+    });
+
+    assert.equal(r.status, 201);
+    const data = await r.json();
+    assert.equal(data.success, true);
+    assert.equal(data.document.title, 'Guion TikTok #1 Lanzamiento HangOut');
+    assert.equal(data.document.agentId, 'agent-echo');
+
+    // Listar documentos del agente
+    const listRes = await api('/office/agent/agent-echo/documents');
+    assert.equal(listRes.status, 200);
+    const listData = await listRes.json();
+    assert.ok(listData.documents.length >= 1);
+});
+
+test('AI Office HQ: Avance gradual y aprobación de tareas de agente', async () => {
+    // 1. Crear una tarea para probar avance
+    const dispRes = await api('/office/dispatch', {
+        method: 'POST',
+        body: JSON.stringify({
+            mission: 'Diseñar flyers promocionales de apertura',
+            priority: 'medium',
+            companyName: 'HangOut Panamá'
+        })
+    });
+    const dispData = await dispRes.json();
+    const taskId = dispData.task.id;
+
+    // 2. Avanzar paso (+25%)
+    const progRes = await api(`/office/task/${taskId}/progress`, {
+        method: 'POST',
+        body: JSON.stringify({
+            currentStep: 'Bocetos preliminares generados',
+            progress: 50,
+            status: 'in_progress'
+        })
+    });
+    assert.equal(progRes.status, 200);
+    const progData = await progRes.json();
+    assert.equal(progData.task.progress, 50);
+    assert.equal(progData.task.currentStep, 'Bocetos preliminares generados');
+
+    // 3. Aprobar tarea por el CEO o BART
+    const apprRes = await api(`/office/task/${taskId}/approve`, {
+        method: 'POST',
+        body: JSON.stringify({
+            approver: 'Gabriel (CEO)',
+            notes: 'Aprobado excelente diseño'
+        })
+    });
+    assert.equal(apprRes.status, 200);
+    const apprData = await apprRes.json();
+    assert.equal(apprData.task.status, 'done');
+    assert.equal(apprData.task.progress, 100);
+});
+
+test('AI Office HQ: Canal de filtro (inbox) lista tickets en disco y tareas activas', async () => {
+    const r = await api('/office/inbox');
+    assert.equal(r.status, 200);
+    const data = await r.json();
+    assert.equal(data.success, true);
+    assert.ok(Array.isArray(data.diskTickets));
+    assert.ok(Array.isArray(data.activeTasks));
+});
+
+const ROOT_URL = BASE.replace(/\/api$/, '');
+
+async function mcpCall(token, name, args = {}) {
+    const r = await fetch(`${ROOT_URL}/mcp`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name, arguments: args } }),
+    });
+    const data = await r.json();
+    const res = data.result;
+    assert.ok(res, `MCP sin resultado: ${JSON.stringify(data)}`);
+    if (res.isError) throw new Error(res.content[0].text);
+    return JSON.parse(res.content[0].text);
+}
+
+test('AI Office HQ: modelos por agente — catálogo multi-proveedor y cambio de modelo', async () => {
+    const models = await (await api('/office/models')).json();
+    const providers = models.providers.map(p => p.id);
+    for (const p of ['google', 'anthropic', 'openai']) assert.ok(providers.includes(p), `Falta proveedor ${p}`);
+    assert.ok(models.models.some(m => m.id === 'claude-opus-5-5'));
+
+    const ok = await api('/office/agent/agent-echo/config', { method: 'POST', body: JSON.stringify({ model: 'claude-sonnet-5-5' }) });
+    assert.equal(ok.status, 200);
+    assert.equal((await ok.json()).agent.model, 'claude-sonnet-5-5');
+
+    const bad = await api('/office/agent/agent-echo/config', { method: 'POST', body: JSON.stringify({ model: 'modelo-inventado' }) });
+    assert.equal(bad.status, 400);
+
+    // Sin ANTHROPIC_API_KEY la corrida no arranca y lo explica.
+    const disp = await (await api('/office/dispatch', { method: 'POST', body: JSON.stringify({ mission: 'Guion de reels para el fin de semana', targetAgent: 'agent-echo' }) })).json();
+    assert.equal(disp.status, 'queued');
+    const task = (await (await api(`/office/task/${disp.task.id}`)).json()).task;
+    assert.equal(task.model, 'claude-sonnet-5-5');
+    assert.match(task.currentStep, /ANTHROPIC_API_KEY/);
+});
+
+test('AI Office HQ: agente externo por MCP toma, avanza y entrega; el CEO revisa', async () => {
+    const created = await (await api('/agent-hub/tokens', { method: 'POST', body: JSON.stringify({ name: 'Claude Code (Mac)', scope: 'write' }) })).json();
+    const token = created.token;
+    const extId = `ext-${created.record.id}`;
+
+    // Aparece en la oficina como agente conectado.
+    let state = await (await api('/office/state')).json();
+    const ext = state.agents.find(a => a.id === extId);
+    assert.ok(ext, 'El agente conectado debe aparecer en la oficina');
+    assert.equal(ext.kind, 'external');
+
+    const disp = await (await api('/office/dispatch', { method: 'POST', body: JSON.stringify({ mission: 'Investigar 3 venues nuevos en Casco Antiguo', targetAgent: extId }) })).json();
+    assert.equal(disp.assignedAgent, 'Claude Code (Mac)');
+    assert.equal(disp.status, 'queued');
+    const taskId = disp.task.id;
+
+    const mine = await mcpCall(token, 'get_my_office_tasks', { include_open: false });
+    assert.ok(mine.tasks.some(t => t.id === taskId));
+
+    await mcpCall(token, 'claim_office_task', { task_id: taskId });
+    const prog = await mcpCall(token, 'report_office_progress', { task_id: taskId, progress: 50, step: 'Comparando precios' });
+    assert.equal(prog.progress, 50);
+    const sub = await mcpCall(token, 'submit_office_result', { task_id: taskId, result: '# Venues\n1. A\n2. B\n3. C', model: 'claude-opus-5-5' });
+    assert.equal(sub.status, 'review');
+
+    // Otro agente no puede tocar una tarea ajena.
+    const other = await (await api('/agent-hub/tokens', { method: 'POST', body: JSON.stringify({ name: 'Otro agente', scope: 'write' }) })).json();
+    await assert.rejects(() => mcpCall(other.token, 'claim_office_task', { task_id: taskId }), /asignada a/);
+
+    // El CEO pide cambios: vuelve a la cola del mismo agente con la corrección.
+    const changes = await api(`/office/task/${taskId}/review`, { method: 'POST', body: JSON.stringify({ decision: 'changes', notes: 'Agrega capacidad de cada venue' }) });
+    assert.equal(changes.status, 200);
+    const again = await mcpCall(token, 'get_my_office_tasks', { include_open: false });
+    const t = again.tasks.find(x => x.id === taskId);
+    assert.equal(t.status, 'queued');
+    assert.equal(t.feedback[0].notes, 'Agrega capacidad de cada venue');
+    assert.ok(t.previousResult.includes('Venues'));
+
+    await mcpCall(token, 'claim_office_task', { task_id: taskId });
+    await mcpCall(token, 'submit_office_result', { task_id: taskId, result: '# Venues con capacidad' });
+    const approve = await (await api(`/office/task/${taskId}/review`, { method: 'POST', body: JSON.stringify({ decision: 'approve' }) })).json();
+    assert.equal(approve.task.status, 'done');
+
+    state = await (await api('/office/state')).json();
+    const st = state.metrics.agentStats[extId];
+    assert.equal(st.done, 1);
+    assert.equal(st.runs, 2);
+    assert.ok(state.completedTasks.some(x => x.id === taskId));
 });

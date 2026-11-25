@@ -128,6 +128,13 @@ function ReferenceDetail({ refItem: r, accounts, account, onClose, onChanged }) 
                                 <dt>Color</dt><dd>{a.editing.color}</dd>
                                 <dt>Audio</dt><dd>{a.editing.audio}</dd>
                             </dl>
+                            {a.tools?.length > 0 && <><h4>Herramientas</h4><p className="ref-params">{a.tools.join(' · ')}</p></>}
+                            {a.timeline?.length > 0 && (
+                                <>
+                                    <h4>{r.type === 'tutorial' ? 'Paso a paso' : 'Momentos clave'}</h4>
+                                    <div className="ref-structure">{a.timeline.map((x, i) => <div key={i}><b>{x.t}</b><p>{x.what}</p></div>)}</div>
+                                </>
+                            )}
                             <h4>Técnica · {a.technique.name} <span className="idea-pillar">{a.technique.category}</span></h4>
                             <ol>{a.technique.steps.map((s, i) => <li key={i}>{s}</li>)}</ol>
                             {a.technique.parameters.length > 0 && <p className="ref-params">{a.technique.parameters.join(' · ')}</p>}

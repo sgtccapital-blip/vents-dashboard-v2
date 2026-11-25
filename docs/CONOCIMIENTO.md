@@ -9,7 +9,7 @@ Un solo índice con búsqueda por significado (embeddings `gemini-embedding-2`) 
 | ChatGPT | Perfil de trabajo del usuario | `chatgpt` / `profile` |
 | Dashboard | Proyectos, eventos, tareas, notas y documentos subidos (`ragDocuments`) | `dashboard` / categoría |
 | Agentes | Memorias que guarda cualquier agente | `memory` / `memory` |
-| Referencias | Links de YouTube, Instagram, TikTok, Vimeo, X… analizados por IA (paso a paso, herramientas, técnicas, estilo, cómo recrearlo, transcripción) | `reference` / tipo (`tutorial`, `motion_graphics`, `edicion`…) |
+| Referencias | Playbook de cada video viral o tutorial de Redes Sociales → Referencias (gancho, estructura, edición, técnica, herramientas, paso a paso, cómo recrearlo) | `reference` / `viral`, `tutorial` |
 
 Código: `src/services/knowledge/`. Datos (privados, fuera de git): `knowledge/` junto a `db.json` (`KNOWLEDGE_DIR` para moverlo).
 
@@ -29,17 +29,29 @@ Los agentes internos (chat de OpenClaw/Hermes y orquestador) reciben en cada pro
 
 ## Referencias (tutoriales y referencias de video)
 
-Agent & RAG → **Referencias**: se pegan uno o varios links con una nota de para qué se guardan, la cuenta y etiquetas. También por API (`POST /api/knowledge/references` `{ urls, note?, account?, tags? }`) o con la herramienta MCP `add_reference`.
+Hay **una sola biblioteca**: Redes Sociales → Referencias (también visible en Agent & RAG → Referencias). Se agrega un link o un video subido, tipo *viral* o *tutorial*, con nota y cuentas. También por MCP con `add_reference`. Guía del análisis en `docs/ESTUDIO_CONTENIDO.md`.
 
-Cada link pasa por una cola (`src/services/knowledge/references.js`, estado en `knowledge/references.json`):
+Cuando termina el análisis, el playbook entra al RAG al momento como `source: reference` (y en cada sincronización del dashboard). Los agentes lo encuentran con `search_knowledge` (`source: "reference"`) y leen el playbook completo con `get_reference`.
 
-1. `yt-dlp` saca título, autor, duración, descripción y subtítulos.
-2. Gemini **ve el video completo** (imagen + audio): YouTube directo desde el link; Instagram, TikTok y el resto se descargan a 720p (360p si dura más de 15 min), se suben a la Files API de Gemini y se borran al terminar.
-3. Sale un desglose estructurado que entra al índice como `source: reference`. Si no se puede ver el video (post de fotos, privado) se analiza solo con el texto y queda marcado como *Analizado sin ver el video*.
+Variables: `REFERENCE_VIDEO_MODELS` (por defecto `gemini-3.8-flash,gemini-3-flash-preview,gemini-3.5-flash-lite,gemini-3.1-flash-lite`: al agotarse la cuota de uno pasa al siguiente), `REFERENCE_VIDEO=off` para analizar solo con frames, `YTDLP_COOKIES_BROWSER=chrome` si Instagram pide sesión.
 
-Variables: `REFERENCE_VIDEO_MODEL` (por defecto el de `KNOWLEDGE_LLM_MODEL`, `gemini-3.8-flash`), `REFERENCE_COOKIES_BROWSER=chrome` si Instagram pide sesión, `YTDLP_PATH`.
+## Modelos y costo
 
-Los agentes las encuentran con `search_knowledge` (`source: "reference"`) y leen el desglose completo con `get_reference`.
+Todas las tareas de texto pasan por `generateStructured` (`src/services/contentStudio/llm.js`), que prueba una cadena de modelos por tarea y salta al siguiente si uno falla, está saturado o sin cuota (el que falla queda en pausa: 5 min si está saturado, 1 h sin cuota).
+
+| Tarea | Cadena por defecto | Variable |
+|---|---|---|
+| `knowledge` (resúmenes, memoria de proyecto, perfil) | Gemma 4 31B → Gemma 4 26B → 3.5 Flash Lite → 3.1 Flash Lite → OpenRouter | `KNOWLEDGE_MODELS` |
+| `reference` (referencias analizadas con frames, cuando Gemini no puede ver el video) | 3.5 Flash Lite → Gemma 4 31B → 3.1 Flash Lite → OpenRouter | `REFERENCE_MODELS` |
+| Estudio de contenido | Claude (si hay llave) → 3.8 Flash → 3 Flash → 3.5 Flash Lite → OpenRouter | `STUDIO_MODELS` |
+
+Formato: `proveedor:modelo` separados por coma (`gemini`, `claude`, `openrouter`; `*` = el modelo por defecto del proveedor).
+
+**OpenRouter** (`OPENROUTER_API_KEY`) es el respaldo barato. `OPENROUTER_MODELS` (por defecto `typesafe/jev-router,deepseek/deepseek-v4-flash`): Jev Router elige el modelo más barato que sirve para cada pedido (`OPENROUTER_JEV_COST_TIER=low|medium|high`, `OPENROUTER_JEV_EXCLUDE` para vetar modelos). Solo se usan proveedores que no guardan los datos.
+
+**Jev** (`src/services/knowledge/jev.js`) no escribe texto: es un modelo de decisiones (sí/no, opciones, puntaje) que cobra solo la entrada. Con la llave de OpenRouter filtra cada conversación de ChatGPT antes de resumirla: si es una consulta suelta (probabilidad < `JEV_SKIP_THRESHOLD`, 0.15) queda archivada sin gastar una llamada al LLM. `JEV_TRIAGE=off` lo apaga; `JEV_MODEL` cambia la versión.
+
+Embeddings: frenados a los límites del plan gratis (`KNOWLEDGE_EMBED_RPM`, `KNOWLEDGE_EMBED_TPM`, `KNOWLEDGE_EMBED_RPD`; `0` en RPD lo desactiva con plan de pago).
 
 ## API para agentes (`Authorization: Bearer <API_TOKEN>`)
 
@@ -71,7 +83,7 @@ Herramientas:
 | `get_chatgpt_conversation` | lectura | Resumen y mensajes de una conversación importada |
 | `create_task` / `update_task` | escritura | Pendientes en el dashboard (quedan firmados con el nombre del agente) |
 | `save_memory` | escritura | Decisiones y datos que deben ver todos los agentes |
-| `add_reference` / `get_reference` | escritura / lectura | Guardar links de video como referencia y leer su desglose |
+| `add_reference` / `get_reference` | escritura / lectura | Guardar links en la biblioteca de referencias y leer su playbook |
 | `log_activity` | escritura | Qué hizo el agente, en el feed del Home |
 - `search` / `fetch` (lectura): mismo índice en el formato que exige ChatGPT para sus conectores.
 

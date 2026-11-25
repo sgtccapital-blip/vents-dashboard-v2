@@ -31,7 +31,8 @@ export default function EventoDetail() {
         tasks, updateTask, addTask,
         triggerOpenClawAction, openclawLogs,
         promoters, addPromoter, updatePromoter, deletePromoter,
-        imageGirls, socialMedia, gcalToken, googleCalendarEvents,
+        imageGirls, socialMedia, updateSocialMedia, addSocialMedia,
+        gcalToken, googleCalendarEvents,
         connectGoogleCalendar, disconnectGoogleCalendar,
         fetchGoogleCalendarEvents, syncEventToGoogleCalendar
     } = useApp();

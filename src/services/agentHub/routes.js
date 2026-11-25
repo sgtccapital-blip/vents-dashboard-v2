@@ -3,9 +3,9 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { createHubStore } from './hubStore.js';
 import { buildMcpServer } from './mcpServer.js';
 
-export function registerAgentHub(app, { dataDir, readDB, knowledge, createEntity, updateEntity, addActivityFeed, isAdminRequest }) {
+export function registerAgentHub(app, { dataDir, readDB, knowledge, studio, library, createEntity, updateEntity, addActivityFeed, office, isAdminRequest }) {
     const hub = createHubStore(dataDir);
-    const deps = { readDB, knowledge, createEntity, updateEntity, addActivityFeed, hub };
+    const deps = { readDB, knowledge, studio, library, createEntity, updateEntity, addActivityFeed, hub, office };
 
     // Quién llama: token de agente (cabecera o en la URL, para clientes como ChatGPT que no permiten cabeceras),
     // el API_TOKEN de administración o la sesión del dashboard.

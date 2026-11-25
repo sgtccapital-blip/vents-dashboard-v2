@@ -118,7 +118,8 @@ export async function analyzeReference(id) {
     const { frames, sheet } = await keyframes(file, cuts, p.duration, dir);
     // 4. Transcripción
     let transcript = '';
-    if (p.hasAudio) {
+    // Tutoriales largos: Whisper local tardaría mucho y Gemini ya oye el audio al ver el video.
+    if (p.hasAudio && p.duration <= 20 * 60) {
         await step('Transcribiendo la voz con Whisper…', 55);
         try { transcript = transcriptText(await transcribe(file, { lang: ref.lang || 'auto' })); } catch (err) { log(`Sin transcripción: ${err.message}`); }
     }
@@ -133,11 +134,32 @@ export async function analyzeReference(id) {
         prompt: engine.referencePrompt({ ref, stats, cuts, transcript, info, accounts, hasImages: imgs.length > 0 }),
         schema: engine.ReferenceAnalysisSchema,
         images: imgs,
+        task: 'reference',
         geminiApiKey: db.openclawConfig?.geminiApiKey,
     });
     let out;
     let usedFrames = images.length > 0;
-    try {
+    let usedVideo = false;
+    // Primero Gemini ve el video completo (imagen + audio); si no hay cuota, se analiza con los frames.
+    const apiKey = process.env.GEMINI_API_KEY || db.openclawConfig?.geminiApiKey;
+    if (apiKey && process.env.REFERENCE_VIDEO !== 'off') {
+        try {
+            await step('Gemini está viendo el video completo…', 70);
+            const { analyzeVideo } = await import(path.join(ROOT, 'src/services/contentStudio/geminiVideo.js'));
+            const v = await analyzeVideo({
+                url: ref.url, file, duration: p.duration, apiKey,
+                system: engine.REFERENCE_SYSTEM,
+                prompt: engine.referencePrompt({ ref, stats, cuts, transcript, info, accounts, hasImages: false, hasVideo: true }),
+                schema: engine.ReferenceAnalysisSchema,
+            });
+            out = { data: v.data, provider: 'gemini-video', model: v.model };
+            usedVideo = true;
+        } catch (err) {
+            log(`Gemini no pudo ver el video (${err.message.slice(0, 160)}…); sigo con los frames`);
+            await step('Analizando con frames (Gemini sin cuota para video)…', 75);
+        }
+    }
+    if (!out) try {
         out = await ask(images);
     } catch (err) {
         if (!images.length) throw err;
@@ -162,7 +184,7 @@ export async function analyzeReference(id) {
         playbookPath: rel(path.join(dir, 'PLAYBOOK.md')),
         stats, cuts, transcript,
         analysis: out.data,
-        analyzedBy: `${out.provider}:${out.model}${usedFrames ? '' : ' (sin frames)'}`,
+        analyzedBy: `${out.provider}:${out.model}${usedVideo ? ' (video completo)' : usedFrames ? ' (frames)' : ' (sin frames)'}`,
         analyzedAt: new Date().toISOString(),
     });
     writeTechniqueIndex();

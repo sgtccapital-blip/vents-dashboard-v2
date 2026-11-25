@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { ShieldCheck, AlertCircle, CheckCircle2, XCircle, X, DollarSign, Clock } from 'lucide-react';
+import { ShieldCheck, CheckCircle2, XCircle, X } from 'lucide-react';
+import './AiOffice.css';
 
 export default function OfficeApprovalsModal({
     approvals = [],
@@ -17,51 +18,64 @@ export default function OfficeApprovalsModal({
     const pendingList = approvals.filter(a => a.status === 'pending');
 
     return (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
-            <div className="bg-[#0B0F17] border border-white/15 w-full max-w-2xl max-h-[80vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden">
-                
+        <div className="office-modal-backdrop" onClick={onClose}>
+            <div className="office-modal-frame" style={{ maxWidth: '640px', height: 'auto', maxHeight: '80vh' }} onClick={(e) => e.stopPropagation()}>
                 {/* HEADER */}
-                <div className="p-6 border-b border-white/10 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                <div className="office-modal-header">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{
+                            width: '40px',
+                            height: '40px',
+                            borderRadius: '12px',
+                            background: 'rgba(245, 158, 11, 0.15)',
+                            border: '1px solid rgba(245, 158, 11, 0.3)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#fbbf24'
+                        }}>
                             <ShieldCheck size={22} />
                         </div>
                         <div>
-                            <h2 className="text-lg font-bold text-white">Bandeja de Gobernanza & Aprobaciones</h2>
-                            <p className="text-xs text-gray-400">Acciones críticas o con impacto económico que requieren tu autorización directa.</p>
+                            <h2 style={{ fontSize: '16px', fontWeight: '800', color: '#ffffff', margin: 0 }}>
+                                Bandeja de Gobernanza & Aprobaciones
+                            </h2>
+                            <p style={{ fontSize: '11.5px', color: '#94a3b8', margin: '2px 0 0 0' }}>
+                                Acciones críticas que requieren tu autorización directa como CEO.
+                            </p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="p-2 text-gray-400 hover:text-white rounded-xl transition">
+                    <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
                         <X size={18} />
                     </button>
                 </div>
 
                 {/* BODY */}
-                <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                <div className="office-modal-content" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                     {pendingList.length === 0 ? (
-                        <div className="text-center py-16 text-gray-400">
-                            <CheckCircle2 size={44} className="mx-auto mb-3 text-emerald-400 opacity-60" />
-                            <h3 className="text-sm font-semibold text-white">No hay aprobaciones pendientes</h3>
-                            <p className="text-xs text-gray-500 mt-1">Todas las operaciones de los agentes están al día y autorizadas.</p>
+                        <div style={{ textAlign: 'center', padding: '40px 20px', color: '#64748b' }}>
+                            <CheckCircle2 size={40} style={{ color: '#34d399', margin: '0 auto 10px auto', opacity: 0.7 }} />
+                            <h3 style={{ fontSize: '14px', fontWeight: '700', color: '#ffffff', margin: 0 }}>No hay aprobaciones pendientes</h3>
+                            <p style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>Todas las operaciones de los agentes están al día y autorizadas.</p>
                         </div>
                     ) : (
                         pendingList.map(appr => (
-                            <div key={appr.id} className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-3">
-                                <div className="flex items-start justify-between gap-3">
+                            <div key={appr.id} style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '16px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                     <div>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-xs font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <span style={{ fontSize: '10px', fontWeight: '700', background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.3)', padding: '2px 6px', borderRadius: '4px' }}>
                                                 NIVEL {appr.autonomyRequired || 3}
                                             </span>
-                                            <span className="text-xs text-gray-300 font-semibold">{appr.agentName || 'Agente'}</span>
+                                            <span style={{ fontSize: '12px', fontWeight: '600', color: '#cbd5e1' }}>{appr.agentName || 'Agente'}</span>
                                         </div>
-                                        <h4 className="text-sm font-semibold text-white mt-1.5">{appr.actionRequested}</h4>
+                                        <h4 style={{ fontSize: '13.5px', fontWeight: '700', color: '#ffffff', margin: '6px 0 0 0' }}>{appr.actionRequested}</h4>
                                     </div>
 
                                     {appr.impactEstimate > 0 && (
-                                        <div className="text-right shrink-0">
-                                            <span className="text-[10px] text-gray-400 block uppercase">Impacto Est.</span>
-                                            <span className="text-sm font-bold text-emerald-400">${appr.impactEstimate} USD</span>
+                                        <div style={{ textAlign: 'right' }}>
+                                            <span style={{ fontSize: '9px', textTransform: 'uppercase', color: '#94a3b8' }}>Impacto</span>
+                                            <div style={{ fontSize: '14px', fontWeight: '800', color: '#34d399' }}>${appr.impactEstimate} USD</div>
                                         </div>
                                     )}
                                 </div>
@@ -71,20 +85,53 @@ export default function OfficeApprovalsModal({
                                     placeholder="Notas de aprobación o condiciones..."
                                     value={notes[appr.id] || ''}
                                     onChange={(e) => setNotes({ ...notes, [appr.id]: e.target.value })}
-                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                                    style={{
+                                        width: '100%',
+                                        background: 'rgba(255, 255, 255, 0.04)',
+                                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                                        borderRadius: '10px',
+                                        padding: '8px 12px',
+                                        fontSize: '12px',
+                                        color: '#ffffff',
+                                        outline: 'none'
+                                    }}
                                 />
 
-                                <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/5">
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', paddingTop: '8px', borderTop: '1px solid rgba(255, 255, 255, 0.05)' }}>
                                     <button
                                         onClick={() => handleDecision(appr.id, 'rejected')}
-                                        className="px-3.5 py-1.5 bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-500/30 text-xs font-semibold rounded-xl flex items-center gap-1.5 transition"
+                                        style={{
+                                            background: 'rgba(239, 68, 68, 0.15)',
+                                            border: '1px solid rgba(239, 68, 68, 0.3)',
+                                            color: '#f87171',
+                                            padding: '6px 14px',
+                                            borderRadius: '8px',
+                                            fontSize: '12px',
+                                            fontWeight: '600',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '6px'
+                                        }}
                                     >
                                         <XCircle size={14} />
                                         <span>Rechazar</span>
                                     </button>
                                     <button
                                         onClick={() => handleDecision(appr.id, 'approved')}
-                                        className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-lg shadow-emerald-600/20 transition"
+                                        style={{
+                                            background: '#059669',
+                                            color: '#ffffff',
+                                            border: 'none',
+                                            padding: '6px 16px',
+                                            borderRadius: '8px',
+                                            fontSize: '12px',
+                                            fontWeight: '700',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '6px'
+                                        }}
                                     >
                                         <CheckCircle2 size={14} />
                                         <span>Aprobar y Ejecutar</span>

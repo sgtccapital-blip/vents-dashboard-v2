@@ -49,6 +49,11 @@ export const ReferenceAnalysisSchema = z.object({
         hook: z.string(),
         why: z.string(),
     })).describe('Cómo la usaría cada cuenta que encaje, con su propia línea'),
+    // Campos de tutorial (opcionales para que las referencias viejas sigan validando).
+    tools: z.array(z.string()).default([]).describe('Programas, plugins, efectos, apps o equipos que se usan o se mencionan'),
+    timeline: z.array(z.object({ t: z.string().describe('mm:ss'), what: z.string() })).default([])
+        .describe('Tutorial: paso a paso con su minuto. Viral: momentos clave. Vacío si no aplica'),
+    transcriptSummary: z.string().default('').describe('Lo que se dice, condensado y fiel (no inventes); vacío si no hay voz'),
 });
 
 export const AdaptationSchema = z.object({
@@ -70,9 +75,11 @@ Reglas:
 - Describe lo que ves en los frames y lo que dicen las métricas (cortes, duración). No inventes: si algo no se puede saber, dilo.
 - Sé concreto y técnico: tiempos en segundos, tipos de transición, curvas de velocidad, tamaños y posiciones de texto.
 - Nunca propongas copiar el contenido, la música con derechos ni la imagen de otra persona o marca: se recrea la estructura con material propio.
+- Si ves el video completo, usa lo que ves y oyes; en un tutorial sigue el paso a paso con su minuto (mm:ss) y anota herramientas, efectos, atajos y valores exactos.
+- Escribe en español aunque el video esté en otro idioma (los nombres de herramientas y efectos van como en el programa).
 - La máquina del equipo tiene: Remotion (motion graphics, textos, montaje), ffmpeg (cortes, velocidad, color, audio), Whisper (subtítulos), Veo 3.1 / Google Flow y Nano Banana (generar video e imagen), Higgsfield (video e imagen con IA) y grabación propia en eventos.`;
 
-export function referencePrompt({ ref, stats, cuts, transcript, info, accounts, hasImages }) {
+export function referencePrompt({ ref, stats, cuts, transcript, info, accounts, hasImages, hasVideo = false }) {
     return `# Referencia (${REFERENCE_TYPES[ref.type] || ref.type})
 ${ref.url ? `Link: ${ref.url}` : 'Archivo subido'}
 ${info?.title ? `Título original: ${info.title}` : ''}
@@ -87,7 +94,7 @@ Tiempos de corte (s): ${cuts.map(c => c.toFixed(2)).join(', ') || 'ninguno'}
 
 ## Transcripción
 ${transcript || '(sin voz o sin transcripción)'}
-${hasImages ? '\nTe adjunto un frame por plano, en orden cronológico.' : ''}
+${hasVideo ? '\nTe adjunto el video completo (imagen y audio): míralo entero.' : hasImages ? '\nTe adjunto un frame por plano, en orden cronológico.' : ''}
 
 ## Cuentas del equipo (para las adaptaciones)
 ${accounts.map(a => `- ${a.handler}: ${a.concept || a.description || a.type}`).join('\n')}
@@ -149,7 +156,7 @@ ${list(a.recreate.shotList)}
 **Material necesario:**
 ${list(a.recreate.assetsNeeded)}
 ${a.recreate.needsNewBuild ? `\n> **Plantilla por construir:** ${a.recreate.buildNotes}\n` : ''}
-## Adaptaciones
+${a.tools?.length ? `## Herramientas\n${a.tools.join(' · ')}\n\n` : ''}${a.timeline?.length ? `## ${ref.type === 'tutorial' ? 'Paso a paso' : 'Momentos clave'}\n${a.timeline.map(x => `- **${x.t}** ${x.what}`).join('\n')}\n\n` : ''}## Adaptaciones
 ${a.adaptations.map(x => `- **${x.accountHandler}:** ${x.idea} — gancho: "${x.hook}". ${x.why}`).join('\n') || '- Ninguna cuenta encaja directamente.'}
-`;
+${a.transcriptSummary ? `\n## Lo que se dice\n${a.transcriptSummary}\n` : ''}`;
 }

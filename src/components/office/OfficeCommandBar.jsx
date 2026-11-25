@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import {
-    Sparkles, Send, Users, ShieldAlert, RotateCcw, AlertTriangle,
-    Layers, Building2, BarChart2, CheckSquare, Search, Filter,
-    StopCircle, Radio, Play
+    Sparkles, Send, Users, ShieldAlert, RotateCcw,
+    Layers, Building2, BarChart2, Radio, StopCircle, Flame, Inbox, LayoutDashboard
 } from 'lucide-react';
+import { playOfficeClick, playOfficeWarMode } from '../../lib/officeAudio';
+import './AiOffice.css';
 
 export default function OfficeCommandBar({
     onDispatchMission,
@@ -15,33 +16,44 @@ export default function OfficeCommandBar({
     selectedDept = 'all',
     onSelectDept,
     pendingApprovalsCount = 0,
-    isDispatching = false
+    isDispatching = false,
+    isWarMode = false,
+    onToggleWarMode,
+    agents = []
 }) {
     const [missionInput, setMissionInput] = useState('');
     const [priority, setPriority] = useState('high');
-    const [targetDept, setTargetDept] = useState('auto');
+    const [targetAgent, setTargetAgent] = useState('');
 
     const handleSubmit = (e) => {
         e?.preventDefault();
         if (!missionInput.trim() || isDispatching) return;
+        playOfficeClick();
         onDispatchMission({
             mission: missionInput.trim(),
             priority,
-            targetDepartment: targetDept === 'auto' ? null : targetDept
+            targetAgent: targetAgent || undefined
         });
         setMissionInput('');
     };
 
+    const handleWarModeToggle = () => {
+        const next = !isWarMode;
+        playOfficeWarMode(next);
+        if (onToggleWarMode) onToggleWarMode(next);
+    };
+
     const modes = [
+        { id: 'control', label: 'Centro de Control', icon: LayoutDashboard },
         { id: 'office', label: 'Live Office (2.5D)', icon: Building2 },
+        { id: 'inbox', label: 'Canal de Filtro (Inbox)', icon: Inbox },
         { id: 'strategic', label: 'Strategic Map', icon: Layers },
         { id: 'orgchart', label: 'Org Chart', icon: Users },
         { id: 'metrics', label: 'Métricas & Costos', icon: BarChart2 },
         {
             id: 'approvals',
             label: `Gobernanza ${pendingApprovalsCount > 0 ? `(${pendingApprovalsCount})` : ''}`,
-            icon: ShieldAlert,
-            badge: pendingApprovalsCount
+            icon: ShieldAlert
         }
     ];
 
@@ -53,119 +65,149 @@ export default function OfficeCommandBar({
         { id: 'dept-operations', label: 'Operaciones (Atlas)' },
         { id: 'dept-sales', label: 'Ventas VIP (Closer)' },
         { id: 'dept-community', label: 'Difusión (Pulse)' },
-        { id: 'dept-tech', label: 'Tech Lab (Antigravity)' },
-        { id: 'dept-intel', label: 'Inteligencia' }
+        { id: 'dept-tech', label: 'Tech Lab (Antigravity)' }
     ];
 
     return (
-        <div className="space-y-3">
-            {/* TOP BAR: MODES & ACTION BUTTONS */}
-            <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+        <div className="office-command-wrapper">
+            {/* ROW 1: VIEW MODES & QUICK ACTION BUTTONS */}
+            <div className="office-modes-row">
                 {/* View Modes */}
-                <div className="flex items-center gap-1 bg-[#0B0F17] p-1.5 rounded-2xl border border-white/10 overflow-x-auto scrollbar-none">
+                <div className="office-modes-group">
                     {modes.map(m => {
                         const Icon = m.icon;
                         const isActive = activeMode === m.id;
                         return (
                             <button
                                 key={m.id}
-                                onClick={() => onModeChange(m.id)}
-                                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition relative ${
-                                    isActive
-                                        ? 'bg-blue-600 text-white shadow-md'
-                                        : 'text-gray-400 hover:text-white hover:bg-white/5'
-                                }`}
+                                onClick={() => { playOfficeClick(); onModeChange(m.id); }}
+                                className={`office-mode-btn ${isActive ? 'active' : ''}`}
                             >
                                 <Icon size={14} />
                                 <span>{m.label}</span>
-                                {m.badge > 0 && (
-                                    <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping absolute top-1.5 right-1.5" />
-                                )}
                             </button>
                         );
                     })}
                 </div>
 
                 {/* Quick CEO Action Buttons */}
-                <div className="flex items-center gap-2">
+                <div className="office-actions-group">
+                    {/* War Mode Toggle Button */}
                     <button
-                        onClick={onCallWarRoom}
-                        className="px-3.5 py-1.5 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"
+                        onClick={handleWarModeToggle}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '8px 14px',
+                            borderRadius: '10px',
+                            fontSize: '12px',
+                            fontWeight: '700',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease',
+                            background: isWarMode ? 'rgba(239, 68, 68, 0.25)' : 'rgba(255, 255, 255, 0.04)',
+                            border: isWarMode ? '1px solid #ef4444' : '1px solid var(--office-border)',
+                            color: isWarMode ? '#fca5a5' : '#94a3b8'
+                        }}
+                        title={isWarMode ? 'Desactivar Modo Táctico' : 'Activar War Mode (Modo Táctico de Lanzamiento)'}
+                    >
+                        <Flame size={14} className={isWarMode ? 'animate-bounce text-red-400' : ''} />
+                        <span>{isWarMode ? 'WAR MODE ACTIVO' : 'War Mode'}</span>
+                    </button>
+
+                    <button
+                        onClick={() => { playOfficeClick(); onCallWarRoom(); }}
+                        className="office-btn-warroom"
                         title="Convocar a los leads a la Sala de Juntas"
                     >
-                        <Radio size={14} className="text-purple-400" />
+                        <Radio size={14} />
                         <span>War Room</span>
                     </button>
 
                     <button
-                        onClick={onKillSwitch}
-                        className="px-3.5 py-1.5 bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-500/30 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"
+                        onClick={() => { playOfficeClick(); onKillSwitch(); }}
+                        className="office-btn-killswitch"
                         title="Detener todas las ejecuciones activas"
                     >
-                        <StopCircle size={14} className="text-red-400" />
+                        <StopCircle size={14} />
                         <span>Kill Switch</span>
                     </button>
 
                     <button
-                        onClick={onRefresh}
-                        className="p-2 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white border border-white/10 rounded-xl transition"
-                        title="Actualizar estado"
+                        onClick={() => { playOfficeClick(); onRefresh(); }}
+                        className="office-btn-refresh"
+                        title="Actualizar estado en vivo"
                     >
                         <RotateCcw size={14} />
                     </button>
                 </div>
             </div>
 
-            {/* CEO MISSION COMMAND BAR */}
-            <form onSubmit={handleSubmit} className="bg-[#0B0F17] p-2.5 rounded-2xl border border-white/15 shadow-xl flex flex-col md:flex-row items-stretch md:items-center gap-2">
-                <div className="flex items-center gap-2 pl-2 text-blue-400 shrink-0">
-                    <Sparkles size={18} className="animate-pulse" />
-                    <span className="text-xs font-bold uppercase tracking-wider text-gray-300">Comando CEO:</span>
+            {/* ROW 2: CEO MISSION DISPATCH BAR */}
+            <form onSubmit={handleSubmit} className="office-dispatch-bar">
+                <div className="office-dispatch-label">
+                    <Sparkles size={16} />
+                    <span>Comando CEO:</span>
                 </div>
 
                 <input
                     type="text"
                     value={missionInput}
                     onChange={(e) => setMissionInput(e.target.value)}
-                    placeholder="Instruye a BART (COO): 'Prepara la campaña de lanzamiento de HangOut Panamá' o asigna una misión..."
-                    className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
+                    placeholder={targetAgent ? `¿Qué debe hacer ${agents.find(a => a.id === targetAgent)?.name || 'el agente'}?` : "Instruye a BART (COO): 'Prepara la campaña de lanzamiento de HangOut Panamá'..."}
+                    className="office-dispatch-input"
                 />
 
-                <div className="flex items-center gap-2 shrink-0">
-                    <select
-                        value={priority}
-                        onChange={(e) => setPriority(e.target.value)}
-                        className="bg-white/5 border border-white/10 rounded-xl px-2.5 py-2 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
-                    >
-                        <option value="normal" className="bg-[#0B0F17]">Prioridad Normal</option>
-                        <option value="high" className="bg-[#0B0F17]">Prioridad Alta</option>
-                        <option value="critical" className="bg-[#0B0F17]">🔥 Crítica</option>
-                    </select>
+                <select
+                    value={targetAgent}
+                    onChange={(e) => setTargetAgent(e.target.value)}
+                    className="office-dispatch-select"
+                    title="A quién va la misión"
+                >
+                    <option value="" style={{ background: '#0d121d' }}>Auto (BART decide)</option>
+                    {agents.some(a => a.kind === 'external') && (
+                        <optgroup label="Conectados por MCP" style={{ background: '#0d121d' }}>
+                            {agents.filter(a => a.kind === 'external').map(a => (
+                                <option key={a.id} value={a.id} style={{ background: '#0d121d' }}>{a.avatar} {a.name}{a.online ? '' : ' (desconectado)'}</option>
+                            ))}
+                        </optgroup>
+                    )}
+                    <optgroup label="Internos" style={{ background: '#0d121d' }}>
+                        {agents.filter(a => a.kind !== 'external').map(a => (
+                            <option key={a.id} value={a.id} style={{ background: '#0d121d' }}>{a.avatar} {a.name}</option>
+                        ))}
+                    </optgroup>
+                </select>
 
-                    <button
-                        type="submit"
-                        disabled={!missionInput.trim() || isDispatching}
-                        className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-lg shadow-blue-600/20 disabled:opacity-50 transition"
-                    >
-                        <Send size={14} />
-                        <span>{isDispatching ? 'Despachando...' : 'Despachar a BART'}</span>
-                    </button>
-                </div>
+                <select
+                    value={priority}
+                    onChange={(e) => setPriority(e.target.value)}
+                    className="office-dispatch-select"
+                >
+                    <option value="normal" style={{ background: '#0d121d' }}>Prioridad Normal</option>
+                    <option value="high" style={{ background: '#0d121d' }}>Prioridad Alta</option>
+                    <option value="critical" style={{ background: '#0d121d' }}>🔥 Crítica</option>
+                </select>
+
+                <button
+                    type="submit"
+                    disabled={!missionInput.trim() || isDispatching}
+                    className="office-dispatch-submit"
+                >
+                    <Send size={14} />
+                    <span>{isDispatching ? 'Despachando...' : targetAgent ? 'Asignar' : 'Despachar a BART'}</span>
+                </button>
             </form>
 
-            {/* DEPARTMENT FILTER PILLS */}
+            {/* ROW 3: DEPARTMENT FILTER PILLS (Only for Live Office) */}
             {activeMode === 'office' && (
-                <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-1">
-                    <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mr-1 shrink-0">Filtrar:</span>
+                <div className="office-filter-strip">
+                    <span className="office-filter-label">Filtrar:</span>
                     {departments.map(d => (
                         <button
                             key={d.id}
-                            onClick={() => onSelectDept(d.id)}
-                            className={`px-3 py-1 rounded-xl text-[11px] font-medium whitespace-nowrap transition border ${
-                                selectedDept === d.id
-                                    ? 'bg-white/20 text-white border-white/40 shadow-sm'
-                                    : 'bg-white/5 text-gray-400 border-white/5 hover:text-white hover:bg-white/10'
-                            }`}
+                            onClick={() => { playOfficeClick(); onSelectDept(d.id); }}
+                            className={`office-filter-chip ${selectedDept === d.id ? 'active' : ''}`}
                         >
                             {d.label}
                         </button>
