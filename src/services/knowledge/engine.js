@@ -492,7 +492,7 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
                 byRelevance: { alta: count(c => c.digest?.relevance === 'alta'), media: count(c => c.digest?.relevance === 'media'), baja: count(c => c.digest?.relevance === 'baja') },
                 lastImport: state.imports[0] || null,
                 extension: state.extensionSync
-                    ? { ...state.extensionSync, stale: Date.now() - new Date(state.extensionSync.at).getTime() > 2 * 24 * 3600 * 1000 }
+                    ? { ...state.extensionSync, stale: Date.now() - new Date(state.extensionSync.at).getTime() > 6 * 3600 * 1000 }
                     : null,
                 imports: state.imports.slice(0, 5),
             },

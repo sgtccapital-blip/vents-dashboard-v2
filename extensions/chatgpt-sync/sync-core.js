@@ -24,7 +24,7 @@
             offset += items.length;
             if (!items.length || offset >= (page.total ?? Infinity)) break;
             if (!full && unchanged >= STOP_AFTER_UNCHANGED) break;
-            await sleep(700);
+            await sleep(1500);
         }
         return { changed, scanned };
     }
@@ -61,7 +61,7 @@
     /**
      * @returns {Promise<{scanned:number, changed:number, sent:number, remaining:number, complete:boolean, error:string}>}
      */
-    async function runChatGPTSync({ chatgpt, bridge, full = false, maxFetch = 150, batch = 5, sleep = ms => new Promise(r => setTimeout(r, ms)), log = () => {} }) {
+    async function runChatGPTSync({ chatgpt, bridge, full = false, maxFetch = 80, batch = 5, sleep = ms => new Promise(r => setTimeout(r, ms)), log = () => {} }) {
         const report = { scanned: 0, changed: 0, sent: 0, remaining: 0, complete: false, error: '' };
         try {
             const { known = {} } = await bridge.state();
@@ -88,7 +88,7 @@
                 if (!conv.gizmo_id && it.gizmo_id) conv.gizmo_id = it.gizmo_id;
                 pending.push(conv);
                 if (pending.length >= batch) await flush();
-                await sleep(1200);
+                await sleep(3000); // ChatGPT corta con 429 si se le piden detalles muy seguido
             }
             await flush();
             report.remaining = Math.max(0, changed.length - maxFetch);

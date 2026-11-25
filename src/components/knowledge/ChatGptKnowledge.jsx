@@ -143,7 +143,7 @@ function ExtensionCard({ status, onChange }) {
                         {run && !run.error && <> · revisadas {run.scanned}, cambiadas {run.changed}, enviadas {run.sent}{run.remaining ? `, faltan ${run.remaining} (siguen en el próximo ciclo)` : ''}</>}
                         {' '}· en total {ext.totals.added} nuevas y {ext.totals.updated} actualizadas
                         {run?.error && <div style={{ color: '#f59e0b' }}>{run.error}</div>}
-                        {stale && !run?.error && <div style={{ color: '#f59e0b' }}>Hace más de 2 días que no sincroniza: abre Chrome con chatgpt.com.</div>}
+                        {stale && !run?.error && <div style={{ color: '#f59e0b' }}>Hace más de 6 horas que no sincroniza: abre Chrome (la extensión trabaja solo mientras Chrome está abierto).</div>}
                     </div>
                 </div>
             ) : (
@@ -168,7 +168,7 @@ function ExtensionCard({ status, onChange }) {
                         </span>
                     )}
                 </li>
-                <li>Haz clic en el ícono de la extensión, pega la llave, <b>Guardar</b> y luego <b>Sincronizar ahora</b>. La primera vez trae tu historial por tandas de 150 conversaciones.</li>
+                <li>Haz clic en el ícono de la extensión, pega la llave, <b>Guardar</b> y luego <b>Sincronizar ahora</b>. La primera vez trae tu historial por tandas de 80 conversaciones, despacio para que ChatGPT no la frene.</li>
             </ol>
         </div>
     );
