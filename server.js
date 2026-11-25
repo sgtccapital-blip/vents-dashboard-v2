@@ -33,7 +33,7 @@ import { registerAgentHub } from './src/services/agentHub/routes.js';
 import { registerLibrary } from './src/services/library/routes.js';
 import { createOfficeService, normalizeStatus as normalizeOfficeStatus, fileView as officeFileView } from './src/services/office/officeService.js';
 import { createArtifactStore, MAX_FILE_BYTES as OFFICE_MAX_FILE_BYTES } from './src/services/office/artifacts.js';
-import { runModel, listModels, defaultModel, modelCatalog, RETIRED_MODELS } from './src/services/office/modelRunner.js';
+import { runModel, listModels, defaultModel, RETIRED_MODELS, openRouterCatalog, searchModels, isKnownModel, providerEnabled } from './src/services/office/modelRunner.js';
 import { generateStructured, availableProviders } from './src/services/contentStudio/llm.js';
 import { loadBrands } from './scripts/build-brands.mjs';
 
@@ -4274,7 +4274,7 @@ app.get('/api/office/state', (req, res) => {
             approvals,
             activityFeed: (db.activityFeed || []).slice(0, 30),
             documents: (db.documents || []).slice(0, 50),
-            models: listModels(),
+            models: listModels([...agents.map(a => a.model), ...activeTasks.map(t => t.model), ...closedTasks.map(t => t.model)]),
             metrics,
             stats: {
                 totalAgents: agents.length,
@@ -5076,7 +5076,19 @@ const officeRoute = fn => (req, res) => {
     }
 };
 
-app.get('/api/office/models', (req, res) => res.json(listModels()));
+app.get('/api/office/models', (req, res) => res.json(listModels(getOfficeAgents(readDB()).map(a => a.model))));
+
+// Catálogo completo de OpenRouter (cientos de modelos) para el buscador del selector de modelo.
+app.get('/api/office/models/openrouter', async (req, res) => {
+    try {
+        const { models, cachedAt } = await openRouterCatalog({ force: req.query.refresh === '1' });
+        const found = searchModels(models, req.query.q || '');
+        const limit = Math.min(Number(req.query.limit) || 1000, 1000);
+        res.json({ enabled: providerEnabled('openrouter'), total: models.length, matches: found.length, cachedAt: new Date(cachedAt).toISOString(), models: found.slice(0, limit) });
+    } catch (err) {
+        res.status(502).json({ error: `No se pudo traer la lista de OpenRouter: ${err.message}` });
+    }
+});
 
 app.post('/api/office/task/:id/run', officeRoute(req => office.startInternalRun(req.params.id)));
 
@@ -5144,19 +5156,21 @@ app.post('/api/office/task/:id/handoff', (req, res) => {
 });
 
 // Modelo de un agente interno (cada agente puede usar un proveedor distinto según su uso).
-app.post('/api/office/agent/:id/config', officeRoute(req => {
-    const { model } = req.body || {};
-    const db = readDB();
-    const agent = getOfficeAgents(db).find(a => a.id === req.params.id);
-    if (!agent) throw Object.assign(new Error('Agente interno no encontrado'), { status: 404 });
-    if (model) {
-        if (!modelCatalog().some(m => m.id === model)) throw Object.assign(new Error(`Modelo desconocido: ${model}`), { status: 400 });
-        agent.model = model;
+app.post('/api/office/agent/:id/config', async (req, res) => {
+    try {
+        const { model } = req.body || {};
+        if (model && !(await isKnownModel(model))) return res.status(400).json({ error: `Modelo desconocido: ${model}` });
+        const db = readDB();
+        const agent = getOfficeAgents(db).find(a => a.id === req.params.id);
+        if (!agent) return res.status(404).json({ error: 'Agente interno no encontrado' });
+        if (model) agent.model = model;
+        writeDB(db);
+        broadcastOfficeEvent('agent_config_changed', { agentId: agent.id, model: agent.model });
+        res.json({ success: true, agent });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
-    writeDB(db);
-    broadcastOfficeEvent('agent_config_changed', { agentId: agent.id, model: agent.model });
-    return { agent };
-}));
+});
 
 // ─── Native Agent Skills & Chat ──────────────────────────────────
 const SKILLS_WORKSPACE_PATH = path.join(process.env.HOME || '/Users/gg', '.openclaw/workspace/skills');
@@ -7169,6 +7183,8 @@ app.use((err, req, res, next) => {
 // ─── Start ────────────────────────────────────────────────────
 
 app.listen(PORT, '0.0.0.0', async () => {
+    // Precarga la lista de OpenRouter para tener nombres y precios de sus modelos (si falla, se reintenta al usarla).
+    openRouterCatalog().catch(() => {});
     console.log(`\n⚡ Command Center API & Frontend running on http://localhost:${PORT}`);
     console.log(`   Health: http://localhost:${PORT}/api/health`);
     console.log(`   OpenClaw Chat Proxy: POST http://localhost:${PORT}/api/openclaw/chat`);

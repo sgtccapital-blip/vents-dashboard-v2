@@ -5,6 +5,7 @@ import {
     ExternalLink, FileText, Play, Copy, Check
 } from 'lucide-react';
 import { playOfficeClick, playOfficeTyping, playOfficeSuccess } from '../../lib/officeAudio';
+import ModelPicker from './ModelPicker';
 import './AiOffice.css';
 
 export default function AgentDeskModal({
@@ -136,7 +137,8 @@ export default function AgentDeskModal({
             setSaveError(err.message);
         }
     };
-    const chosenModel = models?.models?.find(m => m.id === selectedModel);
+    const chosenProviderId = models?.models?.find(m => m.id === selectedModel)?.provider || (String(selectedModel).startsWith('openrouter/') ? 'openrouter' : null);
+    const chosenProvider = models?.providers?.find(p => p.id === chosenProviderId);
 
     const tabs = [
         { id: 'overview', label: 'Overview', icon: Sparkles },
@@ -752,29 +754,9 @@ export default function AgentDeskModal({
                                 <label style={{ fontSize: '12px', fontWeight: '600', color: '#cbd5e1', display: 'block', marginBottom: '8px' }}>
                                     Modelo LLM Asignado:
                                 </label>
-                                <select
-                                    value={selectedModel}
-                                    onChange={(e) => setSelectedModel(e.target.value)}
-                                    style={{
-                                        width: '100%',
-                                        background: '#0a0e17',
-                                        border: '1px solid rgba(255, 255, 255, 0.1)',
-                                        borderRadius: '10px',
-                                        padding: '10px 12px',
-                                        fontSize: '12.5px',
-                                        color: '#ffffff'
-                                    }}
-                                >
-                                    {(models?.providers || []).map(p => (
-                                        <optgroup key={p.id} label={`${p.label}${p.enabled ? '' : ` — falta ${p.env}`}`}>
-                                            {(models?.models || []).filter(m => m.provider === p.id).map(m => (
-                                                <option key={m.id} value={m.id} disabled={!m.enabled && m.id !== agent.model}>{m.label} · {m.use}</option>
-                                            ))}
-                                        </optgroup>
-                                    ))}
-                                </select>
-                                {chosenModel && !chosenModel.enabled && (
-                                    <div className="occ-notice" style={{ marginTop: '8px' }}>Este modelo no tiene llave en .env: las tareas de {agent.name} quedarán en cola hasta que la agregues.</div>
+                                <ModelPicker models={models} value={selectedModel} onChange={setSelectedModel} currentId={agent.model} />
+                                {chosenProvider && !chosenProvider.enabled && (
+                                    <div className="occ-notice" style={{ marginTop: '8px' }}>{chosenProvider.label} no tiene llave en .env ({chosenProvider.env}): las tareas de {agent.name} quedarán en cola hasta que la agregues.</div>
                                 )}
                                 <p style={{ fontSize: '11.5px', color: '#64748b', margin: '8px 0 0' }}>
                                     Las tareas que le asignes y el chat de su cabina corren con este modelo.

@@ -1,4 +1,4 @@
-// Ejecuta un prompt con el proveedor que corresponda al modelo (Gemini, Claude u OpenAI)
+// Ejecuta un prompt con el proveedor que corresponda al modelo (Gemini, Claude, OpenAI u OpenRouter)
 // y devuelve texto + uso de tokens + costo estimado. Un proveedor sin llave en .env queda
 // visible en el catálogo pero deshabilitado.
 
@@ -18,7 +18,7 @@ export const modelCatalog = () => [
     { id: 'claude-sonnet-5-5', provider: 'anthropic', label: 'Claude Sonnet 5.5', use: 'Equilibrio calidad/velocidad para trabajo diario', price: [2.00, 10.00] },
     { id: 'claude-haiku-5-5', provider: 'anthropic', label: 'Claude Haiku 5.5', use: 'Volumen alto y respuestas cortas', price: [0.10, 0.50] },
     ...envList('OPENAI_MODELS', 'gpt-5,gpt-5-mini').map(id => ({ id, provider: 'openai', label: id, use: 'Modelos de OpenAI', price: null })),
-    ...envList('OPENROUTER_MODELS', 'deepseek/deepseek-v4-flash').map(id => ({ id: `openrouter/${id}`, provider: 'openrouter', label: id, use: 'Vía OpenRouter (respaldo barato)', price: null })),
+    ...envList('OPENROUTER_MODELS', 'deepseek/deepseek-v4-flash').map(id => ({ id: `openrouter/${id}`, provider: 'openrouter', label: id, use: 'Destacado en OpenRouter', price: null })),
 ];
 
 export const PROVIDERS = {
@@ -50,16 +50,101 @@ export function providerEnabled(provider) {
     return Boolean(env && process.env[env]);
 }
 
-export function listModels() {
+/** inUse: modelos ya asignados (agentes, tareas) que se agregan aunque no estén en el catálogo fijo, para tener su nombre. */
+export function listModels(inUse = []) {
+    const catalog = modelCatalog();
+    const extra = [...new Set(inUse)]
+        .filter(id => typeof id === 'string' && id.startsWith('openrouter/') && !catalog.some(m => m.id === id))
+        .map(id => cachedOpenRouterModel(id) || { id, provider: 'openrouter', label: id.replace(/^openrouter\//, ''), use: 'OpenRouter', price: null });
     return {
         defaultModel: defaultModel(),
         providers: Object.entries(PROVIDERS).map(([id, p]) => ({ id, ...p, enabled: providerEnabled(id) })),
-        models: modelCatalog().map(m => ({ ...m, enabled: providerEnabled(m.provider) })),
+        models: [...catalog, ...extra].map(m => ({ ...m, enabled: providerEnabled(m.provider) })),
     };
 }
 
+// ─── Catálogo completo de OpenRouter ─────────────────────────────
+// OpenRouter tiene cientos de modelos: se consulta su lista pública (no necesita llave)
+// y se guarda en memoria unas horas. Precio en USD por millón de tokens; null = variable.
+const OPENROUTER_MODELS_URL = 'https://openrouter.ai/api/v1/models';
+const OPENROUTER_TTL_MS = 6 * 60 * 60 * 1000;
+let openRouterCache = { at: 0, models: null, pending: null };
+
+const perMillion = v => {
+    const n = Number(v);
+    return Number.isFinite(n) && n >= 0 ? Number((n * 1e6).toFixed(4)) : null;
+};
+
+export function slimOpenRouterModel(m) {
+    const input = m.architecture?.input_modalities || ['text'];
+    const pin = perMillion(m.pricing?.prompt);
+    const pout = perMillion(m.pricing?.completion);
+    return {
+        id: `openrouter/${m.id}`,
+        provider: 'openrouter',
+        label: m.name || m.id,
+        slug: m.id,
+        use: (m.description || '').replace(/\s+/g, ' ').slice(0, 140),
+        price: pin == null || pout == null ? null : [pin, pout],
+        free: pin === 0 && pout === 0,
+        vision: input.includes('image'),
+        context: m.context_length || m.top_provider?.context_length || null,
+        created: m.created || 0,
+    };
+}
+
+/** Lista de modelos de OpenRouter que sirven texto (sin variantes :batch). Cacheada. */
+export async function openRouterCatalog({ force = false, fetchImpl = fetch } = {}) {
+    const fresh = openRouterCache.models && Date.now() - openRouterCache.at < OPENROUTER_TTL_MS;
+    if (fresh && !force) return { models: openRouterCache.models, cachedAt: openRouterCache.at };
+    if (!openRouterCache.pending) {
+        openRouterCache.pending = (async () => {
+            try {
+                const r = await fetchImpl(OPENROUTER_MODELS_URL, { signal: AbortSignal.timeout(15000) });
+                if (!r.ok) throw new Error(`OpenRouter respondió ${r.status} al pedir su lista de modelos`);
+                const { data = [] } = await r.json();
+                const models = data
+                    .filter(m => m?.id && !m.id.endsWith(':batch') && (m.architecture?.output_modalities || ['text']).includes('text'))
+                    .map(slimOpenRouterModel);
+                openRouterCache = { at: Date.now(), models, pending: null };
+            } catch (err) {
+                openRouterCache.pending = null;
+                // Si ya había una lista vieja, se sigue usando aunque haya vencido.
+                if (!openRouterCache.models) throw err;
+            }
+        })();
+    }
+    await openRouterCache.pending;
+    return { models: openRouterCache.models, cachedAt: openRouterCache.at };
+}
+
+/** Lo que ya se sabe de un modelo de OpenRouter sin ir a la red (para etiquetas y costos). */
+const cachedOpenRouterModel = id => openRouterCache.models?.find(m => m.id === id) || null;
+
+/** Busca por nombre o id: todas las palabras deben aparecer ("claude sonnet", "llama 70b"). */
+export function searchModels(models, query = '') {
+    const words = String(query).toLowerCase().split(/\s+/).filter(Boolean);
+    if (!words.length) return models;
+    const hay = m => `${m.label} ${m.slug || m.id}`.toLowerCase();
+    return models
+        .filter(m => words.every(w => hay(m).includes(w)))
+        .sort((a, b) => Number(!a.label.toLowerCase().startsWith(words[0])) - Number(!b.label.toLowerCase().startsWith(words[0])));
+}
+
+/** ¿Existe el modelo? Los de OpenRouter se validan contra su lista (si no se pudo traer, basta el formato). */
+export async function isKnownModel(model) {
+    if (modelCatalog().some(m => m.id === model)) return true;
+    if (!/^openrouter\/[\w.~-]+\/[\w.:~-]+$/.test(String(model))) return false;
+    try {
+        const { models } = await openRouterCatalog();
+        return models.some(m => m.id === model);
+    } catch {
+        return true;
+    }
+}
+
 export function estimateCost(model, tokensIn = 0, tokensOut = 0) {
-    const price = modelCatalog().find(m => m.id === model)?.price;
+    const price = (modelCatalog().find(m => m.id === model) || cachedOpenRouterModel(model))?.price;
     if (!price) return null;
     return Number(((tokensIn * price[0] + tokensOut * price[1]) / 1e6).toFixed(6));
 }

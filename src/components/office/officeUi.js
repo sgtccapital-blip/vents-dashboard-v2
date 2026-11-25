@@ -28,7 +28,7 @@ export const statusMeta = (map, s) => map[s] || { label: s || '—', color: '#94
 export function modelLabel(models, id) {
     if (!id) return '—';
     if (id === 'externo') return 'Externo';
-    return models?.models?.find(m => m.id === id)?.label || id;
+    return models?.models?.find(m => m.id === id)?.label || String(id).replace(/^openrouter\//, '');
 }
 
 export function timeAgo(iso) {

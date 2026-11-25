@@ -141,3 +141,41 @@ test('officeService: el agente interno lee los archivos de la tarea, crea docume
         fs.rmSync(dir, { recursive: true, force: true });
     }
 });
+
+test('modelRunner: catálogo de OpenRouter, búsqueda por nombre y validación', async () => {
+    const { openRouterCatalog, searchModels, isKnownModel, listModels, estimateCost } = await import('../src/services/office/modelRunner.js');
+    const data = [
+        { id: 'anthropic/claude-sonnet-5', name: 'Anthropic: Claude Sonnet 5', context_length: 1000000, architecture: { input_modalities: ['text', 'image'], output_modalities: ['text'] }, pricing: { prompt: '0.000003', completion: '0.000015' } },
+        { id: 'meta-llama/llama-4-70b:free', name: 'Meta: Llama 4 70B (free)', context_length: 131072, architecture: { input_modalities: ['text'], output_modalities: ['text'] }, pricing: { prompt: '0', completion: '0' } },
+        { id: 'openrouter/auto', name: 'Auto Router', architecture: {}, pricing: { prompt: '-1', completion: '-1' } },
+        { id: 'google/gemini-4-neon:batch', name: 'Gemini 4 Neon (batch)', architecture: {}, pricing: { prompt: '0.000001', completion: '0.000002' } },
+        { id: 'black-forest/flux', name: 'Flux', architecture: { output_modalities: ['image'] }, pricing: { prompt: '0', completion: '0' } },
+    ];
+    let calls = 0;
+    const fetchImpl = async () => { calls++; return { ok: true, json: async () => ({ data }) }; };
+    const { models } = await openRouterCatalog({ force: true, fetchImpl });
+    assert.equal(models.length, 3, 'sin :batch ni modelos que no devuelven texto');
+    await openRouterCatalog({ fetchImpl });
+    assert.equal(calls, 1, 'la segunda vez sale de la caché');
+
+    const sonnet = models.find(m => m.slug === 'anthropic/claude-sonnet-5');
+    assert.equal(sonnet.id, 'openrouter/anthropic/claude-sonnet-5');
+    assert.deepEqual(sonnet.price, [3, 15]);
+    assert.equal(sonnet.vision, true);
+    assert.equal(models.find(m => m.slug === 'meta-llama/llama-4-70b:free').free, true);
+    assert.equal(models.find(m => m.slug === 'openrouter/auto').price, null, 'precio variable');
+
+    assert.deepEqual(searchModels(models, 'llama 70b').map(m => m.slug), ['meta-llama/llama-4-70b:free']);
+    assert.deepEqual(searchModels(models, 'CLAUDE').map(m => m.slug), ['anthropic/claude-sonnet-5']);
+    assert.equal(searchModels(models, '').length, 3);
+
+    assert.equal(await isKnownModel('openrouter/anthropic/claude-sonnet-5'), true);
+    assert.equal(await isKnownModel('openrouter/nadie/no-existe'), false);
+    assert.equal(await isKnownModel('gemini-3.8-flash'), true);
+    assert.equal(await isKnownModel('cualquier-cosa'), false);
+
+    const list = listModels(['openrouter/anthropic/claude-sonnet-5', 'openrouter/x/sin-cache', 'gemini-3.8-flash']);
+    assert.equal(list.models.find(m => m.id === 'openrouter/anthropic/claude-sonnet-5').label, 'Anthropic: Claude Sonnet 5');
+    assert.equal(list.models.find(m => m.id === 'openrouter/x/sin-cache').label, 'x/sin-cache');
+    assert.equal(estimateCost('openrouter/anthropic/claude-sonnet-5', 1e6, 1e6), 18);
+});
