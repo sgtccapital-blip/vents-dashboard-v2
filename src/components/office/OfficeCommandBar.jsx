@@ -49,7 +49,7 @@ export default function OfficeCommandBar({
 
     const modes = [
         { id: 'control', label: 'Centro de Control', icon: LayoutDashboard },
-        { id: 'office', label: 'Live Office (2.5D)', icon: Building2 },
+        { id: 'office', label: 'Oficina en vivo', icon: Building2 },
         { id: 'inbox', label: 'Canal de Filtro (Inbox)', icon: Inbox },
         { id: 'strategic', label: 'Strategic Map', icon: Layers },
         { id: 'orgchart', label: 'Org Chart', icon: Users },

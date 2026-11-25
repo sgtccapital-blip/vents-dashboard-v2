@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import OfficeIsometricCanvas from '../components/office/OfficeIsometricCanvas';
+import LiveOffice from '../components/office/live/LiveOffice';
 import OfficeCommandBar from '../components/office/OfficeCommandBar';
 import AgentDeskModal from '../components/office/AgentDeskModal';
 import OfficeApprovalsModal from '../components/office/OfficeApprovalsModal';
@@ -35,6 +35,19 @@ export default function AiOfficeHQ() {
     const [isWarRoomOpen, setIsWarRoomOpen] = useState(false);
     const [isWarMode, setIsWarMode] = useState(false);
     const [isDispatching, setIsDispatching] = useState(false);
+    // Últimos eventos en vivo (para animaciones de la oficina 2D)
+    const [liveEvents, setLiveEvents] = useState([]);
+    const prevTaskStatus = useRef(null);
+    // Agrega eventos sin duplicar (llegan por SSE y también se deducen al refrescar el estado).
+    const pushLiveEvents = useCallback(list => {
+        const keyOf = e => `${e.type}:${e.data?.taskId || e.data?.task?.id || ''}`;
+        setLiveEvents(prev => {
+            const recent = new Set(prev.filter(p => Date.now() - p.at < 60000).map(keyOf));
+            const fresh = list.filter(e => !keyOf(e).endsWith(':') ? !recent.has(keyOf(e)) : true)
+                .map(e => ({ ...e, id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, at: Date.now() }));
+            return fresh.length ? [...prev, ...fresh].slice(-20) : prev;
+        });
+    }, []);
 
     // Live state from backend
     const [officeState, setOfficeState] = useState({
@@ -85,13 +98,26 @@ export default function AiOfficeHQ() {
                 const data = await res.json();
                 if (data.success) {
                     setOfficeState(data);
+                    // Si se perdió algún evento en vivo (reconexión), se deduce del cambio de estado.
+                    const prev = prevTaskStatus.current;
+                    prevTaskStatus.current = new Map((data.activeTasks || []).map(t => [t.id, t.status]));
+                    if (prev) {
+                        const synth = [];
+                        for (const t of data.activeTasks || []) {
+                            const was = prev.get(t.id);
+                            if (!was) synth.push({ type: 'task_dispatched', data: { task: t, assignedAgent: t.assignedAgent } });
+                            else if (was !== 'review' && t.status === 'review') synth.push({ type: 'task_delivered', data: { taskId: t.id, agentId: t.assignedAgentId } });
+                            else if (was !== 'in_progress' && t.status === 'in_progress') synth.push({ type: 'task_started', data: { taskId: t.id, agentId: t.assignedAgentId } });
+                        }
+                        if (synth.length) pushLiveEvents(synth);
+                    }
                 }
             }
         } catch (err) {
             console.warn('[AI Office HQ] State fetch error:', err.message);
         }
         fetchInbox();
-    }, [fetchInbox]);
+    }, [fetchInbox, pushLiveEvents]);
 
     // 1. Initial load & Periodic Poll Fallback
     useEffect(() => {
@@ -110,6 +136,7 @@ export default function AiOfficeHQ() {
                     const parsed = JSON.parse(event.data);
                     if (parsed.type && parsed.type !== 'connected') {
                         fetchOfficeState();
+                        pushLiveEvents([{ type: parsed.type, data: parsed.data || {} }]);
                         if (parsed.type === 'task_dispatched') playOfficeClick();
                         if (parsed.type === 'task_delivered') playOfficeSuccess();
                         if (parsed.type === 'task_failed') playOfficeAlert();
@@ -126,7 +153,7 @@ export default function AiOfficeHQ() {
         return () => {
             if (es) es.close();
         };
-    }, [fetchOfficeState]);
+    }, [fetchOfficeState, pushLiveEvents]);
 
     // Dispatch mission handler
     const handleDispatchMission = async ({ mission, priority, targetDepartment, targetAgent, files = [] }) => {
@@ -419,12 +446,19 @@ export default function AiOfficeHQ() {
 
             {/* VIEW MODE 1: LIVE ISOMETRIC OFFICE */}
             {viewMode === 'office' && (
-                <OfficeIsometricCanvas
+                <LiveOffice
                     agents={officeState.agents}
                     activeTasks={officeState.activeTasks}
-                    onSelectAgent={openAgent}
+                    completedTasks={officeState.completedTasks}
+                    approvals={officeState.approvals}
+                    models={officeState.models}
+                    liveEvents={liveEvents}
                     filterDepartment={selectedDept}
                     isWarMode={isWarMode}
+                    onOpenAgentDesk={openAgent}
+                    onOpenTask={setSelectedTaskId}
+                    onDispatch={handleDispatchMission}
+                    onOpenApprovals={() => setIsApprovalsOpen(true)}
                 />
             )}
 
