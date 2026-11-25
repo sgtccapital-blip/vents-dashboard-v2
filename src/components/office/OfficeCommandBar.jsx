@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
     Sparkles, Send, Users, ShieldAlert, RotateCcw,
-    Layers, Building2, BarChart2, Radio, StopCircle, Flame, Inbox, LayoutDashboard
+    Layers, Building2, BarChart2, Radio, StopCircle, Flame, Inbox, LayoutDashboard, Paperclip
 } from 'lucide-react';
 import { playOfficeClick, playOfficeWarMode } from '../../lib/officeAudio';
 import './AiOffice.css';
@@ -24,6 +24,8 @@ export default function OfficeCommandBar({
     const [missionInput, setMissionInput] = useState('');
     const [priority, setPriority] = useState('high');
     const [targetAgent, setTargetAgent] = useState('');
+    const [files, setFiles] = useState([]);
+    const fileRef = useRef(null);
 
     const handleSubmit = (e) => {
         e?.preventDefault();
@@ -32,9 +34,11 @@ export default function OfficeCommandBar({
         onDispatchMission({
             mission: missionInput.trim(),
             priority,
-            targetAgent: targetAgent || undefined
+            targetAgent: targetAgent || undefined,
+            files,
         });
         setMissionInput('');
+        setFiles([]);
     };
 
     const handleWarModeToggle = () => {
@@ -178,6 +182,16 @@ export default function OfficeCommandBar({
                         ))}
                     </optgroup>
                 </select>
+
+                <button
+                    type="button"
+                    className={`office-dispatch-attach ${files.length ? 'has-files' : ''}`}
+                    onClick={() => fileRef.current?.click()}
+                    title={files.length ? files.map(f => f.name).join(', ') : 'Adjuntar briefs, fotos o documentos para el agente'}
+                >
+                    <Paperclip size={13} /> {files.length || ''}
+                </button>
+                <input ref={fileRef} type="file" multiple hidden onChange={e => { setFiles([...e.target.files]); e.target.value = ''; }} />
 
                 <select
                     value={priority}

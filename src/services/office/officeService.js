@@ -2,6 +2,7 @@
 // que tengan configurado) y para agentes externos conectados por MCP (las toman, reportan
 // avance y entregan resultado). Todo resultado pasa por revisión del CEO antes de cerrarse.
 import { runModel as defaultRunModel, providerEnabled, providerOf, PROVIDERS, resolveModel } from './modelRunner.js';
+import { extractFileBlocks, FILE_BLOCK_INSTRUCTIONS, isTextMime } from './artifacts.js';
 
 export const ONLINE_MS = 10 * 60 * 1000;
 export const OPEN_STATUSES = ['queued', 'in_progress', 'waiting_approval', 'review'];
@@ -16,6 +17,14 @@ export function normalizeStatus(s) {
 
 const nowIso = () => new Date().toISOString();
 const clip = (s, n) => (s && String(s).length > n ? `${String(s).slice(0, n)}…` : s || '');
+const slug = (s = '') => String(s).normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40).replace(/^-+|-+$/g, '') || 'tarea';
+const PROMPT_FILES_CHARS = 80_000;
+const MAX_MEDIA_INPUTS = 4;
+const MAX_MEDIA_BYTES = 8 * 1024 * 1024;
+
+/** Ficha pública de un archivo (sin la ruta interna en disco). */
+// eslint-disable-next-line no-unused-vars
+export const fileView = ({ file, ...meta }) => meta;
 
 function guessAvatar(name = '') {
     const n = name.toLowerCase();
@@ -27,7 +36,11 @@ function guessAvatar(name = '') {
     return '🔌';
 }
 
-export function createOfficeService({ readDB, writeDB, broadcast = () => {}, getHub = () => null, getAgents, buildPrompt, runModel = defaultRunModel }) {
+/**
+ * @param artifacts  almacén de archivos (createArtifactStore); sin él las tareas no guardan archivos.
+ * @param onApproved (task, files) => Promise<string[]> — indexa el entregable aprobado en el RAG y devuelve los ids.
+ */
+export function createOfficeService({ readDB, writeDB, broadcast = () => {}, getHub = () => null, getAgents, buildPrompt, runModel = defaultRunModel, artifacts = null, onApproved = null }) {
     // Tareas internas corriendo ahora: taskId → token de la corrida (el kill switch lo invalida).
     const running = new Map();
 
@@ -46,6 +59,61 @@ export function createOfficeService({ readDB, writeDB, broadcast = () => {}, get
         const task = (db.agentTasks || []).find(t => t.id === id);
         if (!task) throw Object.assign(new Error('Tarea no encontrada'), { status: 404 });
         return task;
+    }
+
+    // ─── Archivos de la tarea ───
+    function addFile(task, input, { by, byKind }) {
+        if (!artifacts) throw Object.assign(new Error('Este servidor no tiene almacenamiento de archivos'), { status: 501 });
+        const meta = artifacts.write(task.id, { ...input, createdBy: by, createdByKind: byKind });
+        task.artifacts = [...(task.artifacts || []), meta];
+        history(task, `📎 ${by} adjuntó ${meta.name}`);
+        return meta;
+    }
+
+    function findFile(task, fileId) {
+        const meta = (task.artifacts || []).find(f => f.id === fileId || f.name === fileId);
+        if (!meta) throw Object.assign(new Error('Archivo no encontrado en esta tarea'), { status: 404 });
+        return meta;
+    }
+
+    /** Guarda el informe de lo que hizo el agente (y los archivos que escribió) como archivos de la tarea. */
+    function saveDeliverable(task, { text, by, byKind, model, files = [] }) {
+        if (!artifacts) return [];
+        const version = (task.artifacts || []).filter(f => f.role === 'report').length + 1;
+        const saved = files.map(f => ({ ...addFile(task, { name: f.name, content: f.content, mime: f.mime, description: f.description || `Creado por ${by}` }, { by, byKind }), role: 'deliverable', version }));
+        const header = [`# ${task.task}`, '', `- Agente: ${by}${model ? ` (${model})` : ''}`, `- Fecha: ${new Date().toLocaleString('es')}`, `- Tarea: ${task.id}`,
+            ...(saved.length ? [`- Archivos: ${saved.map(f => f.name).join(', ')}`] : []), '', '---', ''].join('\n');
+        const report = { ...addFile(task, { name: `informe-${slug(task.task)}${version > 1 ? `-v${version}` : ''}.md`, content: header + text, mime: 'text/markdown', description: 'Informe de lo que hizo el agente en esta tarea' }, { by, byKind }), role: 'report', version };
+        // addFile ya agregó las fichas; se reemplazan por las que llevan role/version.
+        const ids = new Set([...saved, report].map(f => f.id));
+        task.artifacts = [...task.artifacts.filter(f => !ids.has(f.id)), ...saved, report];
+        return [...saved, report];
+    }
+
+    /** Texto (y medios) de los archivos de la tarea para el prompt del agente interno. */
+    function filesForPrompt(task, provider) {
+        const list = task.artifacts || [];
+        if (!list.length || !artifacts) return { text: '', media: [] };
+        let budget = PROMPT_FILES_CHARS;
+        const parts = [];
+        const media = [];
+        for (const f of list) {
+            const label = `### ${f.name} (${f.role === 'report' ? 'informe' : f.createdByKind === 'ceo' ? 'adjunto del CEO' : `de ${f.createdBy}`}${f.inheritedFrom ? `, viene de la tarea ${f.inheritedFrom}` : ''})`;
+            if (isTextMime(f.mime) && budget > 500) {
+                try {
+                    const body = artifacts.readText(f, budget);
+                    budget -= body.length;
+                    parts.push(`${label}\n${f.description ? `${f.description}\n` : ''}${body}`);
+                    continue;
+                } catch { /* archivo perdido: se lista abajo */ }
+            }
+            const canSee = (f.kind === 'image' || (f.kind === 'pdf' && provider !== 'openai' && provider !== 'openrouter')) && f.size <= MAX_MEDIA_BYTES && media.length < MAX_MEDIA_INPUTS;
+            if (canSee) {
+                try { media.push({ mime: f.mime, data: artifacts.read(f).toString('base64'), name: f.name }); parts.push(`${label}\n(adjunto a este mensaje: puedes verlo)`); continue; } catch { /* sigue */ }
+            }
+            parts.push(`${label}\n(${f.mime}, ${Math.round(f.size / 1024)} KB — no se puede leer como texto)`);
+        }
+        return { text: `ARCHIVOS DE LA TAREA (úsalos como insumo):\n\n${parts.join('\n\n')}`, media };
     }
 
     function releaseAgent(db, agentId, taskId) {
@@ -201,7 +269,7 @@ export function createOfficeService({ readDB, writeDB, broadcast = () => {}, get
             let outcome;
             const runStarted = Date.now();
             try {
-                const prompt = await buildPrompt({
+                const base = await buildPrompt({
                     agentName: agent.name,
                     task: task.task,
                     description: [task.description, ...(task.feedback || []).map(f => `Corrección pedida por el CEO: ${f.notes}`)].filter(Boolean).join('\n\n'),
@@ -209,7 +277,9 @@ export function createOfficeService({ readDB, writeDB, broadcast = () => {}, get
                     companyName: task.companyName,
                     previousResult: (task.feedback || []).length ? task.result : null,
                 });
-                outcome = { ok: true, ...(await runModel({ model, prompt })) };
+                const inputs = filesForPrompt(task, provider);
+                const prompt = [base, inputs.text, FILE_BLOCK_INSTRUCTIONS].filter(Boolean).join('\n\n');
+                outcome = { ok: true, ...(await runModel({ model, prompt, attachments: inputs.media })) };
             } catch (err) {
                 outcome = { ok: false, error: err.message, model, provider, ms: Date.now() - runStarted };
             }
@@ -225,8 +295,13 @@ export function createOfficeService({ readDB, writeDB, broadcast = () => {}, get
                 ...(outcome.ok ? {} : { error: clip(outcome.error, 400) }),
             }];
             if (outcome.ok) {
+                const { text, files } = extractFileBlocks(outcome.text);
                 t.status = 'review';
-                t.result = outcome.text;
+                t.result = text || outcome.text;
+                try {
+                    const saved = saveDeliverable(t, { text: t.result, by: agent.name, byKind: 'internal', model: outcome.model, files });
+                    if (saved.length) history(t, `${agent.name} dejó ${saved.length} archivo(s): ${saved.map(f => f.name).join(', ')}`);
+                } catch (e) { history(t, `No se pudieron guardar los archivos: ${e.message}`); }
                 t.progress = 90;
                 t.currentStep = 'Entregado: esperando tu revisión';
                 history(t, `${agent.name} entregó (${outcome.model}, ${Math.round(outcome.ms / 100) / 10}s)`);
@@ -260,6 +335,7 @@ export function createOfficeService({ readDB, writeDB, broadcast = () => {}, get
             task.approvalNotes = notes;
             task.currentStep = 'Aprobado por el CEO';
             feed(db, `✅ Aprobaste el entregable de ${who}: "${clip(task.task, 60)}"`, '#10b981', 'CEO');
+            if (onApproved) indexApproved(taskId);
         } else if (decision === 'reject') {
             task.status = 'cancelled';
             task.currentStep = notes ? `Descartado: ${clip(notes, 120)}` : 'Descartado por el CEO';
@@ -278,6 +354,25 @@ export function createOfficeService({ readDB, writeDB, broadcast = () => {}, get
         broadcast('task_reviewed', { taskId, decision });
         if (decision === 'changes' && task.assignedKind !== 'external') startInternalRun(taskId);
         return readDB().agentTasks.find(t => t.id === taskId);
+    }
+
+    /** Al aprobar, el entregable y sus archivos de texto pasan al RAG para que otros agentes lo encuentren. */
+    function indexApproved(taskId) {
+        setTimeout(async () => {
+            try {
+                const db = readDB();
+                const task = findTask(db, taskId);
+                const files = (task.artifacts || []).filter(f => f.role === 'deliverable' && isTextMime(f.mime))
+                    .map(f => { try { return { name: f.name, text: artifacts.readText(f) }; } catch { return null; } }).filter(Boolean);
+                const ids = await onApproved(task, files);
+                const db2 = readDB();
+                const t = findTask(db2, taskId);
+                t.knowledgeDocIds = ids || [];
+                history(t, `🧠 Guardado en la memoria (RAG) para que otros agentes lo usen`);
+                writeDB(db2);
+                broadcast('task_progressed', { taskId });
+            } catch (e) { console.warn('[Office] No se pudo indexar el entregable:', e.message); }
+        }, 0);
     }
 
     function reassign(taskId, agentId) {
@@ -301,6 +396,89 @@ export function createOfficeService({ readDB, writeDB, broadcast = () => {}, get
         return task;
     }
 
+    // ─── Archivos y tareas de seguimiento desde el dashboard ───
+    function attachFiles(taskId, files, { by = 'CEO', byKind = 'ceo' } = {}) {
+        const db = readDB();
+        const task = findTask(db, taskId);
+        const saved = files.map(f => addFile(task, f, { by, byKind }));
+        writeDB(db);
+        broadcast('task_files', { taskId });
+        return saved.map(fileView);
+    }
+
+    function getFile(taskId, fileId) {
+        const task = findTask(readDB(), taskId);
+        const meta = findFile(task, fileId);
+        return { meta, path: artifacts.pathOf(meta) };
+    }
+
+    function removeFile(taskId, fileId) {
+        const db = readDB();
+        const task = findTask(db, taskId);
+        const meta = findFile(task, fileId);
+        task.artifacts = task.artifacts.filter(f => f.id !== meta.id);
+        const usedElsewhere = (db.agentTasks || []).some(t => t.id !== taskId && (t.artifacts || []).some(f => f.id === meta.id));
+        if (!usedElsewhere) artifacts?.remove(meta);
+        history(task, `Se quitó el archivo ${meta.name}`);
+        writeDB(db);
+        broadcast('task_files', { taskId });
+        return { removed: meta.id };
+    }
+
+    function resolveTarget(db, ref) {
+        if (!ref) return null;
+        const everyone = allAgents(db);
+        const r = String(ref).toLowerCase();
+        return everyone.find(a => a.id === ref) || everyone.find(a => a.name.toLowerCase() === r) || everyone.find(a => a.name.toLowerCase().includes(r))
+            || null;
+    }
+
+    /**
+     * Crea una tarea que continúa a otra (enviar la propuesta, diseñarla, revisarla…) y le pasa sus archivos.
+     * Sin agente destino queda abierta para que la tome cualquier agente conectado.
+     */
+    function createFollowUp(fromTaskId, { agentId, task: title, description = '', fileIds = null, by = 'CEO', byAgentId = null, autoRun = true }) {
+        if (!title?.trim()) throw Object.assign(new Error('Describe qué hay que hacer en la tarea de seguimiento'), { status: 400 });
+        const db = readDB();
+        const parent = findTask(db, fromTaskId);
+        const target = resolveTarget(db, agentId);
+        if (agentId && !target) throw Object.assign(new Error(`No encontré al agente "${agentId}"`), { status: 404 });
+        const files = (parent.artifacts || []).filter(f => !fileIds || fileIds.includes(f.id) || fileIds.includes(f.name));
+        const now = nowIso();
+        const id = `atask-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
+        const child = {
+            id,
+            task: title.trim(),
+            title: clip(title.trim(), 50),
+            description: [description, `Continúa la tarea "${parent.task}" (${parent.id}), hecha por ${parent.assignedAgent || 'otro agente'}.${files.length ? ' Sus archivos vienen adjuntos.' : ''}`].filter(Boolean).join('\n\n'),
+            priorityScore: parent.priorityScore,
+            status: 'queued',
+            assignedAgent: target?.name || null,
+            assignedAgentId: target?.id || 'open',
+            assignedKind: target?.kind || 'external',
+            model: target?.kind === 'internal' ? target.model : null,
+            delegatedBy: by,
+            createdByAgentId: byAgentId,
+            parentTaskId: parent.id,
+            companyId: parent.companyId || '',
+            companyName: parent.companyName || '',
+            artifacts: files.map(f => ({ ...f, inheritedFrom: f.inheritedFrom || parent.id })),
+            runs: [],
+            history: [{ at: now, text: `Creada por ${by} como seguimiento de "${clip(parent.task, 60)}"${files.length ? ` con ${files.length} archivo(s)` : ''}` }],
+            progress: 0,
+            currentStep: !target ? 'Abierta: cualquier agente conectado puede tomarla' : target.kind === 'external' ? `Esperando que ${target.name} la tome por MCP` : `En cola para ${target.name}`,
+            createdAt: now,
+        };
+        db.agentTasks = [child, ...(db.agentTasks || [])];
+        parent.childTaskIds = [...(parent.childTaskIds || []), id];
+        history(parent, `➡️ ${by} creó la tarea de seguimiento "${clip(child.task, 60)}" para ${target?.name || 'cualquier agente'}`);
+        feed(db, `➡️ ${by} pasó "${clip(parent.task, 40)}" → ${target?.name || 'tarea abierta'}: "${clip(child.task, 50)}"`, '#38bdf8', by);
+        writeDB(db);
+        broadcast('task_dispatched', { task: child, assignedAgent: child.assignedAgent });
+        if (target?.kind === 'internal' && autoRun !== false) startInternalRun(id);
+        return readDB().agentTasks.find(t => t.id === id);
+    }
+
     /** Detiene todo: tareas en curso vuelven a la cola y se descartan resultados en vuelo. */
     function haltAll() {
         running.clear();
@@ -315,8 +493,47 @@ export function createOfficeService({ readDB, writeDB, broadcast = () => {}, get
             id: t.id, task: t.task, description: t.description, status: normalizeStatus(t.status), priorityScore: t.priorityScore,
             company: t.companyName, progress: t.progress || 0, currentStep: t.currentStep,
             feedback: t.feedback || [], previousResult: (t.feedback || []).length ? clip(t.result, 6000) : undefined,
-            assignedTo: t.assignedAgent || null, createdAt: t.createdAt,
+            assignedTo: t.assignedAgent || null, createdAt: t.createdAt, parentTaskId: t.parentTaskId || undefined,
+            files: (t.artifacts || []).map(f => ({ id: f.id, name: f.name, mime: f.mime, kind: f.kind, size: f.size, description: f.description, createdBy: f.createdBy, role: f.role, inheritedFrom: f.inheritedFrom })),
         };
+    }
+
+    const canSee = (task, ctx) => isMine(task, ctx) || isOpen(task) || (ctx.tokenId && task.createdByAgentId === `ext-${ctx.tokenId}`);
+
+    function taskForAgent(ctx, taskId) {
+        const task = findTask(readDB(), taskId);
+        if (!canSee(task, ctx)) throw Object.assign(new Error(`Esta tarea está asignada a ${task.assignedAgent}, no a ti`), { status: 403 });
+        return { ...viewForAgent(task), result: task.result || undefined, history: (task.history || []).slice(-10) };
+    }
+
+    function readFileAsAgent(ctx, taskId, fileId) {
+        const task = findTask(readDB(), taskId);
+        if (!canSee(task, ctx)) throw Object.assign(new Error(`Esta tarea está asignada a ${task.assignedAgent}, no a ti`), { status: 403 });
+        const meta = findFile(task, fileId);
+        return { meta: fileView(meta), buffer: artifacts.read(meta) };
+    }
+
+    function agentName(ctx) {
+        return ctx.tokenId ? (getHub()?.list().find(t => t.id === ctx.tokenId)?.name || ctx.agent) : ctx.agent;
+    }
+
+    function attachAsAgent(ctx, taskId, file) {
+        let saved;
+        mutateAsAgent(ctx, taskId, (task, db, name) => {
+            if (!isMine(task, ctx)) throw Object.assign(new Error('Primero toma la tarea con claim_office_task'), { status: 409 });
+            if (!['in_progress', 'review'].includes(normalizeStatus(task.status))) throw Object.assign(new Error(`Primero toma la tarea con claim_office_task (está en estado ${normalizeStatus(task.status)})`), { status: 409 });
+            saved = { ...addFile(task, file, { by: name, byKind: 'external' }), role: 'deliverable' };
+            task.artifacts = [...task.artifacts.slice(0, -1), saved];
+            broadcast('task_files', { taskId });
+        });
+        return fileView(saved);
+    }
+
+    function handoffAsAgent(ctx, taskId, { to, task, description, fileIds }) {
+        const current = findTask(readDB(), taskId);
+        if (!isMine(current, ctx)) throw Object.assign(new Error('Solo puedes pasar a otro agente una tarea tuya'), { status: 403 });
+        const child = createFollowUp(taskId, { agentId: to, task, description, fileIds, by: agentName(ctx), byAgentId: ctx.tokenId ? `ext-${ctx.tokenId}` : null });
+        return viewForAgent(child);
     }
 
     function tasksForAgent(ctx, { includeOpen = true } = {}) {
@@ -331,8 +548,7 @@ export function createOfficeService({ readDB, writeDB, broadcast = () => {}, get
         const db = readDB();
         const task = findTask(db, taskId);
         if (!isMine(task, ctx) && !isOpen(task)) throw Object.assign(new Error(`Esta tarea está asignada a ${task.assignedAgent}, no a ti`), { status: 403 });
-        const name = ctx.tokenId ? (getHub()?.list().find(t => t.id === ctx.tokenId)?.name || ctx.agent) : ctx.agent;
-        fn(task, db, name);
+        fn(task, db, agentName(ctx));
         writeDB(db);
         return viewForAgent(task);
     }
@@ -376,8 +592,10 @@ export function createOfficeService({ readDB, writeDB, broadcast = () => {}, get
                 feed(db, `⚠️ ${name} no pudo completar "${clip(task.task, 50)}"`, '#ef4444', name);
             } else {
                 if (!result?.trim()) throw Object.assign(new Error('Falta el resultado'), { status: 400 });
+                const { text, files } = extractFileBlocks(result);
                 task.status = 'review';
-                task.result = result;
+                task.result = text || result;
+                if (artifacts) saveDeliverable(task, { text: task.result, by: name, byKind: 'external', model, files });
                 task.progress = 90;
                 task.currentStep = 'Entregado: esperando revisión del CEO';
                 feed(db, `📬 ${name} entregó "${clip(task.task, 60)}" para revisión`, '#a855f7', name);
@@ -390,5 +608,7 @@ export function createOfficeService({ readDB, writeDB, broadcast = () => {}, get
     return {
         externalAgents, allAgents, computeStats, startInternalRun, review, reassign, haltAll,
         tasksForAgent, claim, reportProgress, submitResult, isRunning: id => running.has(id),
+        attachFiles, getFile, removeFile, createFollowUp,
+        taskForAgent, readFileAsAgent, attachAsAgent, handoffAsAgent,
     };
 }

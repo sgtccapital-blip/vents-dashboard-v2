@@ -64,15 +64,19 @@ export function estimateCost(model, tokensIn = 0, tokensOut = 0) {
     return Number(((tokensIn * price[0] + tokensOut * price[1]) / 1e6).toFixed(6));
 }
 
-async function runGoogle(model, prompt, maxTokens) {
+// attachments: [{ mime, data (base64) }] — imágenes (y PDF en Gemini/Claude) que el modelo puede ver.
+async function runGoogle(model, prompt, maxTokens, attachments = []) {
     const { GoogleGenAI } = await import('@google/genai');
     const genai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-    const response = await genai.models.generateContent({ model, contents: prompt, config: { maxOutputTokens: maxTokens } });
+    const contents = attachments.length
+        ? [{ role: 'user', parts: [{ text: prompt }, ...attachments.map(a => ({ inlineData: { mimeType: a.mime, data: a.data } }))] }]
+        : prompt;
+    const response = await genai.models.generateContent({ model, contents, config: { maxOutputTokens: maxTokens } });
     const u = response.usageMetadata || {};
     return { text: response.text || '', tokensIn: u.promptTokenCount || 0, tokensOut: (u.candidatesTokenCount || 0) + (u.thoughtsTokenCount || 0) };
 }
 
-async function runAnthropic(model, prompt, maxTokens) {
+async function runAnthropic(model, prompt, maxTokens, attachments = []) {
     const { default: Anthropic } = await import('@anthropic-ai/sdk');
     const client = new Anthropic();
     // Opus/Sonnet 5.5: si el modelo declina, la API reintenta sola con otro modelo (fallbacks "default").
@@ -80,7 +84,12 @@ async function runAnthropic(model, prompt, maxTokens) {
     const params = {
         model,
         max_tokens: maxTokens,
-        messages: [{ role: 'user', content: prompt }],
+        messages: [{
+            role: 'user',
+            content: attachments.length
+                ? [...attachments.map(a => ({ type: a.mime === 'application/pdf' ? 'document' : 'image', source: { type: 'base64', media_type: a.mime, data: a.data } })), { type: 'text', text: prompt }]
+                : prompt,
+        }],
         ...(model.startsWith('claude-opus-5-5') || model.startsWith('claude-haiku-5-5') ? { output_config: { effort: 'medium' } } : {}),
     };
     const response = withFallback
@@ -106,11 +115,18 @@ async function chatCompletions(url, key, label, body) {
     return { text: data.choices?.[0]?.message?.content || '', tokensIn: data.usage?.prompt_tokens || 0, tokensOut: data.usage?.completion_tokens || 0, costFromProvider: data.usage?.cost };
 }
 
-const runOpenAI = (model, prompt, maxTokens) => chatCompletions('https://api.openai.com/v1/chat/completions', process.env.OPENAI_API_KEY, 'OpenAI',
-    { model, messages: [{ role: 'user', content: prompt }], max_completion_tokens: maxTokens });
+const chatContent = (prompt, attachments = []) => {
+    const images = attachments.filter(a => a.mime.startsWith('image/'));
+    return images.length
+        ? [{ type: 'text', text: prompt }, ...images.map(a => ({ type: 'image_url', image_url: { url: `data:${a.mime};base64,${a.data}` } }))]
+        : prompt;
+};
 
-const runOpenRouter = (model, prompt, maxTokens) => chatCompletions('https://openrouter.ai/api/v1/chat/completions', process.env.OPENROUTER_API_KEY, 'OpenRouter',
-    { model: model.replace(/^openrouter\//, ''), messages: [{ role: 'user', content: prompt }], max_tokens: maxTokens, usage: { include: true } });
+const runOpenAI = (model, prompt, maxTokens, attachments) => chatCompletions('https://api.openai.com/v1/chat/completions', process.env.OPENAI_API_KEY, 'OpenAI',
+    { model, messages: [{ role: 'user', content: chatContent(prompt, attachments) }], max_completion_tokens: maxTokens });
+
+const runOpenRouter = (model, prompt, maxTokens, attachments) => chatCompletions('https://openrouter.ai/api/v1/chat/completions', process.env.OPENROUTER_API_KEY, 'OpenRouter',
+    { model: model.replace(/^openrouter\//, ''), messages: [{ role: 'user', content: chatContent(prompt, attachments) }], max_tokens: maxTokens, usage: { include: true } });
 
 const RUNNERS = { google: runGoogle, anthropic: runAnthropic, openai: runOpenAI, openrouter: runOpenRouter };
 
@@ -146,7 +162,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
  * y, si el modelo sigue caído, con un modelo hermano del mismo proveedor.
  * @returns {Promise<{ text, tokensIn, tokensOut, costUSD, provider, model, ms, attempts }>}
  */
-export async function runModel({ model: requested, prompt, maxTokens = 8192, retryDelays = RETRY_DELAYS_MS }) {
+export async function runModel({ model: requested, prompt, maxTokens = 8192, retryDelays = RETRY_DELAYS_MS, attachments = [] }) {
     const model = resolveModel(requested);
     if (typeof prompt !== 'string' || !prompt.trim()) throw new Error('Prompt vacío');
     const provider = providerOf(model);
@@ -161,7 +177,7 @@ export async function runModel({ model: requested, prompt, maxTokens = 8192, ret
         const step = plan[i];
         if (step.wait) await sleep(step.wait);
         try {
-            const out = await RUNNERS[provider](step.model, prompt, maxTokens);
+            const out = await RUNNERS[provider](step.model, prompt, maxTokens, attachments);
             if (!out.text.trim()) throw new Error(`${step.model} no devolvió contenido`);
             const { costFromProvider, ...rest } = out;
             return {

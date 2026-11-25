@@ -55,6 +55,7 @@ before(async () => {
             RENDER: '',
             GEMINI_API_KEY: '',
             CHATGPT_EXPORT_DIR: path.join(tmp, 'downloads'),
+            KNOWLEDGE_EMBEDDER: 'none',
         },
         stdio: 'ignore'
     });
@@ -270,7 +271,7 @@ test('AI Office HQ: Canal de filtro (inbox) lista tickets en disco y tareas acti
 
 const ROOT_URL = BASE.replace(/\/api$/, '');
 
-async function mcpCall(token, name, args = {}) {
+async function mcpCall(token, name, { __raw, ...args } = {}) {
     const r = await fetch(`${ROOT_URL}/mcp`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' },
@@ -280,8 +281,9 @@ async function mcpCall(token, name, args = {}) {
     const res = data.result;
     assert.ok(res, `MCP sin resultado: ${JSON.stringify(data)}`);
     if (res.isError) throw new Error(res.content[0].text);
-    return JSON.parse(res.content[0].text);
+    return __raw ? res.content : JSON.parse(res.content[0].text);
 }
+const mcpRaw = (token, name, args) => mcpCall(token, name, { ...args, __raw: true });
 
 test('AI Office HQ: modelos por agente — catálogo multi-proveedor y cambio de modelo', async () => {
     const models = await (await api('/office/models')).json();
@@ -352,4 +354,66 @@ test('AI Office HQ: agente externo por MCP toma, avanza y entrega; el CEO revisa
     assert.equal(st.done, 1);
     assert.equal(st.runs, 2);
     assert.ok(state.completedTasks.some(x => x.id === taskId));
+});
+
+test('AI Office HQ: archivos por tarea — el CEO adjunta, el agente lee y entrega documentos, y otro agente sigue', async () => {
+    const a = await (await api('/agent-hub/tokens', { method: 'POST', body: JSON.stringify({ name: 'Redactor', scope: 'write' }) })).json();
+    const b = await (await api('/agent-hub/tokens', { method: 'POST', body: JSON.stringify({ name: 'Mensajero', scope: 'write' }) })).json();
+    const disp = await (await api('/office/dispatch', { method: 'POST', body: JSON.stringify({ mission: 'Propuesta comercial para Hotel Central', targetAgent: `ext-${a.record.id}` }) })).json();
+    const taskId = disp.task.id;
+
+    // El CEO sube un brief y una imagen desde el dashboard (multipart).
+    const form = new FormData();
+    form.append('files', new Blob(['Cliente: Hotel Central. Presupuesto: 3000 USD.'], { type: 'text/plain' }), 'brief.txt');
+    form.append('files', new Blob([Buffer.from('89504e470d0a1a0a', 'hex')], { type: 'image/png' }), 'logo cliente.png');
+    const up = await fetch(`${BASE}/office/task/${taskId}/files`, { method: 'POST', headers: { Authorization: `Bearer ${TOKEN}` }, body: form });
+    assert.equal(up.status, 201);
+    const uploaded = (await up.json()).files;
+    assert.deepEqual(uploaded.map(f => f.name), ['brief.txt', 'logo-cliente.png']);
+    assert.equal(uploaded[1].kind, 'image');
+
+    // El agente ve los archivos en su cola y los lee (texto como texto, imagen como imagen).
+    const mine = await mcpCall(a.token, 'get_my_office_tasks', { include_open: false });
+    assert.equal(mine.tasks.find(t => t.id === taskId).files.length, 2);
+    const brief = await mcpRaw(a.token, 'read_office_file', { task_id: taskId, file_id: 'brief.txt' });
+    assert.match(brief[1].text, /Hotel Central/);
+    const img = await mcpRaw(a.token, 'read_office_file', { task_id: taskId, file_id: uploaded[1].id });
+    assert.equal(img[1].type, 'image');
+
+    // Adjuntar exige haber tomado la tarea; luego deja la propuesta y entrega.
+    await assert.rejects(() => mcpCall(a.token, 'attach_office_file', { task_id: taskId, name: 'x.md', content: 'x' }), /toma la tarea/);
+    await mcpCall(a.token, 'claim_office_task', { task_id: taskId });
+    const att = await mcpCall(a.token, 'attach_office_file', { task_id: taskId, name: 'propuesta-hotel.md', content: '# Propuesta\nPaquete VIP por 2800 USD', description: 'Propuesta lista para enviar' });
+    assert.equal(att.file.role, 'deliverable');
+    await mcpCall(a.token, 'submit_office_result', { task_id: taskId, result: 'Hice la propuesta: paquete VIP.' });
+
+    let task = (await (await api(`/office/task/${taskId}`)).json()).task;
+    const names = task.artifacts.map(f => f.name);
+    assert.ok(names.includes('propuesta-hotel.md'));
+    assert.ok(names.some(n => /^informe-.*\.md$/.test(n)), 'El informe de lo que hizo el agente queda como archivo');
+    assert.ok(!('file' in task.artifacts[0]), 'No expone la ruta interna en disco');
+
+    // El dashboard sirve el archivo.
+    const fileRes = await api(`/office/task/${taskId}/files/${att.file.id}`);
+    assert.equal(fileRes.status, 200);
+    assert.match(await fileRes.text(), /Paquete VIP/);
+
+    // El agente pasa la tarea a otro para que la envíe, con la propuesta adjunta.
+    const ho = await mcpCall(a.token, 'handoff_office_task', { task_id: taskId, task: 'Enviar la propuesta al cliente', to: 'Mensajero', file_ids: ['propuesta-hotel.md'] });
+    assert.equal(ho.task.assignedTo, 'Mensajero');
+    assert.equal(ho.task.parentTaskId, taskId);
+    assert.deepEqual(ho.task.files.map(f => f.name), ['propuesta-hotel.md']);
+    const prop = await mcpRaw(b.token, 'read_office_file', { task_id: ho.task.id, file_id: 'propuesta-hotel.md' });
+    assert.match(prop[1].text, /Paquete VIP/);
+
+    // Aprobar el entregable lo guarda en la memoria (RAG) para los demás agentes.
+    await api(`/office/task/${taskId}/review`, { method: 'POST', body: JSON.stringify({ decision: 'approve' }) });
+    for (let i = 0; i < 40 && !(task.knowledgeDocIds || []).length; i++) {
+        await new Promise(r => setTimeout(r, 100));
+        task = (await (await api(`/office/task/${taskId}`)).json()).task;
+    }
+    assert.equal(task.knowledgeDocIds.length, 1);
+    assert.equal(task.children[0].id, ho.task.id);
+    const found = await mcpCall(b.token, 'search_knowledge', { query: 'propuesta Hotel Central paquete VIP' });
+    assert.ok(JSON.stringify(found).includes('Hotel Central'), 'El entregable aprobado aparece al buscar en la memoria');
 });

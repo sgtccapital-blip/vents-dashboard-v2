@@ -7,6 +7,7 @@ import OfficeApprovalsModal from '../components/office/OfficeApprovalsModal';
 import OfficeWarRoomModal from '../components/office/OfficeWarRoomModal';
 import OfficeControlCenter from '../components/office/OfficeControlCenter';
 import OfficeTaskDrawer from '../components/office/OfficeTaskDrawer';
+import { uploadTaskFiles } from '../components/office/officeUi';
 import OfficeMetricsView from '../components/office/OfficeMetricsView';
 import { ConnectAgentModal, ExternalAgentModal } from '../components/office/OfficeAgentConnect';
 import {
@@ -128,7 +129,7 @@ export default function AiOfficeHQ() {
     }, [fetchOfficeState]);
 
     // Dispatch mission handler
-    const handleDispatchMission = async ({ mission, priority, targetDepartment, targetAgent }) => {
+    const handleDispatchMission = async ({ mission, priority, targetDepartment, targetAgent, files = [] }) => {
         setIsDispatching(true);
         setNotice('');
         try {
@@ -140,12 +141,25 @@ export default function AiOfficeHQ() {
                     priority,
                     targetDepartment,
                     targetAgent,
+                    // Con archivos, primero se suben y luego arranca el agente (así los lee).
+                    autoRun: files.length ? false : undefined,
                     companyName: 'HangOut Panamá / ARRIVE Agency'
                 })
             });
 
             if (res.ok) {
                 const data = await res.json();
+                if (data.success && files.length) {
+                    try {
+                        await uploadTaskFiles(data.task.id, files);
+                    } catch (e) {
+                        setNotice(`La tarea se creó pero no se pudieron subir los archivos: ${e.message}`);
+                    }
+                    if (data.task.assignedKind === 'internal' && data.task.status === 'queued') {
+                        const run = await fetch(`/api/office/task/${data.task.id}/run`, { method: 'POST' }).then(r => r.json()).catch(() => ({}));
+                        data.status = run.started ? 'in_progress' : 'queued';
+                    }
+                }
                 if (data.success) {
                     playOfficeSuccess();
                     addActivity && addActivity(`🎯 Misión despachada a ${data.assignedAgent}: "${mission.substring(0, 45)}"`);
@@ -752,6 +766,7 @@ export default function AiOfficeHQ() {
                     models={officeState.models}
                     onClose={() => setSelectedTaskId(null)}
                     onChanged={fetchOfficeState}
+                    onOpenTask={setSelectedTaskId}
                 />
             )}
 

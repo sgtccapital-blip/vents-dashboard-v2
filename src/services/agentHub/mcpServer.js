@@ -9,7 +9,7 @@ Cómo trabajar:
 1. Al empezar una tarea llama a get_context: trae el perfil de trabajo del usuario, proyectos activos, próximos eventos y pendientes.
 2. Antes de proponer o decidir algo de un proyecto usa get_project y search_knowledge: probablemente ya se habló antes (decisiones, precios, criterios).
 3. Respeta las decisiones vigentes y la forma de pensar del usuario que aparecen en la memoria.
-4. Si te conectaron para trabajar tareas, revisa get_my_office_tasks: el CEO te asigna trabajo desde AI Office HQ y espera el resultado con submit_office_result.
+4. Si te conectaron para trabajar tareas, revisa get_my_office_tasks: el CEO te asigna trabajo desde AI Office HQ. Lee sus archivos con read_office_file, deja cada documento/imagen que produzcas con attach_office_file, entrega con submit_office_result y, si otro agente debe seguir (enviar, diseñar, revisar), usa handoff_office_task.
 5. Cuando termines algo o se decida algo, déjalo registrado: create_task / update_task para pendientes, save_memory para decisiones o datos importantes, log_activity para contar qué hiciste.
 Responde en el idioma del usuario (normalmente español).`;
 
@@ -71,7 +71,7 @@ export function buildMcpServer(ctx, deps) {
             try {
                 const result = await handler(args || {});
                 hub.logActivity({ agent: ctx.agent, tokenId: ctx.tokenId, tool: name, args: clip(JSON.stringify(args || {}), 400), ok: true, ms: Date.now() - started, write });
-                return json(result);
+                return result?.mcpContent ? { content: result.mcpContent } : json(result);
             } catch (err) {
                 hub.logActivity({ agent: ctx.agent, tokenId: ctx.tokenId, tool: name, args: clip(JSON.stringify(args || {}), 400), ok: false, error: clip(err.message, 300), ms: Date.now() - started, write });
                 return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };
@@ -401,7 +401,7 @@ export function buildMcpServer(ctx, deps) {
     if (office) {
         tool('get_my_office_tasks', {
             title: 'Mis tareas de AI Office HQ',
-            description: 'Tareas que el CEO te asignó en AI Office HQ (y las abiertas que cualquiera puede tomar), con instrucciones y correcciones pedidas. Revísalo al empezar a trabajar. Flujo: claim_office_task → report_office_progress (opcional) → submit_office_result.',
+            description: 'Tareas que el CEO te asignó en AI Office HQ (y las abiertas que cualquiera puede tomar), con instrucciones, correcciones pedidas y la lista de archivos de cada una (insumos del CEO o entregables de otro agente). Revísalo al empezar a trabajar. Flujo: claim_office_task → read_office_file (insumos) → report_office_progress (opcional) → attach_office_file (cada documento/imagen que produzcas) → submit_office_result → handoff_office_task si otro agente debe continuar.',
             input: { include_open: z.boolean().optional().describe('Incluir tareas sin asignar (por defecto sí)') },
         }, async ({ include_open = true }) => ({ tasks: office.tasksForAgent(ctx, { includeOpen: include_open }) }));
 
@@ -426,7 +426,7 @@ export function buildMcpServer(ctx, deps) {
         tool('submit_office_result', {
             write: true,
             title: 'Entregar resultado',
-            description: 'Entrega el resultado final (markdown completo, no un resumen) de una tarea de AI Office HQ. Queda en revisión del CEO, que puede aprobarla o pedirte cambios (aparecerán en get_my_office_tasks). Si no pudiste hacerla, usa failed=true y explica por qué en error.',
+            description: 'Entrega el resultado final de una tarea de AI Office HQ: qué hiciste, decisiones y qué falta (markdown). Se guarda también como informe .md en la tarea. Los documentos/imágenes súbelos antes con attach_office_file. Queda en revisión del CEO, que puede aprobarla o pedirte cambios (aparecerán en get_my_office_tasks). Si no pudiste hacerla, usa failed=true y explica por qué en error.',
             input: {
                 task_id: z.string(),
                 result: z.string().optional().describe('El entregable completo en markdown'),
@@ -435,6 +435,64 @@ export function buildMcpServer(ctx, deps) {
                 model: z.string().max(60).optional().describe('Modelo que usaste (ej. gpt-5, claude-opus-5-5)'),
             },
         }, async ({ task_id, result, failed = false, error = '', model = '' }) => office.submitResult(ctx, task_id, { result, failed, error, model }));
+
+        tool('get_office_task', {
+            title: 'Ver tarea de la oficina',
+            description: 'Detalle de una tarea de AI Office HQ: instrucciones, resultado entregado, historial y archivos (con su id para read_office_file).',
+            input: { task_id: z.string() },
+        }, async ({ task_id }) => office.taskForAgent(ctx, task_id));
+
+        tool('read_office_file', {
+            title: 'Leer archivo de una tarea',
+            description: 'Abre un archivo de una tarea de AI Office HQ (propuesta, brief, CSV, imagen, PDF…). Texto se devuelve como texto; imágenes como imagen; otros formatos en base64 si pides as_base64.',
+            input: {
+                task_id: z.string(),
+                file_id: z.string().describe('id o nombre del archivo (ver files en get_my_office_tasks)'),
+                as_base64: z.boolean().optional().describe('Devolver los bytes en base64 (para PDF, docx, etc.)'),
+            },
+        }, async ({ task_id, file_id, as_base64 = false }) => {
+            const { meta, buffer } = office.readFileAsAgent(ctx, task_id, file_id);
+            const head = { type: 'text', text: JSON.stringify(meta) };
+            if (meta.mime.startsWith('image/') && meta.mime !== 'image/svg+xml' && !as_base64) {
+                return { mcpContent: [head, { type: 'image', data: buffer.toString('base64'), mimeType: meta.mime }] };
+            }
+            if (!as_base64 && (meta.mime.startsWith('text/') || /json|xml|svg/.test(meta.mime))) {
+                return { mcpContent: [head, { type: 'text', text: buffer.toString('utf-8') }] };
+            }
+            if (buffer.length > 10 * 1024 * 1024) throw new Error('Archivo demasiado grande para enviarlo por MCP (máx. 10 MB)');
+            return { mcpContent: [head, { type: 'text', text: buffer.toString('base64') }] };
+        });
+
+        tool('attach_office_file', {
+            write: true,
+            title: 'Adjuntar archivo a la tarea',
+            description: 'Deja en una tarea que tomaste un archivo que produjiste: documento/propuesta (.md, .html, .txt), tabla (.csv), imagen (.png/.jpg), PDF, etc. Es lo que el CEO y el siguiente agente van a usar, así que sube el archivo completo y final. Texto en content; binarios en content_base64.',
+            input: {
+                task_id: z.string(),
+                name: z.string().max(120).describe('Nombre con extensión, ej. propuesta-cliente.md'),
+                content: z.string().optional().describe('Contenido de texto del archivo'),
+                content_base64: z.string().optional().describe('Bytes del archivo en base64 (imágenes, PDF, docx…)'),
+                mime_type: z.string().max(100).optional(),
+                description: z.string().max(500).optional().describe('Qué es y para qué sirve'),
+            },
+        }, async ({ task_id, name, content, content_base64, mime_type, description = '' }) => {
+            if (!content && !content_base64) throw new Error('Falta content o content_base64');
+            const bytes = content_base64 ? Buffer.from(content_base64, 'base64') : Buffer.from(content, 'utf-8');
+            return { file: office.attachAsAgent(ctx, task_id, { name, content: bytes, mime: mime_type, description }) };
+        });
+
+        tool('handoff_office_task', {
+            write: true,
+            title: 'Pasar a otro agente',
+            description: 'Crea una tarea de seguimiento a partir de una tuya y le pasa sus archivos, para que otro agente continúe (ej. "Enviar la propuesta al cliente", "Diseñar la presentación"). Sin "to" queda abierta para cualquier agente. El CEO la ve en el tablero.',
+            input: {
+                task_id: z.string().describe('Tu tarea de origen'),
+                task: z.string().max(300).describe('Qué tiene que hacer el siguiente agente'),
+                description: z.string().max(4000).optional(),
+                to: z.string().max(80).optional().describe('Nombre o id del agente (ej. "Pulse", "CloserOps")'),
+                file_ids: z.array(z.string()).optional().describe('Archivos a pasar (por defecto todos)'),
+            },
+        }, async ({ task_id, task, description = '', to, file_ids }) => ({ task: office.handoffAsAgent(ctx, task_id, { to, task, description, fileIds: file_ids }) }));
     }
 
     return server;

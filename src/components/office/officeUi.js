@@ -50,3 +50,13 @@ export async function postJson(url, body) {
     if (!r.ok) throw new Error(data.error || `Error ${r.status}`);
     return data;
 }
+
+/** Sube archivos con FormData (no JSON) a la tarea. */
+export async function uploadTaskFiles(taskId, files) {
+    const form = new FormData();
+    for (const f of files) form.append('files', f);
+    const r = await fetch(`/api/office/task/${taskId}/files`, { method: 'POST', body: form });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || `Error ${r.status}`);
+    return data.files;
+}

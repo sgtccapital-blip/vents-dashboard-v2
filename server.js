@@ -31,7 +31,8 @@ import { registerContentStudio } from './src/services/contentStudio/routes.js';
 import { registerKnowledge } from './src/services/knowledge/routes.js';
 import { registerAgentHub } from './src/services/agentHub/routes.js';
 import { registerLibrary } from './src/services/library/routes.js';
-import { createOfficeService, normalizeStatus as normalizeOfficeStatus } from './src/services/office/officeService.js';
+import { createOfficeService, normalizeStatus as normalizeOfficeStatus, fileView as officeFileView } from './src/services/office/officeService.js';
+import { createArtifactStore, MAX_FILE_BYTES as OFFICE_MAX_FILE_BYTES } from './src/services/office/artifacts.js';
 import { runModel, listModels, defaultModel, modelCatalog, RETIRED_MODELS } from './src/services/office/modelRunner.js';
 import { generateStructured, availableProviders } from './src/services/contentStudio/llm.js';
 import { loadBrands } from './scripts/build-brands.mjs';
@@ -958,6 +959,22 @@ const office = createOfficeService({
     getHub: () => agentHub,
     getAgents: db => getOfficeAgents(db),
     buildPrompt: async opts => (await buildAgentPrompt(opts)).prompt,
+    // Archivos de cada tarea (entregables, adjuntos, imágenes) junto a db.json, fuera de git.
+    artifacts: createArtifactStore({ dir: process.env.OFFICE_FILES_DIR || path.join(path.dirname(DB_PATH), 'office-files') }),
+    // Entregable aprobado → memoria del RAG, para que los demás agentes (internos y por MCP) lo encuentren.
+    onApproved: async (task, files) => {
+        const content = [
+            `Tarea: ${task.task}`, `Hecha por: ${task.assignedAgent || 'agente'}`, task.companyName ? `Empresa: ${task.companyName}` : '', `Aprobada: ${new Date().toISOString().slice(0, 10)}`,
+            '', task.result || '',
+            ...files.map(f => `\n\n## Archivo: ${f.name}\n\n${f.text}`),
+        ].filter(x => x !== '').join('\n');
+        const doc = await knowledge.saveMemory({
+            title: `Entregable aprobado: ${task.task}`.slice(0, 160),
+            content, source: 'agent', agent: task.assignedAgent || '', projectId: task.projectId || '',
+            tags: ['ai-office', 'entregable', task.id],
+        });
+        return [doc?.id].filter(Boolean);
+    },
 });
 
 agentHub = registerAgentHub(app, {
@@ -3908,6 +3925,14 @@ async function buildAgentPrompt({ agentName, task, description, companyId, compa
         } catch { /* opcional */ }
     }
 
+    // Memoria nueva: historial de ChatGPT, decisiones guardadas, referencias y entregables aprobados de otros agentes.
+    let knowledgeContext = '';
+    try {
+        const { results } = await knowledge.search({ query: `${task}\n${description || ''}`.slice(0, 1000), topK: 6 });
+        knowledgeContext = (results || []).map(r => `- [${r.doc?.title || r.docId}] ${String(r.text || r.snippet || '').slice(0, 900)}`).join('\n');
+        if (results?.length) ragSources = [ragSources, ...results.map(r => r.doc?.title).filter(Boolean)].filter(Boolean).join(', ');
+    } catch (e) { console.warn('[Agent prompt] Knowledge:', e.message); }
+
     const prompt = `INSTRUCCIONES DEL SISTEMA (SOP DEL AGENTE):
 ${sopContent}
 
@@ -3919,6 +3944,9 @@ ${memoryContext}
 
 CONTEXTO GENERAL DEL ECOSISTEMA:
 ${ecosystemContext || 'N/A'}
+
+MEMORIA DEL CEO Y TRABAJO PREVIO DE OTROS AGENTES (RAG):
+${knowledgeContext || 'Sin coincidencias.'}
 
 TAREA A EJECUTAR:
 ${task}
@@ -4906,7 +4934,7 @@ app.post('/api/office/agent/:id/document', (req, res) => {
 
         // Persist to disk under BrainVault/AGENTS_OUTPUT/
         try {
-            const vaultOutDir = path.join(__dirname, 'BrainVault', 'AGENTS_OUTPUT', id);
+            const vaultOutDir = path.join(process.env.BRAIN_VAULT_DIR || path.join(__dirname, 'BrainVault'), 'AGENTS_OUTPUT', id);
             if (!fs.existsSync(vaultOutDir)) {
                 fs.mkdirSync(vaultOutDir, { recursive: true });
             }
@@ -5063,8 +5091,57 @@ app.post('/api/office/task/:id/reassign', officeRoute(req => {
 app.get('/api/office/task/:id', officeRoute(req => {
     const task = (readDB().agentTasks || []).find(t => t.id === req.params.id);
     if (!task) throw Object.assign(new Error('Tarea no encontrada'), { status: 404 });
-    return { task: { ...task, status: normalizeOfficeStatus(task.status), running: office.isRunning(task.id) } };
+    const db = readDB();
+    const brief = t => t && { id: t.id, task: t.task, status: normalizeOfficeStatus(t.status), assignedAgent: t.assignedAgent };
+    return { task: {
+        ...task, status: normalizeOfficeStatus(task.status), running: office.isRunning(task.id),
+        artifacts: (task.artifacts || []).map(officeFileView),
+        parent: brief((db.agentTasks || []).find(t => t.id === task.parentTaskId)),
+        children: (task.childTaskIds || []).map(id => brief((db.agentTasks || []).find(t => t.id === id))).filter(Boolean),
+    } };
 }));
+
+// Archivos de la tarea: el CEO adjunta insumos; los agentes dejan entregables e informes.
+const officeUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: OFFICE_MAX_FILE_BYTES, files: 10 } });
+
+app.post('/api/office/task/:id/files', (req, res) => {
+    officeUpload.array('files', 10)(req, res, err => {
+        if (err) return res.status(err.code === 'LIMIT_FILE_SIZE' ? 413 : 400).json({ error: err.code === 'LIMIT_FILE_SIZE' ? `Máximo ${OFFICE_MAX_FILE_BYTES / 1024 / 1024} MB por archivo` : err.message });
+        try {
+            const files = (req.files || []).map(f => ({ name: Buffer.from(f.originalname, 'latin1').toString('utf8'), content: f.buffer, mime: f.mimetype, description: req.body?.description || '' }));
+            // También acepta un archivo de texto escrito a mano: { name, content }
+            if (!files.length && req.body?.name && req.body?.content) files.push({ name: req.body.name, content: req.body.content, mime: req.body.mime, description: req.body.description });
+            if (!files.length) return res.status(400).json({ error: 'No llegó ningún archivo' });
+            res.status(201).json({ success: true, files: office.attachFiles(req.params.id, files) });
+        } catch (e) { res.status(e.status || 500).json({ error: e.message }); }
+    });
+});
+
+app.get('/api/office/task/:id/files/:fileId', (req, res) => {
+    try {
+        const { meta, path: filePath } = office.getFile(req.params.id, req.params.fileId);
+        if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'El archivo ya no está en disco' });
+        res.setHeader('Content-Type', meta.mime.startsWith('text/') ? `${meta.mime}; charset=utf-8` : meta.mime);
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        // HTML y SVG se descargan siempre: no se ejecutan dentro del dashboard.
+        const inline = !req.query.download && !['text/html', 'image/svg+xml'].includes(meta.mime);
+        res.setHeader('Content-Disposition', `${inline ? 'inline' : 'attachment'}; filename*=UTF-8''${encodeURIComponent(meta.name)}`);
+        fs.createReadStream(filePath).pipe(res);
+    } catch (e) { res.status(e.status || 500).json({ error: e.message }); }
+});
+
+app.delete('/api/office/task/:id/files/:fileId', (req, res) => {
+    try { res.json({ success: true, ...office.removeFile(req.params.id, req.params.fileId) }); } catch (e) { res.status(e.status || 500).json({ error: e.message }); }
+});
+
+// Tarea de seguimiento: otro agente continúa con los archivos de esta (enviar, diseñar, revisar…).
+app.post('/api/office/task/:id/handoff', (req, res) => {
+    try {
+        const { agentId, task, description, fileIds, autoRun } = req.body || {};
+        const child = office.createFollowUp(req.params.id, { agentId, task, description, fileIds, autoRun, by: 'CEO' });
+        res.status(201).json({ success: true, task: { ...child, status: normalizeOfficeStatus(child.status), artifacts: (child.artifacts || []).map(officeFileView) } });
+    } catch (e) { res.status(e.status || 500).json({ error: e.message }); }
+});
 
 // Modelo de un agente interno (cada agente puede usar un proveedor distinto según su uso).
 app.post('/api/office/agent/:id/config', officeRoute(req => {

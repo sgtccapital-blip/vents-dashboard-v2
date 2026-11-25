@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { X, Check, PencilLine, Trash2, Play, RotateCcw, ArrowRightLeft, Copy } from 'lucide-react';
+import { X, Check, PencilLine, Trash2, Play, RotateCcw, ArrowRightLeft, Copy, Brain, CornerDownRight } from 'lucide-react';
 import { TASK_STATUS, statusMeta, modelLabel, fmtUSD, fmtTokens, fmtMs, postJson } from './officeUi';
+import OfficeTaskFiles from './OfficeTaskFiles';
 
 const fmtTime = iso => (iso ? new Date(iso).toLocaleString('es', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '');
 
-export default function OfficeTaskDrawer({ taskId, agents = [], models, onClose, onChanged }) {
+export default function OfficeTaskDrawer({ taskId, agents = [], models, onClose, onChanged, onOpenTask }) {
     const [task, setTask] = useState(null);
+    const [tick, setTick] = useState(0);
     const [notes, setNotes] = useState('');
     const [target, setTarget] = useState('');
     const [busy, setBusy] = useState('');
@@ -20,9 +22,10 @@ export default function OfficeTaskDrawer({ taskId, agents = [], models, onClose,
         load();
         const t = setInterval(load, 4000);
         return () => { alive = false; clearInterval(t); };
-    }, [taskId]);
+    }, [taskId, tick]);
 
-    if (!task) return null;
+    if (!task || task.id !== taskId) return null;
+    const refresh = () => { setTick(n => n + 1); onChanged?.(); };
     const st = statusMeta(TASK_STATUS, task.status);
     const internal = task.assignedKind !== 'external';
     const runs = task.runs || [];
@@ -36,7 +39,7 @@ export default function OfficeTaskDrawer({ taskId, agents = [], models, onClose,
             if (d.task) setTask(t => ({ ...t, ...d.task }));
             if (d.reason && d.started === false) setError(d.reason);
             setNotes('');
-            onChanged?.();
+            refresh();
         } catch (e) { setError(e.message); }
         setBusy('');
     };
@@ -51,9 +54,19 @@ export default function OfficeTaskDrawer({ taskId, agents = [], models, onClose,
                             <span className="occ-chip">{task.assignedAgent || 'Sin asignar'}</span>
                             {task.model && <span className="occ-chip">{modelLabel(models, task.model)}</span>}
                             {task.companyName && <span className="occ-chip">{task.companyName}</span>}
+                            {(task.knowledgeDocIds || []).length > 0 && (
+                                <span className="occ-chip" style={{ color: '#6ee7b7' }} title="El entregable aprobado quedó en la memoria: otros agentes lo encuentran al buscar">
+                                    <Brain size={10} /> En la memoria
+                                </span>
+                            )}
                         </div>
                         <h2 style={{ margin: 0, fontSize: '16px', fontWeight: 800 }}>{task.task}</h2>
                         {task.currentStep && <div className="occ-muted" style={{ marginTop: '4px' }}>{task.currentStep}</div>}
+                        {task.parent && (
+                            <button className="occ-link" style={{ marginTop: '6px' }} onClick={() => onOpenTask?.(task.parent.id)}>
+                                ↖ Sigue de: {task.parent.task} ({task.parent.assignedAgent})
+                            </button>
+                        )}
                     </div>
                     <button className="occ-btn sm" onClick={onClose} aria-label="Cerrar"><X size={14} /></button>
                 </div>
@@ -78,6 +91,19 @@ export default function OfficeTaskDrawer({ taskId, agents = [], models, onClose,
                     ) : task.error ? (
                         <div className="occ-notice" style={{ color: '#fca5a5', borderColor: 'rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)' }}>{task.error}</div>
                     ) : null}
+
+                    <OfficeTaskFiles key={task.id} task={task} agents={agents} models={models} onChanged={refresh} onOpenTask={onOpenTask} />
+
+                    {(task.children || []).length > 0 && (
+                        <div>
+                            <div className="occ-label">Tareas de seguimiento</div>
+                            {task.children.map(c => (
+                                <button key={c.id} className="occ-link" style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '4px' }} onClick={() => onOpenTask?.(c.id)}>
+                                    <CornerDownRight size={12} /> {c.task} · {c.assignedAgent || 'abierta'} · <span style={{ color: statusMeta(TASK_STATUS, c.status).color }}>{statusMeta(TASK_STATUS, c.status).label}</span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
 
                     {task.description && (
                         <div>
