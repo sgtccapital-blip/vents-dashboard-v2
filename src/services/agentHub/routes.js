@@ -58,7 +58,7 @@ export function registerAgentHub(app, { dataDir, readDB, knowledge, createEntity
         const convs = req.body?.conversations;
         if (!Array.isArray(convs) || !convs.length) return res.status(400).json({ error: 'Falta conversations[]' });
         try {
-            const summary = knowledge.ingestFromExtension(convs, { client: req.agentCtx.agent });
+            const summary = knowledge.ingestFromExtension(convs, { client: req.agentCtx.agent, version: req.get('x-extension-version') || '' });
             hub.logActivity({ agent: req.agentCtx.agent, tokenId: req.agentCtx.tokenId, tool: 'chatgpt_sync', args: `${convs.length} conversaciones: ${summary.added} nuevas, ${summary.updated} actualizadas`, ok: true, ms: 0, write: true });
             res.json(summary);
         } catch (err) {
@@ -68,7 +68,7 @@ export function registerAgentHub(app, { dataDir, readDB, knowledge, createEntity
 
     app.post('/ingest/chatgpt/report', ingestAuth, (req, res) => {
         const { scanned = 0, changed = 0, sent = 0, error = '' } = req.body || {};
-        res.json(knowledge.reportExtensionRun({ scanned, changed, sent, error: String(error).slice(0, 300) }));
+        res.json(knowledge.reportExtensionRun({ scanned, changed, sent, remaining: req.body?.remaining || 0, error: String(error).slice(0, 300), version: req.get('x-extension-version') || '' }));
     });
 
     // ─── Administración (detrás del login del dashboard) ───

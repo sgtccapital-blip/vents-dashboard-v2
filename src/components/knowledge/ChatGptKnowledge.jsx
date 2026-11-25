@@ -139,7 +139,7 @@ function ExtensionCard({ status, onChange }) {
                 <div style={{ fontSize: '13px', marginBottom: '12px', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
                     {run?.error || stale ? <AlertCircle size={15} style={{ color: '#f59e0b', flexShrink: 0, marginTop: 2 }} /> : <CheckCircle2 size={15} style={{ color: '#10b981', flexShrink: 0, marginTop: 2 }} />}
                     <div>
-                        Última sincronización: <b>{new Date(ext.at).toLocaleString('es')}</b>
+                        Última sincronización: <b>{new Date(ext.at).toLocaleString('es')}</b>{ext.version ? ` · extensión ${ext.version}` : ''}
                         {run && !run.error && <> · revisadas {run.scanned}, cambiadas {run.changed}, enviadas {run.sent}{run.remaining ? `, faltan ${run.remaining} (siguen en el próximo ciclo)` : ''}</>}
                         {' '}· en total {ext.totals.added} nuevas y {ext.totals.updated} actualizadas
                         {run?.error && <div style={{ color: '#f59e0b' }}>{run.error}</div>}

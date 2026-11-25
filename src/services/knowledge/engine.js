@@ -152,11 +152,11 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
         return { known, lastSync: state.extensionSync || null };
     }
 
-    function ingestFromExtension(rawConvs, { client = 'extension' } = {}) {
+    function ingestFromExtension(rawConvs, { client = 'extension', version = '' } = {}) {
         const summary = importConversations(rawConvs, { origin: 'extension', fileName: client, record: false });
         const prev = state.extensionSync || { totals: { added: 0, updated: 0 } };
         state.extensionSync = {
-            at: summary.at, client,
+            at: summary.at, client, version: version || prev.version || '',
             last: summary,
             totals: { added: prev.totals.added + summary.added, updated: prev.totals.updated + summary.updated },
         };
@@ -165,7 +165,11 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
     }
 
     function reportExtensionRun(report = {}) {
-        state.extensionSync = { ...(state.extensionSync || { totals: { added: 0, updated: 0 } }), at: new Date().toISOString(), run: { ...report, at: new Date().toISOString() } };
+        state.extensionSync = {
+            ...(state.extensionSync || { totals: { added: 0, updated: 0 } }),
+            ...(report.version ? { version: report.version } : {}),
+            at: new Date().toISOString(), run: { ...report, at: new Date().toISOString() },
+        };
         saveState();
         return state.extensionSync;
     }

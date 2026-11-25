@@ -14,7 +14,7 @@ async function dashboard(path, init = {}) {
     if (!token) throw new Error('Falta la llave del dashboard (abre la extensión y pégala)');
     const r = await fetch(`${dashboardUrl.replace(/\/$/, '')}${path}`, {
         ...init,
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', ...(init.headers || {}) },
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', 'X-Extension-Version': chrome.runtime.getManifest().version, ...(init.headers || {}) },
     });
     const data = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(data.error || `Dashboard ${r.status}`);
