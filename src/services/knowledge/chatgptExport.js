@@ -98,6 +98,7 @@ export function normalizeConversation(conv) {
         gizmoId,
         // Las conversaciones dentro de un Proyecto de ChatGPT llevan un gizmo_id "g-p-…"
         chatgptProjectId: gizmoId && gizmoId.startsWith('g-p-') ? gizmoId : null,
+        listUpdateTime: iso(conv.list_update_time) || null,
         archived: !!conv.is_archived,
         messages: linearize(conv),
     };

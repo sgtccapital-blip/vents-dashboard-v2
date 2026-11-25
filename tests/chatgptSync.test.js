@@ -10,7 +10,7 @@ import { createKnowledgeEngine } from '../src/services/knowledge/engine.js';
 const require = createRequire(import.meta.url);
 const { runChatGPTSync } = require('../extensions/chatgpt-sync/sync-core.js');
 
-function fakeChatGPT(count) {
+function fakeChatGPT(count, { skewSeconds = 0 } = {}) {
     const base = Date.parse('2026-11-01T00:00:00Z');
     const convs = new Map();
     const make = (id, i, gizmo = null) => {
@@ -27,7 +27,8 @@ function fakeChatGPT(count) {
     make('p1', count + 1, 'g-p-demo');
     make('p2', count + 2, 'g-p-demo');
     const calls = { detail: 0 };
-    const listItem = c => ({ id: c.id, title: c.title, update_time: new Date(c.update_time * 1000).toISOString(), gizmo_id: c.gizmo_id });
+    // La API real trae en la lista una fecha distinta a la del detalle (skewSeconds lo simula).
+    const listItem = c => ({ id: c.id, title: c.title, update_time: new Date((c.update_time + skewSeconds) * 1000).toISOString(), gizmo_id: c.gizmo_id });
     const chatgpt = {
         async get(p) {
             const url = new URL(p, 'https://chatgpt.com');
@@ -100,4 +101,23 @@ test('un error de ChatGPT se reporta sin romper', async () => {
     });
     assert.equal(r.error, 'ChatGPT 403');
     assert.equal(reports[0].error, 'ChatGPT 403');
+});
+
+test('si la lista y el detalle de ChatGPT traen fechas distintas, no se vuelve a pedir lo ya importado', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-sync-skew-'));
+    const engine = createKnowledgeEngine({
+        dataDir: dir, readDB: () => ({ projects: [] }), getGeminiKey: () => '',
+        generateStructured: async () => { throw new Error('sin IA'); }, availableProviders: () => [],
+        embedder: { model: 'none', dims: 2, available: () => false }, log: { log() {}, warn() {}, error() {} },
+    });
+    const bridge = { state: async () => engine.syncState(), push: async c => engine.ingestFromExtension(c), report: async r => engine.reportExtensionRun(r) };
+    const { chatgpt, calls } = fakeChatGPT(30, { skewSeconds: 45 });
+    const sleep = async () => {};
+    const r1 = await runChatGPTSync({ chatgpt, bridge, full: true, sleep });
+    assert.equal(r1.sent, 32);
+    const before = calls.detail;
+    const r2 = await runChatGPTSync({ chatgpt, bridge, full: true, sleep });
+    assert.equal(r2.changed, 0);
+    assert.equal(calls.detail, before);
+    engine.flush();
 });

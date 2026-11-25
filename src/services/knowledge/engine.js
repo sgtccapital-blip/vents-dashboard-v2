@@ -115,7 +115,11 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
             const prev = state.conversations[conv.id];
             if (prev?.status === 'excluded') { summary.unchanged++; continue; }
             const sameTime = prev && Math.abs(new Date(prev.updateTime) - new Date(conv.updateTime)) < 1500;
-            if (prev && sameTime && prev.messageCount === conv.messages.length) { summary.unchanged++; continue; }
+            if (prev && sameTime && prev.messageCount === conv.messages.length) {
+                if (conv.listUpdateTime && prev.listUpdateTime !== conv.listUpdateTime) { prev.listUpdateTime = conv.listUpdateTime; saveState(); }
+                summary.unchanged++;
+                continue;
+            }
             fs.writeFileSync(rawPath(conv.id), JSON.stringify(conv));
             // Buscable de inmediato: el resumen de la IA llega después y no hace falta esperarlo.
             indexTranscript(conv, {
@@ -127,6 +131,7 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
                 id: conv.id, title: conv.title, createTime: conv.createTime, updateTime: conv.updateTime,
                 chatgptProjectId: conv.chatgptProjectId, archived: conv.archived,
                 messageCount: conv.messages.length,
+                listUpdateTime: conv.listUpdateTime || prev?.listUpdateTime || null,
                 chars: conv.messages.reduce((n, m) => n + m.text.length, 0),
                 status: 'pending', error: '', triage: null, // cambió: Jev la vuelve a evaluar
             };
@@ -142,7 +147,8 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
     /** Lo que ya tiene el dashboard: { id: updateTime } para que la extensión pida solo lo cambiado. */
     function syncState() {
         const known = {};
-        for (const c of Object.values(state.conversations)) known[c.id] = c.status === 'excluded' ? 'excluded' : c.updateTime;
+        // Se responde con la fecha de la lista de ChatGPT (la que compara la extensión) cuando la tenemos.
+        for (const c of Object.values(state.conversations)) known[c.id] = c.status === 'excluded' ? 'excluded' : (c.listUpdateTime || c.updateTime);
         return { known, lastSync: state.extensionSync || null };
     }
 

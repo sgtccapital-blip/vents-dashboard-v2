@@ -85,6 +85,8 @@
                 conv.conversation_id = conv.id;
                 if (!conv.title) conv.title = it.title;
                 if (!conv.update_time) conv.update_time = it.update_time;
+                // La lista y el detalle traen fechas distintas: se manda la de la lista, que es con la que se compara.
+                conv.list_update_time = it.update_time;
                 if (!conv.gizmo_id && it.gizmo_id) conv.gizmo_id = it.gizmo_id;
                 pending.push(conv);
                 if (pending.length >= batch) await flush();
