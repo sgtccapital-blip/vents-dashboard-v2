@@ -1177,3 +1177,39 @@
 /* ─── Rendimiento por modelo ─── */
 .mq-table td, .mq-table th { white-space: nowrap; }
 .mq-tag { margin-left: 6px; font-size: 10.5px; color: #94a3b8; background: rgba(255,255,255,0.05); border-radius: 5px; padding: 1px 5px; }
+
+/* ─── Automatización: recurrentes y avisos ─── */
+.au { display: flex; flex-direction: column; gap: 18px; }
+.au-help { margin: 0 0 12px; font-size: 12px; line-height: 1.5; }
+.au-form { display: flex; flex-direction: column; gap: 10px; padding: 14px; margin-bottom: 14px; border: 1px solid rgba(192,132,252,0.25); border-radius: 12px; background: rgba(192,132,252,0.04); }
+.au-form label { display: flex; flex-direction: column; gap: 4px; }
+.au-form label.tl-row { flex-direction: row; }
+.au-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+.au-inline { flex-direction: row !important; align-items: center; gap: 8px !important; }
+.au-inline .occ-input { width: 80px; }
+.au-days { display: flex; gap: 6px; }
+.au-day { width: 32px; height: 32px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.12); background: transparent; color: #94a3b8; font-size: 12px; font-weight: 600; cursor: pointer; }
+.au-day.on { background: rgba(192,132,252,0.2); border-color: #c084fc; color: #f5f3ff; }
+.au-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.au-empty { font-size: 12.5px; color: #64748b; padding: 14px 0; }
+.au-list { display: flex; flex-direction: column; gap: 8px; }
+.au-row { display: flex; gap: 12px; align-items: center; justify-content: space-between; padding: 12px 14px; border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; background: rgba(255,255,255,0.02); }
+.au-row.off { opacity: 0.55; }
+.au-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.au-main > b { font-size: 13px; color: #e2e8f0; }
+.au-main .occ-muted { font-size: 12px; }
+.au-meta { font-size: 11.5px; color: #94a3b8; }
+.au-meta .occ-link { margin-left: 6px; }
+.au-btns { display: flex; gap: 6px; flex-shrink: 0; }
+.au-switch { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #cbd5e1; cursor: pointer; }
+.au-switch input { accent-color: #10b981; }
+.au-steps { margin: 0 0 12px; padding-left: 18px; font-size: 12.5px; color: #cbd5e1; line-height: 1.7; }
+.au-topic { display: flex; gap: 6px; }
+.au-topic .occ-input { flex: 1; }
+.au-ok { margin-top: 8px; font-size: 12px; color: #6ee7b7; }
+.au-events { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 6px 14px; }
+.au-ev { display: flex; gap: 8px; align-items: center; font-size: 12.5px; color: #cbd5e1; cursor: pointer; }
+.au-ev input { accent-color: #c084fc; }
+.hub-acc { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+.hub-acc span { font-size: 10.5px; padding: 2px 7px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.08); color: #94a3b8; }
+.hub-acc span.on { color: #a7f3d0; border-color: rgba(16,185,129,0.35); }

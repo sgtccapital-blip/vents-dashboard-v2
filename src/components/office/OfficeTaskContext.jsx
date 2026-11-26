@@ -50,6 +50,7 @@ function Routing({ routing, models }) {
 const TOOL_LABEL = {
     buscar_memoria: 'Buscó en la memoria', leer_archivo: 'Leyó un archivo', leer_marca: 'Leyó la línea de marca',
     consultar_dashboard: 'Consultó el dashboard', pasar_tarea: 'Propuso un traspaso', preguntar_al_ceo: 'Te preguntó',
+    ver_herramienta_hub: 'Revisó una herramienta del hub', usar_hub: 'Usó el hub',
 };
 
 function Steps({ steps }) {

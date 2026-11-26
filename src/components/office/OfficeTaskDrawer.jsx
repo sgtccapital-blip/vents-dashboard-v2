@@ -58,6 +58,7 @@ export default function OfficeTaskDrawer({ taskId, agents = [], models, onClose,
                             {task.companyName && <span className="occ-chip">{task.companyName}</span>}
                             {task.missionStep && <span className="occ-chip" style={{ color: '#a5b4fc' }}>Paso {task.missionStep} de {task.missionTotal}</span>}
                             {task.kind === 'mission' && <span className="occ-chip" style={{ color: '#a5b4fc' }}>Misión en pasos</span>}
+                            {task.scheduleId && <span className="occ-chip" style={{ color: '#7dd3fc' }}>🔁 Recurrente</span>}
                             {task.account && <span className="occ-chip" style={{ color: '#f0abfc' }} title="El agente recibe el ADN y la línea de marca de esta cuenta">🎨 {task.account.name}</span>}
                             {(task.knowledgeDocIds || []).length > 0 && (
                                 <span className="occ-chip" style={{ color: '#6ee7b7' }} title="El entregable aprobado quedó en la memoria: otros agentes lo encuentran al buscar">

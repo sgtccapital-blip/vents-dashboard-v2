@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import {
     Sparkles, Send, Users, ShieldAlert, RotateCcw,
-    Layers, Building2, BarChart2, Radio, StopCircle, Flame, Inbox, LayoutDashboard, Paperclip
+    Layers, Building2, BarChart2, Radio, StopCircle, Flame, Inbox, LayoutDashboard, Paperclip, CalendarClock
 } from 'lucide-react';
 import { playOfficeClick, playOfficeWarMode } from '../../lib/officeAudio';
 import './AiOffice.css';
@@ -54,6 +54,7 @@ export default function OfficeCommandBar({
         { id: 'strategic', label: 'Strategic Map', icon: Layers },
         { id: 'orgchart', label: 'Org Chart', icon: Users },
         { id: 'metrics', label: 'Métricas & Costos', icon: BarChart2 },
+        { id: 'auto', label: 'Automatización', icon: CalendarClock },
         {
             id: 'approvals',
             label: `Gobernanza ${pendingApprovalsCount > 0 ? `(${pendingApprovalsCount})` : ''}`,

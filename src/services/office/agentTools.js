@@ -77,11 +77,32 @@ export const TOOL_SPECS = [
         args: '{"pregunta": "una pregunta concreta"}',
         brief: i => i.pregunta,
     },
+    {
+        name: 'ver_herramienta_hub',
+        label: 'Revisando herramienta del hub',
+        about: 'Muestra qué hace una herramienta del hub del Command Center y qué argumentos lleva. Úsala antes de usar_hub si no conoces sus argumentos.',
+        args: '{"herramienta": "nombre"}',
+        brief: i => i.herramienta,
+        hub: true,
+    },
+    {
+        name: 'usar_hub',
+        label: 'Usando el hub',
+        about: 'Llama a una herramienta del hub del Command Center (la misma que usan ChatGPT y Claude por MCP) con tus permisos. Las escrituras son reales e inmediatas.',
+        args: '{"herramienta": "nombre", "argumentos": { ... }}',
+        brief: i => i.herramienta,
+        hub: true,
+    },
 ];
+
+// Herramientas del hub que no aplican a un agente interno (son para agentes externos de la oficina).
+const HUB_SKIP = new Set(['get_my_office_tasks', 'claim_office_task', 'report_office_progress', 'submit_office_result', 'get_office_task', 'read_office_file', 'attach_office_file', 'handoff_office_task', 'get_connection_status']);
+const firstSentence = d => clip(String(d || '').split(/(?<=\.)\s/)[0], 110);
 
 export const toolSpec = name => TOOL_SPECS.find(t => t.name === name);
 
-export function toolInstructions({ agents = [] } = {}) {
+export function toolInstructions({ agents = [], hubTools = [] } = {}) {
+    const specs = TOOL_SPECS.filter(t => !t.hub || hubTools.length);
     return `HERRAMIENTAS (opcionales):
 Puedes usar herramientas antes de entregar. Para usar una, responde SOLO con uno o más bloques así (máximo ${MAX_CALLS_PER_STEP} por turno) y nada más:
 <<<HERRAMIENTA nombre>>>
@@ -89,7 +110,8 @@ Puedes usar herramientas antes de entregar. Para usar una, responde SOLO con uno
 <<<FIN HERRAMIENTA>>>
 Recibirás el resultado y podrás seguir. Tienes hasta ${MAX_TOOL_STEPS} turnos. Cuando tengas lo necesario, responde con tu ENTREGA FINAL, sin bloques de herramienta.
 
-${TOOL_SPECS.map(t => `- ${t.name}: ${t.about}\n  Argumentos: ${t.args}`).join('\n')}
+${specs.map(t => `- ${t.name}: ${t.about}\n  Argumentos: ${t.args}`).join('\n')}
+${hubTools.length ? `\nHERRAMIENTAS DEL HUB QUE TIENES PERMITIDAS (úsalas con usar_hub; si no sabes sus argumentos, primero ver_herramienta_hub):\n${hubTools.map(t => `- ${t.name}: ${firstSentence(t.description)}`).join('\n')}\n` : ''}
 ${agents.length ? `\nAGENTES A LOS QUE PUEDES PASAR TRABAJO:\n${agents.map(a => `- ${a.id} | ${a.name} | ${a.role || ''}`).join('\n')}\n` : ''}
 No uses herramientas si ya tienes todo lo necesario: entrega directamente.`;
 }
@@ -97,8 +119,28 @@ No uses herramientas si ya tienes todo lo necesario: entrega directamente.`;
 /**
  * @param {{ searchKnowledge?: Function, brandContext?: object, readDB: Function, readTaskFile?: Function, agentsFor?: Function }} deps
  */
-export function createAgentTools({ searchKnowledge, brandContext, readDB, readTaskFile, agentsFor }) {
-    async function run(name, input, { task }) {
+export function createAgentTools({ searchKnowledge, brandContext, readDB, readTaskFile, agentsFor, connectHub }) {
+    /** Conexión al hub MCP con los permisos del agente (principal office:<id>). Una por corrida. */
+    async function openHub(agent) {
+        if (!connectHub) return null;
+        const conn = await connectHub(agent);
+        if (!conn?.client) return null;
+        try {
+            const { tools = [] } = await conn.client.listTools();
+            const list = tools.filter(t => !HUB_SKIP.has(t.name)).map(t => ({ name: t.name, description: t.description || '', inputSchema: t.inputSchema || {} }));
+            return {
+                tools: list,
+                policy: conn.policy || null,
+                call: (name, args) => conn.client.callTool({ name, arguments: args || {} }),
+                close: () => conn.close?.(),
+            };
+        } catch (err) {
+            await Promise.resolve(conn.close?.()).catch(() => {});
+            throw err;
+        }
+    }
+
+    async function run(name, input, { task, hub = null }) {
         if (input?._error) return { output: `Error: ${input._error}` };
         switch (name) {
             case 'buscar_memoria': {
@@ -168,9 +210,24 @@ export function createAgentTools({ searchKnowledge, brandContext, readDB, readTa
                 if (!q) return { output: 'Error: falta "pregunta".' };
                 return { output: 'Pregunta enviada al CEO. Tu trabajo queda en pausa hasta que responda.', control: { question: clip(q, 600) } };
             }
+            case 'ver_herramienta_hub':
+            case 'usar_hub': {
+                if (!hub) return { output: 'El hub no está disponible para ti en esta tarea.' };
+                const tool = hub.tools.find(t => t.name === input.herramienta);
+                if (!tool) return { output: `«${input.herramienta}» no existe o no tienes permiso. Puedes usar: ${hub.tools.map(t => t.name).join(', ') || 'ninguna'}.` };
+                if (name === 'ver_herramienta_hub') return { output: `${tool.name}: ${tool.description}\n\nArgumentos (JSON Schema):\n${clip(JSON.stringify(tool.inputSchema), 3000)}` };
+                const args = input.argumentos && typeof input.argumentos === 'object' ? input.argumentos : {};
+                const res = await hub.call(tool.name, args);
+                const sc = res?.structuredContent;
+                if (res?.isError) {
+                    const e = sc?.error || {};
+                    return { output: `Error del hub (${e.code || 'ERROR'}): ${e.message || res.content?.[0]?.text || 'sin detalle'}${e.hint ? `\nQué hacer: ${e.hint}` : ''}` };
+                }
+                return { output: clip(sc ? JSON.stringify(sc) : (res?.content || []).map(c => c.text || '').join('\n'), TOOL_OUTPUT_CHARS) };
+            }
             default:
                 return { output: `No existe la herramienta «${name}». Disponibles: ${TOOL_SPECS.map(t => t.name).join(', ')}.` };
         }
     }
-    return { run, specs: TOOL_SPECS };
+    return { run, openHub, specs: TOOL_SPECS };
 }

@@ -4,6 +4,7 @@
 import { runModel as defaultRunModel, providerEnabled, providerOf, PROVIDERS, resolveModel, defaultFallbacks } from './modelRunner.js';
 import { parseToolCalls, stripToolCalls, toolInstructions, toolSpec, MAX_TOOL_STEPS, MAX_CALLS_PER_STEP } from './agentTools.js';
 import { extractFileBlocks, FILE_BLOCK_INSTRUCTIONS, isTextMime } from './artifacts.js';
+import { normalizeCadence, nextRun, describeCadence } from './schedules.js';
 
 export const ONLINE_MS = 10 * 60 * 1000;
 export const OPEN_STATUSES = ['queued', 'in_progress', 'waiting_approval', 'review', 'blocked'];
@@ -41,7 +42,9 @@ function guessAvatar(name = '') {
  * @param artifacts  almacén de archivos (createArtifactStore); sin él las tareas no guardan archivos.
  * @param onApproved (task, files) => Promise<string[]> — indexa el entregable aprobado en el RAG y devuelve los ids.
  */
-export function createOfficeService({ readDB, writeDB, broadcast = () => {}, getHub = () => null, getAgents, buildPrompt, runModel = defaultRunModel, artifacts = null, onApproved = null, tools = null }) {
+export function createOfficeService({ readDB, writeDB, broadcast = () => {}, getHub = () => null, getAgents, buildPrompt, runModel = defaultRunModel, artifacts = null, onApproved = null, tools = null, notify = null }) {
+    // Aviso al teléfono (ntfy). Nunca debe romper el flujo de la oficina.
+    const ping = (kind, payload) => { try { notify?.send(kind, payload); } catch { /* sin aviso */ } };
     // Tareas internas corriendo ahora: taskId → token de la corrida (el kill switch lo invalida).
     const running = new Map();
 
@@ -328,6 +331,10 @@ export function createOfficeService({ readDB, writeDB, broadcast = () => {}, get
             ? `💸 ${agent.name} llegó a su presupuesto del mes ($${b.spent.toFixed(2)} de $${b.limit.toFixed(2)}): sus próximas tareas pedirán tu aprobación`
             : `⚠️ ${agent.name} va en ${b.pct}% de su presupuesto del mes ($${b.spent.toFixed(2)} de $${b.limit.toFixed(2)})`, '#f59e0b', agent.name);
         broadcast('budget_warning', { agentId, ...b });
+        ping('budget', {
+            title: level === 100 ? `💸 ${agent.name} llegó a su presupuesto` : `⚠️ ${agent.name} va en ${b.pct}% del presupuesto`,
+            message: `$${b.spent.toFixed(2)} de $${b.limit.toFixed(2)} este mes.${level === 100 ? ' Sus próximas tareas pedirán tu aprobación.' : ''}`,
+        });
     }
 
     // ─── Misiones en pasos: BART divide la misión y cada paso recibe lo del anterior ───
@@ -404,6 +411,7 @@ export function createOfficeService({ readDB, writeDB, broadcast = () => {}, get
         parent.result = steps.map(x => `## Paso ${x.missionStep}: ${x.task}\n_${x.assignedAgent}_\n\n${x.result || '(sin texto)'}`).join('\n\n---\n\n');
         history(parent, parent.currentStep);
         feed(db, `🏁 Misión completa: "${clip(parent.task, 60)}"`, '#10b981', 'BART (COO)');
+        ping('mission', { title: '🏁 Misión completa', message: `${clip(parent.task, 160)} · ${steps.length} pasos aprobados`, taskId: parent.id });
         return true;
     }
 
@@ -496,6 +504,7 @@ export function createOfficeService({ readDB, writeDB, broadcast = () => {}, get
                 });
             }
             feed(db, `💸 ${agent.name} llegó a su presupuesto del mes: "${clip(task.task, 50)}" espera tu aprobación`, '#f59e0b', agent.name);
+            ping('budget', { title: `💸 ${agent.name} necesita tu OK`, message: `Llegó a su presupuesto del mes. "${clip(task.task, 120)}" espera tu aprobación en Gobernanza.`, taskId });
             writeDB(db);
             broadcast('task_progressed', { task });
             return { started: false, reason: task.currentStep };
@@ -529,6 +538,8 @@ export function createOfficeService({ readDB, writeDB, broadcast = () => {}, get
             let question = null;
             const usage = { tokensIn: 0, tokensOut: 0, cost: 0, priced: false, attempts: 0 };
             let fallbackFrom = null;
+            let hub = null;
+            let hubCalls = 0;
             let failures = [];
             const cancelled = () => running.get(taskId) !== token;
             try {
@@ -550,12 +561,15 @@ export function createOfficeService({ readDB, writeDB, broadcast = () => {}, get
                 const inputs = filesForPrompt(task, provider);
                 if (context && inputs.names?.length) context.files = inputs.names;
                 const toolsOn = Boolean(tools) && agent.toolsEnabled !== false;
+                // Herramientas del hub MCP con los permisos de este agente (office:<id>), si el hub está.
+                if (toolsOn && tools.openHub) hub = await tools.openHub(agent).catch(() => null);
+                if (cancelled()) return;
                 const later = laterMissionSteps(readDB(), task);
                 const peers = toolsOn ? allAgents(readDB()).filter(a => a.id !== agent.id && a.kind === 'internal' && !later.some(st => st.agentId === a.id)).map(a => ({ id: a.id, name: a.name, role: a.role })) : [];
                 const missionNote = later.length
                     ? `MISIÓN EN PASOS: eres el paso ${task.missionStep} de ${task.missionTotal}. Lo que sigue ya está asignado y recibirá tu entrega: ${later.map(st => `${st.agentName} (${st.task})`).join(' → ')}. Entrega solo tu parte y no le pases trabajo a esos agentes.`
                     : '';
-                let transcript = [base, inputs.text, FILE_BLOCK_INSTRUCTIONS, missionNote, toolsOn ? toolInstructions({ agents: peers }) : ''].filter(Boolean).join('\n\n');
+                let transcript = [base, inputs.text, FILE_BLOCK_INSTRUCTIONS, missionNote, toolsOn ? toolInstructions({ agents: peers, hubTools: hub?.tools || [] }) : ''].filter(Boolean).join('\n\n');
                 let currentModel = model;
                 let final = '';
                 for (let turn = 0; ; turn++) {
@@ -576,11 +590,12 @@ export function createOfficeService({ readDB, writeDB, broadcast = () => {}, get
                     for (const call of calls.slice(0, MAX_CALLS_PER_STEP)) {
                         const spec = toolSpec(call.name);
                         const brief = clip(spec?.brief?.(call.input || {}) || '', 70);
+                        if (call.name === 'usar_hub') hubCalls++;
                         progress(taskId, `🔧 ${spec?.label || call.name}${brief ? `: ${brief}` : ''}`, Math.min(20 + turn * 12, 80));
                         const t0 = Date.now();
                         let res;
                         try {
-                            res = await tools.run(call.name, call.input || {}, { task: findTask(readDB(), taskId), agent });
+                            res = await tools.run(call.name, call.input || {}, { task: findTask(readDB(), taskId), agent, hub });
                         } catch (e) {
                             res = { output: `Error: ${e.message}` };
                         }
@@ -597,6 +612,8 @@ export function createOfficeService({ readDB, writeDB, broadcast = () => {}, get
                 outcome = { ok: true, text: final, model: currentModel, provider: providerOf(currentModel) };
             } catch (err) {
                 outcome = { ok: false, error: err.message, model, provider, failures: err.failures };
+            } finally {
+                Promise.resolve(hub?.close?.()).catch(() => {});
             }
 
             if (cancelled()) return; // cancelada por kill switch o reasignación
@@ -611,6 +628,7 @@ export function createOfficeService({ readDB, writeDB, broadcast = () => {}, get
                 ...(outcome.ok ? {} : { error: clip(outcome.error, 400) }),
                 ...(fallbackFrom ? { fallbackFrom } : {}),
                 ...(context ? { context } : {}),
+                ...(hubCalls ? { hubCalls } : {}),
                 ...(steps.length ? { steps, turns: Math.max(...steps.map(x => x.turn)) + (question ? 0 : 1) } : {}),
                 ...(allFailures.length ? { failures: allFailures.map(f => ({ model: f.model, error: clip(f.error, 200) })) } : {}),
             }];
@@ -636,12 +654,14 @@ export function createOfficeService({ readDB, writeDB, broadcast = () => {}, get
                     t.currentStep = `❓ ${agent.name} pregunta: ${clip(question, 140)}`;
                     history(t, t.currentStep);
                     feed(db2, `❓ ${agent.name} te pregunta en "${clip(t.task, 40)}": ${clip(question, 80)}`, '#f5b638', agent.name);
+                    ping('question', { title: `❓ ${agent.name} te pregunta`, message: `${clip(question, 400)}\n\nTarea: ${clip(t.task, 120)}`, taskId });
                 } else {
                     t.question = null;
                     t.progress = 90;
                     t.currentStep = 'Entregado: esperando tu revisión';
                     history(t, `${agent.name} entregó (${outcome.model}, ${Math.round((Date.now() - runStarted) / 100) / 10}s)`);
                     feed(db2, `📬 ${agent.name} entregó "${clip(t.task, 60)}" para revisión`, '#a855f7', agent.name);
+                    ping('delivered', { title: `📬 ${agent.name} entregó`, message: clip(t.task, 200), taskId });
                 }
             } else {
                 t.status = 'failed';
@@ -649,6 +669,7 @@ export function createOfficeService({ readDB, writeDB, broadcast = () => {}, get
                 t.currentStep = `Falló: ${clip(outcome.error, 140)}`;
                 history(t, t.currentStep);
                 feed(db2, `⚠️ ${agent.name} falló en "${clip(t.task, 50)}": ${clip(outcome.error, 80)}`, '#ef4444', agent.name);
+                ping('failed', { title: `⚠️ ${agent.name} falló`, message: `${clip(t.task, 120)}\n${clip(outcome.error, 200)}`, taskId });
             }
             releaseAgent(db2, agent.id, taskId);
             warnBudget(db2, agent.id);
@@ -986,6 +1007,7 @@ export function createOfficeService({ readDB, writeDB, broadcast = () => {}, get
                 task.error = error || 'El agente reportó que no pudo completarla';
                 task.currentStep = `Falló: ${clip(task.error, 140)}`;
                 feed(db, `⚠️ ${name} no pudo completar "${clip(task.task, 50)}"`, '#ef4444', name);
+                ping('failed', { title: `⚠️ ${name} no pudo completarla`, message: `${clip(task.task, 120)}\n${clip(task.error, 200)}`, taskId });
             } else {
                 if (!result?.trim()) throw Object.assign(new Error('Falta el resultado'), { status: 400 });
                 const { text, files } = extractFileBlocks(result);
@@ -995,6 +1017,7 @@ export function createOfficeService({ readDB, writeDB, broadcast = () => {}, get
                 task.progress = 90;
                 task.currentStep = 'Entregado: esperando revisión del CEO';
                 feed(db, `📬 ${name} entregó "${clip(task.task, 60)}" para revisión`, '#a855f7', name);
+                ping('delivered', { title: `📬 ${name} entregó`, message: clip(task.task, 200), taskId });
             }
             history(task, `${name}: ${task.currentStep}`);
             if (task.missionId) noteMissionStep(db, task);
@@ -1007,12 +1030,134 @@ export function createOfficeService({ readDB, writeDB, broadcast = () => {}, get
         return out;
     }
 
+    // ─── Tareas recurrentes: cada cierto tiempo se crea una tarea para un agente ───
+    const OPEN = new Set(OPEN_STATUSES);
+    function scheduleView(sc, db) {
+        const agent = allAgents(db).find(a => a.id === sc.agentId);
+        const last = sc.lastTaskId ? (db.agentTasks || []).find(t => t.id === sc.lastTaskId) : null;
+        return { ...sc, agentName: agent?.name || sc.agentId, agentKind: agent?.kind || null, cadenceText: describeCadence(sc.cadence), lastTaskStatus: last ? normalizeStatus(last.status) : null };
+    }
+
+    function listSchedules() {
+        const db = readDB();
+        return (db.officeSchedules || []).map(sc => scheduleView(sc, db));
+    }
+
+    function saveSchedule(input = {}, id = null) {
+        const db = readDB();
+        db.officeSchedules = db.officeSchedules || [];
+        const current = id ? db.officeSchedules.find(x => x.id === id) : null;
+        if (id && !current) throw Object.assign(new Error('No existe esa tarea recurrente'), { status: 404 });
+        const task = String(input.task ?? current?.task ?? '').trim();
+        if (!task) throw Object.assign(new Error('Describe qué tiene que hacer el agente'), { status: 400 });
+        const agentId = input.agentId ?? current?.agentId;
+        const agent = resolveTarget(db, agentId);
+        if (!agent) throw Object.assign(new Error(`No encontré al agente "${agentId}"`), { status: 404 });
+        const cadence = normalizeCadence({ ...(current?.cadence || {}), ...(input.cadence || {}) });
+        const enabled = input.enabled ?? current?.enabled ?? true;
+        const sc = {
+            ...(current || { id: `sched-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`, createdAt: nowIso(), runs: 0 }),
+            agentId: agent.id,
+            task: clip(task, 300),
+            description: clip(String(input.description ?? current?.description ?? ''), 4000),
+            account: input.account !== undefined ? (input.account || null) : (current?.account || null),
+            autoRun: input.autoRun ?? current?.autoRun ?? true,
+            cadence,
+            enabled: Boolean(enabled),
+            updatedAt: nowIso(),
+        };
+        const cadenceChanged = !current || JSON.stringify(current.cadence) !== JSON.stringify(cadence) || (!current.enabled && sc.enabled);
+        if (sc.enabled && (cadenceChanged || !sc.nextRunAt)) sc.nextRunAt = nextRun(cadence).toISOString();
+        if (!sc.enabled) sc.nextRunAt = null;
+        if (current) Object.assign(current, sc); else db.officeSchedules.unshift(sc);
+        feed(db, `🔁 ${current ? 'Actualizaste' : 'Nueva'} tarea recurrente para ${agent.name}: "${clip(task, 50)}" (${describeCadence(cadence).toLowerCase()})`, '#38bdf8', 'CEO');
+        writeDB(db);
+        return scheduleView(sc, db);
+    }
+
+    function removeSchedule(id) {
+        const db = readDB();
+        const before = (db.officeSchedules || []).length;
+        db.officeSchedules = (db.officeSchedules || []).filter(x => x.id !== id);
+        if (db.officeSchedules.length === before) throw Object.assign(new Error('No existe esa tarea recurrente'), { status: 404 });
+        writeDB(db);
+        return { ok: true };
+    }
+
+    /** Crea la tarea de una recurrente. `manual` = botón «Correr ahora» (no mueve la próxima fecha). */
+    function runSchedule(id, { manual = false, now = new Date() } = {}) {
+        const db = readDB();
+        const sc = (db.officeSchedules || []).find(x => x.id === id);
+        if (!sc) throw Object.assign(new Error('No existe esa tarea recurrente'), { status: 404 });
+        const agent = resolveTarget(db, sc.agentId);
+        if (!manual) sc.nextRunAt = sc.enabled ? nextRun(sc.cadence, now).toISOString() : null;
+        const prev = sc.lastTaskId ? (db.agentTasks || []).find(t => t.id === sc.lastTaskId) : null;
+        if (!agent) {
+            sc.lastError = `El agente ${sc.agentId} ya no existe`;
+            writeDB(db);
+            if (manual) throw Object.assign(new Error(sc.lastError), { status: 404 });
+            return { created: false, reason: sc.lastError };
+        }
+        if (!manual && prev && OPEN.has(normalizeStatus(prev.status))) {
+            // No se apilan copias: si la anterior sigue abierta, esta vuelta se salta.
+            sc.skipped = (sc.skipped || 0) + 1;
+            sc.lastSkippedAt = now.toISOString();
+            feed(db, `🔁 Se saltó "${clip(sc.task, 50)}": la de la vez anterior sigue abierta`, '#94a3b8', agent.name);
+            writeDB(db);
+            return { created: false, reason: 'La anterior sigue abierta' };
+        }
+        const stamp = new Date(now.getTime() - 5 * 3600 * 1000).toISOString().slice(0, 10);
+        const taskId = `atask-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
+        const at = now.toISOString();
+        const task = {
+            id: taskId,
+            task: `${sc.task} · ${stamp}`,
+            title: clip(sc.task, 50),
+            description: [sc.description, `Tarea recurrente (${describeCadence(sc.cadence).toLowerCase()}). Corresponde al ${stamp}.`].filter(Boolean).join('\n\n'),
+            status: 'queued',
+            assignedAgent: agent.name,
+            assignedAgentId: agent.id,
+            assignedKind: agent.kind,
+            model: agent.kind === 'internal' ? agent.model : null,
+            delegatedBy: manual ? 'CEO' : 'Programación',
+            scheduleId: sc.id,
+            ...(sc.account ? { account: sc.account } : {}),
+            companyId: '', companyName: 'ARRIVE Ecosystem',
+            runs: [], progress: 0,
+            history: [{ at, text: `Creada por la tarea recurrente "${clip(sc.task, 60)}"${manual ? ' (a mano)' : ''}` }],
+            currentStep: agent.kind === 'external' ? `Esperando que ${agent.name} la tome por MCP` : `En cola para ${agent.name}`,
+            createdAt: at,
+        };
+        db.agentTasks = [task, ...(db.agentTasks || [])];
+        sc.lastTaskId = taskId;
+        sc.lastRunAt = at;
+        sc.lastError = null;
+        sc.runs = (sc.runs || 0) + 1;
+        feed(db, `🔁 ${agent.name} recibió su tarea recurrente: "${clip(sc.task, 60)}"`, '#38bdf8', 'Programación');
+        writeDB(db);
+        broadcast('task_dispatched', { task, assignedAgent: agent.name });
+        ping('schedule', { title: `🔁 ${agent.name}: tarea recurrente`, message: clip(sc.task, 200), taskId });
+        if (agent.kind === 'internal' && sc.autoRun !== false) {
+            try { startInternalRun(taskId); } catch (e) { history(task, `No arrancó: ${e.message}`); }
+        }
+        return { created: true, taskId };
+    }
+
+    /** Lo llama el reloj del servidor cada minuto. Si el servidor estuvo apagado, corre una sola vez (no se pone al día). */
+    function tickSchedules(now = new Date()) {
+        const due = (readDB().officeSchedules || []).filter(sc => sc.enabled && sc.nextRunAt && Date.parse(sc.nextRunAt) <= now.getTime());
+        return due.map(sc => {
+            try { return { id: sc.id, ...runSchedule(sc.id, { now }) }; } catch (e) { return { id: sc.id, created: false, reason: e.message }; }
+        });
+    }
+
     return {
         externalAgents, allAgents, computeStats, startInternalRun, review, reassign, haltAll,
         tasksForAgent, claim, reportProgress, submitResult, isRunning: id => running.has(id),
         attachFiles, getFile, removeFile, createFollowUp,
         taskForAgent, readFileAsAgent, attachAsAgent, handoffAsAgent,
         listLessons, removeLesson,
+        listSchedules, saveSchedule, removeSchedule, runSchedule, tickSchedules,
         createMission, advanceMission, budgetStatus: agentId => { const db = readDB(); const a = (db.agents || []).find(x => x.id === agentId); return a ? budgetStatus(db, a) : null; },
     };
 }

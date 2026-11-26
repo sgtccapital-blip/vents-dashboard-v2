@@ -39,6 +39,8 @@ import { loadBrands } from './scripts/build-brands.mjs';
 import { createBrandContext } from './src/services/office/brandContext.js';
 import { routeMission } from './src/services/office/router.js';
 import { createAgentTools } from './src/services/office/agentTools.js';
+import { createNotifier, notifySettings, normalizeNotifyInput, randomTopic, NOTIFY_EVENTS } from './src/services/office/notify.js';
+import { EVERY as SCHEDULE_EVERY } from './src/services/office/schedules.js';
 
 dotenv.config();
 
@@ -992,8 +994,11 @@ const brandContext = createBrandContext({ brandsDir: path.join(__dirname, 'brand
 // Archivos de cada tarea (entregables, adjuntos, imágenes) junto a db.json, fuera de git.
 const officeArtifacts = createArtifactStore({ dir: process.env.OFFICE_FILES_DIR || path.join(path.dirname(DB_PATH), 'office-files') });
 
+// Avisos al teléfono (ntfy): canal en Oficina → Automatización o NTFY_TOPIC en .env.
+const officeNotifier = createNotifier({ readDB, log: msg => console.warn(`[office] ${msg}`) });
 const office = createOfficeService({
     readDB, writeDB,
+    notify: officeNotifier,
     broadcast: (type, payload) => broadcastOfficeEvent(type, payload),
     getHub: () => agentHub,
     getAgents: db => getOfficeAgents(db),
@@ -1006,6 +1011,8 @@ const office = createOfficeService({
         readDB,
         readTaskFile: f => officeArtifacts.readText(f),
         agentsFor: () => office.allAgents().filter(a => a.kind === 'internal'),
+        // Cliente MCP en proceso: el agente usa las herramientas del hub con su política office:<id>.
+        connectHub: agent => (agentHub?.connectInternal ? agentHub.connectInternal({ agent: agent.name, principal: `office:${agent.id}` }) : null),
     }),
     // Entregable aprobado → memoria del RAG, para que los demás agentes (internos y por MCP) lo encuentren.
     onApproved: async (task, files) => {
@@ -5268,6 +5275,37 @@ app.delete('/api/office/lessons/:id', officeRoute(req => office.removeLesson(req
 
 // Cuentas y marcas que BART reconoce en las misiones.
 app.get('/api/office/accounts', (req, res) => res.json({ accounts: brandContext.summary() }));
+
+// ─── Automatización: tareas recurrentes y avisos al teléfono ───
+app.get('/api/office/schedules', officeRoute(() => ({ schedules: office.listSchedules(), every: SCHEDULE_EVERY })));
+app.post('/api/office/schedules', officeRoute(req => ({ schedule: office.saveSchedule(req.body || {}) })));
+app.put('/api/office/schedules/:id', officeRoute(req => ({ schedule: office.saveSchedule(req.body || {}, req.params.id) })));
+app.delete('/api/office/schedules/:id', officeRoute(req => office.removeSchedule(req.params.id)));
+app.post('/api/office/schedules/:id/run', officeRoute(req => office.runSchedule(req.params.id, { manual: true })));
+// Reloj de las recurrentes: revisa cada minuto (hora de Panamá).
+setInterval(() => {
+    try { office.tickSchedules(); } catch (e) { console.warn('[office] recurrentes:', e.message); }
+}, 60 * 1000).unref();
+
+app.get('/api/office/notify', officeRoute(() => ({ settings: notifySettings(readDB()), events: NOTIFY_EVENTS, suggestedTopic: randomTopic() })));
+app.put('/api/office/notify', officeRoute(req => {
+    const db = readDB();
+    db.officeSettings = db.officeSettings || {};
+    db.officeSettings.notify = normalizeNotifyInput(req.body || {}, db.officeSettings.notify || {});
+    writeDB(db);
+    return { settings: notifySettings(db) };
+}));
+app.post('/api/office/notify/test', async (req, res) => {
+    try { res.json(await officeNotifier.test()); } catch (e) { res.status(e.status || 500).json({ error: e.message }); }
+});
+
+// Qué puede hacer un agente interno en el hub MCP (su política office:<id>).
+app.get('/api/office/agent/:id/hub-access', officeRoute(req => {
+    if (!agentHub?.internalPolicy) return { available: false };
+    const p = agentHub.internalPolicy(`office:${req.params.id}`);
+    const functions = Object.fromEntries(['data', 'documents', 'memory', 'code', 'exec', 'deploy'].map(fn => [fn, p[fn] || 'none']));
+    return { available: true, principal: `office:${req.params.id}`, source: p.source, revoked: p.source === 'revoked', functions };
+}));
 
 // Modelo de un agente interno (cada agente puede usar un proveedor distinto según su uso).
 app.post('/api/office/agent/:id/config', async (req, res) => {

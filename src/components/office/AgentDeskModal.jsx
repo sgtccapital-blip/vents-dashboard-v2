@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     X, Sparkles, Send, CheckSquare, BrainCircuit, Wrench,
     Activity, BarChart3, Sliders, Save, MessageSquare,
@@ -8,6 +8,27 @@ import { playOfficeClick, playOfficeTyping, playOfficeSuccess } from '../../lib/
 import ModelPicker from './ModelPicker';
 import AgentLessons from './AgentLessons';
 import './AiOffice.css';
+
+const HUB_FN = { data: 'Datos', documents: 'Documentos', memory: 'Memoria', code: 'Código', exec: 'Ejecución', deploy: 'Despliegue' };
+
+// Qué puede hacer el agente en el hub MCP (política office:<id>, se cambia en Agent & RAG → Permisos).
+function HubAccess({ agentId }) {
+    const [acc, setAcc] = useState(null);
+    useEffect(() => {
+        let alive = true;
+        fetch(`/api/office/agent/${agentId}/hub-access`).then(r => r.json()).then(d => { if (alive) setAcc(d); }).catch(() => {});
+        return () => { alive = false; };
+    }, [agentId]);
+    if (!acc?.available) return null;
+    return (
+        <small style={{ marginTop: 6 }}>
+            También usa el hub del Command Center {acc.revoked ? <b style={{ color: '#fca5a5' }}>(acceso revocado)</b> : 'con estos permisos'}; se cambian en <b>Agent &amp; RAG → Agentes conectados → Permisos</b>:
+            <span className="hub-acc">
+                {Object.entries(acc.functions).map(([fn, lvl]) => <span key={fn} className={lvl !== 'none' ? 'on' : ''}>{HUB_FN[fn] || fn}: {lvl === 'none' ? 'no' : lvl}</span>)}
+            </span>
+        </small>
+    );
+}
 
 function BudgetMeter({ spent, budget }) {
     const limit = Number(budget) > 0 ? Number(budget) : null;
@@ -840,6 +861,7 @@ export default function AgentDeskModal({
                                 <span>
                                     <b>Puede usar herramientas</b>
                                     <small>Buscar en la memoria, leer archivos y líneas de marca, consultar eventos y proyectos, proponer traspasos y preguntarte. Trabaja en varios pasos (hasta 6).</small>
+                                    {toolsOn && <HubAccess agentId={agent.id} />}
                                 </span>
                             </label>
 

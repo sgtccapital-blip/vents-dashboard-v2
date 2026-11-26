@@ -9,6 +9,7 @@ import OfficeControlCenter from '../components/office/OfficeControlCenter';
 import OfficeTaskDrawer from '../components/office/OfficeTaskDrawer';
 import { uploadTaskFiles } from '../components/office/officeUi';
 import OfficeMetricsView from '../components/office/OfficeMetricsView';
+import OfficeAutomation from '../components/office/OfficeAutomation';
 import { ConnectAgentModal, ExternalAgentModal } from '../components/office/OfficeAgentConnect';
 import {
     Building2, Users, Layers, BarChart2, ShieldAlert, Sparkles,
@@ -25,7 +26,16 @@ export default function AiOfficeHQ() {
 
     // View mode: 'control' | 'office' | 'inbox' | 'strategic' | 'orgchart' | 'metrics' | 'approvals'
     const [viewMode, setViewMode] = useState('control');
-    const [selectedTaskId, setSelectedTaskId] = useState(null);
+    // ?task=<id> (enlace de un aviso al teléfono) abre esa tarea directamente.
+    const [selectedTaskId, setSelectedTaskId] = useState(() => {
+        const params = new URLSearchParams(window.location.search);
+        const id = params.get('task');
+        if (id) {
+            params.delete('task');
+            window.history.replaceState(null, '', `${window.location.pathname}${params.size ? `?${params}` : ''}`);
+        }
+        return id;
+    });
     const [selectedExternal, setSelectedExternal] = useState(null);
     const [isConnectOpen, setIsConnectOpen] = useState(false);
     const [notice, setNotice] = useState('');
@@ -731,6 +741,11 @@ export default function AiOfficeHQ() {
                     models={officeState.models}
                     onOpenAgent={openAgent}
                 />
+            )}
+
+            {/* VIEW MODE: AUTOMATIZACIÓN (tareas recurrentes y avisos al teléfono) */}
+            {viewMode === 'auto' && (
+                <OfficeAutomation agents={officeState.agents} onOpenTask={t => setSelectedTaskId(t.id)} />
             )}
 
             {/* VIEW MODE 5: APPROVALS GOBERNANZA */}

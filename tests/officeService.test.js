@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { createOfficeService } from '../src/services/office/officeService.js';
 import { createArtifactStore, extractFileBlocks } from '../src/services/office/artifacts.js';
-import { createAgentTools, parseToolCalls } from '../src/services/office/agentTools.js';
+import { createAgentTools, parseToolCalls, toolInstructions } from '../src/services/office/agentTools.js';
 
 function setup({ run, artifacts = null, onApproved = null }) {
     let db = {
@@ -581,4 +581,165 @@ test('misiones: un traspaso al agente del paso siguiente no se duplica', async (
     const echoTasks = db().agentTasks.filter(t => t.assignedAgentId === 'agent-echo');
     assert.equal(echoTasks.length, 1, 'solo el paso 2 de la misión');
     assert.match(db().agentTasks.find(t => t.id === steps[0].id).proposedHandoffs[0].skipped, /paso 2/);
+});
+
+// ─── Fase 3: recurrentes, avisos al teléfono y hub MCP para agentes internos ───
+test('recurrentes: próxima ejecución en hora de Panamá para cada frecuencia', async () => {
+    const { nextRun, normalizeCadence, describeCadence } = await import('../src/services/office/schedules.js');
+    // Martes 25-nov-2026 08:00 en Panamá = 13:00 UTC
+    const from = new Date('2026-11-25T13:00:00Z');
+    assert.equal(nextRun(normalizeCadence({ every: 'daily', time: '09:00' }), from).toISOString(), '2026-11-25T14:00:00.000Z');
+    assert.equal(nextRun(normalizeCadence({ every: 'daily', time: '07:30' }), from).toISOString(), '2026-11-26T12:30:00.000Z');
+    // Viernes 27 a las 18:00 → la siguiente de lunes a viernes es el lunes 30
+    assert.equal(nextRun(normalizeCadence({ every: 'weekdays', time: '09:00' }), new Date('2026-11-27T23:00:00Z')).toISOString(), '2026-11-30T14:00:00.000Z');
+    // Semanal lunes y jueves desde el miércoles 25 → jueves 26
+    assert.equal(nextRun(normalizeCadence({ every: 'weekly', time: '09:00', days: [4, 1] }), from).toISOString(), '2026-11-26T14:00:00.000Z');
+    // Día 31 en febrero → último día del mes
+    assert.equal(nextRun(normalizeCadence({ every: 'monthly', time: '09:00', monthDay: 31 }), new Date('2027-02-01T00:00:00Z')).toISOString(), '2027-02-28T14:00:00.000Z');
+    // A las 23:30 de Panamá ya es el día siguiente en UTC: no debe saltarse el día
+    assert.equal(nextRun(normalizeCadence({ every: 'daily', time: '23:30' }), from).toISOString(), '2026-11-26T04:30:00.000Z');
+    assert.equal(describeCadence(normalizeCadence({ every: 'weekly', time: '9:05', days: [1, 4] })), 'Cada lunes y jueves a las 09:05');
+    assert.throws(() => normalizeCadence({ every: 'weekly', days: [] }), /al menos un día/);
+    assert.throws(() => normalizeCadence({ every: 'daily', time: '25:00' }), /HH:MM/);
+    assert.throws(() => normalizeCadence({ every: 'hourly' }), /Frecuencia no válida/);
+});
+
+test('recurrentes: el reloj crea la tarea, arranca sola y no apila copias si la anterior sigue abierta', async () => {
+    process.env.GEMINI_API_KEY = 'test';
+    const { office, db } = setup2({ tasks: [], replies: ['Resumen listo', 'Otro'] });
+    const sc = office.saveSchedule({ agentId: 'agent-echo', task: 'Resumen del lunes', cadence: { every: 'daily', time: '09:00' } });
+    assert.ok(sc.nextRunAt);
+    assert.equal(sc.cadenceText, 'Todos los días a las 09:00');
+    assert.deepEqual(office.tickSchedules(new Date(Date.parse(sc.nextRunAt) - 1000)), [], 'antes de la hora no hace nada');
+
+    const due = new Date(Date.parse(sc.nextRunAt) + 1000);
+    const [r] = office.tickSchedules(due);
+    assert.equal(r.created, true);
+    const t = db().agentTasks.find(x => x.id === r.taskId);
+    assert.equal(t.scheduleId, sc.id);
+    assert.equal(t.delegatedBy, 'Programación');
+    await until(() => db().agentTasks.find(x => x.id === r.taskId).status === 'review');
+    const after = db().officeSchedules[0];
+    assert.equal(Date.parse(after.nextRunAt) - Date.parse(sc.nextRunAt), 24 * 3600 * 1000, 'la próxima pasa al día siguiente');
+
+    // La de ayer sigue en revisión → la vuelta de hoy se salta
+    const [r2] = office.tickSchedules(new Date(Date.parse(after.nextRunAt) + 1000));
+    assert.equal(r2.created, false);
+    assert.equal(db().officeSchedules[0].skipped, 1);
+    // «Correr ahora» sí crea aunque haya una abierta y no mueve la próxima fecha
+    const before = db().officeSchedules[0].nextRunAt;
+    assert.equal(office.runSchedule(sc.id, { manual: true }).created, true);
+    assert.equal(db().officeSchedules[0].nextRunAt, before);
+
+    office.saveSchedule({ enabled: false }, sc.id);
+    assert.equal(db().officeSchedules[0].nextRunAt, null);
+    office.removeSchedule(sc.id);
+    assert.equal(db().officeSchedules.length, 0);
+});
+
+test('avisos: ntfy solo para los eventos activos, con enlace a la tarea, sin repetir y sin romper nada si falla', async () => {
+    const { createNotifier, notifySettings, normalizeNotifyInput } = await import('../src/services/office/notify.js');
+    let db = { officeSettings: {} };
+    const sent = [];
+    let fail = false;
+    const n = createNotifier({
+        readDB: () => db, env: {}, publicUrl: () => 'https://cc.example.test/',
+        fetchImpl: async (url, opts) => { sent.push({ url, body: JSON.parse(opts.body), headers: opts.headers }); return fail ? { ok: false, status: 429 } : { ok: true }; },
+    });
+    assert.equal(notifySettings(db, {}).enabled, false);
+    assert.equal((await n.send('delivered', { title: 'x', taskId: 't1' })).skipped, 'desactivado');
+
+    db.officeSettings.notify = normalizeNotifyInput({ topic: 'arrive-office-abc123', enabled: true });
+    await n.send('delivered', { title: '📬 Echo entregó', message: 'Hooks', taskId: 't1' });
+    assert.equal(sent.length, 1);
+    assert.equal(sent[0].url, 'https://ntfy.sh/');
+    assert.equal(sent[0].body.topic, 'arrive-office-abc123');
+    assert.equal(sent[0].body.click, 'https://cc.example.test/office?task=t1');
+    assert.equal(sent[0].body.actions[0].label, 'Abrir tarea');
+    assert.equal((await n.send('delivered', { title: '📬 Echo entregó', taskId: 't1' })).skipped, 'repetido');
+    assert.equal((await n.send('schedule', { title: 'r', taskId: 't2' })).skipped, 'desactivado', 'recurrentes apagado por defecto');
+
+    db.officeSettings.notify = normalizeNotifyInput({ events: { failed: false } }, db.officeSettings.notify);
+    assert.equal((await n.send('failed', { title: 'f', taskId: 't3' })).skipped, 'desactivado');
+
+    fail = true;
+    const r = await n.send('question', { title: 'q', taskId: 't4' });
+    assert.match(r.error, /429/);
+    await assert.rejects(() => n.test(), /No se pudo enviar: ntfy respondió 429/);
+    assert.throws(() => normalizeNotifyInput({ topic: 'a b' }), /6 a 64/);
+    assert.throws(() => normalizeNotifyInput({ server: 'ftp://x' }), /URL http/);
+});
+
+test('avisos: la oficina avisa al entregar y al preguntar', async () => {
+    process.env.GEMINI_API_KEY = 'test';
+    const pings = [];
+    let db = {
+        agents: [{ id: 'agent-echo', name: 'Echo', model: 'gemini-3.8-flash', fallbackModels: [] }],
+        agentTasks: [{ id: 't1', task: 'Hooks', assignedAgentId: 'agent-echo', assignedKind: 'internal', status: 'queued' }, { id: 't2', task: 'Copy', assignedAgentId: 'agent-echo', assignedKind: 'internal', status: 'queued' }],
+    };
+    const replies = ['Listo', '<<<HERRAMIENTA preguntar_al_ceo>>>\n{"pregunta": "¿Qué fecha?"}\n<<<FIN HERRAMIENTA>>>'];
+    const office = createOfficeService({
+        readDB: () => structuredClone(db), writeDB: d => { db = structuredClone(d); }, getAgents: d => d.agents,
+        buildPrompt: async () => 'P', runModel: async ({ model }) => ({ text: replies.shift(), model, tokensIn: 1, tokensOut: 1 }),
+        tools: createAgentTools({ readDB: () => db, agentsFor: () => db.agents }),
+        notify: { send: (kind, p) => pings.push({ kind, ...p }) },
+    });
+    office.startInternalRun('t1');
+    await until(() => db.agentTasks[0].status === 'review');
+    office.startInternalRun('t2');
+    await until(() => db.agentTasks[1].status === 'review');
+    assert.deepEqual(pings.map(p => [p.kind, p.taskId]), [['delivered', 't1'], ['question', 't2']]);
+    assert.match(pings[1].message, /¿Qué fecha\?/);
+});
+
+test('hub MCP: el agente interno ve solo las herramientas permitidas, las usa y la conexión se cierra', async () => {
+    process.env.GEMINI_API_KEY = 'test';
+    const calls = [];
+    let closed = 0;
+    const fakeClient = {
+        listTools: async () => ({ tools: [
+            { name: 'query_records', description: 'Consulta registros de un módulo. Con filtros y orden.', inputSchema: { type: 'object', properties: { module: { type: 'string' } } } },
+            { name: 'get_my_office_tasks', description: 'Para agentes externos.' },
+        ] }),
+        callTool: async ({ name, arguments: args }) => {
+            calls.push({ name, args });
+            if (args.module === 'secreto') return { isError: true, structuredContent: { error: { code: 'PERMISSION_DENIED', message: 'Necesitas data:write', hint: 'Pide permiso al CEO' } } };
+            return { structuredContent: { items: [{ id: 'p1', name: 'Hotel Central' }] } };
+        },
+    };
+    const prompts = [];
+    let db = {
+        agents: [{ id: 'agent-atlas', name: 'Atlas', model: 'gemini-3.8-flash', fallbackModels: [] }],
+        agentTasks: [{ id: 't1', task: 'Proyectos activos', assignedAgentId: 'agent-atlas', assignedKind: 'internal', status: 'queued' }],
+    };
+    const replies = [
+        '<<<HERRAMIENTA usar_hub>>>\n{"herramienta": "query_records", "argumentos": {"module": "projects"}}\n<<<FIN HERRAMIENTA>>>\n<<<HERRAMIENTA usar_hub>>>\n{"herramienta": "query_records", "argumentos": {"module": "secreto"}}\n<<<FIN HERRAMIENTA>>>\n<<<HERRAMIENTA usar_hub>>>\n{"herramienta": "deploy"}\n<<<FIN HERRAMIENTA>>>',
+        'Hay 1 proyecto: Hotel Central',
+    ];
+    const principals = [];
+    const office = createOfficeService({
+        readDB: () => structuredClone(db), writeDB: d => { db = structuredClone(d); }, getAgents: d => d.agents,
+        buildPrompt: async () => 'P',
+        runModel: async ({ model, prompt }) => { prompts.push(prompt); return { text: replies.shift(), model }; },
+        tools: createAgentTools({
+            readDB: () => db, agentsFor: () => db.agents,
+            connectHub: async agent => { principals.push(`office:${agent.id}`); return { client: fakeClient, close: async () => { closed++; } }; },
+        }),
+    });
+    office.startInternalRun('t1');
+    await until(() => db.agentTasks[0].status === 'review');
+    assert.deepEqual(principals, ['office:agent-atlas']);
+    assert.match(prompts[0], /HERRAMIENTAS DEL HUB QUE TIENES PERMITIDAS[\s\S]*- query_records: Consulta registros de un módulo\./);
+    assert.doesNotMatch(prompts[0], /get_my_office_tasks/);
+    assert.match(prompts[1], /Hotel Central/);
+    assert.match(prompts[1], /Error del hub \(PERMISSION_DENIED\): Necesitas data:write\nQué hacer: Pide permiso al CEO/);
+    assert.match(prompts[1], /«deploy» no existe o no tienes permiso/);
+    assert.equal(calls.length, 2);
+    assert.equal(db.agentTasks[0].runs[0].hubCalls, 3);
+    assert.equal(closed, 1, 'cierra la conexión al terminar');
+});
+
+test('hub MCP: sin hub, el agente no ve las herramientas del hub', () => {
+    const txt = toolInstructions({ agents: [] });
+    assert.doesNotMatch(txt, /usar_hub|ver_herramienta_hub/);
 });
