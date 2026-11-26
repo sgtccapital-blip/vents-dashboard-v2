@@ -1,14 +1,14 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
     Columns3, PenTool, LayoutTemplate, BookOpen, CheckCircle2,
-    Clock, CalendarDays, BarChart3, Focus, Bot, Plus,
-    Search, Zap, Play, Pause, RotateCcw, PanelRightClose,
+    Clock, CalendarDays, BarChart3, Focus, Plus,
+    Search, Play, Pause, RotateCcw, PanelRightClose,
     PanelRightOpen, StickyNote, Target, Check, AlertCircle,
-    Sparkles, Command, ChevronDown, ChevronRight, ChevronsUp, ChevronsDown,
+    Command, ChevronDown, ChevronRight, ChevronsUp, ChevronsDown,
     ListChecks, Flame, ArrowRight, MessageSquare
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { isDone, isActiveEvent } from '../lib/status';
+import { isDone } from '../lib/status';
 
 import EventKanbanBoard from '../components/EventKanbanBoard';
 import EventCanvas from '../components/EventCanvas';
@@ -18,7 +18,6 @@ import EventTimeline from '../components/EventTimeline';
 import EventAnalytics from '../components/EventAnalytics';
 import EventFocusMode from '../components/EventFocusMode';
 import EventCalendar from '../components/EventCalendar';
-import OpenCloudChat from '../components/OpenCloudChat';
 import EventDmSpam from '../components/EventDmSpam';
 
 // ─── Helpers ──────────────────────────────────────────────────────────
@@ -62,26 +61,6 @@ const GROUP_COLORS = {
     schedule: 'active-orange',
 };
 
-// ─── Progress Ring Component ──────────────────────────────────────────
-function ProgressRing({ percent, size = 52, stroke = 4, color = 'var(--accent-primary)' }) {
-    const r = (size - stroke) / 2;
-    const circ = 2 * Math.PI * r;
-    const offset = circ - (percent / 100) * circ;
-    return (
-        <div className="ws2-progress-ring" style={{ width: size, height: size }}>
-            <svg width={size} height={size}>
-                <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={stroke} />
-                <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={stroke}
-                    strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round"
-                    style={{ transition: 'stroke-dashoffset 0.8s cubic-bezier(0.4, 0, 0.2, 1)' }} />
-            </svg>
-            <span className="ws2-progress-ring-text" style={{ fontSize: size > 48 ? '13px' : '10px' }}>
-                {Math.round(percent)}%
-            </span>
-        </div>
-    );
-}
-
 // ═══════════════════════════════════════════════════════════════════════
 // ─── WORKSPACE 2.0 ───────────────────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════════════
@@ -93,28 +72,17 @@ export default function Workspace() {
         try { return localStorage.getItem('ws2_lastView') || 'kanban'; }
         catch { return 'kanban'; }
     });
-    const [showChat, setShowChat] = useState(false);
     const [showSidebar, setShowSidebar] = useState(() => {
         try { return localStorage.getItem('ws2_sidebar') !== 'false'; }
         catch { return true; }
     });
-    const [quickInput, setQuickInput] = useState('');
-    const [quickContext, setQuickContext] = useState('project_proj-arrive-agency');
-    const [quickStatus, setQuickStatus] = useState('pending');
-    const [quickDate, setQuickDate] = useState('');
-
-    const quickInputRef = useRef(null);
 
     const safeTasks = Array.isArray(tasks) ? tasks : [];
     const pendingTasks = safeTasks.filter(t => !isDone(t));
     const completedTasks = safeTasks.filter(isDone);
     const pendingCount = pendingTasks.length;
-    const completedCount = completedTasks.length;
     const totalTasks = safeTasks.length;
-    const completionPercent = totalTasks > 0 ? (completedCount / totalTasks) * 100 : 0;
-    const highPriorityTasks = pendingTasks.filter(t => t.priority === 'high').slice(0, 5);
-    const focusTasks = pendingTasks.slice(0, 5);
-    const activeEvents = (events || []).filter(isActiveEvent);
+    const completionPercent = totalTasks > 0 ? (completedTasks.length / totalTasks) * 100 : 0;
 
     // ─── Save last view ────────────────────────────────────
     useEffect(() => {
@@ -131,10 +99,6 @@ export default function Workspace() {
     // ─── Keyboard shortcuts ────────────────────────────────
     useEffect(() => {
         const handler = (e) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-                e.preventDefault();
-                quickInputRef.current?.focus();
-            }
             if (!e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
                 const tab = TABS.find(t => t.key === e.key);
                 if (tab && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA' && document.activeElement?.tagName !== 'SELECT') {
@@ -150,59 +114,6 @@ export default function Workspace() {
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
     }, []);
-
-
-
-    // ─── Quick Add Handler ─────────────────────────────────
-    const handleQuickAdd = () => {
-        const val = quickInput.trim();
-        if (!val) return;
-
-        if (val.startsWith('n:') || val.startsWith('N:')) {
-            const noteText = val.slice(2).trim();
-            if (noteText) {
-                addNote({ id: `qn-${Date.now()}`, text: noteText, date: new Date().toISOString().split('T')[0] });
-                addActivity(`📝 Quick note: "${noteText.substring(0, 30)}..."`, 'var(--accent-yellow)', 'global');
-            }
-        } else {
-            const text = val.startsWith('t:') || val.startsWith('T:') ? val.slice(2).trim() : val;
-            if (text) {
-                let pId = null, pName = '', eId = null, eName = '';
-                if (quickContext.startsWith('project_')) {
-                    pId = quickContext.replace('project_', '');
-                    const proj = (projects || []).find(p => p.id === pId);
-                    pName = proj?.name || (pId === 'proj-arrive-agency' ? 'ARRIVE AGENCY' : pId);
-                } else if (quickContext.startsWith('event_')) {
-                    eId = quickContext.replace('event_', '');
-                    const ev = (events || []).find(e => e.id === eId);
-                    eName = ev?.name || '';
-                } else {
-                    pId = 'proj-arrive-agency';
-                    pName = 'ARRIVE AGENCY';
-                }
-
-                addTask({
-                    id: `qt-${Date.now()}`,
-                    text,
-                    status: quickStatus,
-                    done: quickStatus === 'done',
-                    projectId: pId,
-                    projectName: pName,
-                    project: pName,
-                    agency: pId === 'proj-arrive-agency' ? 'arrive' : undefined,
-                    eventId: eId || '',
-                    eventName: eName || '',
-                    priority: 'medium',
-                    due: quickDate,
-                    createdAt: new Date().toISOString()
-                });
-                addActivity(`⚡ Quick task (${pName || eName}): "${text.substring(0, 30)}..."`, 'var(--accent-primary)', 'global');
-            }
-        }
-        setQuickInput('');
-        setQuickDate('');
-        setQuickStatus('pending');
-    };
 
     // ─── Tab counts ────────────────────────────────────────
     const getTabCount = (id) => {
@@ -246,118 +157,6 @@ export default function Workspace() {
 
             {/* Ambient Background Glow */}
             <div className="ws2-ambient" style={{ background: ambientColor }} />
-
-            {/* ═══ COMMAND BANNER ═══════════════════════════════ */}
-            <div className="ws2-command-banner" style={{ position: 'relative', zIndex: 1 }}>
-                <div className="ws2-greeting">
-                    <div className="ws2-greeting-text">
-                        <Sparkles size={18} style={{ display: 'inline', marginRight: '8px', color: 'var(--accent-primary)', verticalAlign: 'text-bottom' }} />
-                        Mission Control
-                    </div>
-                    <div className="ws2-greeting-sub">
-                        {activeEvents.length} eventos activos · {pendingCount} tareas pendientes · {completedCount} completadas
-                    </div>
-                </div>
-                <div className="ws2-banner-metrics">
-                    <ProgressRing percent={completionPercent} size={38} stroke={3} color={completionPercent >= 60 ? 'var(--accent-green)' : 'var(--accent-primary)'} />
-                    <div className="ws2-banner-metric">
-                        <div className="ws2-banner-metric-value" style={{ color: pendingCount > 0 ? 'var(--accent-yellow)' : 'var(--accent-green)' }}>{pendingCount}</div>
-                        <div className="ws2-banner-metric-label">Pending</div>
-                    </div>
-                    <div className="ws2-banner-metric">
-                        <div className="ws2-banner-metric-value" style={{ color: 'var(--accent-green)' }}>{completedCount}</div>
-                        <div className="ws2-banner-metric-label">Done</div>
-                    </div>
-                    <div className="ws2-banner-metric">
-                        <div className="ws2-banner-metric-value" style={{ color: 'var(--accent-primary)' }}>{activeEvents.length}</div>
-                        <div className="ws2-banner-metric-label">Events</div>
-                    </div>
-
-                    <button
-                        onClick={() => setShowChat(true)}
-                        className="btn"
-                        style={{
-                            display: 'flex', alignItems: 'center', gap: '8px',
-                            padding: '6px 14px', borderRadius: '10px', fontSize: '13px',
-                            fontWeight: 600,
-                            background: 'linear-gradient(135deg, rgba(139,92,246,0.2), rgba(6,182,212,0.2))',
-                            border: '1px solid rgba(139,92,246,0.35)',
-                            color: '#c4b5fd',
-                            cursor: 'pointer',
-                            marginLeft: '8px'
-                        }}
-                        title="Abrir panel lateral de OpenClaw Super Agent"
-                    >
-                        <Bot size={16} /> OpenClaw Chat
-                    </button>
-                </div>
-            </div>
-
-            {/* ═══ QUICK ADD BAR ════════════════════════════════ */}
-            <div className="ws2-quick-add" style={{ position: 'relative', zIndex: 1, display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <Zap size={16} style={{ color: 'var(--accent-primary)', flexShrink: 0 }} />
-                <input
-                    ref={quickInputRef}
-                    className="ws2-quick-add-input"
-                    placeholder="Quick add... type to add task, or n: for note"
-                    value={quickInput}
-                    onChange={(e) => setQuickInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleQuickAdd()}
-                    style={{ flex: 1 }}
-                />
-                
-                {/* Context: Agency / Project / Event */}
-                <select
-                    className="form-select"
-                    value={quickContext}
-                    onChange={e => setQuickContext(e.target.value)}
-                    style={{
-                        padding: '6px 10px', fontSize: '12px', background: 'var(--bg-base)',
-                        border: 'none', borderRadius: 'var(--radius-md)', outline: 'none',
-                        color: quickContext.includes('arrive') ? '#fbbf24' : 'var(--text-primary)',
-                        fontWeight: 600, maxWidth: '160px', cursor: 'pointer'
-                    }}
-                >
-                    <optgroup label="🌟 Agencia & Proyectos">
-                        <option value="project_proj-arrive-agency">🌟 ARRIVE AGENCY</option>
-                        {(projects || []).filter(p => p.id !== 'proj-arrive-agency').map(p => (
-                            <option key={`ws-p-${p.id}`} value={`project_${p.id}`}>🚀 {p.name}</option>
-                        ))}
-                    </optgroup>
-                    <optgroup label="🎪 Eventos & Venues">
-                        {(events || []).map(e => (
-                            <option key={`ws-e-${e.id}`} value={`event_${e.id}`}>{e.icon || '🍸'} {e.name}</option>
-                        ))}
-                    </optgroup>
-                </select>
-
-                {/* Status menu next to the Quick Add (nwxt week / new task) */}
-                <select
-                    className="form-select"
-                    value={quickStatus}
-                    onChange={e => setQuickStatus(e.target.value)}
-                    style={{ padding: '6px 10px', fontSize: '12px', background: 'var(--bg-base)', border: 'none', borderRadius: 'var(--radius-md)', outline: 'none' }}
-                >
-                    <option value="pending">Pending</option>
-                    <option value="in-progress">In Progress</option>
-                    <option value="done">Done</option>
-                </select>
-                
-                {/* Date assignment for the calendar */}
-                <input
-                    type="date"
-                    className="form-input"
-                    value={quickDate}
-                    onChange={e => setQuickDate(e.target.value)}
-                    style={{ padding: '6px 10px', fontSize: '12px', background: 'var(--bg-base)', color: quickDate ? 'var(--text-primary)' : 'var(--text-tertiary)', border: 'none', borderRadius: 'var(--radius-md)', outline: 'none' }}
-                />
-
-                <div className="ws2-quick-add-hints" style={{ marginLeft: '8px' }}>
-                    <span className="ws2-hint-tag" onClick={() => setQuickInput('t: ')}>t: task</span>
-                    <span className="ws2-hint-tag" onClick={() => setQuickInput('n: ')}>n: note</span>
-                    <span className="ws2-kbd">⌘K</span>
-                </div>
-            </div>
 
             {/* ═══ TABS ════════════════════════════════════════ */}
             <div className="ws2-tabs-container" style={{ position: 'relative', zIndex: 1 }}>
@@ -407,33 +206,7 @@ export default function Workspace() {
                 <div className="ws2-main">
                     {renderView()}
                 </div>
-
-
             </div>
-
-            {/* ═══ Side Drawer: OpenClaw Chat (Synced with DashboardCopilot) ══════ */}
-            <div style={{
-                position: 'fixed',
-                top: 0, right: 0, bottom: 0,
-                width: '400px',
-                background: 'var(--bg-canvas)',
-                borderLeft: '1px solid var(--border-subtle)',
-                boxShadow: '-8px 0 32px rgba(0,0,0,0.5)',
-                zIndex: 50,
-                transform: showChat ? 'translateX(0)' : 'translateX(100%)',
-                transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-                display: 'flex',
-                flexDirection: 'column'
-            }}>
-                <OpenCloudChat onClose={() => setShowChat(false)} />
-            </div>
-
-            {showChat && (
-                <div
-                    onClick={() => setShowChat(false)}
-                    style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', zIndex: 45 }}
-                />
-            )}
         </div>
     );
 }

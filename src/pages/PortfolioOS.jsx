@@ -1,135 +1,59 @@
 import { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
+import { isDone } from '../lib/status';
 import {
     Briefcase, Target, ListTodo, GitPullRequest, Radio, Sparkles,
     CheckCircle2, Circle, Clock, AlertTriangle, ArrowRight, Plus,
     Search, Filter, Layers, Zap, ExternalLink, Calendar, User,
     FileText, Check, ShieldAlert, Cpu, Trash2, Edit3, X, ChevronRight,
-    TrendingUp, MessageSquare, Send, BookOpen, AlertCircle
+    TrendingUp, MessageSquare, Send, BookOpen, AlertCircle, Link2, CalendarDays,
+    Rocket, CheckCircle
 } from 'lucide-react';
 
-const CORE_PROJECTS_META = [
-    {
-        id: 'proj-arrive-agency',
-        name: 'ARRIVE AGENCY',
-        tagline: 'Creative, Talent, UGC & Nightlife Experiences (arriveservices.com)',
-        icon: '🌟',
-        color: '#fbbf24',
-        gradient: 'linear-gradient(135deg, rgba(251, 191, 36, 0.18), rgba(251, 191, 36, 0.03))',
-        border: 'rgba(251, 191, 36, 0.4)',
-        priority: 'critical',
-        status: 'active',
-        statusLabel: 'Agencia Matriz / Activa (2026)',
-        objective: 'Agencia de marketing matriz (https://arriveservices.com): 3 divisiones operativas — ARRIVE Services (marketing & creative), ARRIVE Models (UGC, creadoras y convocatorias de cenas VIP de chicas en restaurantes de Panamá) y ARRIVE Nightlife (producción semanal en Terraplén Rooftop, Furia y Piano Bar) + ARRIVE Studio.',
-        nextAction: 'Coordinar con hostess de relaciones públicas las convocatorias semanales de cenas y entrega de contenido para marcas.',
-        blockers: 'Sincronizar el pipeline de aprobación de invitaciones vía WhatsApp para cenas.',
-        lead: 'ARRIVE Master Director & OpenClaw',
-        kpi: '25 modelos activas + 3 cenas semanales con asistencia 100% confirmada',
-        progress: 88,
-        defaultTasks: [
-            { id: 't-arr-1', text: 'Estandarizar invitaciones 1 a 1 de chicas a cenas VIP en Terraplén y Furia', block: 'operacion', priority: 'critical', owner: 'PR Hostess', done: true, due: '2026-10-05' },
-            { id: 't-arr-2', text: 'Pipeline de Reels, Carruseles y TikToks para marcas aliadas (ARRIVE Services)', block: 'marketing', priority: 'high', owner: 'Social Content', done: false, due: '2026-10-15' },
-            { id: 't-arr-3', text: 'Lanzar Studio Day mensual de producción con modelos y fotógrafos', block: 'producto', priority: 'high', owner: 'Studio Director', done: false, due: '2026-10-25' },
-            { id: 't-arr-4', text: 'Cobertura de eventos nocturnos y activaciones de marcas en Casco Antiguo', block: 'comercial', priority: 'critical', owner: 'Nightlife Ops', done: true, due: '2026-10-10' }
-        ]
-    },
-    {
-        id: 'portfolio-hangout',
-        name: 'Hang Out App',
-        tagline: 'Nightlife Tech, VIP Tables & Social Discovery (Panamá)',
-        icon: '🍸',
-        color: '#f43f5e',
-        gradient: 'linear-gradient(135deg, rgba(244, 63, 94, 0.15), rgba(244, 63, 94, 0.03))',
-        border: 'rgba(244, 63, 94, 0.3)',
-        priority: 'critical',
-        status: 'in_progress',
-        statusLabel: 'MVP / Validación (Q4 2026)',
-        objective: 'Plataforma móvil y web de acceso digital a clubs nocturnos, pre-order de botellas, confirmación de mesas VIP y dinámica social de eventos en Panamá.',
-        nextAction: 'Validar prototipo de UI con promotores de Casco Antiguo y afinar onboarding de venues.',
-        blockers: 'Definir arquitectura de comisiones e integración de pagos locales.',
-        lead: 'OpenClaw & Product Squad',
-        kpi: 'Prototipo Figma + 150 early-adopters en waitlist',
-        progress: 45,
-        defaultTasks: [
-            { id: 't-ho-1', text: 'Diseñar arquitectura de datos para reserva de mesas y split de consumo', block: 'producto', priority: 'critical', owner: 'OpenClaw', done: true, due: '2026-10-15' },
-            { id: 't-ho-2', text: 'Prototipar flujos de onboarding para promotores y venues', block: 'producto', priority: 'high', owner: 'Product Squad', done: false, due: '2026-10-25' },
-            { id: 't-ho-3', text: 'Validar modelo de comisión sobre venta de entradas y consumos', block: 'comercial', priority: 'critical', owner: 'CloserOps', done: false, due: '2026-11-05' },
-            { id: 't-ho-4', text: 'Lanzar landing page con captación de emails y lista de espera VIP', block: 'marketing', priority: 'high', owner: 'Nexus', done: false, due: '2026-11-15' }
-        ]
-    },
-    {
-        id: 'portfolio-licitia',
-        name: 'LicitIA',
-        tagline: 'GovTech AI SaaS para Licitaciones Públicas (PanamáCompra)',
-        icon: '⚖️',
-        color: '#3b82f6',
-        gradient: 'linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(59, 130, 246, 0.03))',
-        border: 'rgba(59, 130, 246, 0.3)',
-        priority: 'critical',
-        status: 'active',
-        statusLabel: 'Investigación & Algoritmo (Q1 2027)',
-        objective: 'SaaS de inteligencia artificial que procesa pliegos de licitaciones públicas de PanamáCompra, extrae matrices de requisitos y califica la elegibilidad de constructoras y proveedores.',
-        nextAction: 'Completar benchmark del extractor RAG con 50 pliegos oficiales > $100k.',
-        blockers: 'Normalización de pliegos antiguos escaneados sin capa de texto OCR.',
-        lead: 'OpenClaw Core & CloserOps',
-        kpi: '95% precisión en extracción de requisitos de pliegos',
-        progress: 35,
-        defaultTasks: [
-            { id: 't-lic-1', text: 'Construir pipeline OCR + chunking para pliegos de PanamáCompra', block: 'producto', priority: 'critical', owner: 'OpenClaw', done: true, due: '2026-10-10' },
-            { id: 't-lic-2', text: 'Mapear 100 constructoras y proveedores con licitaciones activas', block: 'comercial', priority: 'high', owner: 'CloserOps', done: false, due: '2026-10-30' },
-            { id: 't-lic-3', text: 'Diseñar interfaz para subir pliegos y recibir matriz de checklist legal', block: 'producto', priority: 'high', owner: 'OpenClaw', done: false, due: '2026-11-10' },
-            { id: 't-lic-4', text: 'Simulación de propuesta técnica generada por IA con auditoría legal', block: 'estrategia', priority: 'critical', owner: 'OpenClaw', done: false, due: '2026-11-25' }
-        ]
-    },
-    {
-        id: 'portfolio-recordai',
-        name: 'RecordAI',
-        tagline: 'Audio Intelligence & Transcripción Ejecutiva Autónoma',
-        icon: '🎙️',
-        color: '#8b5cf6',
-        gradient: 'linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(139, 92, 246, 0.03))',
-        border: 'rgba(139, 92, 246, 0.3)',
-        priority: 'high',
-        status: 'planning',
-        statusLabel: 'Arquitectura & Prototipo (Q2 2027)',
-        objective: 'Sistema autónomo de audio intelligence para reuniones y llamadas ejecutivas: graba, identifica interlocutores, extrae minutas estructuradas y genera tareas delegadas en el sistema en segundos.',
-        nextAction: 'Construir prototipo con API de Whisper v3 y Gemini 2.5 Pro para extracción de compromisos y JSON estructurado.',
-        blockers: 'Optimización de latencia en grabaciones de más de 45 minutos.',
-        lead: 'Audio AI Lab & Bart (COO)',
-        kpi: 'Minuta generada en menos de 10 segundos pos-reunión',
-        progress: 20,
-        defaultTasks: [
-            { id: 't-rec-1', text: 'Definir arquitectura de microservicio de transcripción con diarización', block: 'producto', priority: 'critical', owner: 'Audio AI Lab', done: false, due: '2026-11-01' },
-            { id: 't-rec-2', text: 'Crear prompt maestro de extracción de compromisos, riesgos y acuerdos', block: 'estrategia', priority: 'high', owner: 'Bart (COO)', done: false, due: '2026-11-12' },
-            { id: 't-rec-3', text: 'Integración de webhooks para enviar tareas automáticas a Workspace', block: 'operacion', priority: 'high', owner: 'OpenClaw', done: false, due: '2026-11-20' },
-            { id: 't-rec-4', text: 'Testear prototipo con 10 reuniones reales y medir precisión', block: 'producto', priority: 'medium', owner: 'Audio AI Lab', done: false, due: '2026-12-05' }
-        ]
-    },
-    {
-        id: 'portfolio-waller',
-        name: 'Waller App',
-        tagline: 'Fintech Smart QR Payments & Split Bills para Hospitality',
-        icon: '💳',
-        color: '#10b981',
-        gradient: 'linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.03))',
-        border: 'rgba(16, 185, 129, 0.3)',
-        priority: 'high',
-        status: 'planning',
-        statusLabel: 'Ideación & Compliance (Q3 2027)',
-        objective: 'Billetera digital y pasarela de micro-pagos QR para hospitality: permite a grupos en mesas VIP y barras dividir cuentas en partes iguales o exactas instantáneamente desde el móvil.',
-        nextAction: 'Análisis de viabilidad con adquirentes locales (procesadores bancarios y sandbox Yappy/Tarjetas).',
-        blockers: 'Requisitos de licencia fintech y cumplimiento regulatorio bancario.',
-        lead: 'Fintech Squad & OpenClaw',
-        kpi: 'Sandbox de pago completado en menos de 3 segundos',
-        progress: 15,
-        defaultTasks: [
-            { id: 't-wal-1', text: 'Investigación de marco regulatorio fintech y pasarelas en Panamá', block: 'estrategia', priority: 'critical', owner: 'Fintech Squad', done: false, due: '2026-11-15' },
-            { id: 't-wal-2', text: 'Diseñar flujo UX para escaneo QR de cuenta y división grupal', block: 'producto', priority: 'high', owner: 'Product Squad', done: false, due: '2026-12-01' },
-            { id: 't-wal-3', text: 'Simular integración con sistemas POS de restaurantes y rooftops', block: 'operacion', priority: 'medium', owner: 'OpenClaw', done: false, due: '2026-12-20' },
-            { id: 't-wal-4', text: 'Definir modelo de negocio (fee por transacción o suscripción venue)', block: 'comercial', priority: 'high', owner: 'CloserOps', done: false, due: '2027-01-15' }
-        ]
+// Cada tarjeta del Portafolio sale del proyecto guardado en la base (Proyectos).
+// Los textos de la ficha (objetivo, siguiente acción, bloqueos…) se editan en el propio proyecto.
+const kpiLabel = (p) => {
+    const k = p.kpi && typeof p.kpi === 'object' && p.kpi.name
+        ? `${p.kpi.name}: ${p.kpi.current ?? 0}/${p.kpi.target ?? '?'} ${p.kpi.unit || ''}`.trim()
+        : (typeof p.kpi === 'string' ? p.kpi : '');
+    return [k, p.kpiText].filter(Boolean).join(' · ');
+};
+
+const toPortfolioProject = (p, allEvents = []) => {
+    const color = p.color || '#3b82f6';
+    let rawEventIds = [];
+    if (Array.isArray(p.eventIds)) {
+        rawEventIds = p.eventIds;
+    } else if (p.eventId) {
+        rawEventIds = [p.eventId];
+    } else {
+        // Valores iniciales inteligentes para vincular proyectos clave con sus eventos de base
+        if (p.id === 'proj-venues-panama') rawEventIds = ['ev-terraplen-rooftop', 'ev-furia-panama', 'ev-piano-bar'];
+        else if (p.id === 'portfolio-hangout') rawEventIds = ['ev-terraplen-rooftop', 'ev-urban-nights'];
+        else if (p.id === 'proj-arrive-agency') rawEventIds = ['ev-terraplen-rooftop', 'ev-furia-panama', 'ev-piano-bar', 'evt-1779135935446'];
+        else if (p.id === 'proj-wedding-content') rawEventIds = ['ev-terraplen-rooftop', 'ev-casco-peatonal'];
+        else if (p.id === 'proj-podcast-live') rawEventIds = ['ev-casco-peatonal', 'ev-grafiti-tour'];
     }
-];
+    const linkedEvents = (allEvents || []).filter(e => rawEventIds.includes(e.id));
+
+    return {
+        ...p,
+        eventIds: rawEventIds,
+        linkedEvents,
+        tagline: p.tagline || p.category || '',
+        icon: p.icon || '🚀',
+        color,
+        gradient: `linear-gradient(135deg, color-mix(in srgb, ${color} 15%, transparent), color-mix(in srgb, ${color} 3%, transparent))`,
+        border: `color-mix(in srgb, ${color} 30%, transparent)`,
+        priority: p.priority || 'medium',
+        statusLabel: p.statusLabel || p.status || 'Activo',
+        objective: p.objective || p.currentObjective || p.description || 'Sin objetivo definido.',
+        nextAction: p.nextAction || 'Sin siguiente acción definida.',
+        blockers: p.blockers || 'Sin bloqueos registrados.',
+        lead: p.lead || p.leadAgent || 'Sin líder',
+        kpi: kpiLabel(p),
+    };
+};
 
 const TASK_BLOCKS = [
     { id: 'all', label: 'Todos los Bloques', icon: Layers, color: '#a78bfa' },
@@ -143,7 +67,11 @@ const TASK_BLOCKS = [
 
 export default function PortfolioOS() {
     const {
+        events,
+        updateEvent,
         projects,
+        addProject,
+        updateProject,
         tasks,
         addTask,
         updateTask,
@@ -164,55 +92,61 @@ export default function PortfolioOS() {
     // Active sub-tab in Portfolio OS
     const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'tasks' | 'decisions' | 'roadmap' | 'openclaw'
 
-    // Unified list of all available projects (Core Metadata + AppContext dynamic projects)
+    // Filtro Global por Evento
+    const [selectedEventFilter, setSelectedEventFilter] = useState('all');
+
+    // Proyectos reales de la base; ARRIVE AGENCY siempre primero.
     const allAvailableProjects = useMemo(() => {
-        const map = new Map();
-        // 1. Add core metadata projects
-        CORE_PROJECTS_META.forEach(p => map.set(p.id, p));
-        // 2. Add projects from AppContext
-        (projects || []).forEach(p => {
-            if (!map.has(p.id)) {
-                map.set(p.id, {
-                    id: p.id,
-                    name: p.name,
-                    tagline: p.description || p.category || 'Proyecto Activo',
-                    icon: p.category === 'agency' || p.id === 'proj-arrive-agency' ? '🌟' : '🚀',
-                    color: p.color || '#3b82f6',
-                    gradient: 'linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(59, 130, 246, 0.03))',
-                    border: 'rgba(59, 130, 246, 0.3)',
-                    priority: p.priority || 'high',
-                    status: p.status || 'active',
-                    statusLabel: p.status || 'Activo',
-                    objective: p.description || '',
-                    nextAction: 'Continuar ejecución de hitos y tareas asignadas.',
-                    lead: p.leadAgent || 'OpenClaw Team',
-                    kpi: `${(p.milestones || []).filter(m => m.done).length}/${Math.max((p.milestones || []).length, 1)} Hitos`,
-                    progress: Math.round(((p.milestones || []).filter(m => m.done).length / Math.max((p.milestones || []).length, 1)) * 100) || 50,
-                    defaultTasks: []
-                });
-            }
-        });
-        // Make sure ARRIVE Agency is always first
-        const arrive = map.get('proj-arrive-agency');
-        const others = Array.from(map.values()).filter(p => p.id !== 'proj-arrive-agency');
-        return arrive ? [arrive, ...others] : Array.from(map.values());
-    }, [projects]);
+        const list = (projects || []).map(p => toPortfolioProject(p, events));
+        const arrive = list.find(p => p.id === 'proj-arrive-agency');
+        return arrive ? [arrive, ...list.filter(p => p !== arrive)] : list;
+    }, [projects, events]);
+
+    // Proyectos visibles según filtro de evento
+    const visibleProjects = useMemo(() => {
+        if (selectedEventFilter === 'all') return allAvailableProjects;
+        return allAvailableProjects.filter(p => (p.eventIds || []).includes(selectedEventFilter));
+    }, [allAvailableProjects, selectedEventFilter]);
 
     // Task Plans Filters
     const [taskProjectFilter, setTaskProjectFilter] = useState('all');
+    const [taskEventFilter, setTaskEventFilter] = useState('all');
     const [taskBlockFilter, setTaskBlockFilter] = useState('all');
     const [taskSearch, setTaskSearch] = useState('');
     const [newTaskText, setNewTaskText] = useState('');
     const [newTaskProject, setNewTaskProject] = useState('proj-arrive-agency');
+    const [newTaskEvent, setNewTaskEvent] = useState('');
+    const [newTaskDue, setNewTaskDue] = useState('');
     const [newTaskBlock, setNewTaskBlock] = useState('estrategia');
     const [newTaskPriority, setNewTaskPriority] = useState('high');
     const [newTaskOwner, setNewTaskOwner] = useState('GG');
+
+    // Modal Crear Nuevo Proyecto Venture
+    const [showProjectModal, setShowProjectModal] = useState(false);
+    const [newProjectForm, setNewProjectForm] = useState({
+        name: '',
+        tagline: '',
+        icon: '🚀',
+        color: '#8b5cf6',
+        priority: 'high',
+        objective: '',
+        nextAction: '',
+        blockers: '',
+        kpi: '',
+        deadline: '',
+        eventIds: []
+    });
+
+    // Modal Vincular Eventos a Proyecto Existente
+    const [linkModalProject, setLinkModalProject] = useState(null);
+    const [selectedEventIdsForLink, setSelectedEventIdsForLink] = useState([]);
 
     // Decision Log Modal
     const [showDecisionModal, setShowDecisionModal] = useState(false);
     const [newDecision, setNewDecision] = useState({
         project: 'ARRIVE AGENCY',
         projectId: 'proj-arrive-agency',
+        eventId: '',
         decision: '',
         motivo: '',
         impacto: 'Crítico / Estratégico',
@@ -225,6 +159,7 @@ export default function PortfolioOS() {
         title: '',
         project: 'ARRIVE AGENCY',
         projectId: 'proj-arrive-agency',
+        eventId: '',
         column: 'now',
         priority: 'high',
         block: 'marketing',
@@ -235,94 +170,105 @@ export default function PortfolioOS() {
     // Suggested Actions from OpenClaw Execution
     const [suggestedFeedback, setSuggestedFeedback] = useState(null);
 
-    // Merge default core tasks with global tasks
+    // Tareas reales de cada proyecto y evento alineadas con Calendario y Eventos
     const allPortfolioTasks = useMemo(() => {
-        // Collect default tasks from allAvailableProjects
-        const defaults = allAvailableProjects.flatMap(p => (p.defaultTasks || []).map(t => ({
-            ...t,
-            projectId: p.id,
-            projectName: p.name,
-            source: 'core'
-        })));
+        const names = new Map(allAvailableProjects.map(p => [p.id, p.name]));
+        const eventsMap = new Map((events || []).map(e => [e.id, e]));
 
-        // Collect matching tasks from AppContext
-        const live = (tasks || []).map(t => {
-            const matchedProj = allAvailableProjects.find(p => 
-                p.id === t.projectId || 
-                (t.projectId === 'proj-arrive-agency' && p.id === 'proj-arrive-agency') ||
-                (t.agency === 'arrive' && p.id === 'proj-arrive-agency') ||
-                (t.id?.startsWith('arr-') && p.id === 'proj-arrive-agency') ||
-                p.name.toLowerCase() === (t.project || t.projectName || '').toLowerCase()
-            );
+        return (tasks || []).filter(t => names.has(t.projectId) || (t.eventId && eventsMap.has(t.eventId))).map(t => {
+            const ev = t.eventId ? eventsMap.get(t.eventId) : null;
             return {
                 id: t.id,
-                text: t.text || t.name,
-                block: t.block || (t.division === 'models' ? 'operacion' : t.division === 'services' ? 'marketing' : 'operacion'),
+                text: t.text || t.title || '',
+                block: t.block || (t.division === 'services' ? 'marketing' : 'operacion'),
                 priority: t.priority || 'medium',
-                owner: t.assignedTo || t.owner || (t.division === 'models' ? 'PR Hostess' : 'GG'),
-                done: !!t.done,
-                due: t.due || '',
-                projectId: matchedProj ? matchedProj.id : (t.projectId || 'proj-arrive-agency'),
-                projectName: matchedProj ? matchedProj.name : (t.project || t.projectName || 'ARRIVE AGENCY'),
-                source: 'live'
+                owner: t.assignedTo || t.assignee || 'Sin asignar',
+                done: isDone(t),
+                due: t.due || t.dueDate || '',
+                projectId: t.projectId || '',
+                projectName: names.get(t.projectId) || (t.projectId === 'proj-arrive-agency' ? 'ARRIVE AGENCY' : 'Proyecto General'),
+                eventId: t.eventId || '',
+                eventName: ev?.name || t.eventName || '',
+                eventIcon: ev?.icon || '🍸',
+                eventColor: ev?.color || '#a78bfa'
             };
         });
-
-        // Unique by id or text
-        const seen = new Set();
-        const combined = [];
-        [...defaults, ...live].forEach(item => {
-            if (!seen.has(item.id) && !seen.has(item.text)) {
-                seen.add(item.id);
-                seen.add(item.text);
-                combined.push(item);
-            }
-        });
-        return combined;
-    }, [tasks, allAvailableProjects]);
+    }, [tasks, allAvailableProjects, events]);
 
     // Filtered tasks
     const filteredTasks = useMemo(() => {
         return allPortfolioTasks.filter(t => {
             if (taskProjectFilter !== 'all' && t.projectId !== taskProjectFilter) return false;
+            if (taskEventFilter !== 'all' && t.eventId !== taskEventFilter) return false;
+            if (selectedEventFilter !== 'all' && t.eventId !== selectedEventFilter) return false;
             if (taskBlockFilter !== 'all' && t.block !== taskBlockFilter) return false;
             if (taskSearch && !t.text.toLowerCase().includes(taskSearch.toLowerCase())) return false;
             return true;
         });
-    }, [allPortfolioTasks, taskProjectFilter, taskBlockFilter, taskSearch]);
+    }, [allPortfolioTasks, taskProjectFilter, taskEventFilter, selectedEventFilter, taskBlockFilter, taskSearch]);
 
-    // Handle Quick Task Add
+    // Handle Quick Task Add (Conectada con Eventos y Calendario)
     const handleCreateTask = async (e) => {
         e.preventDefault();
         if (!newTaskText.trim()) return;
         const matchedProj = allAvailableProjects.find(p => p.id === newTaskProject);
         const projName = matchedProj ? matchedProj.name : 'ARRIVE AGENCY';
+
+        // Evento: explícito del selector o el primer evento vinculado al proyecto
+        let resolvedEventId = newTaskEvent;
+        if (!resolvedEventId && matchedProj?.eventIds?.length) {
+            resolvedEventId = matchedProj.eventIds[0];
+        }
+        const matchedEvent = (events || []).find(ev => ev.id === resolvedEventId);
+        const eventName = matchedEvent ? matchedEvent.name : '';
+
         const taskPayload = {
             id: `t-pf-${Date.now()}`,
             text: newTaskText.trim(),
             projectId: newTaskProject,
             project: projName,
             projectName: projName,
+            eventId: resolvedEventId || '',
+            eventName: eventName,
+            venue: eventName,
             block: newTaskBlock,
             priority: newTaskPriority,
             assignedTo: newTaskOwner,
             agency: newTaskProject === 'proj-arrive-agency' ? 'arrive' : undefined,
+            due: newTaskDue || '',
             done: false,
             createdAt: new Date().toISOString()
         };
         await addTask(taskPayload);
         setNewTaskText('');
+        setNewTaskDue('');
     };
 
-    // Handle Decision Submit
+    // Handle Decision Submit (Vinculada a Proyecto y Evento)
     const handleSaveDecision = async (e) => {
         e.preventDefault();
         if (!newDecision.decision.trim() || !newDecision.motivo.trim()) return;
-        await addDecision(newDecision);
+
+        const matchedProj = allAvailableProjects.find(p => p.id === newDecision.projectId);
+        let resolvedEventId = newDecision.eventId;
+        if (!resolvedEventId && matchedProj?.eventIds?.length) {
+            resolvedEventId = matchedProj.eventIds[0];
+        }
+        const matchedEvent = (events || []).find(ev => ev.id === resolvedEventId);
+
+        await addDecision({
+            ...newDecision,
+            id: `dec-${Date.now()}`,
+            date: new Date().toISOString().split('T')[0],
+            project: matchedProj ? matchedProj.name : newDecision.project,
+            eventId: resolvedEventId || '',
+            eventName: matchedEvent ? matchedEvent.name : ''
+        });
         setShowDecisionModal(false);
         setNewDecision({
             project: 'ARRIVE AGENCY',
             projectId: 'proj-arrive-agency',
+            eventId: '',
             decision: '',
             motivo: '',
             impacto: 'Crítico / Estratégico',
@@ -330,22 +276,135 @@ export default function PortfolioOS() {
         });
     };
 
-    // Handle Roadmap Submit
+    // Handle Roadmap Submit (Sincronizado con Eventos y Calendario)
     const handleSaveRoadmap = async (e) => {
         e.preventDefault();
         if (!newRoadmap.title.trim()) return;
-        await addRoadmapItem(newRoadmap);
+
+        const matchedProj = allAvailableProjects.find(p => p.id === newRoadmap.projectId);
+        let resolvedEventId = newRoadmap.eventId;
+        if (!resolvedEventId && matchedProj?.eventIds?.length) {
+            resolvedEventId = matchedProj.eventIds[0];
+        }
+        const matchedEvent = (events || []).find(ev => ev.id === resolvedEventId);
+        const eventName = matchedEvent ? matchedEvent.name : '';
+
+        const roadmapItem = {
+            ...newRoadmap,
+            id: `rdm-${Date.now()}`,
+            project: matchedProj ? matchedProj.name : newRoadmap.project,
+            eventId: resolvedEventId || '',
+            eventName: eventName,
+            createdAt: new Date().toISOString()
+        };
+
+        await addRoadmapItem(roadmapItem);
+
+        // Si tiene fecha y evento, sincronizarlo automáticamente como hito dentro del evento
+        if (resolvedEventId && newRoadmap.deadline && matchedEvent) {
+            const currentMilestones = Array.isArray(matchedEvent.milestones) ? matchedEvent.milestones : [];
+            const milestonePayload = {
+                id: `m-rdm-${Date.now()}`,
+                title: `[Roadmap ${matchedProj?.name || ''}] ${newRoadmap.title}`,
+                date: newRoadmap.deadline,
+                done: false,
+                sourceRoadmapId: roadmapItem.id
+            };
+            await updateEvent(resolvedEventId, {
+                milestones: [...currentMilestones, milestonePayload]
+            });
+        }
+
         setShowRoadmapModal(false);
         setNewRoadmap({
             title: '',
             project: 'ARRIVE AGENCY',
             projectId: 'proj-arrive-agency',
+            eventId: '',
             column: 'now',
             priority: 'high',
             block: 'marketing',
             deadline: '',
             desc: ''
         });
+    };
+
+    // Modal Vincular Eventos
+    const openLinkEventsModal = (proj) => {
+        setLinkModalProject(proj);
+        setSelectedEventIdsForLink(proj.eventIds || []);
+    };
+
+    const handleSaveProjectEvents = async () => {
+        if (!linkModalProject) return;
+        await updateProject(linkModalProject.id, {
+            eventIds: selectedEventIdsForLink
+        });
+        setLinkModalProject(null);
+        if (refreshData) refreshData();
+    };
+
+    // Crear Nuevo Proyecto Venture
+    const handleSaveNewProject = async (e) => {
+        e.preventDefault();
+        if (!newProjectForm.name.trim()) return;
+        const pId = `proj-${Date.now()}`;
+        const newP = {
+            id: pId,
+            name: newProjectForm.name.trim(),
+            tagline: newProjectForm.tagline.trim(),
+            description: newProjectForm.objective || newProjectForm.tagline,
+            objective: newProjectForm.objective,
+            nextAction: newProjectForm.nextAction,
+            blockers: newProjectForm.blockers,
+            icon: newProjectForm.icon || '🚀',
+            color: newProjectForm.color || '#8b5cf6',
+            priority: newProjectForm.priority || 'high',
+            status: 'active',
+            deadline: newProjectForm.deadline || '',
+            kpiText: newProjectForm.kpi || '',
+            eventIds: newProjectForm.eventIds,
+            createdAt: new Date().toISOString()
+        };
+
+        await addProject(newP);
+
+        // Si se especificó fecha límite y evento(s), crear una primera tarea o hito alineado en calendario
+        if (newProjectForm.deadline && newProjectForm.eventIds?.length) {
+            const primaryEvId = newProjectForm.eventIds[0];
+            const primaryEvent = (events || []).find(e => e.id === primaryEvId);
+            await addTask({
+                id: `t-pf-init-${Date.now()}`,
+                text: `Hito Inicial / Lanzamiento: ${newProjectForm.name}`,
+                projectId: pId,
+                project: newProjectForm.name,
+                projectName: newProjectForm.name,
+                eventId: primaryEvId,
+                eventName: primaryEvent?.name || '',
+                venue: primaryEvent?.name || '',
+                block: 'estrategia',
+                priority: newProjectForm.priority || 'high',
+                due: newProjectForm.deadline,
+                done: false,
+                createdAt: new Date().toISOString()
+            });
+        }
+
+        setShowProjectModal(false);
+        setNewProjectForm({
+            name: '',
+            tagline: '',
+            icon: '🚀',
+            color: '#8b5cf6',
+            priority: 'high',
+            objective: '',
+            nextAction: '',
+            blockers: '',
+            kpi: '',
+            deadline: '',
+            eventIds: []
+        });
+        if (refreshData) refreshData();
     };
 
     // Handle Quick Action Approval from OpenClaw
@@ -391,7 +450,7 @@ export default function PortfolioOS() {
             type: 'create_task',
             color: '#3b82f6',
             impact: 'Algoritmo Core',
-            data: { text: 'Scrapear pliegos oficiales y extraer matrices de requisitos con RAG', projectId: 'portfolio-licitia', block: 'producto', priority: 'critical' }
+            data: { text: 'Scrapear pliegos oficiales y extraer matrices de requisitos con RAG', projectId: 'proj-2', block: 'producto', priority: 'critical' }
         },
         {
             id: 'sug-3',
@@ -400,7 +459,7 @@ export default function PortfolioOS() {
             type: 'create_task',
             color: '#8b5cf6',
             impact: 'Arquitectura AI',
-            data: { text: 'Evaluar Whisper Large v3 vs Gemini Flash para extracción de minutas ejecutivas', projectId: 'portfolio-recordai', block: 'producto', priority: 'high' }
+            data: { text: 'Evaluar Whisper Large v3 vs Gemini Flash para extracción de minutas ejecutivas', projectId: 'proj-4', block: 'producto', priority: 'high' }
         },
         {
             id: 'sug-4',
@@ -409,7 +468,7 @@ export default function PortfolioOS() {
             type: 'create_task',
             color: '#10b981',
             impact: 'Fintech Compliance',
-            data: { text: 'Verificar esquema de adquirencia y pagos QR en barras de eventos', projectId: 'portfolio-waller', block: 'estrategia', priority: 'high' }
+            data: { text: 'Verificar esquema de adquirencia y pagos QR en barras de eventos', projectId: 'proj-6', block: 'estrategia', priority: 'high' }
         }
     ];
 
@@ -428,7 +487,14 @@ export default function PortfolioOS() {
                     </p>
                 </div>
 
-                <div className="page-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div className="page-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                    <button
+                        className="btn btn-primary"
+                        onClick={() => setShowProjectModal(true)}
+                        style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', background: 'linear-gradient(135deg, #7c3aed, #4f46e5)' }}
+                    >
+                        <Plus size={16} /> Nuevo Proyecto Venture
+                    </button>
                     <button
                         className="btn btn-secondary"
                         onClick={() => setShowDecisionModal(true)}
@@ -437,12 +503,78 @@ export default function PortfolioOS() {
                         <BookOpen size={16} /> Registrar Decisión
                     </button>
                     <button
-                        className="btn btn-primary"
+                        className="btn btn-secondary"
                         onClick={() => setShowRoadmapModal(true)}
                         style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}
                     >
                         <Plus size={16} /> Hito de Roadmap
                     </button>
+                </div>
+            </div>
+
+            {/* ═══ GLOBAL EVENT ALIGNMENT BAR ═══ */}
+            <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '12px',
+                background: 'rgba(255,255,255,0.02)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: '12px',
+                padding: '12px 18px',
+                marginBottom: '20px'
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <CalendarDays size={16} style={{ color: 'var(--accent-primary)' }} />
+                        <span style={{ fontSize: '12.5px', fontWeight: 700, color: 'white' }}>Alineación con Evento:</span>
+                    </div>
+                    <select
+                        value={selectedEventFilter}
+                        onChange={e => setSelectedEventFilter(e.target.value)}
+                        className="form-control"
+                        style={{
+                            background: selectedEventFilter !== 'all' ? 'rgba(139,92,246,0.2)' : 'rgba(0,0,0,0.3)',
+                            border: selectedEventFilter !== 'all' ? '1px solid #8b5cf6' : '1px solid var(--border-subtle)',
+                            color: 'white',
+                            padding: '6px 14px',
+                            borderRadius: '8px',
+                            fontSize: '12.5px',
+                            fontWeight: 600,
+                            cursor: 'pointer'
+                        }}
+                    >
+                        <option value="all" style={{ background: '#12121a' }}>🌐 Todos los Eventos ({events?.length || 0})</option>
+                        {(events || []).map(ev => (
+                            <option key={`flt-ev-${ev.id}`} value={ev.id} style={{ background: '#12121a' }}>
+                                {ev.icon || '🍸'} {ev.name}
+                            </option>
+                        ))}
+                    </select>
+
+                    {selectedEventFilter !== 'all' && (
+                        <button
+                            onClick={() => setSelectedEventFilter('all')}
+                            style={{
+                                background: 'transparent',
+                                border: '1px dashed var(--border-subtle)',
+                                color: 'var(--text-secondary)',
+                                borderRadius: '6px',
+                                padding: '4px 10px',
+                                fontSize: '11px',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            ✕ Ver todos
+                        </button>
+                    )}
+                </div>
+
+                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+                    <span>Proyectos alineados: <strong style={{ color: 'white' }}>{visibleProjects.length}</strong></span>
+                    <span>Tareas sincronizadas: <strong style={{ color: '#a78bfa' }}>{filteredTasks.length}</strong></span>
+                    <span>Hitos en Calendario: <strong style={{ color: '#f59e0b' }}>{(portfolioRoadmap || []).filter(r => (selectedEventFilter === 'all' || r.eventId === selectedEventFilter) && r.deadline).length}</strong></span>
                 </div>
             </div>
 
@@ -456,11 +588,11 @@ export default function PortfolioOS() {
                 <div className="card" style={{ padding: '18px 20px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-subtle)' }}>
                     <div style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Proyectos en Incubación & Agencia</div>
                     <div style={{ fontSize: '24px', fontWeight: 800, color: 'white', marginTop: '4px' }}>{allAvailableProjects.length} Proyectos</div>
-                    <div style={{ fontSize: '11.5px', color: '#fbbf24', marginTop: '2px' }}>🌟 ARRIVE Agency · Hang Out · LicitIA · RecordAI · Waller</div>
+                    <div style={{ fontSize: '11.5px', color: '#fbbf24', marginTop: '2px' }}>{allAvailableProjects.map(p => p.name).join(' · ')}</div>
                 </div>
                 <div className="card" style={{ padding: '18px 20px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-subtle)' }}>
                     <div style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Decisiones Estratégicas</div>
-                    <div style={{ fontSize: '24px', fontWeight: 800, color: '#38bdf8', marginTop: '4px' }}>{decisionLog?.length || 4} Registradas</div>
+                    <div style={{ fontSize: '24px', fontWeight: 800, color: '#38bdf8', marginTop: '4px' }}>{decisionLog?.length || 0} Registradas</div>
                     <div style={{ fontSize: '11.5px', color: 'var(--text-secondary)', marginTop: '2px' }}>Arquitectura & Tesis Oficiales</div>
                 </div>
                 <div className="card" style={{ padding: '18px 20px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-subtle)' }}>
@@ -471,7 +603,7 @@ export default function PortfolioOS() {
                 <div className="card" style={{ padding: '18px 20px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-subtle)' }}>
                     <div style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Roadmap Sprint (Now)</div>
                     <div style={{ fontSize: '24px', fontWeight: 800, color: '#f59e0b', marginTop: '4px' }}>
-                        {portfolioRoadmap.filter(r => r.column === 'now').length || 3} En Foco
+                        {portfolioRoadmap.filter(r => r.column === 'now').length} En Foco
                     </div>
                     <div style={{ fontSize: '11.5px', color: '#f59e0b', marginTop: '2px' }}>Prioridad Inmediata Q4/Q1</div>
                 </div>
@@ -515,12 +647,16 @@ export default function PortfolioOS() {
             {/* 1. PORTFOLIO OVERVIEW TAB                                        */}
             {/* ═════════════════════════════════════════════════════════════════ */}
             {activeTab === 'overview' && (
+                visibleProjects.length > 0 ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '20px' }}>
-                    {allAvailableProjects.map(proj => {
-                        const projTasks = allPortfolioTasks.filter(t => t.projectId === proj.id);
+                    {visibleProjects.map(proj => {
+                        // Pendientes primero y por fecha: las 3 que se ven son las más urgentes.
+                        const projTasks = allPortfolioTasks
+                            .filter(t => t.projectId === proj.id)
+                            .sort((x, y) => Number(x.done) - Number(y.done) || (x.due || '9999').localeCompare(y.due || '9999'));
                         const completedCount = projTasks.filter(t => t.done).length;
-                        const totalCount = projTasks.length || 1;
-                        const pct = Math.round((completedCount / totalCount) * 100);
+                        const totalCount = projTasks.length;
+                        const pct = totalCount ? Math.round((completedCount / totalCount) * 100) : 0;
 
                         return (
                             <div
@@ -557,6 +693,64 @@ export default function PortfolioOS() {
                                     }}>
                                         {proj.priority}
                                     </span>
+                                </div>
+
+                                {/* Eventos Vinculados (Conexión 1 a Varios) */}
+                                <div style={{ background: 'rgba(0,0,0,0.25)', padding: '10px 12px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                                        <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <CalendarDays size={13} style={{ color: '#a78bfa' }} /> Eventos Vinculados ({proj.linkedEvents?.length || 0})
+                                        </span>
+                                        <button
+                                            onClick={() => openLinkEventsModal(proj)}
+                                            style={{
+                                                background: 'rgba(139,92,246,0.15)',
+                                                border: '1px solid rgba(139,92,246,0.35)',
+                                                color: '#c4b5fd',
+                                                borderRadius: '6px',
+                                                padding: '2px 8px',
+                                                fontSize: '10.5px',
+                                                fontWeight: 600,
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '4px'
+                                            }}
+                                            title="Conectar o desconectar eventos de este proyecto"
+                                        >
+                                            <Link2 size={11} /> {proj.linkedEvents?.length ? 'Editar Vínculos' : '+ Vincular Eventos'}
+                                        </button>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                        {proj.linkedEvents && proj.linkedEvents.length > 0 ? (
+                                            proj.linkedEvents.map(ev => (
+                                                <span
+                                                    key={ev.id}
+                                                    onClick={() => setSelectedEventFilter(ev.id)}
+                                                    style={{
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: '4px',
+                                                        background: 'rgba(255,255,255,0.06)',
+                                                        border: '1px solid rgba(255,255,255,0.12)',
+                                                        padding: '3px 8px',
+                                                        borderRadius: '12px',
+                                                        fontSize: '11px',
+                                                        color: '#e2e8f0',
+                                                        cursor: 'pointer'
+                                                    }}
+                                                    title="Clic para filtrar Portfolio OS por este evento"
+                                                >
+                                                    <span>{ev.icon || '🍸'}</span>
+                                                    <span>{ev.name}</span>
+                                                </span>
+                                            ))
+                                        ) : (
+                                            <span style={{ fontSize: '11.5px', color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
+                                                Sin eventos vinculados. Clic en '+ Vincular Eventos'.
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
 
                                 {/* Status & Objective */}
@@ -626,11 +820,17 @@ export default function PortfolioOS() {
                                     </div>
                                 </div>
 
+                                {proj.kpi && (
+                                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                        📈 Meta: <strong style={{ color: 'white' }}>{proj.kpi}</strong>
+                                    </div>
+                                )}
+
                                 {/* Progress Bar & Footer */}
                                 <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '12px', marginTop: 'auto' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11.5px', color: 'var(--text-secondary)', marginBottom: '6px' }}>
                                         <span>Líder: <strong style={{ color: 'white' }}>{proj.lead}</strong></span>
-                                        <span>Progreso: <strong style={{ color: proj.color }}>{pct}%</strong></span>
+                                        <span>Progreso: <strong style={{ color: proj.color }}>{pct}%</strong>{totalCount ? '' : ' (sin tareas)'}</span>
                                     </div>
                                     <div style={{ width: '100%', height: '6px', borderRadius: '3px', background: 'rgba(255,255,255,0.1)', overflow: 'hidden' }}>
                                         <div style={{ width: `${pct}%`, height: '100%', background: proj.color, transition: 'width 0.3s' }} />
@@ -640,6 +840,18 @@ export default function PortfolioOS() {
                         );
                     })}
                 </div>
+                ) : (
+                    <div className="card" style={{ padding: '40px 20px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '36px', marginBottom: '12px' }}>🎪</div>
+                        <h3 style={{ margin: '0 0 8px 0', color: 'white' }}>No hay proyectos vinculados a este evento</h3>
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '13px', margin: '0 0 16px 0' }}>
+                            Puedes vincular proyectos existentes a este evento o crear uno nuevo con este evento asignado.
+                        </p>
+                        <button className="btn btn-secondary" onClick={() => setSelectedEventFilter('all')}>
+                            Ver todos los proyectos
+                        </button>
+                    </div>
+                )
             )}
 
             {/* ═════════════════════════════════════════════════════════════════ */}
@@ -663,6 +875,23 @@ export default function PortfolioOS() {
                                     {allAvailableProjects.map(p => (
                                         <option key={`flt-p-${p.id}`} value={p.id}>
                                             {p.id === 'proj-arrive-agency' ? '🌟 ARRIVE AGENCY' : `${p.icon || '🚀'} ${p.name}`}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                                <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)', fontWeight: 600 }}>Evento:</span>
+                                <select
+                                    className="form-control"
+                                    value={taskEventFilter}
+                                    onChange={e => setTaskEventFilter(e.target.value)}
+                                    style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-subtle)', color: 'white', padding: '6px 12px', borderRadius: '8px', fontSize: '13px' }}
+                                >
+                                    <option value="all">Todos los Eventos ({events?.length || 0})</option>
+                                    {(events || []).map(ev => (
+                                        <option key={`flt-task-ev-${ev.id}`} value={ev.id}>
+                                            {ev.icon || '🍸'} {ev.name}
                                         </option>
                                     ))}
                                 </select>
@@ -725,6 +954,26 @@ export default function PortfolioOS() {
                             ))}
                         </select>
                         <select
+                            value={newTaskEvent}
+                            onChange={e => setNewTaskEvent(e.target.value)}
+                            style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-subtle)', color: '#c4b5fd', padding: '9px 12px', borderRadius: '8px', fontSize: '13px' }}
+                            title="Evento vinculado para alinear con calendario y tareas del evento"
+                        >
+                            <option value="">🎪 Auto (Evento del proyecto)</option>
+                            {(events || []).map(ev => (
+                                <option key={`task-ev-opt-${ev.id}`} value={ev.id}>
+                                    {ev.icon || '🍸'} {ev.name}
+                                </option>
+                            ))}
+                        </select>
+                        <input
+                            type="date"
+                            value={newTaskDue}
+                            onChange={e => setNewTaskDue(e.target.value)}
+                            style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-subtle)', color: newTaskDue ? 'white' : 'var(--text-tertiary)', padding: '8px 12px', borderRadius: '8px', fontSize: '13px' }}
+                            title="Fecha de entrega / Calendario"
+                        />
+                        <select
                             value={newTaskBlock}
                             onChange={e => setNewTaskBlock(e.target.value)}
                             style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-subtle)', color: 'white', padding: '9px 12px', borderRadius: '8px', fontSize: '13px' }}
@@ -760,7 +1009,7 @@ export default function PortfolioOS() {
                             <option value="OpenClaw">🤖 OpenClaw</option>
                         </select>
                         <button type="submit" className="btn btn-primary" style={{ padding: '9px 18px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
-                            <Plus size={16} /> Añadir Tarea
+                            <Plus size={16} /> Añadir Tarea Sincronizada
                         </button>
                     </form>
 
@@ -812,13 +1061,31 @@ export default function PortfolioOS() {
                                             </span>
                                         </div>
 
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0, flexWrap: 'wrap' }}>
                                             <span style={{
                                                 fontSize: '11px', fontWeight: 700, padding: '3px 8px', borderRadius: '4px',
                                                 background: 'rgba(255,255,255,0.05)', color: '#38bdf8'
                                             }}>
                                                 {task.projectName}
                                             </span>
+
+                                            {task.eventName && (
+                                                <span style={{
+                                                    fontSize: '11px', fontWeight: 600, padding: '3px 8px', borderRadius: '4px',
+                                                    background: 'rgba(167, 139, 250, 0.15)', color: '#c4b5fd', display: 'flex', alignItems: 'center', gap: '4px'
+                                                }}>
+                                                    {task.eventIcon || '🍸'} {task.eventName}
+                                                </span>
+                                            )}
+
+                                            {task.due && (
+                                                <span style={{
+                                                    fontSize: '11px', fontWeight: 600, padding: '3px 8px', borderRadius: '4px',
+                                                    background: 'rgba(34, 197, 94, 0.15)', color: '#4ade80'
+                                                }}>
+                                                    📅 {task.due}
+                                                </span>
+                                            )}
 
                                             <span style={{
                                                 fontSize: '11px', fontWeight: 600, padding: '3px 8px', borderRadius: '4px',
@@ -879,7 +1146,7 @@ export default function PortfolioOS() {
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                        {(decisionLog || []).map(dec => (
+                        {(decisionLog || []).filter(d => selectedEventFilter === 'all' || d.eventId === selectedEventFilter).map(dec => (
                             <div
                                 key={dec.id}
                                 className="card"
@@ -893,10 +1160,15 @@ export default function PortfolioOS() {
                                 }}
                             >
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '8px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                                         <span style={{ fontSize: '11.5px', fontWeight: 700, padding: '3px 10px', borderRadius: '12px', background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8' }}>
                                             {dec.project}
                                         </span>
+                                        {dec.eventName && (
+                                            <span style={{ fontSize: '11px', fontWeight: 600, padding: '3px 8px', borderRadius: '12px', background: 'rgba(167, 139, 250, 0.15)', color: '#c4b5fd' }}>
+                                                🎪 {dec.eventName}
+                                            </span>
+                                        )}
                                         <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
                                             📅 {dec.date}
                                         </span>
@@ -954,7 +1226,7 @@ export default function PortfolioOS() {
                             { id: 'later', label: '🔵 Later (Siguientes Fases)', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.05)', border: 'rgba(59, 130, 246, 0.2)' },
                             { id: 'blocked', label: '🔴 Blocked (Bloqueados)', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.05)', border: 'rgba(239, 68, 68, 0.2)' }
                         ].map(col => {
-                            const items = (portfolioRoadmap || []).filter(r => r.column === col.id);
+                            const items = (portfolioRoadmap || []).filter(r => r.column === col.id && (selectedEventFilter === 'all' || r.eventId === selectedEventFilter));
                             return (
                                 <div
                                     key={col.id}
@@ -989,12 +1261,19 @@ export default function PortfolioOS() {
                                                     gap: '8px'
                                                 }}
                                             >
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                                    <span style={{ fontSize: '10.5px', fontWeight: 700, padding: '2px 6px', borderRadius: '4px', background: '#7c5cfc20', color: '#a78bfa' }}>
-                                                        {item.project}
-                                                    </span>
-                                                    <span style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>
-                                                        {item.deadline || 'Q3 2026'}
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '4px' }}>
+                                                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                                                        <span style={{ fontSize: '10.5px', fontWeight: 700, padding: '2px 6px', borderRadius: '4px', background: '#7c5cfc20', color: '#a78bfa' }}>
+                                                            {item.project}
+                                                        </span>
+                                                        {item.eventName && (
+                                                            <span style={{ fontSize: '10px', fontWeight: 600, padding: '2px 6px', borderRadius: '4px', background: 'rgba(167, 139, 250, 0.15)', color: '#c4b5fd' }}>
+                                                                🎪 {item.eventName}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <span style={{ fontSize: '10px', color: item.deadline ? '#4ade80' : 'var(--text-tertiary)', fontWeight: item.deadline ? 600 : 400 }}>
+                                                        📅 {item.deadline || 'Sin fecha'}
                                                     </span>
                                                 </div>
 
@@ -1192,6 +1471,23 @@ export default function PortfolioOS() {
                                 </div>
 
                                 <div className="form-group" style={{ marginBottom: '12px' }}>
+                                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px' }}>Evento Vinculado (Opcional)</label>
+                                    <select
+                                        className="form-control"
+                                        value={newDecision.eventId || ''}
+                                        onChange={e => setNewDecision({ ...newDecision, eventId: e.target.value })}
+                                        style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-subtle)', color: 'white', padding: '8px', borderRadius: '8px', width: '100%' }}
+                                    >
+                                        <option value="">🎪 Sin evento específico / Decisión global</option>
+                                        {(events || []).map(ev => (
+                                            <option key={`dec-ev-${ev.id}`} value={ev.id}>
+                                                {ev.icon || '🍸'} {ev.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div className="form-group" style={{ marginBottom: '12px' }}>
                                     <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px' }}>Título de la Decisión</label>
                                     <input
                                         type="text"
@@ -1305,6 +1601,31 @@ export default function PortfolioOS() {
                                 </div>
 
                                 <div className="form-group" style={{ marginBottom: '12px' }}>
+                                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px' }}>🎪 Evento Vinculado (Opcional - Sincroniza con Master Calendar & Eventos)</label>
+                                    <select
+                                        className="form-control"
+                                        value={newRoadmap.eventId || ''}
+                                        onChange={e => {
+                                            const evId = e.target.value;
+                                            const ev = (events || []).find(x => x.id === evId);
+                                            setNewRoadmap({
+                                                ...newRoadmap,
+                                                eventId: evId,
+                                                eventName: ev ? ev.name : ''
+                                            });
+                                        }}
+                                        style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-subtle)', color: 'white', padding: '8px', borderRadius: '8px', width: '100%' }}
+                                    >
+                                        <option value="">(Sin evento específico - Nivel Portfolio General)</option>
+                                        {(events || []).map(ev => (
+                                            <option key={`rdm-ev-${ev.id}`} value={ev.id}>
+                                                {ev.icon || '🍸'} {ev.name} ({ev.date || 'Sin fecha'})
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div className="form-group" style={{ marginBottom: '12px' }}>
                                     <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px' }}>Fecha Límite Estimada</label>
                                     <input
                                         type="date"
@@ -1332,6 +1653,299 @@ export default function PortfolioOS() {
                                 <button type="submit" className="btn btn-primary">Añadir Hito</button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* ═════════════════════════════════════════════════════════════════ */}
+            {/* MODAL NUEVO PROYECTO VENTURE                                     */}
+            {/* ═════════════════════════════════════════════════════════════════ */}
+            {showProjectModal && (
+                <div className="modal-overlay">
+                    <div className="modal" style={{ maxWidth: '640px', maxHeight: '90vh', overflowY: 'auto' }}>
+                        <div className="modal-header">
+                            <div>
+                                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <Rocket size={18} color="#a855f7" /> Nuevo Proyecto Venture / Portfolio
+                                </h3>
+                                <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: 'var(--text-tertiary)' }}>
+                                    Crea una iniciativa estratégica conectada con uno o varios eventos y el calendario maestro.
+                                </p>
+                            </div>
+                            <button className="btn btn-ghost" style={{ padding: '4px' }} onClick={() => setShowProjectModal(false)}><X size={18} /></button>
+                        </div>
+                        <form onSubmit={handleSaveNewProject}>
+                            <div className="modal-body">
+                                <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: '12px', marginBottom: '12px' }}>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px' }}>Icono</label>
+                                        <input
+                                            type="text"
+                                            className="form-control"
+                                            value={newProjectForm.icon}
+                                            onChange={e => setNewProjectForm({ ...newProjectForm, icon: e.target.value })}
+                                            style={{ textAlign: 'center', fontSize: '18px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-subtle)', color: 'white', padding: '8px', borderRadius: '8px', width: '100%' }}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px' }}>Nombre del Proyecto *</label>
+                                        <input
+                                            type="text"
+                                            className="form-control"
+                                            placeholder="Ej: Casco Nightlife Pass, Wedding Studio..."
+                                            value={newProjectForm.name}
+                                            onChange={e => setNewProjectForm({ ...newProjectForm, name: e.target.value })}
+                                            required
+                                            style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-subtle)', color: 'white', padding: '8px', borderRadius: '8px', width: '100%' }}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="form-group" style={{ marginBottom: '12px' }}>
+                                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px' }}>Tagline / Propuesta de Valor</label>
+                                    <input
+                                        type="text"
+                                        className="form-control"
+                                        placeholder="Ej: Pasaporte digital para rooftops y barras exclusivas..."
+                                        value={newProjectForm.tagline}
+                                        onChange={e => setNewProjectForm({ ...newProjectForm, tagline: e.target.value })}
+                                        style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-subtle)', color: 'white', padding: '8px', borderRadius: '8px', width: '100%' }}
+                                    />
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px' }}>Prioridad</label>
+                                        <select
+                                            className="form-control"
+                                            value={newProjectForm.priority}
+                                            onChange={e => setNewProjectForm({ ...newProjectForm, priority: e.target.value })}
+                                            style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-subtle)', color: 'white', padding: '8px', borderRadius: '8px', width: '100%' }}
+                                        >
+                                            <option value="high">🔴 Alta (Crítico)</option>
+                                            <option value="medium">🟡 Media</option>
+                                            <option value="low">🟢 Baja / Exploratorio</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px' }}>Fecha Meta / Deadline</label>
+                                        <input
+                                            type="date"
+                                            className="form-control"
+                                            value={newProjectForm.deadline}
+                                            onChange={e => setNewProjectForm({ ...newProjectForm, deadline: e.target.value })}
+                                            style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-subtle)', color: 'white', padding: '8px', borderRadius: '8px', width: '100%' }}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="form-group" style={{ marginBottom: '12px' }}>
+                                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px' }}>Objetivo Principal</label>
+                                    <textarea
+                                        className="form-control"
+                                        rows="2"
+                                        placeholder="¿Qué valida o resuelve este proyecto?"
+                                        value={newProjectForm.objective}
+                                        onChange={e => setNewProjectForm({ ...newProjectForm, objective: e.target.value })}
+                                        style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-subtle)', color: 'white', padding: '8px', borderRadius: '8px', width: '100%', resize: 'vertical' }}
+                                    />
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px' }}>Siguiente Acción Clave</label>
+                                        <input
+                                            type="text"
+                                            className="form-control"
+                                            placeholder="Próximo paso ejecutable..."
+                                            value={newProjectForm.nextAction}
+                                            onChange={e => setNewProjectForm({ ...newProjectForm, nextAction: e.target.value })}
+                                            style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-subtle)', color: 'white', padding: '8px', borderRadius: '8px', width: '100%' }}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px' }}>KPI Clave / Meta</label>
+                                        <input
+                                            type="text"
+                                            className="form-control"
+                                            placeholder="Ej: $15,000 GMV o 500 tickets..."
+                                            value={newProjectForm.kpi}
+                                            onChange={e => setNewProjectForm({ ...newProjectForm, kpi: e.target.value })}
+                                            style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-subtle)', color: 'white', padding: '8px', borderRadius: '8px', width: '100%' }}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Checklist de Eventos Conectados */}
+                                <div className="form-group" style={{ marginBottom: '14px', background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                        <label style={{ fontSize: '12px', fontWeight: 600, color: '#c084fc', display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
+                                            <Link2 size={14} /> Conectar con Eventos (Sincronización Total)
+                                        </label>
+                                        <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
+                                            {newProjectForm.eventIds.length} seleccionado(s)
+                                        </span>
+                                    </div>
+                                    <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', margin: '0 0 10px 0' }}>
+                                        Selecciona los eventos que alimentan o componen este proyecto. Sus tareas, entregables y fechas quedarán sincronizados.
+                                    </p>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '8px', maxHeight: '180px', overflowY: 'auto' }}>
+                                        {(events || []).map(ev => {
+                                            const checked = newProjectForm.eventIds.includes(ev.id);
+                                            return (
+                                                <label
+                                                    key={`new-p-ev-${ev.id}`}
+                                                    style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '8px',
+                                                        padding: '6px 10px',
+                                                        background: checked ? 'rgba(168, 85, 247, 0.15)' : 'rgba(0,0,0,0.2)',
+                                                        border: `1px solid ${checked ? 'rgba(168, 85, 247, 0.4)' : 'var(--border-subtle)'}`,
+                                                        borderRadius: '6px',
+                                                        cursor: 'pointer',
+                                                        fontSize: '12px',
+                                                        transition: 'all 0.15s ease'
+                                                    }}
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={checked}
+                                                        onChange={(e) => {
+                                                            const newIds = e.target.checked
+                                                                ? [...newProjectForm.eventIds, ev.id]
+                                                                : newProjectForm.eventIds.filter(id => id !== ev.id);
+                                                            setNewProjectForm({ ...newProjectForm, eventIds: newIds });
+                                                        }}
+                                                    />
+                                                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                        {ev.icon || '🍸'} {ev.name}
+                                                    </span>
+                                                </label>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                                <button type="button" className="btn btn-ghost" onClick={() => setShowProjectModal(false)}>Cancelar</button>
+                                <button type="submit" className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <Rocket size={15} /> Crear Proyecto y Conectar
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* ═════════════════════════════════════════════════════════════════ */}
+            {/* MODAL VINCULAR EVENTOS A PROYECTO EXISTENTE                      */}
+            {/* ═════════════════════════════════════════════════════════════════ */}
+            {linkModalProject && (
+                <div className="modal-overlay">
+                    <div className="modal" style={{ maxWidth: '580px', maxHeight: '85vh', overflowY: 'auto' }}>
+                        <div className="modal-header">
+                            <div>
+                                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <Link2 size={18} color="#a855f7" /> Vincular Eventos
+                                </h3>
+                                <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                                    Proyecto: <strong style={{ color: 'white' }}>{linkModalProject.name}</strong>
+                                </p>
+                            </div>
+                            <button className="btn btn-ghost" style={{ padding: '4px' }} onClick={() => setLinkModalProject(null)}><X size={18} /></button>
+                        </div>
+                        <div className="modal-body">
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                                <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
+                                    {selectedEventIdsForLink.length} evento(s) seleccionados
+                                </span>
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                    <button
+                                        type="button"
+                                        className="btn btn-ghost"
+                                        style={{ fontSize: '11px', padding: '3px 8px' }}
+                                        onClick={() => setSelectedEventIdsForLink((events || []).map(e => e.id))}
+                                    >
+                                        Marcar Todos
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="btn btn-ghost"
+                                        style={{ fontSize: '11px', padding: '3px 8px' }}
+                                        onClick={() => setSelectedEventIdsForLink([])}
+                                    >
+                                        Desmarcar Todos
+                                    </button>
+                                </div>
+                            </div>
+
+                            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '14px', lineHeight: 1.5 }}>
+                                Al vincular eventos a este proyecto, todas las tareas, decisiones, calendario y hojas de ruta de Portfolio OS se filtran y sincronizan bidireccionalmente con esos eventos.
+                            </p>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '320px', overflowY: 'auto', paddingRight: '4px' }}>
+                                {(events || []).map(ev => {
+                                    const isLinked = selectedEventIdsForLink.includes(ev.id);
+                                    return (
+                                        <div
+                                            key={`link-ev-${ev.id}`}
+                                            onClick={() => {
+                                                if (isLinked) {
+                                                    setSelectedEventIdsForLink(selectedEventIdsForLink.filter(id => id !== ev.id));
+                                                } else {
+                                                    setSelectedEventIdsForLink([...selectedEventIdsForLink, ev.id]);
+                                                }
+                                            }}
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'space-between',
+                                                padding: '10px 14px',
+                                                background: isLinked ? 'rgba(168, 85, 247, 0.12)' : 'rgba(255,255,255,0.02)',
+                                                border: `1px solid ${isLinked ? 'rgba(168, 85, 247, 0.4)' : 'var(--border-subtle)'}`,
+                                                borderRadius: '8px',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.15s ease'
+                                            }}
+                                        >
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isLinked}
+                                                    onChange={() => {}}
+                                                    style={{ cursor: 'pointer' }}
+                                                />
+                                                <div>
+                                                    <div style={{ fontSize: '13px', fontWeight: 600, color: 'white' }}>
+                                                        {ev.icon || '🍸'} {ev.name}
+                                                    </div>
+                                                    <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
+                                                        {ev.venue || 'Venue no especificado'} {ev.date ? `• ${ev.date}` : ''}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {isLinked && (
+                                                <span style={{ fontSize: '11px', color: '#c084fc', fontWeight: 600, background: 'rgba(168, 85, 247, 0.2)', padding: '2px 8px', borderRadius: '12px' }}>
+                                                    Vinculado
+                                                </span>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                        <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                            <button type="button" className="btn btn-ghost" onClick={() => setLinkModalProject(null)}>Cancelar</button>
+                            <button
+                                type="button"
+                                className="btn btn-primary"
+                                onClick={handleSaveProjectEvents}
+                                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                            >
+                                <CheckCircle size={15} /> Guardar Conexiones
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

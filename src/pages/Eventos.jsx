@@ -200,12 +200,8 @@ export default function Eventos() {
     const [selectedCategory, setSelectedCategory] = useState('all'); // 'all' | 'projects' | 'events' | 'operations' | 'openclaw'
     const [searchQuery, setSearchQuery] = useState('');
     const [showModal, setShowModal] = useState(false);
-    const [showOpenClawModal, setShowOpenClawModal] = useState(false);
     const [editingEntity, setEditingEntity] = useState(null);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
-    const [copiedSnippet, setCopiedSnippet] = useState('');
-    const [openclawTestLoading, setOpenclawTestLoading] = useState(false);
-    const [openclawTestFeedback, setOpenclawTestFeedback] = useState(null);
 
     const emptyForm = {
         name: '',
@@ -437,48 +433,6 @@ export default function Eventos() {
         setShowDeleteConfirm(null);
     };
 
-    // ─── OpenClaw Simulator Test ───────────────────────────────────────────
-    const handleTriggerOpenClawDemo = async () => {
-        setOpenclawTestLoading(true);
-        setOpenclawTestFeedback(null);
-        try {
-            const demoProject = {
-                name: `Proyecto Autónomo OpenClaw ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
-                description: 'Pipeline de automatización e inteligencia creado directamente vía OpenClaw Webhook Action.',
-                category: 'ai_pipeline',
-                type: 'ai_pipeline',
-                priority: 'critical',
-                status: 'active',
-                deadline: new Date(Date.now() + 86400000 * 7).toISOString().split('T')[0],
-                budget: '2500',
-                techStack: ['OpenClaw Super Agent', 'Python', 'FastAPI', 'RAG Store', 'OpenClaw'],
-                githubRepo: 'https://github.com/openclaw-agent/pipeline-core',
-                leadAgent: 'OpenClaw Super Agent',
-                milestones: [
-                    { title: 'Conexión & Ingesta RAG', done: true },
-                    { title: 'Ejecución de Scrapers & Síntesis', done: false },
-                    { title: 'Reporte Automatizado a Dashboard', done: false }
-                ]
-            };
-
-            await triggerOpenClawAction('create_project', demoProject);
-            setOpenclawTestFeedback({
-                type: 'success',
-                message: `✅ ¡Acción ejecutada! OpenClaw creó el proyecto "${demoProject.name}". Se ha sincronizado en el Hub.`
-            });
-        } catch (e) {
-            setOpenclawTestFeedback({ type: 'error', message: `Error: ${e.message}` });
-        } finally {
-            setOpenclawTestLoading(false);
-        }
-    };
-
-    const copyToClipboard = (text, key) => {
-        navigator.clipboard.writeText(text);
-        setCopiedSnippet(key);
-        setTimeout(() => setCopiedSnippet(''), 2000);
-    };
-
     return (
         <div className="page-content animate-in">
             {/* Header */}
@@ -492,18 +446,6 @@ export default function Eventos() {
                     </p>
                 </div>
                 <div className="page-header-actions" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                    <button
-                        className="btn btn-secondary"
-                        onClick={() => setShowOpenClawModal(true)}
-                        style={{
-                            display: 'flex', alignItems: 'center', gap: '8px',
-                            background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(99, 102, 241, 0.08))',
-                            border: '1px solid rgba(139, 92, 246, 0.35)',
-                            color: '#a78bfa'
-                        }}
-                    >
-                        <Bot size={16} /> Conectar OpenClaw Agent
-                    </button>
                     <button className="btn btn-primary" onClick={() => openModal()} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <Plus size={16} /> Nuevo Proyecto / Evento
                     </button>
@@ -809,164 +751,6 @@ export default function Eventos() {
                     )}
                 </Droppable>
             </DragDropContext>
-
-            {/* ═════════════════════════════════════════════════════════════════ */}
-            {/* ─── MODAL: CONECTAR OPENCLAW AGENT ─────────────────────────────── */}
-            {/* ═════════════════════════════════════════════════════════════════ */}
-            {showOpenClawModal && (
-                <div className="modal-overlay" onClick={() => setShowOpenClawModal(false)}>
-                    <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '680px' }}>
-                        <div className="modal-header">
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(139,92,246,0.2)', border: '1px solid rgba(139,92,246,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <Bot size={20} style={{ color: '#a78bfa' }} />
-                                </div>
-                                <div>
-                                    <h2 className="modal-title" style={{ margin: 0 }}>OpenClaw Super Agent Connection Hub</h2>
-                                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Endpoints REST, Webhooks y Schemas de Tools para tu Agente OpenClaw</span>
-                                </div>
-                            </div>
-                            <button className="btn-icon" onClick={() => setShowOpenClawModal(false)}><X size={18} /></button>
-                        </div>
-
-                        <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-                            {/* Server Status Pill */}
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'rgba(34, 197, 94, 0.08)', border: '1px solid rgba(34, 197, 94, 0.25)', borderRadius: '12px', marginBottom: '20px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 10px #22c55e' }} />
-                                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#4ade80' }}>OpenClaw Bridge API Activo en Puerto 8090</span>
-                                </div>
-                                <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>v2.0 REST / Tool Calling</span>
-                            </div>
-
-                            {/* Webhook Endpoints Box */}
-                            <ModalSectionLabel>Endpoints de Integración Directa</ModalSectionLabel>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
-                                <div style={{ background: 'var(--bg-secondary)', padding: '12px', borderRadius: '12px', border: '1px solid var(--border-subtle)' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                                        <span style={{ fontSize: '11px', fontWeight: 700, color: '#38bdf8' }}>POST Webhook & Actions (Crear Proyectos/Eventos/Tareas)</span>
-                                        <button
-                                            className="btn btn-ghost"
-                                            style={{ padding: '2px 8px', fontSize: '11px', height: 'auto' }}
-                                            onClick={() => copyToClipboard('http://localhost:8090/api/openclaw/action', 'action_url')}
-                                        >
-                                            {copiedSnippet === 'action_url' ? <Check size={12} color="#22c55e" /> : <Copy size={12} />} Copiar
-                                        </button>
-                                    </div>
-                                    <code style={{ fontSize: '12px', color: '#fff', wordBreak: 'break-all' }}>http://localhost:8090/api/openclaw/action</code>
-                                </div>
-
-                                <div style={{ background: 'var(--bg-secondary)', padding: '12px', borderRadius: '12px', border: '1px solid var(--border-subtle)' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                                        <span style={{ fontSize: '11px', fontWeight: 700, color: '#a855f7' }}>GET State Snapshot (Consultar Proyectos, Tareas y RAG)</span>
-                                        <button
-                                            className="btn btn-ghost"
-                                            style={{ padding: '2px 8px', fontSize: '11px', height: 'auto' }}
-                                            onClick={() => copyToClipboard('http://localhost:8090/api/openclaw/state', 'state_url')}
-                                        >
-                                            {copiedSnippet === 'state_url' ? <Check size={12} color="#22c55e" /> : <Copy size={12} />} Copiar
-                                        </button>
-                                    </div>
-                                    <code style={{ fontSize: '12px', color: '#fff', wordBreak: 'break-all' }}>http://localhost:8090/api/openclaw/state</code>
-                                </div>
-                            </div>
-
-                            <ModalDivider />
-
-                            {/* Tools Schema for OpenClaw Config */}
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                                <ModalSectionLabel>Definición de Tools para OpenClaw (JSON)</ModalSectionLabel>
-                                <button
-                                    className="btn btn-ghost"
-                                    style={{ padding: '4px 10px', fontSize: '11px' }}
-                                    onClick={() => copyToClipboard(JSON.stringify({
-                                        tools: [
-                                            {
-                                                type: 'function',
-                                                function: {
-                                                    name: 'create_project',
-                                                    description: 'Crea un nuevo proyecto en el dashboard.',
-                                                    parameters: {
-                                                        type: 'object',
-                                                        properties: {
-                                                            name: { type: 'string' },
-                                                            description: { type: 'string' },
-                                                            category: { type: 'string', enum: ['software', 'business', 'marketing', 'ai_pipeline'] },
-                                                            techStack: { type: 'array', items: { type: 'string' } },
-                                                            deadline: { type: 'string' }
-                                                        },
-                                                        required: ['name', 'description']
-                                                    }
-                                                }
-                                            }
-                                        ]
-                                    }, null, 2), 'tools_json')}
-                                >
-                                    {copiedSnippet === 'tools_json' ? <Check size={12} color="#22c55e" /> : <Copy size={12} />} Copiar JSON Tools
-                                </button>
-                            </div>
-                            <pre style={{
-                                background: '#0d1117', padding: '14px', borderRadius: '12px',
-                                fontSize: '11px', color: '#38bdf8', overflowX: 'auto', maxHeight: '140px',
-                                border: '1px solid rgba(255,255,255,0.06)'
-                            }}>
-{`// Ejemplo de llamada desde OpenClaw Super Agent:
-POST http://localhost:8090/api/openclaw/action
-Content-Type: application/json
-Authorization: Bearer <API_TOKEN del archivo .env>
-
-{
-  "action": "create_project",
-  "payload": {
-    "name": "App Móvil de Entradas",
-    "description": "Sistema de boletos QR y control de aforo",
-    "category": "software",
-    "techStack": ["React Native", "FastAPI", "Postgres"],
-    "deadline": "2026-09-30"
-  }
-}`}
-                            </pre>
-
-                            <ModalDivider />
-
-                            {/* Interactive Test Sandbox */}
-                            <ModalSectionLabel>Probador Interactivo de OpenClaw Bridge</ModalSectionLabel>
-                            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
-                                Haz clic para simular que tu OpenClaw Super Agent envía una orden autónoma para crear un nuevo proyecto:
-                            </p>
-
-                            <button
-                                className="btn btn-primary"
-                                onClick={handleTriggerOpenClawDemo}
-                                disabled={openclawTestLoading}
-                                style={{
-                                    width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                                    background: 'linear-gradient(135deg, #8b5cf6, #6366f1)'
-                                }}
-                            >
-                                <Zap size={16} />
-                                {openclawTestLoading ? 'Simulando ejecución de OpenClaw...' : 'Disparar Proyecto de Prueba con OpenClaw'}
-                            </button>
-
-                            {openclawTestFeedback && (
-                                <div style={{
-                                    marginTop: '12px', padding: '10px 14px', borderRadius: '10px',
-                                    fontSize: '12px',
-                                    background: openclawTestFeedback.type === 'success' ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
-                                    color: openclawTestFeedback.type === 'success' ? '#4ade80' : '#f87171',
-                                    border: `1px solid ${openclawTestFeedback.type === 'success' ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`
-                                }}>
-                                    {openclawTestFeedback.message}
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="modal-footer">
-                            <button className="btn btn-secondary" onClick={() => setShowOpenClawModal(false)}>Cerrar</button>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {/* ═════════════════════════════════════════════════════════════════ */}
             {/* ─── MODAL CREAR / EDITAR PROYECTO O EVENTO ───────────────────── */}

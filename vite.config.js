@@ -39,6 +39,19 @@ export default defineConfig({
           });
         },
       },
+      '/proxy/openjarvis': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true,
+        ws: true,
+        rewrite: (path) => path.replace(/^\/proxy\/openjarvis/, ''),
+        configure: (proxy) => {
+          proxy.on('proxyRes', (proxyRes) => {
+            delete proxyRes.headers['x-frame-options'];
+            delete proxyRes.headers['content-security-policy'];
+            delete proxyRes.headers['content-security-policy-report-only'];
+          });
+        },
+      },
     },
   },
   build: {
@@ -48,7 +61,6 @@ export default defineConfig({
       output: {
         manualChunks: {
           'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-          'vendor-icons': ['lucide-react'],
           'vendor-markdown': ['react-markdown', 'remark-gfm']
         }
       }

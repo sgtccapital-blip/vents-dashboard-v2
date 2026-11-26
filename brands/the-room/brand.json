@@ -1,0 +1,285 @@
+{
+  "slug": "the-room",
+  "accountId": "social-theroom-social",
+  "handler": "@theroom.social",
+  "driveAliases": [
+    "the room",
+    "theroom",
+    "room social club"
+  ],
+  "ig": {
+    "bio": [
+      "The Room Social Club ®",
+      "Most exclusive party 🍸",
+      "Reggaeton & Hits",
+      "⬇️ TICKETS ⬇️"
+    ],
+    "highlights": [
+      "Ediciones",
+      "Tickets",
+      "VIP",
+      "Partners"
+    ],
+    "followers": "454"
+  },
+  "name": "THE ROOM",
+  "descriptor": "Social Club",
+  "tagline": "Members of the night.",
+  "essence": "Un club privado que aparece por una noche: exclusivo, oscuro y elegante.",
+  "positioning": "La fiesta más exclusiva de Panamá: club social itinerante de reggaetón, hits y crossover con estética de lujo nocturno y acceso controlado.",
+  "personality": [
+    "Exclusiva",
+    "Misteriosa",
+    "Sensual",
+    "Elegante",
+    "Selectiva"
+  ],
+  "values": [
+    "Acceso, no masa",
+    "Detalle en todo",
+    "Hospitalidad de club privado",
+    "Discreción"
+  ],
+  "layout": "centered",
+  "logo": {
+    "wordmark": [
+      "THE",
+      "ROOM"
+    ],
+    "descriptorLine": "Social Club",
+    "symbol": "Búho de línea fina con sombrero de copa y monóculo con cadena. Va de pie entre THE y ROOM, con las patas sobre la línea base y el sombrero por encima de la altura de mayúsculas. Solo, funciona como sello.",
+    "construction": "THE y ROOM en didona condensada de alto contraste (Bodoni Moda comprimida al ~78%), mayúsculas. El búho ocupa el espacio entre ambas palabras. \"Social Club\" en sans geométrica regular, centrado debajo a ~25% del alto de las mayúsculas.",
+    "clearspace": "Altura del sombrero del búho alrededor.",
+    "minSize": "Lockup 140 px · búho solo 24 px.",
+    "versions": [
+      "Crema sobre Noir (principal)",
+      "Crema sobre Bordeaux",
+      "Búho solo (sello, favicon, pulsera)",
+      "Noir sobre Cream (impresos de día)"
+    ],
+    "misuse": [
+      "No separar el búho del wordmark en el lockup principal",
+      "No usar el búho en colores fuera de paleta",
+      "No poner el logo sobre fotos sin oscurecer",
+      "No usar sans pesadas junto al logo"
+    ]
+  },
+  "colors": [
+    {
+      "token": "noir",
+      "name": "Noir",
+      "hex": "#0B0505",
+      "role": "Primario",
+      "usage": "Fondo principal."
+    },
+    {
+      "token": "bordeaux",
+      "name": "Bordeaux",
+      "hex": "#7A0E0E",
+      "role": "Primario",
+      "usage": "Fondos de flyer, degradados, terciopelo."
+    },
+    {
+      "token": "ember",
+      "name": "Ember Red",
+      "hex": "#C1121F",
+      "role": "Acento",
+      "usage": "Destellos de luz, líneas, hover. Poco y preciso."
+    },
+    {
+      "token": "cream",
+      "name": "Cream",
+      "hex": "#E8DCCB",
+      "role": "Primario",
+      "usage": "Logo, titulares y textos sobre oscuro."
+    },
+    {
+      "token": "rose",
+      "name": "Rosé Marble",
+      "hex": "#B76E6E",
+      "role": "Secundario",
+      "usage": "Texturas de mármol, ediciones en venues claros (Terraplén)."
+    },
+    {
+      "token": "gold",
+      "name": "Antique Gold",
+      "hex": "#B08D57",
+      "role": "Acento",
+      "usage": "Detalles de invitación VIP, pulseras, foil."
+    }
+  ],
+  "theme": {
+    "bg": "noir",
+    "surface": "#1C0A0A",
+    "fg": "cream",
+    "muted": "rose",
+    "accent": "ember",
+    "line": "#3A1414"
+  },
+  "gradients": [
+    {
+      "name": "Velvet",
+      "css": "radial-gradient(ellipse at 50% 35%, #7A0E0E 0%, #3A0707 45%, #0B0505 80%)"
+    },
+    {
+      "name": "Ember flare",
+      "css": "linear-gradient(90deg, transparent 0%, #C1121F 50%, transparent 100%)"
+    }
+  ],
+  "typography": {
+    "display": {
+      "family": "Bodoni Moda",
+      "weights": [
+        400,
+        500,
+        700
+      ],
+      "case": "uppercase",
+      "tracking": "0.04em",
+      "usage": "Wordmark y titulares grandes."
+    },
+    "secondary": {
+      "family": "Josefin Sans",
+      "weights": [
+        300,
+        400,
+        600
+      ],
+      "case": "uppercase",
+      "tracking": "0.32em",
+      "usage": "Datos: fecha, venue, lineup, 'till late', géneros."
+    },
+    "body": {
+      "family": "Josefin Sans",
+      "weights": [
+        300,
+        400
+      ],
+      "case": "none",
+      "tracking": "0.02em",
+      "usage": "Texto web, condiciones, captions."
+    }
+  },
+  "ui": {
+    "radius": "0px",
+    "buttonStyle": "Contorno 1px crema, Josefin Sans mayúsculas tracking 0.32em. Hover: fondo crema con texto Noir.",
+    "grid": "Composición centrada y simétrica; 8 columnas, 1120 px.",
+    "spacingBase": 8,
+    "shadow": "Sin sombras; profundidad con viñeta y luz roja."
+  },
+  "imagery": {
+    "photography": "Detalles de lujo: tacones, copas, botellas con bengala, manos con anillos, siluetas en luz roja. Gente bien vestida, de espaldas o en penumbra.",
+    "treatment": "Viraje rojo/vino, sombras profundas, viñeta, grano de película. Piel cálida.",
+    "avoid": "Flash directo, fotos de multitud desordenada, colores fríos, barra libre."
+  },
+  "graphicElements": [
+    "Línea de luz Ember horizontal (flare)",
+    "Textura de mármol rosado o terciopelo",
+    "Separadores '|' finos entre datos",
+    "Patrocinadores en crema pequeño al pie",
+    "Marco fino tipo invitación"
+  ],
+  "iconography": "Casi sin iconos; cuando haga falta, línea fina 1 px en crema.",
+  "motion": {
+    "principles": [
+      "Lento y sensual",
+      "Reveals desde la oscuridad",
+      "Luz roja que barre"
+    ],
+    "easing": "cubic-bezier(0.65, 0, 0.35, 1)",
+    "durations": "800–1200 ms reveals · 300 ms UI",
+    "signature": "El búho parpadea (monóculo brilla) y el wordmark aparece desde negro."
+  },
+  "social": {
+    "grid": "Feed rojo/negro uniforme con el búho siempre centrado. Ciclo por edición: anuncio → lineup → recordatorio → noche → recap.",
+    "templates": [
+      {
+        "name": "Flyer de edición",
+        "format": "4:5 · 1080×1350",
+        "spec": "Velvet de fondo, fecha arriba (Josefin), lockup al centro, géneros en Josefin tracking 0.32em, lineup, venue y patrocinadores al pie."
+      },
+      {
+        "name": "Flyer animado",
+        "format": "Reel 9:16",
+        "spec": "Reveal del búho → wordmark → datos línea a línea → flare rojo. 8–10 s."
+      },
+      {
+        "name": "Recap",
+        "format": "Reel 9:16",
+        "spec": "Detalles de lujo en slow motion, cierre con búho."
+      },
+      {
+        "name": "Countdown",
+        "format": "Story 9:16",
+        "spec": "'3 NIGHTS LEFT' en Bodoni, sticker de tickets."
+      }
+    ]
+  },
+  "web": {
+    "concept": "Web de club privado: próxima edición, venta de tickets/mesas y archivo de noches.",
+    "sitemap": [
+      "Inicio (próxima edición)",
+      "Tickets & VIP",
+      "Mesas (mapa y paquetes)",
+      "Ediciones pasadas (galería)",
+      "Guest list",
+      "Partners",
+      "Contacto"
+    ],
+    "hero": "Fondo Velvet con el búho animado al centro, fecha de la próxima edición y botón 'Request access'.",
+    "sections": [
+      "Próxima edición con lineup",
+      "Paquetes de mesa",
+      "Galería de recaps",
+      "Partners",
+      "Dress code y política"
+    ],
+    "features": [
+      "Compra de tickets (Passline)",
+      "Reserva de mesa con paquetes",
+      "Guest list con aprobación"
+    ]
+  },
+  "voice": {
+    "tone": "Pocas palabras, mucha actitud. Habla como club privado: invitados, acceso, esta noche.",
+    "headlines": [
+      "Members of the night.",
+      "Esta noche, solo invitados.",
+      "La última edición se agotó.",
+      "Till late."
+    ],
+    "use": [
+      "acceso",
+      "invitados",
+      "edición",
+      "mesa",
+      "till late"
+    ],
+    "avoid": [
+      "2x1",
+      "barra libre",
+      "promo",
+      "la más loca"
+    ]
+  },
+  "dos": [
+    "Búho y wordmark centrados",
+    "Datos en Josefin con mucho tracking",
+    "Paleta roja/negra/crema siempre",
+    "Link de tickets visible"
+  ],
+  "donts": [
+    "Sans pesadas",
+    "Colores fríos o neón",
+    "Flyers saturados",
+    "Tono de promoción barata"
+  ],
+  "sample": {
+    "kicker": "VIERNES 04 SEP",
+    "headline": "EDICIÓN Nº 07",
+    "sub": "LATIN · CROSSOVER · ELECTRONIC · POP",
+    "cta": "Request access",
+    "meta": "TERRAPLÉN PISO 002 · 10PM TILL LATE"
+  },
+  "mood": "radial-gradient(ellipse at 50% 35%, #7A0E0E 0%, #3A0707 45%, #0B0505 80%)"
+}

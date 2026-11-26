@@ -37,6 +37,14 @@ export const OPENCLAW_MODES = [
         color: '#06b6d4',
         description: 'Arquitectura de software, APIs, scripts de automatización y pipelines de IA.',
         systemPrompt: 'MODO ACTIVO: TECH LEAD. Estructura soluciones técnicas modulares, especificaciones de API, scripts de automatización y buenas prácticas de ingeniería de software.'
+    },
+    {
+        id: 'jarvis',
+        name: '🎙️ Jarvis Protocol',
+        badge: 'Audio, Concierge & HUD',
+        color: '#38bdf8',
+        description: 'Control de música, catering, pedidos de comida y automatizaciones ejecutivas del Command Center.',
+        systemPrompt: 'MODO ACTIVO: JARVIS PROTOCOL. Actúa con la sofisticación, agilidad y cortesía de JARVIS. Tu tono es tecnológico, ejecutivo, veloz y resolutivo. Procesa música, comidas y macros con confirmaciones precisas y claras.'
     }
 ];
 
@@ -44,6 +52,11 @@ export const OPENCLAW_MODES = [
 export const HERMES_MODES = OPENCLAW_MODES;
 
 export const SLASH_COMMANDS = [
+    { command: '/musica', label: '/musica [play|pause|preset]', desc: 'Controla el sintetizador y presets de música de ambiente' },
+    { command: '/comida', label: '/comida [restaurante|plato]', desc: 'Coordina pedidos y catering para el equipo con link a WhatsApp' },
+    { command: '/jarvis', label: '/jarvis [instrucción]', desc: 'Ejecuta directivas o macros automatizadas de Jarvis' },
+    { command: '/openjarvis', label: '/openjarvis [doctor|skill|ask]', desc: 'Ejecuta comandos CLI del motor OpenJarvis (Stanford Personal AI)' },
+    { command: '/skill', label: '/skill [nombre]', desc: 'Ejecuta o enseña una nueva habilidad a Jarvis' },
     { command: '/proyecto', label: '/proyecto [nombre]', desc: 'Crea un nuevo proyecto en el Hub con roadmap' },
     { command: '/evento', label: '/evento [nombre] [fecha]', desc: 'Agenda un evento con agenda y requerimientos' },
     { command: '/tarea', label: '/tarea [descripción]', desc: 'Añade una tarea priorizada a la lista' },
@@ -160,7 +173,7 @@ class OpenClawBrainService {
     /**
      * Envía un mensaje al OpenClaw Super Agent con contexto en vivo + RAG + Modo + Gemini
      */
-    static async sendCommand(prompt, historyContext = [], systemRole = '', skills = '', namespace = 'default', modeId = 'ejecutivo', contextCallbacks = null) {
+    static async sendCommand(prompt, historyContext = [], systemRole = '', skills = '', namespace = 'default', modeId = 'ejecutivo', contextCallbacks = null, options = {}) {
         try {
             const modeObj = OPENCLAW_MODES.find(m => m.id === modeId) || OPENCLAW_MODES[0];
             const combinedSystemRole = `${modeObj.systemPrompt}\n\n${systemRole || ''}`;
@@ -177,7 +190,10 @@ class OpenClawBrainService {
                 systemRole: combinedSystemRole,
                 skills,
                 namespace,
-                geminiApiKey: geminiApiKey || undefined
+                geminiApiKey: geminiApiKey || undefined,
+                // Interfaz que habla (p. ej. 'jarvis') y si la respuesta se leerá en voz alta
+                agent: options.agent,
+                voice: options.voice
             };
 
             let res = await fetch(endpoint, {
@@ -210,17 +226,38 @@ class OpenClawBrainService {
                         contextCallbacks.addEvent(tool.result?.event || tool.args);
                     } else if (tool.name === 'add_task' && contextCallbacks.addTask) {
                         contextCallbacks.addTask(tool.result?.task || tool.args);
+                    } else if (tool.name === 'batch_add_tasks' && contextCallbacks.addTask) {
+                        const list = tool.result?.tasks || tool.args?.tasks || [];
+                        for (const t of list) {
+                            contextCallbacks.addTask(t);
+                        }
+                    } else if (tool.name === 'update_task' && contextCallbacks.updateTask) {
+                        if (tool.result?.task?.id) {
+                            contextCallbacks.updateTask(tool.result.task.id, tool.result.task);
+                        }
                     } else if ((tool.name === 'complete_task' || tool.name === 'toggle_task') && contextCallbacks.toggleTask) {
                         contextCallbacks.toggleTask(tool.result?.id || tool.args?.taskId);
+                    } else if (tool.name === 'control_music' && contextCallbacks.onControlMusic) {
+                        contextCallbacks.onControlMusic(tool.args || tool.result?.music);
+                    } else if (tool.name === 'order_food' && contextCallbacks.onOrderFood) {
+                        contextCallbacks.onOrderFood(tool.args || tool.result?.order);
+                    } else if (tool.name === 'execute_jarvis_skill' && contextCallbacks.onExecuteSkill) {
+                        contextCallbacks.onExecuteSkill(tool.args || tool.result?.skill);
                     }
                 }
             }
 
+            // Cerebro unificado: cualquier interfaz (Consola, Copilot, Jarvis) avisa de las herramientas
+            // ejecutadas para que las demás reaccionen (p. ej. Jarvis suena el preset pedido desde el Copilot).
+            if (data.executedTools && data.executedTools.length > 0 && typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('arrive:agent-tools', { detail: data.executedTools }));
+            }
+
             return {
-                reply: data.reply || data.content || 'Acción procesada por OpenClaw Super Agent.',
+                reply: data.reply || data.content || 'Acción procesada por ARRIVE Super Agent.',
                 executedTools: data.executedTools || [],
-                model: data.model || (geminiApiKey ? 'gemini-3.6-flash' : 'openclaw-agent'),
-                provider: data.provider || (geminiApiKey ? 'Google Gemini 3.6 Flash' : 'OpenClaw Embedded'),
+                model: data.model || (geminiApiKey ? 'gemini-3.8-flash' : 'arrive-super-agent-autonomous'),
+                provider: data.provider || (geminiApiKey ? 'Google Gemini 3.8 Flash' : 'ARRIVE Autonomous Engine'),
                 usage: data.usage || null
             };
 
@@ -328,6 +365,187 @@ class OpenClawBrainService {
             });
         } catch (e) {}
         return presets;
+    }
+
+    // ─── Jarvis Suite API Methods ─────────────────────────────────────
+    static async getJarvisSkills() {
+        try {
+            const res = await fetch(`${API_BASE}/jarvis/skills`);
+            if (res.ok) return await res.json();
+        } catch (e) {
+            console.warn('[OpenClawService] Fallback local getJarvisSkills:', e);
+        }
+        const local = localStorage.getItem('__jarvis_skills');
+        return local ? JSON.parse(local) : [];
+    }
+
+    static async saveJarvisSkill(skill) {
+        try {
+            const res = await fetch(`${API_BASE}/jarvis/skills`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(skill)
+            });
+            if (res.ok) {
+                const data = await res.json();
+                return data.skill;
+            }
+        } catch (e) {
+            console.warn('[OpenClawService] Fallback local saveJarvisSkill:', e);
+        }
+        const current = await this.getJarvisSkills();
+        const updated = [skill, ...current.filter(s => s.id !== skill.id)];
+        localStorage.setItem('__jarvis_skills', JSON.stringify(updated));
+        return skill;
+    }
+
+    static async deleteJarvisSkill(id) {
+        try {
+            await fetch(`${API_BASE}/jarvis/skills/${id}`, { method: 'DELETE' });
+        } catch (e) {}
+        const current = await this.getJarvisSkills();
+        const updated = current.filter(s => s.id !== id);
+        localStorage.setItem('__jarvis_skills', JSON.stringify(updated));
+        return true;
+    }
+
+    static async executeJarvisSkill(skillNameOrTrigger) {
+        try {
+            const res = await fetch(`${API_BASE}/jarvis/execute`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ skillNameOrTrigger })
+            });
+            if (res.ok) return await res.json();
+        } catch (e) {
+            console.error('[OpenClawService] Error ejecutando skill:', e);
+        }
+        return { success: false, error: 'No se pudo contactar al servidor' };
+    }
+
+    static async controlJarvisMusic(action, preset, volume) {
+        try {
+            const res = await fetch(`${API_BASE}/jarvis/music`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action, preset, volume })
+            });
+            if (res.ok) return await res.json();
+        } catch (e) {}
+        return { success: true, music: { action, preset, volume } };
+    }
+
+    static async orderJarvisFood(restaurant, items, diners, notes) {
+        try {
+            const res = await fetch(`${API_BASE}/jarvis/food`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ restaurant, items, diners, notes })
+            });
+            if (res.ok) return await res.json();
+        } catch (e) {}
+        return { success: true, order: { restaurant, items, diners, notes } };
+    }
+
+    static async getJarvisState() {
+        try {
+            const res = await fetch(`${API_BASE}/jarvis/state`);
+            if (res.ok) return await res.json();
+        } catch (e) {}
+        return {
+            music: { preset: 'deep_focus', action: 'pause', volume: 80 },
+            foodOrders: [],
+            skillsCount: 0
+        };
+    }
+
+    static async getJarvisConfig() {
+        const res = await fetch(`${API_BASE}/jarvis/config`);
+        if (!res.ok) throw new Error('No se pudo leer la configuración de Jarvis');
+        return res.json();
+    }
+
+    static async saveJarvisConfig(patch) {
+        const res = await fetch(`${API_BASE}/jarvis/config`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(patch)
+        });
+        if (!res.ok) throw new Error('No se pudo guardar la configuración de Jarvis');
+        return res.json();
+    }
+
+    // ─── OpenJarvis Engine Core Methods ───────────────────────────────
+    static async getOpenJarvisStatus() {
+        try {
+            const res = await fetch(`${API_BASE}/jarvis/openjarvis/status`);
+            if (res.ok) return await res.json();
+        } catch (e) {
+            console.warn('[OpenClawService] Error getOpenJarvisStatus:', e);
+        }
+        return {
+            installed: false,
+            version: '1.0.5',
+            installCommand: 'curl -fsSL https://open-jarvis.github.io/OpenJarvis/install.sh | bash',
+            presets: []
+        };
+    }
+
+    static async execOpenJarvis(command = 'doctor') {
+        try {
+            const res = await fetch(`${API_BASE}/jarvis/openjarvis/exec`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ command })
+            });
+            if (res.ok) return await res.json();
+        } catch (e) {
+            console.error('[OpenClawService] Error execOpenJarvis:', e);
+        }
+        return { success: false, command, output: 'No se pudo contactar al servidor para ejecutar OpenJarvis.' };
+    }
+
+    static async controlOpenJarvisDaemon(action = 'start') {
+        try {
+            const res = await fetch(`${API_BASE}/jarvis/openjarvis/daemon`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action })
+            });
+            if (res.ok) return await res.json();
+        } catch (e) {
+            console.error('[OpenClawService] Error controlOpenJarvisDaemon:', e);
+        }
+        return { success: false, error: 'Fallo al comunicar con daemon de OpenJarvis' };
+    }
+
+    static async syncOpenJarvisDashboardContext() {
+        try {
+            const res = await fetch(`${API_BASE}/jarvis/openjarvis/sync-context`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            if (res.ok) return await res.json();
+        } catch (e) {
+            console.error('[OpenClawService] Error syncOpenJarvisDashboardContext:', e);
+        }
+        return { success: false, error: 'Fallo al sincronizar contexto' };
+    }
+
+    static async chatOpenJarvis(message, history = [], model = 'gemini-3.5-flash-lite') {
+        try {
+            const res = await fetch(`${API_BASE}/jarvis/openjarvis/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message, history, model })
+            });
+            if (res.ok) return await res.json();
+            const err = await res.json().catch(() => ({}));
+            return { success: false, reply: `Error del motor OpenJarvis: ${err.error || res.statusText}` };
+        } catch (e) {
+            console.error('[OpenClawService] Error chatOpenJarvis:', e);
+            return { success: false, reply: 'No se pudo conectar con el servidor local de OpenJarvis.' };
+        }
     }
 }
 

@@ -1,0 +1,722 @@
+// Rutas del estudio de contenido: Drive → biblioteca raw → ideas → desarrollo → paquete de producción.
+import fs from 'fs';
+import { spawn } from 'child_process';
+import path from 'path';
+import { parseFolderId, createDriveClient, driveCredentialsFromEnv, crawlFolder } from './drive.js';
+import { buildAliases, toAsset, mergeAssets, groupNights } from './rawLibrary.js';
+import { generateStructured, availableProviders } from './llm.js';
+import { IdeaSchema, DevelopmentSchema, PromptPackSchema, SYSTEM_PROMPT, ideasPrompt, developPrompt, accountContext } from './ideaEngine.js';
+import { catalog, providerStatus, estimateCost, brandPrompt, runGeneration, friendlyError } from './generators.js';
+import { AdaptationSchema, REFERENCE_SYSTEM } from './referenceEngine.js';
+import multer from 'multer';
+import { renderBrief, slugify } from './brief.js';
+import { LIBRARY_TYPES, ensureLibrary, pickFields, itemsForAccount, kitContext, lineIdeaPrompt } from './contentLibrary.js';
+
+const MAX_IMAGES = 12;
+
+export function registerContentStudio(app, { readDB, writeDB, loadBrands, accountSlug, contentDnaPath, rootDir, cron }) {
+    const brandForAccount = accountId => {
+        try { return loadBrands().find(b => b.accountId === accountId) || null; } catch { return null; }
+    };
+    const geminiKey = () => readDB().openclawConfig?.geminiApiKey || '';
+    const driveClient = () => createDriveClient(driveCredentialsFromEnv());
+    const studioConfig = db => ({ folderId: process.env.GOOGLE_DRIVE_FOLDER_ID || '', ...(db.studioConfig || {}) });
+
+    async function thumbnailsFor(assets) {
+        let client;
+        try { client = driveClient(); } catch { return []; }
+        const out = [];
+        for (const a of assets.filter(x => x.thumbnailLink).slice(0, MAX_IMAGES)) {
+            try {
+                const res = await client.fetchThumbnail(a.thumbnailLink, 512);
+                if (!res.ok) continue;
+                const mediaType = (res.headers.get('content-type') || 'image/jpeg').split(';')[0];
+                if (!/^image\/(jpeg|png|webp|gif)$/.test(mediaType)) continue;
+                out.push({ mediaType, data: Buffer.from(await res.arrayBuffer()).toString('base64') });
+            } catch { /* una miniatura que falla no detiene la generación */ }
+        }
+        return out;
+    }
+
+    async function syncDrive() {
+        const db = readDB();
+        const cfg = studioConfig(db);
+        if (!cfg.folderId) throw new Error('Falta la carpeta de Drive: pega el link en Estudio → Configurar');
+        const client = driveClient();
+        const { root, entries } = await crawlFolder(client, cfg.folderId);
+        const aliases = buildAliases(loadBrands());
+        const incoming = entries.map(e => toAsset(e, aliases)).filter(a => a.kind !== 'other');
+        const fresh = readDB();
+        const { assets, added, missing } = mergeAssets(fresh.rawAssets || [], incoming);
+        fresh.rawAssets = assets;
+        fresh.studioConfig = { ...studioConfig(fresh), folderName: root.name, lastSyncAt: new Date().toISOString(), lastSync: { total: incoming.length, added, missing, mode: client.mode } };
+        writeDB(fresh);
+        return fresh.studioConfig.lastSync;
+    }
+
+    // ─── Configuración y sync ───
+    app.get('/api/studio/config', (req, res) => {
+        const db = readDB();
+        let drive = { configured: false, mode: null, serviceAccountEmail: null, error: null };
+        try {
+            const c = driveClient();
+            drive = { configured: true, mode: c.mode, serviceAccountEmail: c.serviceAccountEmail, error: null };
+        } catch (err) {
+            drive.error = err.message;
+        }
+        res.json({ ...studioConfig(db), drive, llm: availableProviders({ geminiApiKey: geminiKey() }), assetCount: (db.rawAssets || []).length });
+    });
+
+    app.post('/api/studio/config', (req, res) => {
+        const folderId = parseFolderId(req.body?.folderUrl);
+        if (!folderId) return res.status(400).json({ error: 'Link de carpeta de Drive no válido' });
+        const db = readDB();
+        db.studioConfig = { ...(db.studioConfig || {}), folderId, folderUrl: req.body.folderUrl };
+        writeDB(db);
+        res.json(db.studioConfig);
+    });
+
+    app.post('/api/studio/sync', async (req, res) => {
+        try {
+            res.json(await syncDrive());
+        } catch (err) {
+            res.status(400).json({ error: err.message });
+        }
+    });
+
+    // ─── Biblioteca ───
+    app.get('/api/studio/library', (req, res) => {
+        const { accountId } = req.query;
+        const all = readDB().rawAssets || [];
+        const assets = accountId ? all.filter(a => (a.accountIds || []).includes(accountId)) : all;
+        res.json({ nights: groupNights(assets), assets });
+    });
+
+    app.patch('/api/studio/assets', (req, res) => {
+        const { ids, changes } = req.body || {};
+        if (!Array.isArray(ids) || !changes) return res.status(400).json({ error: 'ids y changes requeridos' });
+        const allowed = {};
+        if (Array.isArray(changes.accountIds)) Object.assign(allowed, { accountIds: changes.accountIds, accountIdsManual: true });
+        if (['new', 'used', 'discarded'].includes(changes.status)) allowed.status = changes.status;
+        if (typeof changes.notes === 'string') allowed.notes = changes.notes;
+        const db = readDB();
+        const set = new Set(ids);
+        db.rawAssets = (db.rawAssets || []).map(a => (set.has(a.id) ? { ...a, ...allowed } : a));
+        writeDB(db);
+        res.json({ updated: ids.length });
+    });
+
+    app.get('/api/studio/thumb/:driveId', async (req, res) => {
+        const asset = (readDB().rawAssets || []).find(a => a.driveId === req.params.driveId);
+        if (!asset?.thumbnailLink) return res.status(404).end();
+        try {
+            const upstream = await driveClient().fetchThumbnail(asset.thumbnailLink, Number(req.query.s) || 480);
+            if (!upstream.ok) return res.status(upstream.status).end();
+            res.set('Content-Type', upstream.headers.get('content-type') || 'image/jpeg');
+            res.set('Cache-Control', 'private, max-age=3600');
+            res.send(Buffer.from(await upstream.arrayBuffer()));
+        } catch {
+            res.status(502).end();
+        }
+    });
+
+    // ─── Ideas desde el raw ───
+    app.post('/api/studio/ideas', async (req, res) => {
+        const { accountId, assetIds = [], count = 5, direction = '', provider } = req.body || {};
+        const db = readDB();
+        const account = (db.socialMedia || []).find(a => a.id === accountId);
+        if (!account) return res.status(404).json({ error: 'Cuenta no encontrada' });
+        const pool = (db.rawAssets || []).filter(a => a.status !== 'missing' && a.status !== 'discarded');
+        const assets = assetIds.length ? pool.filter(a => assetIds.includes(a.id)) : pool.filter(a => (a.accountIds || []).includes(accountId) && a.status === 'new').slice(0, 40);
+        if (!assets.length) return res.status(400).json({ error: 'No hay material raw seleccionado para esta cuenta' });
+        try {
+            const brand = brandForAccount(accountId);
+            const images = await thumbnailsFor(assets);
+            const out = await generateStructured({
+                system: SYSTEM_PROMPT,
+                prompt: ideasPrompt({ account, brand, assets, count: Math.min(Number(count) || 5, 10), direction, hasImages: images.length > 0 }) + kitContext(itemsForAccount(db, accountId)),
+                schema: IdeaSchema,
+                images,
+                geminiApiKey: geminiKey(),
+                provider,
+            });
+            const valid = new Set(assets.map(a => a.id));
+            const ideas = out.data.ideas.map(i => ({ ...i, assetIds: i.assetIds.filter(id => valid.has(id)) }));
+            res.json({ ideas, provider: out.provider, model: out.model, usedImages: images.length });
+        } catch (err) {
+            res.status(502).json({ error: err.message });
+        }
+    });
+
+    // ─── Desarrollo: guion de edición completo ───
+    app.post('/api/studio/develop/:taskId', async (req, res) => {
+        const db = readDB();
+        const task = (db.contentTasks || []).find(t => t.id === req.params.taskId);
+        if (!task) return res.status(404).json({ error: 'Pieza no encontrada' });
+        const account = (db.socialMedia || []).find(a => a.id === task.accountId);
+        if (!account) return res.status(400).json({ error: 'La pieza no tiene cuenta' });
+        const assets = (db.rawAssets || []).filter(a => (task.rawAssetIds || []).includes(a.id));
+        try {
+            const brand = brandForAccount(account.id);
+            const images = await thumbnailsFor(assets);
+            const refObj = task.referenceId ? (db.references || []).find(r => r.id === task.referenceId) : null;
+            const playbook = refObj?.playbookPath && fs.existsSync(path.join(projectRoot, refObj.playbookPath)) ? fs.readFileSync(path.join(projectRoot, refObj.playbookPath), 'utf-8') : '';
+            const out = await generateStructured({
+                system: SYSTEM_PROMPT,
+                prompt: developPrompt({ account, brand, task, assets, hasImages: images.length > 0, reference: playbook }) + kitContext((db.libraryItems || []).filter(i => i.id === task.lineId)),
+                schema: DevelopmentSchema,
+                images,
+                geminiApiKey: geminiKey(),
+                provider: req.body?.provider,
+            });
+            const d = out.data;
+            const fresh = readDB();
+            const idx = fresh.contentTasks.findIndex(t => t.id === task.id);
+            fresh.contentTasks[idx] = {
+                ...fresh.contentTasks[idx],
+                development: { ...d, generatedBy: `${out.provider}:${out.model}`, generatedAt: new Date().toISOString() },
+                hookVerbal: d.hookVerbal,
+                hookVisual: d.hookVisual,
+                scriptBody: d.edl.slice().sort((a, b) => a.order - b.order).map(s => `${s.order}. [${s.inSec}-${s.outSec}s] ${s.purpose}${s.overlay ? ` · Texto: "${s.overlay}"` : ''}${s.subtitle ? ` · Voz: "${s.subtitle}"` : ''}`).join('\n'),
+                caption: d.caption,
+                hashtags: d.hashtags,
+                cta: d.cta,
+                status: ['idea'].includes(fresh.contentTasks[idx].status) ? 'script' : fresh.contentTasks[idx].status,
+            };
+            writeDB(fresh);
+            res.json(fresh.contentTasks[idx]);
+        } catch (err) {
+            res.status(502).json({ error: err.message });
+        }
+    });
+
+    // ─── Ejecutar: paquete de producción ───
+    app.post('/api/studio/execute/:taskId', (req, res) => {
+        const db = readDB();
+        const idx = (db.contentTasks || []).findIndex(t => t.id === req.params.taskId);
+        if (idx < 0) return res.status(404).json({ error: 'Pieza no encontrada' });
+        const current = db.contentTasks[idx];
+        if (!current.development) return res.status(400).json({ error: 'Primero desarrolla la pieza' });
+        const task = { ...current, status: ['idea', 'script', 'shooting'].includes(current.status) ? 'editing' : current.status };
+        const account = (db.socialMedia || []).find(a => a.id === task.accountId);
+        const brand = brandForAccount(task.accountId);
+        const slug = accountSlug(account);
+        const assets = db.rawAssets || [];
+        const markdown = renderBrief({ task, account, brand, assets, accountSlug: slug });
+        const file = `${(task.publishDate || new Date().toISOString().slice(0, 10))}-${slugify(task.title)}.md`;
+        const dir = path.join(contentDnaPath, slug, 'briefs');
+        fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(path.join(dir, file), markdown, 'utf-8');
+
+        const used = new Set(task.rawAssetIds || []);
+        db.rawAssets = assets.map(a => (used.has(a.id) ? { ...a, status: 'used', usedIn: [...new Set([...(a.usedIn || []), task.id])] } : a));
+        db.contentTasks[idx] = { ...task, briefPath: `content-dna/${slug}/briefs/${file}`, executedAt: new Date().toISOString() };
+        writeDB(db);
+        res.json({ task: db.contentTasks[idx], markdown });
+    });
+
+    // ─── Render: máquina de contenido (studio/) ───
+    // Un render a la vez; los demás esperan en cola. El estado vive en memoria y el log en disco.
+    const jobs = new Map();
+    const queue = [];
+    let running = null;
+    const studioDir = path.join(rootDir, 'studio');
+    const projectRoot = path.dirname(contentDnaPath); // las rutas guardadas son relativas a la carpeta que contiene content-dna/
+
+    function startNext() {
+        if (running || !queue.length) return;
+        const job = queue.shift();
+        running = job;
+        job.status = 'running';
+        job.startedAt = new Date().toISOString();
+        const args = ['bin/render-brief.mjs', job.taskId, ...(job.captions ? ['--captions'] : [])];
+        const child = spawn(process.execPath, args, {
+            cwd: studioDir,
+            env: { ...process.env, CONTENT_DNA_PATH: contentDnaPath, DASHBOARD_URL: `http://127.0.0.1:${process.env.PORT || 8090}` },
+        });
+        const onData = chunk => {
+            job.log = (job.log + chunk.toString()).slice(-6000);
+            const pct = [...job.log.matchAll(/›\s+(\d+)%/g)].pop();
+            if (pct) job.progress = Number(pct[1]);
+        };
+        child.stdout.on('data', onData);
+        child.stderr.on('data', onData);
+        child.on('close', code => {
+            job.status = code === 0 ? 'done' : 'error';
+            job.finishedAt = new Date().toISOString();
+            running = null;
+            startNext();
+        });
+    }
+
+    app.post('/api/studio/render/:taskId', (req, res) => {
+        const task = (readDB().contentTasks || []).find(t => t.id === req.params.taskId);
+        if (!task) return res.status(404).json({ error: 'Pieza no encontrada' });
+        if (!task.development?.edl?.length) return res.status(400).json({ error: 'Primero desarrolla la pieza' });
+        if (!fs.existsSync(path.join(studioDir, 'node_modules'))) return res.status(500).json({ error: 'La máquina de contenido no está instalada: cd studio && npm install' });
+        const existing = jobs.get(task.id);
+        if (existing && ['queued', 'running'].includes(existing.status)) return res.json(existing);
+        const job = { taskId: task.id, status: 'queued', progress: 0, log: '', captions: Boolean(req.body?.captions), queuedAt: new Date().toISOString() };
+        jobs.set(task.id, job);
+        queue.push(job);
+        startNext();
+        res.json(job);
+    });
+
+    app.get('/api/studio/render/:taskId', (req, res) => {
+        res.json(jobs.get(req.params.taskId) || { status: 'idle' });
+    });
+
+    // Archivos generados (renders, portadas, gráficos) para verlos en el dashboard. Solo dentro de content-dna/.
+    app.get('/api/studio/media', (req, res) => {
+        const rel = String(req.query.path || '');
+        const abs = path.resolve(projectRoot, rel);
+        if (!abs.startsWith(contentDnaPath + path.sep) || !fs.existsSync(abs)) return res.status(404).end();
+        if (req.query.download) res.attachment(path.basename(abs));
+        res.sendFile(abs);
+    });
+
+    // ─── Generación con IA (Google Nano Banana / Veo, Higgsfield) ───
+    const genJobs = new Map();
+    const mimeOf = file => ({ '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp' }[path.extname(file).toLowerCase()] || 'image/jpeg');
+
+    /** Bytes de una imagen de la biblioteca para usar como referencia o primer frame. */
+    async function assetImage(asset) {
+        if (asset.localPath) {
+            const abs = path.join(projectRoot, asset.localPath);
+            const file = asset.kind === 'image' ? abs : (asset.thumbPath ? path.join(projectRoot, asset.thumbPath) : null);
+            if (!file || !fs.existsSync(file)) return null;
+            return { data: fs.readFileSync(file).toString('base64'), mimeType: mimeOf(file) };
+        }
+        if (!asset.thumbnailLink) return null;
+        const res = await driveClient().fetchThumbnail(asset.thumbnailLink, 1600);
+        if (!res.ok) return null;
+        return { data: Buffer.from(await res.arrayBuffer()).toString('base64'), mimeType: (res.headers.get('content-type') || 'image/jpeg').split(';')[0] };
+    }
+
+    async function videoThumb(absVideo) {
+        const thumb = absVideo.replace(/\.[^.]+$/, '.thumb.jpg');
+        await new Promise(resolve => {
+            const p = spawn('ffmpeg', ['-y', '-ss', '1', '-i', absVideo, '-frames:v', '1', '-vf', 'scale=540:-1', thumb]);
+            p.on('close', resolve);
+            p.on('error', resolve);
+        });
+        return fs.existsSync(thumb) ? thumb : null;
+    }
+
+    app.get('/api/studio/generators', (req, res) => {
+        res.json({ providers: providerStatus(geminiKey()), catalog: catalog() });
+    });
+
+    app.post('/api/studio/generate/estimate', (req, res) => {
+        res.json({ usd: estimateCost(req.body || {}) });
+    });
+
+    app.post('/api/studio/generate', (req, res) => {
+        const b = req.body || {};
+        const db = readDB();
+        const account = (db.socialMedia || []).find(a => a.id === b.accountId);
+        if (!account) return res.status(404).json({ error: 'Cuenta no encontrada' });
+        if (!b.prompt?.trim()) return res.status(400).json({ error: 'Escribe qué quieres generar' });
+        const status = providerStatus(geminiKey());
+        if (!status[b.provider]) return res.status(400).json({ error: b.provider === 'higgsfield' ? 'Falta HF_API_KEY_ID / HF_API_KEY_SECRET en .env' : 'Falta GEMINI_API_KEY en .env' });
+
+        const id = `gen-${Date.now()}`;
+        const job = { id, status: 'running', progress: 0, accountId: account.id, kind: b.kind, provider: b.provider, model: b.model, estimateUsd: estimateCost(b), assets: [], error: null, startedAt: new Date().toISOString() };
+        genJobs.set(id, job);
+        res.json(job);
+
+        (async () => {
+            const brand = brandForAccount(account.id);
+            const prompt = b.useBrandStyle === false ? b.prompt : brandPrompt(brand, b.prompt, b.kind);
+            const pool = db.rawAssets || [];
+            const refs = (await Promise.all(pool.filter(a => (b.refAssetIds || []).includes(a.id)).map(assetImage))).filter(Boolean);
+            const firstAsset = pool.find(a => a.id === b.firstFrameAssetId);
+            const firstFrame = firstAsset ? await assetImage(firstAsset) : null;
+            const day = new Date().toISOString().slice(0, 10);
+            const slug = accountSlug(account);
+            const outDir = path.join(contentDnaPath, slug, 'ai', day);
+            const files = await runGeneration({
+                provider: b.provider, kind: b.kind, model: b.model, prompt,
+                aspectRatio: b.aspectRatio || '9:16', size: b.size, resolution: b.resolution, durationSeconds: b.durationSeconds || 8,
+                count: Math.min(Number(b.count) || 1, b.kind === 'video' ? 2 : 4), refs, firstFrame, negativePrompt: b.negativePrompt,
+                outDir, baseName: `${b.kind}-${Date.now()}`, geminiApiKey: geminiKey(),
+                onProgress: p => { job.progress = p; },
+            });
+            const rel = abs => path.relative(projectRoot, abs);
+            const created = [];
+            for (const f of files) {
+                const thumb = f.kind === 'video' ? await videoThumb(f.file) : null;
+                created.push({
+                    id: `ai-${path.basename(f.file).replace(/\.[^.]+$/, '')}`,
+                    driveId: null,
+                    source: 'ai',
+                    provider: b.provider,
+                    model: b.model,
+                    prompt: b.prompt,
+                    name: path.basename(f.file),
+                    mimeType: f.mimeType,
+                    kind: f.kind,
+                    localPath: rel(f.file),
+                    thumbPath: thumb ? rel(thumb) : (f.kind === 'image' ? rel(f.file) : null),
+                    durationSec: f.kind === 'video' ? Number(b.durationSeconds || 8) : null,
+                    width: null, height: null,
+                    orientation: (b.aspectRatio || '9:16') === '9:16' ? 'vertical' : 'horizontal',
+                    nightId: `ai-${day}`,
+                    nightName: `IA · ${day}`,
+                    nightDate: day,
+                    folderPath: `IA / ${day}`,
+                    webViewLink: `/api/studio/media?path=${encodeURIComponent(rel(f.file))}`,
+                    detectedAccountIds: [account.id],
+                    accountIds: [account.id],
+                    accountIdsManual: true,
+                    status: 'new', notes: `Generado con ${b.model}`, tags: ['ia'], usedIn: [],
+                    firstSeenAt: new Date().toISOString(), lastSeenAt: new Date().toISOString(),
+                });
+            }
+            const fresh = readDB();
+            fresh.rawAssets = [...(fresh.rawAssets || []), ...created];
+            writeDB(fresh);
+            job.assets = created;
+            job.status = 'done';
+            job.progress = 100;
+        })().catch(err => {
+            job.status = 'error';
+            job.error = friendlyError(err);
+        }).finally(() => { job.finishedAt = new Date().toISOString(); });
+    });
+
+    app.get('/api/studio/generate/:id', (req, res) => {
+        const job = genJobs.get(req.params.id);
+        if (!job) return res.status(404).json({ error: 'Trabajo no encontrado' });
+        res.json(job);
+    });
+
+    // Paquete de prompts para herramientas sin API (Google Flow) o para usar a mano (Higgsfield, Nano Banana).
+    app.post('/api/studio/prompt-pack', async (req, res) => {
+        const { accountId, goal = '', count = 4 } = req.body || {};
+        const db = readDB();
+        const account = (db.socialMedia || []).find(a => a.id === accountId);
+        if (!account) return res.status(404).json({ error: 'Cuenta no encontrada' });
+        try {
+            const brand = brandForAccount(accountId);
+            const out = await generateStructured({
+                system: `${SYSTEM_PROMPT}\nAdemás eres experto en prompts para generadores de video e imagen (Google Flow/Veo 3.1, Nano Banana, Higgsfield: Kling, Seedance, Soul). Escribes prompts cinematográficos en inglés, concretos (sujeto, acción, cámara, lente, luz, color, ambiente, audio). Regla estricta: nunca pidas que el generador dibuje logos, nombres de marca, letras, números ni texto (salen deformes); si la toma necesita un logo o pantalla, describe la pantalla vacía o con luz abstracta y deja espacio libre para que el logo real se agregue en edición.`,
+                prompt: `${accountContext(account, brand)}\n## Objetivo\n${goal || 'Material de apoyo (b-roll, transiciones, fondos) que combine con lo que publica la cuenta.'}\n\nCrea ${Math.min(Number(count) || 4, 8)} prompts listos para pegar. Mezcla video (Flow/Veo o Higgsfield) e imagen (Nano Banana o Higgsfield Soul) según convenga.`,
+                schema: PromptPackSchema,
+                geminiApiKey: geminiKey(),
+            });
+            res.json({ ...out.data, provider: out.provider, model: out.model });
+        } catch (err) {
+            res.status(502).json({ error: err.message });
+        }
+    });
+
+    // ─── Referencias y tutoriales: videos virales y técnicas para recrear ───
+    const libraryDir = path.join(contentDnaPath, '_library', 'references');
+    // server.js engancha aquí el RAG: cada referencia analizada entra al índice de conocimiento.
+    const hooks = { onReferenceChange: () => {} };
+    const refQueue = [];
+    let refRunning = null;
+    const upload = multer({
+        storage: multer.diskStorage({
+            destination: (req, file, cb) => {
+                req.refId ||= `ref-${Date.now()}`;
+                const dir = path.join(libraryDir, req.refId);
+                fs.mkdirSync(dir, { recursive: true });
+                cb(null, dir);
+            },
+            filename: (req, file, cb) => cb(null, `source${path.extname(file.originalname || '.mp4').toLowerCase() || '.mp4'}`),
+        }),
+        limits: { fileSize: 2 * 1024 * 1024 * 1024 },
+        fileFilter: (req, file, cb) => cb(null, /^video\//.test(file.mimetype)),
+    });
+
+    function runNextAnalysis() {
+        if (refRunning || !refQueue.length) return;
+        refRunning = refQueue.shift();
+        const child = spawn(process.execPath, ['bin/analyze-reference.mjs', refRunning], {
+            cwd: studioDir,
+            env: { ...process.env, CONTENT_DNA_PATH: contentDnaPath, DASHBOARD_URL: `http://127.0.0.1:${process.env.PORT || 8090}` },
+        });
+        let tail = '';
+        child.stderr.on('data', c => { tail = (tail + c).slice(-1500); });
+        child.on('close', code => {
+            if (code !== 0) {
+                const db = readDB();
+                const r = (db.references || []).find(x => x.id === refRunning);
+                if (r && r.status !== 'error') { r.status = 'error'; r.error = tail.split('\n').filter(Boolean).pop() || 'El análisis falló'; writeDB(db); }
+            }
+            refRunning = null;
+            runNextAnalysis();
+        });
+    }
+    const queueAnalysis = id => { if (!refQueue.includes(id) && refRunning !== id) refQueue.push(id); runNextAnalysis(); };
+
+    app.get('/api/studio/references', (req, res) => {
+        res.json((readDB().references || []).slice().sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))));
+    });
+
+    app.post('/api/studio/references', upload.single('file'), (req, res) => {
+        const b = req.body || {};
+        const type = b.type === 'tutorial' ? 'tutorial' : 'viral';
+        if (!req.file && !b.url) return res.status(400).json({ error: 'Pega un link o sube el video' });
+        if (b.url && !/^https?:\/\//.test(b.url)) return res.status(400).json({ error: 'Link no válido' });
+        const db = readDB();
+        const dup = b.url && (db.references || []).find(r => r.url && normalizeRefUrl(r.url) === normalizeRefUrl(b.url));
+        if (dup) {
+            if (req.file) fs.rmSync(path.dirname(req.file.path), { recursive: true, force: true });
+            return res.status(409).json({ error: 'Ese link ya está en la biblioteca', reference: dup });
+        }
+        const ref = newReference({
+            id: req.refId, type, url: b.url, title: b.title, notes: b.notes, lang: b.lang,
+            accountIds: b.accountIds ? [].concat(b.accountIds).flatMap(x => String(x).split(',')).filter(Boolean) : [],
+            sourcePath: req.file ? path.relative(projectRoot, req.file.path) : null,
+        });
+        db.references = [...(db.references || []), ref];
+        writeDB(db);
+        queueAnalysis(ref.id);
+        res.status(201).json(ref);
+    });
+
+    function newReference({ id, type, url, title, notes, lang, accountIds = [], sourcePath = null, addedBy = 'dashboard' }) {
+        return {
+            id: id || `ref-${Date.now()}${Math.random().toString(36).slice(2, 5)}`,
+            type: type === 'tutorial' ? 'tutorial' : 'viral',
+            url: url || null,
+            title: title || '',
+            notes: notes || '',
+            lang: lang || 'auto',
+            accountIds, sourcePath, addedBy,
+            status: 'queued',
+            createdAt: new Date().toISOString(),
+        };
+    }
+
+    /** Para agentes (MCP): agrega links sin pasar por el formulario. */
+    function addReferences({ urls, type = 'viral', notes = '', accountIds = [], addedBy = 'agente' }) {
+        const db = readDB();
+        const added = [];
+        const duplicates = [];
+        for (const url of urls) {
+            if (!/^https?:\/\//.test(url)) continue;
+            const dup = (db.references || []).find(r => r.url && normalizeRefUrl(r.url) === normalizeRefUrl(url));
+            if (dup) { duplicates.push({ id: dup.id, url, title: dup.title }); continue; }
+            const ref = newReference({ type, url, notes, accountIds, addedBy });
+            db.references = [...(db.references || []), ref];
+            added.push(ref);
+        }
+        writeDB(db);
+        added.forEach(r => queueAnalysis(r.id));
+        return { added: added.map(r => ({ id: r.id, url: r.url, type: r.type, status: r.status })), duplicates };
+    }
+
+    app.patch('/api/studio/references/:id', (req, res) => {
+        const db = readDB();
+        const ref = (db.references || []).find(r => r.id === req.params.id);
+        if (!ref) return res.status(404).json({ error: 'Referencia no encontrada' });
+        const changes = { ...(req.body || {}) };
+        delete changes.id;
+        delete changes.createdAt;
+        Object.assign(ref, changes);
+        writeDB(db);
+        if (ref.status === 'ready') hooks.onReferenceChange(ref.id);
+        res.json(ref);
+    });
+
+    app.post('/api/studio/references/:id/analyze', (req, res) => {
+        const db = readDB();
+        const ref = (db.references || []).find(r => r.id === req.params.id);
+        if (!ref) return res.status(404).json({ error: 'Referencia no encontrada' });
+        Object.assign(ref, { status: 'queued', error: null });
+        writeDB(db);
+        queueAnalysis(ref.id);
+        res.json(ref);
+    });
+
+    app.delete('/api/studio/references/:id', (req, res) => {
+        const db = readDB();
+        const before = (db.references || []).length;
+        db.references = (db.references || []).filter(r => r.id !== req.params.id);
+        if (db.references.length === before) return res.status(404).json({ error: 'Referencia no encontrada' });
+        writeDB(db);
+        fs.rmSync(path.join(libraryDir, req.params.id), { recursive: true, force: true });
+        hooks.onReferenceChange(req.params.id);
+        res.json({ deleted: req.params.id });
+    });
+
+    // Recrear una referencia para una cuenta: crea la idea en el pipeline ligada a la referencia.
+    app.post('/api/studio/references/:id/recreate', async (req, res) => {
+        const db = readDB();
+        const ref = (db.references || []).find(r => r.id === req.params.id);
+        const account = (db.socialMedia || []).find(a => a.id === req.body?.accountId);
+        if (!ref?.analysis) return res.status(400).json({ error: 'La referencia todavía no está analizada' });
+        if (!account) return res.status(404).json({ error: 'Cuenta no encontrada' });
+        try {
+            const brand = brandForAccount(account.id);
+            const playbook = ref.playbookPath && fs.existsSync(path.join(projectRoot, ref.playbookPath)) ? fs.readFileSync(path.join(projectRoot, ref.playbookPath), 'utf-8') : JSON.stringify(ref.analysis);
+            const out = await generateStructured({
+                system: `${REFERENCE_SYSTEM}\n${SYSTEM_PROMPT}`,
+                prompt: `${accountContext(account, brand)}${kitContext(itemsForAccount(db, account.id))}\n## Referencia\n${playbook}\n${req.body?.direction ? `\n## Dirección\n${req.body.direction}\n` : ''}\nDiseña UNA pieza para ${account.handler} que recree el formato y la técnica de la referencia con material propio y la línea de la cuenta.`,
+                schema: AdaptationSchema,
+                geminiApiKey: geminiKey(),
+            });
+            const a = out.data;
+            const task = {
+                id: `ct-${Date.now()}`,
+                createdAt: new Date().toISOString(),
+                title: a.title, accountId: account.id, accountHandler: account.handler,
+                format: a.format, pillar: a.pillar, status: 'idea',
+                hookVerbal: a.hook, hookVisual: a.overlayText ? `Texto en pantalla: ${a.overlayText}` : '',
+                scriptBody: `${a.concept}\n\nTomas:\n${a.shotList.map(s => `- ${s}`).join('\n')}`,
+                overlayText: a.overlayText, durationSec: a.durationSec, caption: a.caption, cta: a.cta,
+                hashtags: account.dna?.hashtags || '', ideaWhy: a.why,
+                rawAssetIds: [], referenceId: ref.id, source: 'reference',
+                publishDate: new Date().toISOString().slice(0, 10), publishTime: '19:30',
+            };
+            const fresh = readDB();
+            fresh.contentTasks = [...(fresh.contentTasks || []), task];
+            writeDB(fresh);
+            res.json(task);
+        } catch (err) {
+            res.status(502).json({ error: err.message });
+        }
+    });
+
+    // ─── Biblioteca general: líneas y hooks asignables a cuentas ───
+    const libraryDB = () => {
+        const db = readDB();
+        if (ensureLibrary(db)) writeDB(db);
+        return db;
+    };
+
+    app.get('/api/studio/library-items', (req, res) => {
+        const { accountId, type } = req.query;
+        let items = libraryDB().libraryItems;
+        if (accountId) items = items.filter(i => (i.accountIds || []).includes(accountId));
+        if (type) items = items.filter(i => i.type === type);
+        res.json(items.slice().sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))));
+    });
+
+    app.post('/api/studio/library-items', (req, res) => {
+        const type = req.body?.type;
+        if (!LIBRARY_TYPES.includes(type)) return res.status(400).json({ error: 'Tipo no válido (linea | hook)' });
+        const fields = pickFields(type, req.body);
+        if (type === 'linea' && !fields.name) return res.status(400).json({ error: 'La línea necesita un nombre' });
+        if (type === 'hook' && !fields.text) return res.status(400).json({ error: 'El hook necesita texto' });
+        const db = libraryDB();
+        const item = { id: `${type}-${Date.now()}`, type, accountIds: [], createdAt: new Date().toISOString(), ...fields };
+        db.libraryItems.push(item);
+        writeDB(db);
+        res.status(201).json(item);
+    });
+
+    app.patch('/api/studio/library-items/:id', (req, res) => {
+        const db = libraryDB();
+        const item = db.libraryItems.find(i => i.id === req.params.id);
+        if (!item) return res.status(404).json({ error: 'Elemento no encontrado' });
+        Object.assign(item, pickFields(item.type, req.body), { updatedAt: new Date().toISOString() });
+        writeDB(db);
+        res.json(item);
+    });
+
+    app.delete('/api/studio/library-items/:id', (req, res) => {
+        const db = libraryDB();
+        const before = db.libraryItems.length;
+        db.libraryItems = db.libraryItems.filter(i => i.id !== req.params.id);
+        if (db.libraryItems.length === before) return res.status(404).json({ error: 'Elemento no encontrado' });
+        writeDB(db);
+        res.json({ deleted: req.params.id });
+    });
+
+    // Idea nueva siguiendo una línea. Devuelve la pieza sin guardarla: el cliente la agrega al pipeline.
+    app.post('/api/studio/library-items/:id/idea', async (req, res) => {
+        const db = libraryDB();
+        const line = db.libraryItems.find(i => i.id === req.params.id && i.type === 'linea');
+        const account = (db.socialMedia || []).find(a => a.id === req.body?.accountId);
+        if (!line) return res.status(404).json({ error: 'Línea no encontrada' });
+        if (!account) return res.status(404).json({ error: 'Cuenta no encontrada' });
+        try {
+            const brand = brandForAccount(account.id);
+            const out = await generateStructured({
+                system: SYSTEM_PROMPT,
+                prompt: `${accountContext(account, brand)}\n${lineIdeaPrompt(line)}${req.body?.direction ? `\n\n## Dirección\n${req.body.direction}` : ''}`,
+                schema: AdaptationSchema,
+                geminiApiKey: geminiKey(),
+            });
+            const a = out.data;
+            res.json({
+                id: `ct-${Date.now()}`,
+                createdAt: new Date().toISOString(),
+                title: a.title, accountId: account.id, accountHandler: account.handler,
+                format: line.format || a.format, pillar: line.pillar || a.pillar, status: 'idea',
+                hookVerbal: a.hook, hookVisual: a.overlayText ? `Texto en pantalla: ${a.overlayText}` : '',
+                scriptBody: `${a.concept}\n\nTomas:\n${a.shotList.map(x => `- ${x}`).join('\n')}`,
+                overlayText: a.overlayText, durationSec: line.durationSec || a.durationSec, caption: a.caption, cta: a.cta,
+                hashtags: account.dna?.hashtags || '', ideaWhy: a.why,
+                rawAssetIds: [], lineId: line.id, source: 'line',
+                publishDate: new Date().toISOString().slice(0, 10), publishTime: '19:30',
+            });
+        } catch (err) {
+            res.status(502).json({ error: err.message });
+        }
+    });
+
+    // Sync automático: cada mañana (después de la noche) y a media tarde, hora de Panamá.
+    cron.schedule('0 7,15 * * *', async () => {
+        const cfg = studioConfig(readDB());
+        if (!cfg.folderId) return;
+        try {
+            const r = await syncDrive();
+            console.log(`[Studio] Sync Drive: ${r.total} archivos, ${r.added} nuevos`);
+        } catch (err) {
+            console.warn('[Studio] Sync Drive falló:', err.message);
+        }
+    }, { timezone: 'America/Panama' });
+
+    // Al arrancar: lo que quedó a medias por un reinicio del servidor vuelve a la cola.
+    setTimeout(() => {
+        for (const r of readDB().references || []) if (['queued', 'analyzing'].includes(r.status)) queueAnalysis(r.id);
+    }, 5000);
+
+    // Referencias que fallaron por cuota o saturación de la IA: se reintentan solas (hasta 5 veces).
+    cron.schedule('*/30 * * * *', () => {
+        const db = readDB();
+        let changed = false;
+        for (const r of db.references || []) {
+            if (r.status !== 'error' || (r.retries || 0) >= 5) continue;
+            if (!/429|quota|RESOURCE_EXHAUSTED|503|UNAVAILABLE|high demand|saturad|ningún modelo|No se pudo generar/i.test(r.error || '')) continue;
+            Object.assign(r, { status: 'queued', error: null, retries: (r.retries || 0) + 1 });
+            changed = true;
+            queueAnalysis(r.id);
+        }
+        if (changed) writeDB(db);
+    });
+
+    return {
+        hooks,
+        addReferences,
+        getReference: id => {
+            const r = (readDB().references || []).find(x => x.id === id);
+            if (!r) return null;
+            const playbook = r.playbookPath && fs.existsSync(path.join(projectRoot, r.playbookPath)) ? fs.readFileSync(path.join(projectRoot, r.playbookPath), 'utf-8') : '';
+            return { id: r.id, type: r.type, url: r.url, title: r.title, notes: r.notes, accountIds: r.accountIds, status: r.status, error: r.error || null, stats: r.stats || null, analyzedBy: r.analyzedBy || null, playbook, analysis: r.analysis || null };
+        },
+    };
+}
+
+/** Mismo video aunque el link traiga parámetros de rastreo o sea la versión corta/shorts de YouTube. */
+export function normalizeRefUrl(raw) {
+    try {
+        const u = new URL(String(raw).trim());
+        u.hash = '';
+        const host = u.hostname.replace(/^www\.|^m\./, '');
+        if (host === 'youtu.be') return `youtube:${u.pathname.slice(1)}`;
+        if (/youtube\.com$/.test(host)) {
+            const v = u.pathname.match(/^\/shorts\/([^/]+)/)?.[1] || u.searchParams.get('v');
+            if (v) return `youtube:${v}`;
+        }
+        for (const k of [...u.searchParams.keys()]) if (/^(utm_|igsh|igshid|si|fbclid|feature|is_from_webapp|sender_device|_r|_t)/i.test(k)) u.searchParams.delete(k);
+        return `${host}${u.pathname.replace(/\/$/, '')}${u.search}`;
+    } catch { return String(raw).trim(); }
+}

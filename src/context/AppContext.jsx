@@ -273,11 +273,11 @@ export const AppProvider = ({ children }) => {
             setOpenclawLogs(d.openclawLogs);
             safeSetLocal('os_live_openclaw_logs', d.openclawLogs);
         }
-        if (Array.isArray(d.decisionLog) && d.decisionLog.length > 0) {
+        if (Array.isArray(d.decisionLog)) {
             setDecisionLog(d.decisionLog);
             safeSetLocal('os_live_decision_log', d.decisionLog);
         }
-        if (Array.isArray(d.portfolioRoadmap) && d.portfolioRoadmap.length > 0) {
+        if (Array.isArray(d.portfolioRoadmap)) {
             setPortfolioRoadmap(d.portfolioRoadmap);
             safeSetLocal('os_live_portfolio_roadmap', d.portfolioRoadmap);
         }
@@ -475,21 +475,15 @@ export const AppProvider = ({ children }) => {
 
     // Projects CRUD
     const addProject = async (projectData) => {
+        // Un proyecto es solo un proyecto: antes se copiaba también como evento y ensuciaba Eventos.
         const pWithId = { id: projectData.id || `proj-${Date.now()}`, ...projectData };
         setProjects(prev => [pWithId, ...prev]);
-        setEvents(prev => {
-            if (prev.find(e => e.id === pWithId.id)) return prev;
-            return [pWithId, ...prev];
-        });
         await apiFetch('/projects', { method: 'POST', body: pWithId });
-        await apiFetch('/events', { method: 'POST', body: pWithId }).catch(() => null);
     };
 
     const updateProject = async (projectId, updatedData) => {
         setProjects(prev => prev.map(p => p.id === projectId ? { ...p, ...updatedData } : p));
-        setEvents(prev => prev.map(e => e.id === projectId ? { ...e, ...updatedData } : e));
         await apiFetch(`/projects/${projectId}`, { method: 'PUT', body: updatedData });
-        await apiFetch(`/events/${projectId}`, { method: 'PUT', body: updatedData }).catch(() => null);
     };
 
     const deleteProject = async (projectId) => {
@@ -498,13 +492,7 @@ export const AppProvider = ({ children }) => {
             safeSetLocal('os_live_projects', next);
             return next;
         });
-        setEvents(prev => {
-            const next = prev.filter(e => e.id !== projectId);
-            safeSetLocal('os_live_events', next);
-            return next;
-        });
         await apiFetch(`/projects/${projectId}`, { method: 'DELETE' });
-        await apiFetch(`/events/${projectId}`, { method: 'DELETE' }).catch(() => null);
     };
 
     const reorderProjects = async (newProjectsList) => {
@@ -732,6 +720,29 @@ export const AppProvider = ({ children }) => {
         setPromoters(prev => prev.filter(p => p.id !== pId));
         try {
             await apiFetch(`/promoters/${pId}`, { method: 'DELETE' });
+        } catch (e) {}
+    };
+
+    // Image Girls (ARRIVE Models) CRUD
+    const addImageGirl = async (girlData) => {
+        const newGirl = { id: `girl-${Date.now()}`, rating: 5.0, available: true, ...girlData };
+        setImageGirls(prev => [...prev, newGirl]);
+        try {
+            await apiFetch('/imageGirls', { method: 'POST', body: newGirl });
+        } catch (e) {}
+    };
+
+    const updateImageGirl = async (girlId, updatedData) => {
+        setImageGirls(prev => prev.map(g => g.id === girlId ? { ...g, ...updatedData } : g));
+        try {
+            await apiFetch(`/imageGirls/${girlId}`, { method: 'PUT', body: updatedData });
+        } catch (e) {}
+    };
+
+    const deleteImageGirl = async (girlId) => {
+        setImageGirls(prev => prev.filter(g => g.id !== girlId));
+        try {
+            await apiFetch(`/imageGirls/${girlId}`, { method: 'DELETE' });
         } catch (e) {}
     };
 
@@ -971,6 +982,9 @@ export const AppProvider = ({ children }) => {
         deletePromoter,
         imageGirls,
         setImageGirls,
+        addImageGirl,
+        updateImageGirl,
+        deleteImageGirl,
 
         contacts,
         setContacts,

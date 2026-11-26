@@ -1,0 +1,292 @@
+{
+  "slug": "elemento",
+  "accountId": "social-elemento-techno",
+  "handler": "@Elemento.techno",
+  "driveAliases": [
+    "elemento",
+    "elemento techno"
+  ],
+  "ig": {
+    "bio": [
+      "Elemento Techno",
+      "D.A.N.C.E.",
+      "Where movement becomes sound",
+      "Electronic · Techno · House 🎧"
+    ],
+    "highlights": [
+      "Spotify",
+      "SoundCloud",
+      "YouTube",
+      "Demos"
+    ],
+    "followers": "14.8K"
+  },
+  "name": "ELEMENTO",
+  "descriptor": "Techno · House · Electronic",
+  "tagline": "Where movement becomes sound.",
+  "essence": "El movimiento convertido en sonido: la electrónica como experiencia física y visual.",
+  "positioning": "Plataforma de música electrónica desde Panamá: curaduría de momentos y artistas internacionales, música propia y eventos con estándar de festival.",
+  "personality": [
+    "Inmersiva",
+    "Minimalista",
+    "Futurista",
+    "Precisa",
+    "Nocturna"
+  ],
+  "values": [
+    "La música primero",
+    "Respeto por el artista",
+    "Producción de nivel festival",
+    "Comunidad sin pose"
+  ],
+  "layout": "cinematic",
+  "logo": {
+    "wordmark": [
+      "ELEMENTO"
+    ],
+    "descriptorLine": "D.A.N.C.E.",
+    "symbol": "La 'E' cromada en itálica con destello azul (símbolo actual). Funciona sola como avatar, sello de video y favicon.",
+    "construction": "E itálica (≈24°) de tres barras con la esquina superior izquierda redondeada y terminaciones en ángulo; acabado cromado (degradado plata con quiebre oscuro al centro) y destello azul en la punta de la barra superior. Lockup: E + ELEMENTO en Unbounded SemiBold.",
+    "clearspace": "Medio ancho de la 'E' alrededor.",
+    "minSize": "Símbolo 24 px · lockup 120 px.",
+    "versions": [
+      "Símbolo cromado sobre Void (principal)",
+      "Símbolo plano blanco (sellos en video)",
+      "Lockup horizontal blanco",
+      "Símbolo Pulse Blue para UI"
+    ],
+    "misuse": [
+      "No poner el símbolo cromado sobre fondos claros",
+      "No cambiar la inclinación de la E",
+      "No combinar con colores cálidos",
+      "No usar el glow azul en texto corrido"
+    ]
+  },
+  "colors": [
+    {
+      "token": "void",
+      "name": "Void",
+      "hex": "#05070F",
+      "role": "Primario",
+      "usage": "Fondo principal de todo: web, posts, video."
+    },
+    {
+      "token": "abyss",
+      "name": "Abyss",
+      "hex": "#0B1A3A",
+      "role": "Secundario",
+      "usage": "Superficies, tarjetas, degradados de profundidad."
+    },
+    {
+      "token": "pulse",
+      "name": "Pulse Blue",
+      "hex": "#2F6BFF",
+      "role": "Acento",
+      "usage": "Glow, enlaces, CTA, ecualizadores, detalles de luz."
+    },
+    {
+      "token": "chrome",
+      "name": "Chrome",
+      "hex": "#C9D3E0",
+      "role": "Secundario",
+      "usage": "Texto secundario, metálicos, bordes."
+    },
+    {
+      "token": "white",
+      "name": "White",
+      "hex": "#FFFFFF",
+      "role": "Primario",
+      "usage": "Titulares y texto principal."
+    },
+    {
+      "token": "ice",
+      "name": "Ice",
+      "hex": "#8FB3FF",
+      "role": "Acento",
+      "usage": "Hover y brillos secundarios."
+    }
+  ],
+  "theme": {
+    "bg": "void",
+    "surface": "abyss",
+    "fg": "white",
+    "muted": "chrome",
+    "accent": "pulse",
+    "line": "#1A2A4F"
+  },
+  "gradients": [
+    {
+      "name": "Deep field",
+      "css": "radial-gradient(ellipse at 50% 0%, #0B1A3A 0%, #05070F 70%)"
+    },
+    {
+      "name": "Chrome",
+      "css": "linear-gradient(180deg, #FFFFFF 0%, #C9D3E0 45%, #6B7A90 55%, #E6ECF5 100%)"
+    }
+  ],
+  "typography": {
+    "display": {
+      "family": "Unbounded",
+      "weights": [
+        500,
+        600,
+        800
+      ],
+      "case": "uppercase",
+      "tracking": "0.06em",
+      "usage": "Titulares, nombres de artistas, lineups."
+    },
+    "secondary": {
+      "family": "Space Grotesk",
+      "weights": [
+        400,
+        500,
+        700
+      ],
+      "case": "uppercase",
+      "tracking": "0.2em",
+      "usage": "Metadatos: venue, fecha, ciudad, etiquetas."
+    },
+    "body": {
+      "family": "Space Grotesk",
+      "weights": [
+        400,
+        500
+      ],
+      "case": "none",
+      "tracking": "0",
+      "usage": "Texto corrido y captions."
+    },
+    "mono": {
+      "family": "JetBrains Mono",
+      "weights": [
+        400,
+        500
+      ],
+      "case": "uppercase",
+      "tracking": "0.08em",
+      "usage": "Track IDs, BPM, tiempos, coordenadas."
+    }
+  },
+  "ui": {
+    "radius": "0px",
+    "buttonStyle": "Rectangular sin radio, borde 1px Pulse Blue, texto Space Grotesk mayúsculas tracking 0.2em; hover con glow azul.",
+    "grid": "12 columnas a pantalla completa, 1440 px máx., mucho espacio negativo.",
+    "spacingBase": 8,
+    "shadow": "Glow: 0 0 40px rgba(47,107,255,0.35) solo en elementos activos."
+  },
+  "imagery": {
+    "photography": "Escenarios monumentales, láseres, humo, siluetas del público a contraluz, DJ en cabina desde atrás. Arquitectura de luz.",
+    "treatment": "Negros azulados profundos, viraje frío, altas luces azules. Grano fino. Nunca colores cálidos dominantes.",
+    "avoid": "Fotos de mesa/botellas, flashes directos, colores neón rosados o verdes, selfies."
+  },
+  "graphicElements": [
+    "Línea de horizonte de luz (barra horizontal Pulse Blue con glow)",
+    "Retícula técnica y coordenadas en mono",
+    "Forma de onda/ecualizador minimal",
+    "Símbolo E como marca de agua en esquina"
+  ],
+  "iconography": "Iconos geométricos de línea 1 px, terminaciones rectas. Phosphor Thin.",
+  "motion": {
+    "principles": [
+      "Sincronizado al beat",
+      "Loops perfectos",
+      "Luz que barre de izquierda a derecha"
+    ],
+    "easing": "cubic-bezier(0.7, 0, 0.3, 1)",
+    "durations": "Ritmo de 120–128 BPM: 470 ms por pulso",
+    "signature": "La E aparece con un destello de luz azul que cruza el cromado."
+  },
+  "social": {
+    "grid": "Feed oscuro uniforme: todas las portadas en Void con un punto de luz azul. Lineups como carruseles con portada tipográfica.",
+    "templates": [
+      {
+        "name": "Moment",
+        "format": "Reel 9:16",
+        "spec": "Sin intro, abre en el drop. Overlay inferior: ARTISTA (Unbounded 56 px) / @ VENUE · FECHA (Space Grotesk 22 px)."
+      },
+      {
+        "name": "Lineup",
+        "format": "4:5 · 1080×1350",
+        "spec": "Fondo Deep field, nombres apilados en Unbounded, fecha en mono, línea de horizonte azul."
+      },
+      {
+        "name": "Artist spotlight",
+        "format": "Carrusel 4:5",
+        "spec": "Portada foto + nombre; slides: por qué importa, 3 tracks (mono), dónde verlo."
+      },
+      {
+        "name": "Track ID",
+        "format": "Story 9:16",
+        "spec": "Ecualizador animado, track en mono, sticker de link a Spotify."
+      }
+    ]
+  },
+  "web": {
+    "concept": "Web inmersiva de sello/plataforma: eventos, artistas, música y archivo de momentos.",
+    "sitemap": [
+      "Inicio",
+      "Eventos",
+      "Evento (lineup + tickets)",
+      "Artistas",
+      "Música (Spotify/SoundCloud embebido)",
+      "Archivo / Moments",
+      "Demos (envío de música)",
+      "Contacto"
+    ],
+    "hero": "Video de escenario a pantalla completa con la E cromada al centro y 'Where movement becomes sound.' en Unbounded; reproductor flotante minimal.",
+    "sections": [
+      "Próximo evento con cuenta regresiva en mono",
+      "Grid de moments en video",
+      "Playlists embebidas",
+      "Formulario de demos"
+    ],
+    "features": [
+      "Reproductor persistente",
+      "Cuenta regresiva",
+      "Envío de demos con link"
+    ]
+  },
+  "voice": {
+    "tone": "Minimalista, inmersivo, con autoridad musical. Manifiesto corto. Nada de exclamaciones.",
+    "headlines": [
+      "Where movement becomes sound.",
+      "D.A.N.C.E.",
+      "El momento exacto.",
+      "Sound first."
+    ],
+    "use": [
+      "set",
+      "movimiento",
+      "sonido",
+      "escenario",
+      "track ID"
+    ],
+    "avoid": [
+      "perreo",
+      "rumba",
+      "botellas",
+      "la mejor fiesta"
+    ]
+  },
+  "dos": [
+    "Siempre oscuro",
+    "Acreditar artista, venue y track",
+    "Un solo punto de luz azul por pieza",
+    "Abrir en el momento de mayor energía"
+  ],
+  "donts": [
+    "Fondos claros",
+    "Colores cálidos",
+    "Plantillas con muchos elementos",
+    "Música de librería sobre sets"
+  ],
+  "sample": {
+    "kicker": "LIVE AT",
+    "headline": "NICO MORENO",
+    "sub": "COMPLEX · MAASTRICHT",
+    "cta": "Escuchar set",
+    "meta": "29.12 · 128 BPM"
+  },
+  "mood": "radial-gradient(ellipse at 50% 30%, #2F6BFF 0%, #0B1A3A 40%, #05070F 75%)"
+}

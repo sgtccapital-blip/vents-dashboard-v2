@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import React, { useState, lazy, Suspense } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useSearchParams } from 'react-router-dom';
 import { AppProvider, useApp } from './context/AppContext';
 import AuthGate from './components/AuthGate';
 import Sidebar from './components/Layout/Sidebar';
@@ -7,7 +7,6 @@ import Topbar from './components/Layout/Topbar';
 import MobileTabBar from './components/Layout/MobileTabBar';
 import CloudSyncPanel from './components/CloudSyncPanel';
 import { X } from 'lucide-react';
-import React, { lazy, Suspense } from 'react';
 
 // Cada página se descarga solo cuando se abre (antes iba todo en un archivo de 1,1 MB)
 const Home = lazy(() => import('./pages/Home'));
@@ -16,11 +15,23 @@ const Eventos = lazy(() => import('./pages/Eventos'));
 const EventoDetail = lazy(() => import('./pages/EventoDetail'));
 const SocialMedia = lazy(() => import('./pages/SocialMedia'));
 const MasterCalendar = lazy(() => import('./pages/MasterCalendar'));
+const MasterContentHub = lazy(() => import('./pages/MasterContentHub'));
+const CreativeBrief = lazy(() => import('./pages/CreativeBrief'));
+const ProductionCalendar = lazy(() => import('./pages/ProductionCalendar'));
 const AgentBrain = lazy(() => import('./pages/AgentBrain'));
+const Jarvis = lazy(() => import('./pages/Jarvis'));
 const Contactos = lazy(() => import('./pages/Contactos'));
 const PortfolioOS = lazy(() => import('./pages/PortfolioOS'));
 const WhatsAppAgent = lazy(() => import('./pages/WhatsAppAgent'));
-const ArriveAgencyOS = lazy(() => import('./pages/ArriveAgencyOS'));
+const MiSemana = lazy(() => import('./pages/MiSemana'));
+const Finanzas = lazy(() => import('./pages/Finanzas'));
+const AiOfficeHQ = lazy(() => import('./pages/AiOfficeHQ'));
+
+function ArriveRedirect() {
+  const [searchParams] = useSearchParams();
+  const tab = searchParams.get('tab') || 'clients';
+  return <Navigate to={`/?tab=${tab}`} replace />;
+}
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -79,16 +90,25 @@ function AppLayout() {
           <Suspense fallback={<div style={{ padding: '24px', color: 'var(--text-tertiary)', fontSize: '13px' }}>Cargando…</div>}>
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/arrive" element={<ArriveAgencyOS />} />
+            <Route path="/arrive" element={<ArriveRedirect />} />
             <Route path="/portfolio" element={<PortfolioOS />} />
+            <Route path="/semana" element={<MiSemana />} />
+            <Route path="/finanzas" element={<Finanzas />} />
             <Route path="/workspace" element={<Workspace />} />
+            <Route path="/content-hub" element={<MasterContentHub />} />
+            <Route path="/creative-brief" element={<CreativeBrief />} />
+            <Route path="/production-calendar" element={<ProductionCalendar />} />
             <Route path="/calendar" element={<MasterCalendar />} />
             <Route path="/eventos" element={<Eventos />} />
             <Route path="/eventos/:id" element={<EventoDetail />} />
             <Route path="/social" element={<SocialMedia />} />
             <Route path="/contactos" element={<Contactos />} />
             <Route path="/whatsapp-agent" element={<WhatsAppAgent />} />
+            <Route path="/difusion" element={<WhatsAppAgent />} />
+            <Route path="/office" element={<AiOfficeHQ />} />
+            <Route path="/ai-office" element={<AiOfficeHQ />} />
             <Route path="/agent-brain" element={<AgentBrain />} />
+            <Route path="/jarvis" element={<Jarvis />} />
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
           </Suspense>

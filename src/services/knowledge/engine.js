@@ -1,0 +1,717 @@
+// Motor de conocimiento del Command Center.
+// Junta en un solo índice: conversaciones de ChatGPT (resumidas por IA), memoria por proyecto,
+// perfil de trabajo del usuario, datos del dashboard y memorias que guardan los agentes.
+// Todo se guarda en <dataDir>/ (fuera de git y de db.json).
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import crypto from 'crypto';
+import { KnowledgeStore } from './store.js';
+import { QuotaError } from './embeddings.js';
+import { chunkText, hash, fold } from './text.js';
+import { jevAvailable, triageConversation } from './jev.js';
+import { playbookMarkdown, REFERENCE_TYPES } from '../contentStudio/referenceEngine.js';
+import { readExportFile, normalizeConversation, transcriptText, digestInput, digestSegments, revisionOf, isChatGptExportZip } from './chatgptExport.js';
+import {
+    DigestSchema, DIGEST_SYSTEM, digestPrompt, digestToText,
+    SynthesisSchema, SYNTHESIS_SYSTEM, synthesisPrompt, synthesisToText,
+    ProfileSchema, PROFILE_SYSTEM, profileToText,
+} from './digest.js';
+
+const CONCURRENCY = 3;
+const PROFILE_EVERY = 25; // rehacer el perfil cada N conversaciones nuevas resumidas
+const MAX_DIGEST_ATTEMPTS = 8;
+const retryDelay = attempts => Math.min(6 * 3600_000, 60_000 * 2 ** Math.min(attempts, 8));
+
+const isQuotaError = err => err instanceof QuotaError || /\b429\b|quota|RESOURCE_EXHAUSTED/i.test(err.message);
+
+export const projectKeyOf = d => (d.projectId ? `id:${d.projectId}` : d.project ? `name:${fold(d.project).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}` : null);
+
+function atomicWriteJson(file, data) {
+    const tmp = `${file}.${process.pid}.tmp`;
+    fs.writeFileSync(tmp, JSON.stringify(data));
+    fs.renameSync(tmp, file);
+}
+
+export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateStructured, availableProviders, embedder, log = console }) {
+    fs.mkdirSync(dataDir, { recursive: true });
+    const rawDir = path.join(dataDir, 'raw', 'chatgpt');
+    fs.mkdirSync(rawDir, { recursive: true });
+    const originalDir = path.join(rawDir, 'original');
+    fs.mkdirSync(originalDir, { recursive: true });
+    const stateFile = path.join(dataDir, 'state.json');
+    const store = new KnowledgeStore(path.join(dataDir, 'index'), { dims: embedder.dims, model: embedder.model });
+
+    const defaultWatchDir = process.env.RENDER ? '' : path.join(os.homedir(), 'Downloads');
+    let state = {
+        conversations: {}, imports: [], projects: {}, profile: null,
+        config: { watchEnabled: !process.env.RENDER, watchDir: process.env.CHATGPT_EXPORT_DIR || defaultWatchDir },
+        watchSeen: {}, digestsSinceProfile: 0,
+        staleProjects: {}, // memorias de proyecto por rehacer (sobreviven a reinicios y a errores de la IA)
+    };
+    if (fs.existsSync(stateFile)) {
+        try { state = { ...state, ...JSON.parse(fs.readFileSync(stateFile, 'utf8')) }; } catch (e) { log.error('[Knowledge] state.json ilegible:', e.message); }
+    }
+    // Lo que quedó a medias al apagar el servidor vuelve a la cola.
+    for (const c of Object.values(state.conversations)) if (c.status === 'processing') c.status = 'pending';
+
+    let stateTimer = null;
+    const saveState = () => {
+        clearTimeout(stateTimer);
+        stateTimer = setTimeout(() => atomicWriteJson(stateFile, state), 800);
+    };
+    const flush = () => { clearTimeout(stateTimer); atomicWriteJson(stateFile, state); store.save(); };
+
+    const worker = { running: false, paused: false, blockedReason: '', current: [], processedThisRun: 0, lastRunAt: null, lastError: '' };
+
+    const llmOk = () => availableProviders({ geminiApiKey: getGeminiKey() }).length > 0;
+    // Cadena de modelos de la tarea "knowledge" (Gemma → Flash Lite → OpenRouter), ver contentStudio/llm.js.
+    const llm = (opts) => generateStructured({ ...opts, task: 'knowledge', geminiApiKey: getGeminiKey() });
+
+    const rawPath = id => path.join(rawDir, `${id.replace(/[^a-zA-Z0-9_-]/g, '_')}.json`);
+    const loadRaw = id => JSON.parse(fs.readFileSync(rawPath(id), 'utf8'));
+    const identityKey = identity => identity?.accountId ? `${identity.accountId}\u0000${identity.workspaceId || 'personal'}` : '';
+    const scopedId = (id, identity) => identityKey(identity) ? crypto.createHash('sha256').update(`${identityKey(identity)}\u0000${id}`).digest('hex') : id;
+
+    // ─── Embeddings ───
+    // Por tandas de 50, guardando cada una: si la cuota se corta a mitad, lo avanzado no se pierde.
+    async function embedMissing(limit = Infinity) {
+        if (!embedder.available() || embedder.pausedUntil?.()) return 0;
+        let done = 0;
+        while (done < limit) {
+            const slice = store.missingVectors(Math.min(embedder.batchSize || 20, limit - done));
+            if (!slice.length) break;
+            const vectors = await embedder.embedDocuments(slice.map(c => store.textForEmbedding(c)));
+            slice.forEach((c, i) => store.setVector(c.id, vectors[i]));
+            done += slice.length;
+        }
+        return done;
+    }
+
+    // Un fallo de embeddings no debe frenar nada: los trozos quedan buscables por palabras y se vectorizan después.
+    // Las llamadas se encadenan para no pedir dos veces los mismos vectores.
+    let embedChain = Promise.resolve(0);
+    function embedSafe() {
+        embedChain = embedChain.then(() => embedMissing()).catch(e => { worker.lastError = `Embeddings: ${e.message.slice(0, 200)}`; return 0; });
+        return embedChain;
+    }
+
+    /** Indexa el texto completo de una conversación; si no cambió desde la última vez, solo actualiza sus metadatos. */
+    function indexTranscript(conv, docMeta) {
+        const id = `chatgpt:${conv.id}`;
+        const h = revisionOf(conv);
+        if (store.getDoc(id)?.hash === h) { store.updateDocMeta(id, docMeta); return false; }
+        store.upsertDoc({ id, source: 'chatgpt', kind: 'transcript', title: conv.title, hash: h, meta: docMeta }, chunkText(transcriptText(conv.messages)));
+        return true;
+    }
+
+    // ─── Importación ───
+    function importExport(filePath, { origin = 'upload', fileName = path.basename(filePath), identity = null } = {}) {
+        return importConversations(readExportFile(filePath), { origin, fileName, identity });
+    }
+
+    /** Importa conversaciones en formato de ChatGPT (exportación o API web). Solo procesa lo nuevo o cambiado. */
+    function importConversations(rawConvs, { origin = 'upload', fileName = '', record = true, identity = null } = {}) {
+        const summary = { at: new Date().toISOString(), origin, file: fileName, accountId: identity?.accountId || null, workspaceId: identity?.workspaceId || null, total: 0, added: 0, updated: 0, unchanged: 0, empty: 0 };
+        for (const rc of rawConvs) {
+            const conv = normalizeConversation(rc);
+            if (!conv) continue;
+            summary.total++;
+            if (!conv.messages.length) { summary.empty++; continue; }
+            const originalId = conv.id;
+            conv.id = scopedId(originalId, identity);
+            const revision = revisionOf(conv);
+            // Reclama registros históricos sin cuenta o con workspace provisional solo con coincidencia exacta.
+            if (conv.id !== originalId && !state.conversations[conv.id]) {
+                const oldId = state.conversations[originalId] && !state.conversations[originalId].accountId
+                    ? originalId
+                    : Object.values(state.conversations).find(c => c.originalId === originalId && c.accountId === identity?.accountId && c.workspaceId === 'personal' && c.origin === 'extension' && c.id !== conv.id && c.revision === revision)?.id;
+                const legacy = oldId && state.conversations[oldId];
+                if (legacy && legacy.status !== 'excluded') {
+                    try {
+                        if (revisionOf(loadRaw(oldId)) === revision) {
+                            state.conversations[conv.id] = { ...legacy, id: conv.id, needsReindex: true };
+                            delete state.conversations[oldId];
+                            fs.renameSync(rawPath(oldId), rawPath(conv.id));
+                            for (const file of fs.readdirSync(originalDir)) if (file.startsWith(`${oldId}-`)) fs.renameSync(path.join(originalDir, file), path.join(originalDir, `${conv.id}-${file.slice(oldId.length + 1)}`));
+                            store.removeDoc(`chatgpt:${oldId}`);
+                            store.removeDoc(`chatgpt:${oldId}:digest`);
+                        }
+                    } catch { /* el registro histórico no tiene transcripción disponible */ }
+                }
+            }
+            const prev = state.conversations[conv.id];
+            if (prev?.status === 'excluded') { summary.unchanged++; continue; }
+            let priorRevision = prev?.revision;
+            if (prev && !priorRevision) { try { priorRevision = revisionOf(loadRaw(conv.id)); } catch { /* se recupera del nuevo contenido */ } }
+            if (prev && !prev.needsReindex && priorRevision === revision) {
+                if (conv.listUpdateTime && prev.listUpdateTime !== conv.listUpdateTime) { prev.listUpdateTime = conv.listUpdateTime; saveState(); }
+                summary.unchanged++;
+                continue;
+            }
+            fs.writeFileSync(rawPath(conv.id), JSON.stringify(conv));
+            fs.writeFileSync(path.join(originalDir, `${conv.id}-${revision}.json`), JSON.stringify(rc));
+            store.removeDoc(`chatgpt:${conv.id}:digest`, { save: false });
+            // Buscable de inmediato: el resumen de la IA llega después y no hace falta esperarlo.
+            indexTranscript(conv, {
+                conversationId: conv.id, originalId, accountId: identity?.accountId || null, workspaceId: identity?.workspaceId || null, origin, revision, date: conv.updateTime, namespace: 'chatgpt', chatgptProjectId: conv.chatgptProjectId,
+                projectId: prev?.digest?.projectId || '', project: prev?.digest?.project || '', relevance: '', type: '', tags: [],
+            });
+            state.conversations[conv.id] = {
+                ...(prev || {}),
+                id: conv.id, originalId, accountId: identity?.accountId || null, workspaceId: identity?.workspaceId || null, origin, revision, capturedAt: summary.at, needsReindex: false,
+                title: conv.title, createTime: conv.createTime, updateTime: conv.updateTime,
+                chatgptProjectId: conv.chatgptProjectId, archived: conv.archived,
+                messageCount: conv.messages.length,
+                listUpdateTime: conv.listUpdateTime || prev?.listUpdateTime || null,
+                chars: conv.messages.reduce((n, m) => n + m.text.length, 0),
+                status: 'pending', error: '', triage: null, digestAttempts: 0, nextRetryAt: null,
+            };
+            prev ? summary.updated++ : summary.added++;
+        }
+        if (record) state.imports = [summary, ...state.imports].slice(0, 30);
+        flush();
+        if (summary.added || summary.updated) { embedSafe(); runWorker(); }
+        return summary;
+    }
+
+    // ─── Sincronización desde la extensión de Chrome ───
+    /** Lo que ya tiene el dashboard: { id: updateTime } para que la extensión pida solo lo cambiado. */
+    function syncState(identity = null) {
+        const known = {};
+        // Se responde con la fecha de la lista de ChatGPT (la que compara la extensión) cuando la tenemos.
+        for (const c of Object.values(state.conversations)) {
+            if (identityKey(identity) && (c.accountId !== identity.accountId || (c.workspaceId || 'personal') !== (identity.workspaceId || 'personal'))) continue;
+            if (!identityKey(identity) && c.accountId) continue;
+            known[c.originalId || c.id] = c.status === 'excluded' ? 'excluded' : (c.listUpdateTime || c.updateTime);
+        }
+        return { known, lastSync: state.extensionSync || null };
+    }
+
+    function ingestFromExtension(rawConvs, { client = 'extension', version = '', identity = null } = {}) {
+        const summary = importConversations(rawConvs, { origin: 'extension', fileName: client, record: false, identity });
+        const prev = state.extensionSync || { totals: { added: 0, updated: 0 } };
+        state.extensionSync = {
+            at: summary.at, client, version: version || prev.version || '', accountId: identity?.accountId || null, workspaceId: identity?.workspaceId || null,
+            last: summary,
+            totals: { added: prev.totals.added + summary.added, updated: prev.totals.updated + summary.updated },
+        };
+        saveState();
+        return summary;
+    }
+
+    function reportExtensionRun(report = {}) {
+        state.extensionSync = {
+            ...(state.extensionSync || { totals: { added: 0, updated: 0 } }),
+            ...(report.version ? { version: report.version } : {}),
+            at: new Date().toISOString(), run: { ...report, at: new Date().toISOString() },
+            accountId: report.identity?.accountId || state.extensionSync?.accountId || null,
+            workspaceId: report.identity?.workspaceId || state.extensionSync?.workspaceId || null,
+        };
+        saveState();
+        return state.extensionSync;
+    }
+
+    function siblingTitles(conv) {
+        if (!conv.chatgptProjectId) return [];
+        return Object.values(state.conversations)
+            .filter(c => c.chatgptProjectId === conv.chatgptProjectId && c.id !== conv.id)
+            .map(c => c.title);
+    }
+
+    async function processConversation(id, { skipLLM = false } = {}) {
+        const meta = state.conversations[id];
+        const conv = loadRaw(id);
+        const db = readDB();
+        const projects = (db.projects || []).map(p => ({ id: p.id, name: p.name, description: p.description }));
+        const segments = digestSegments(conv.messages);
+
+        let digest = null;
+        let quotaHit = null;
+        // Filtro con Jev (centavos por millón de tokens): las consultas sueltas no gastan una llamada al LLM.
+        if (segments.length === 1 && llmOk() && !skipLLM && jevAvailable() && !meta.triage) {
+            try {
+                meta.triage = await triageConversation({ title: conv.title, transcript: digestInput(conv.messages) });
+            } catch (err) {
+                log.warn('[Knowledge] Filtro Jev no disponible:', err.message.slice(0, 160));
+            }
+        }
+        const skipThreshold = Number(process.env.JEV_SKIP_THRESHOLD) || 0.15;
+        if (segments.length === 1 && meta.triage && meta.triage.worth < skipThreshold && meta.triage.confidence >= 0.5) {
+            digest = {
+                summary: `Consulta suelta: ${conv.title}`, project: '', projectId: '', type: 'trivial', relevance: 'baja',
+                decisions: [], ideas: [], pending: [], reasoning: [], facts: [], tags: [],
+            };
+            meta.digestModel = 'jev (filtro, sin LLM)';
+            meta.digestError = '';
+        } else if (llmOk() && !skipLLM) {
+            try {
+                const results = [];
+                for (const [segmentIndex, transcript] of segments.entries()) {
+                    const { data, model } = await llm({
+                        system: DIGEST_SYSTEM,
+                        prompt: `${digestPrompt({ conv, transcript, projects, siblingTitles: siblingTitles(conv) })}\nSegmento ${segmentIndex + 1} de ${segments.length}. Extrae solo este segmento.`,
+                        schema: DigestSchema,
+                    });
+                    results.push(data);
+                    meta.digestModel = model;
+                }
+                const fields = ['decisions', 'ideas', 'pending', 'reasoning', 'facts', 'tags', 'topics', 'corrections', 'openQuestions', 'evidence'];
+                digest = { ...results.at(-1), summary: results.map(r => r.summary).join(' '), projects: results.flatMap(r => r.projects || []) };
+                for (const field of fields) digest[field] = results.flatMap(r => r[field] || []);
+                digest.projects = [...new Map(digest.projects.map(p => [`${p.projectId}:${p.project}`, p])).values()];
+                if (digest.projectId && !projects.some(p => p.id === digest.projectId)) digest.projectId = '';
+                digest.projects = digest.projects.map(p => ({ ...p, projectId: projects.some(x => x.id === p.projectId) ? p.projectId : '' }));
+                if (!digest.projects.length && (digest.projectId || digest.project)) digest.projects = [{ projectId: digest.projectId || '', project: digest.project || '' }];
+                const validIds = new Set(conv.messages.map((m, i) => m.id || `m${i + 1}`));
+                digest.evidence = digest.evidence.filter(e => e.messageIds.some(ref => validIds.has(ref.split(':')[0])));
+                const userIds = new Set(conv.messages.map((m, i) => m.role === 'user' ? (m.id || `m${i + 1}`) : null).filter(Boolean));
+                for (const field of ['topics', 'facts', 'ideas', 'decisions', 'corrections', 'openQuestions', 'pending', 'reasoning']) {
+                    for (const value of digest[field] || []) {
+                        const supporting = digest.evidence.find(e => e.category === field && e.text.trim() === value.trim());
+                        if (!supporting) throw new Error(`Falta referencia de mensaje para ${field}: ${value.slice(0, 80)}`);
+                        if (field === 'decisions' && !supporting.messageIds.some(ref => userIds.has(ref.split(':')[0]))) throw new Error(`La decisión no está respaldada por el usuario: ${value.slice(0, 80)}`);
+                    }
+                }
+                meta.digestError = '';
+            } catch (err) {
+                digest = null;
+                // Si la IA falla, la conversación igual queda buscable en crudo; se reintenta el resumen más tarde.
+                // Una cuota agotada no cuenta como intento fallido.
+                if (isQuotaError(err)) quotaHit = err;
+                else meta.digestAttempts = (meta.digestAttempts || 0) + 1;
+                meta.nextRetryAt = new Date(Date.now() + retryDelay(meta.digestAttempts || 1)).toISOString();
+                meta.digestError = err.message.slice(0, 300);
+                worker.lastError = `${conv.title}: ${meta.digestError}`;
+            }
+        }
+
+        const docMeta = {
+            conversationId: id, originalId: meta.originalId || id, accountId: meta.accountId || null, workspaceId: meta.workspaceId || null, origin: meta.origin || 'legacy', revision: meta.revision || null, date: conv.updateTime, namespace: 'chatgpt',
+            projectId: digest?.projectId || '', projectIds: (digest?.projects || []).map(p => p.projectId).filter(Boolean), project: digest?.project || '',
+            relevance: digest?.relevance || '', type: digest?.type || '', tags: digest?.tags || [],
+            chatgptProjectId: conv.chatgptProjectId,
+        };
+        store.removeDoc(`chatgpt:${id}:digest`, { save: false });
+        if (digest) {
+            store.upsertDoc({ id: `chatgpt:${id}:digest`, source: 'chatgpt', kind: 'digest', title: `Resumen · ${conv.title}`, meta: docMeta }, [digestToText(conv, digest)]);
+        }
+        // Las consultas sueltas solo quedan como resumen; lo útil se indexa completo para encontrar detalles exactos.
+        const keepTranscript = !digest || (digest.relevance !== 'baja' && digest.type !== 'trivial');
+        if (keepTranscript) indexTranscript(conv, docMeta);
+        else store.removeDoc(`chatgpt:${id}`, { save: false });
+        embedSafe(); // los vectores se calculan aparte, al ritmo que permite la cuota
+
+        Object.assign(meta, {
+            status: digest ? 'done' : 'indexed_raw',
+            digest, processedAt: new Date().toISOString(), error: '', nextRetryAt: digest ? null : meta.nextRetryAt,
+            projectKey: digest ? projectKeyOf(digest) : null,
+            projectKeys: digest ? (digest.projects || []).map(projectKeyOf).filter(Boolean) : [],
+            transcriptIndexed: keepTranscript,
+        });
+        if (digest) state.digestsSinceProfile++;
+        saveState();
+        return { ...meta, quotaHit };
+    }
+
+    /** Al arrancar: lo que quedó en cola sin indexar (versiones anteriores) se vuelve buscable ya. */
+    function indexPendingTranscripts() {
+        let n = 0;
+        for (const c of Object.values(state.conversations)) {
+            if (c.status !== 'pending' || store.getDoc(`chatgpt:${c.id}`)) continue;
+            try {
+                const conv = loadRaw(c.id);
+                indexTranscript(conv, { conversationId: c.id, date: conv.updateTime, namespace: 'chatgpt', chatgptProjectId: conv.chatgptProjectId, projectId: '', project: '', relevance: '', type: '', tags: [] });
+                n++;
+            } catch { /* sin archivo crudo: se reprocesa cuando vuelva a llegar */ }
+        }
+        if (n) embedSafe();
+        return n;
+    }
+
+    // ─── Memoria por proyecto y perfil ───
+    async function refreshProjectMemory(key) {
+        const convs = Object.values(state.conversations)
+            .filter(c => c.digest && (c.projectKeys || [c.projectKey]).includes(key) && c.digest.relevance !== 'baja')
+            .sort((a, b) => String(a.updateTime).localeCompare(String(b.updateTime)));
+        if (!convs.length) {
+            // Ya no quedan conversaciones relevantes de ese proyecto: se borra su memoria.
+            delete state.projects[key];
+            store.removeDoc(`project-memory:${key}`);
+            saveState();
+            return null;
+        }
+        const db = readDB();
+        const projectId = convs.flatMap(c => c.digest.projects || [c.digest]).find(p => projectKeyOf(p) === key)?.projectId || '';
+        const name = (projectId && (db.projects || []).find(p => p.id === projectId)?.name) || convs[convs.length - 1].digest.projects?.find(p => projectKeyOf(p) === key)?.project || convs[convs.length - 1].digest.project;
+        const recent = convs.slice(-60).map(c => ({ ...c.digest, title: c.title, date: String(c.updateTime).slice(0, 7) }));
+        const previous = state.projects[key]?.synthesis;
+        const { data } = await llm({ system: SYNTHESIS_SYSTEM, prompt: `${previous ? `Memoria anterior que debes conservar salvo corrección explícita:\n${JSON.stringify(previous)}\n\n` : ''}${synthesisPrompt(name, recent)}`, schema: SynthesisSchema });
+        const decisionHistory = convs.flatMap(c => (c.digest.decisions || []).map(decision => ({ decision, date: c.updateTime, conversationId: c.id, evidence: (c.digest.evidence || []).filter(e => e.category === 'decisions' && e.text === decision).flatMap(e => e.messageIds) })));
+        const text = `${synthesisToText(name, data)}\n\nHISTORIAL DE DECISIONES (incluye decisiones anteriores):\n${decisionHistory.map(d => `- ${String(d.date).slice(0, 10)} [${d.conversationId}${d.evidence.length ? `:${d.evidence.join(',')}` : ''}] ${d.decision}`).join('\n')}`;
+        state.projects[key] = {
+            key, name, projectId, synthesis: data, decisionHistory, text, updatedAt: new Date().toISOString(),
+            conversationIds: convs.map(c => c.id), conversationCount: convs.length,
+            firstDate: convs[0].updateTime, lastDate: convs[convs.length - 1].updateTime,
+        };
+        store.upsertDoc({ id: `project-memory:${key}`, source: 'chatgpt', kind: 'project_memory', title: `Memoria del proyecto · ${name}`, meta: { projectId, project: name, namespace: 'chatgpt' } }, chunkText(text, 2400, 200));
+        embedSafe(); // los vectores se calculan aparte, al ritmo que permite la cuota
+        saveState();
+        return state.projects[key];
+    }
+
+    async function refreshProfile() {
+        const digests = Object.values(state.conversations)
+            .filter(c => c.digest && c.digest.relevance !== 'baja')
+            .sort((a, b) => String(b.updateTime).localeCompare(String(a.updateTime)))
+            .slice(0, 200);
+        if (!digests.length) return null;
+        const reasoning = digests.flatMap(c => c.digest.reasoning).slice(0, 300);
+        const projects = Object.values(state.projects).map(p => `- ${p.name} (${p.conversationCount} conversaciones, última ${String(p.lastDate).slice(0, 10)}): ${p.synthesis.overview}`);
+        const { data } = await llm({
+            system: PROFILE_SYSTEM,
+            prompt: `Proyectos:\n${projects.join('\n') || '(aún sin memorias de proyecto)'}\n\nLógica observada en conversaciones recientes:\n${reasoning.map(r => `- ${r}`).join('\n')}\n\nTemas recientes:\n${digests.slice(0, 60).map(c => `- ${c.title}: ${c.digest.summary}`).join('\n')}`,
+            schema: ProfileSchema,
+        });
+        state.profile = { data, text: profileToText(data), updatedAt: new Date().toISOString(), basedOn: digests.length };
+        state.digestsSinceProfile = 0;
+        store.upsertDoc({ id: 'profile:user', source: 'chatgpt', kind: 'profile', title: 'Perfil de trabajo del usuario', meta: { namespace: 'chatgpt' } }, chunkText(state.profile.text, 2400, 200));
+        embedSafe(); // los vectores se calculan aparte, al ritmo que permite la cuota
+        saveState();
+        return state.profile;
+    }
+
+    // ─── Cola en segundo plano ───
+    let rerun = false;
+    async function runWorker() {
+        if (worker.paused) return;
+        // Si ya está trabajando, se anota otra vuelta para lo que llegó mientras tanto.
+        if (worker.running) { rerun = true; return; }
+        rerun = false;
+        worker.running = true;
+        worker.blockedReason = '';
+        worker.processedThisRun = 0;
+        worker.lastRunAt = new Date().toISOString();
+        const touched = new Set(Object.keys(state.staleProjects || {}));
+        try {
+            // Primero lo más reciente: es lo que más probablemente sigue vivo.
+            const queue = Object.values(state.conversations)
+                .filter(c => (c.status === 'pending' || c.status === 'error' || (c.status === 'indexed_raw' && llmOk())) && (!c.nextRetryAt || Date.now() >= Date.parse(c.nextRetryAt)) && (c.digestAttempts || 0) < MAX_DIGEST_ATTEMPTS)
+                .sort((a, b) => String(b.updateTime).localeCompare(String(a.updateTime)))
+                .map(c => c.id);
+            const next = async () => {
+                while (queue.length && !worker.paused) {
+                    const id = queue.shift();
+                    const meta = state.conversations[id];
+                    // Sin cuota, lo que ya está indexado en crudo espera a la próxima vuelta (no se reindexa).
+                    if (worker.blockedReason && meta.status === 'indexed_raw') continue;
+                    const prevKeys = meta.projectKeys || [meta.projectKey];
+                    meta.status = 'processing';
+                    worker.current.push(meta.title);
+                    try {
+                        // Sin cuota de IA se sigue indexando en crudo: los agentes ya pueden encontrarlo y el resumen llega después.
+                        const done = await processConversation(id, { skipLLM: !!worker.blockedReason });
+                        if (done.quotaHit && !worker.blockedReason) {
+                            worker.blockedReason = `Cuota de la IA agotada: las conversaciones se indexan sin resumen y se resumen solas más tarde (${done.quotaHit.message.slice(0, 160)})`;
+                        }
+                        worker.processedThisRun++;
+                        for (const key of [...(done.projectKeys || [done.projectKey]), ...prevKeys]) {
+                            if (!key) continue;
+                            touched.add(key);
+                            state.staleProjects[key] = true;
+                        }
+                    } catch (err) {
+                        if (isQuotaError(err)) {
+                            meta.status = 'pending';
+                            meta.nextRetryAt = new Date(Date.now() + retryDelay(meta.digestAttempts || 1)).toISOString();
+                            worker.blockedReason = `Cuota de la IA agotada, se reintenta solo en 10 minutos (${err.message.slice(0, 160)})`;
+                        } else {
+                            meta.status = 'error';
+                            meta.error = err.message.slice(0, 300);
+                            meta.digestAttempts = (meta.digestAttempts || 0) + 1;
+                            meta.nextRetryAt = new Date(Date.now() + retryDelay(meta.digestAttempts)).toISOString();
+                            worker.lastError = `${meta.title}: ${meta.error}`;
+                        }
+                        saveState();
+                    } finally {
+                        worker.current = worker.current.filter(t => t !== meta.title);
+                    }
+                }
+            };
+            await Promise.all(Array.from({ length: CONCURRENCY }, next));
+
+            if (llmOk() && !worker.blockedReason) {
+                for (const key of touched) {
+                    try {
+                        await refreshProjectMemory(key);
+                        delete state.staleProjects[key];
+                    } catch (e) {
+                        worker.lastError = `Memoria ${key}: ${e.message.slice(0, 200)}`;
+                    }
+                }
+                const hasDigests = Object.values(state.conversations).some(c => c.digest);
+                if (hasDigests && (!state.profile || state.digestsSinceProfile >= PROFILE_EVERY)) {
+                    try { await refreshProfile(); } catch (e) { worker.lastError = `Perfil: ${e.message.slice(0, 200)}`; }
+                }
+            }
+            embedSafe();
+        } finally {
+            worker.running = false;
+            worker.current = [];
+            flush();
+            if (rerun) setTimeout(runWorker, 0);
+        }
+    }
+
+    // ─── Datos del dashboard (proyectos, tareas, eventos, notas, documentos subidos) ───
+    async function syncDashboard() {
+        const db = readDB();
+        const docs = (db.ragDocuments || []).concat(db.customDocuments || []);
+        const seen = new Set();
+        let changed = 0;
+        for (const d of docs) {
+            const id = `dash:${d.id}`;
+            seen.add(id);
+            const title = d.title || d.filename || 'Documento';
+            const h = hash(`${title}\n${d.content || ''}`);
+            if (store.getDoc(id)?.hash === h) continue;
+            store.upsertDoc({ id, source: 'dashboard', kind: d.category || 'document', title, hash: h, meta: { namespace: d.namespace || 'default', legacyId: d.id, date: d.updatedAt || d.addedAt } }, chunkText(d.content || title));
+            changed++;
+        }
+        // Referencias y tutoriales analizados (Redes Sociales → Referencias): el playbook completo entra al RAG.
+        const accountsById = Object.fromEntries((db.socialMedia || []).map(a => [a.id, a.handler]));
+        for (const r of db.references || []) {
+            if (!r.analysis) continue;
+            const id = `reference:${r.id}`;
+            seen.add(id);
+            const a = r.analysis;
+            const accounts = (r.accountIds || []).map(x => accountsById[x] || x);
+            let text;
+            try { text = playbookMarkdown(r, a, r.stats); } catch { text = JSON.stringify(a); }
+            text = `${text}${r.notes ? `\n## Nota del equipo\n${r.notes}\n` : ''}${accounts.length ? `\nCuentas: ${accounts.join(', ')}\n` : ''}`;
+            const h = hash(text);
+            if (store.getDoc(id)?.hash === h) continue;
+            store.upsertDoc({
+                id, source: 'reference', kind: r.type || 'viral', title: `${REFERENCE_TYPES[r.type] || 'Referencia'} · ${r.title || a.title}`, hash: h,
+                meta: { namespace: 'reference', referenceId: r.id, url: r.url || '', accounts, technique: a.technique?.name || '', date: r.analyzedAt || r.createdAt },
+            }, chunkText(text, 2400, 200));
+            changed++;
+        }
+        let removed = 0;
+        for (const doc of store.listDocs(x => x.source === 'dashboard' || x.source === 'reference')) {
+            if (!seen.has(doc.id)) { store.removeDoc(doc.id); removed++; }
+        }
+        if (changed || removed) store.scheduleSave();
+        embedSafe();
+        return { changed, removed, pendingVectors: store.missingVectors().length, total: docs.length };
+    }
+
+    /**
+     * Reemplaza todos los documentos de una fuente externa (p. ej. la biblioteca de repos) por `docs`.
+     * Solo re-trocea lo que cambió; lo que ya no viene se borra del índice.
+     * docs: [{ id, kind, title, text, meta }]
+     */
+    function indexSource(source, docs) {
+        const seen = new Set();
+        let changed = 0;
+        for (const d of docs) {
+            const id = `${source}:${d.id}`;
+            seen.add(id);
+            const h = hash(`${d.title}\n${d.text}\n${JSON.stringify(d.meta || {})}`);
+            if (store.getDoc(id)?.hash === h) continue;
+            store.upsertDoc({ id, source, kind: d.kind, title: d.title, hash: h, meta: { namespace: source, ...d.meta } }, chunkText(d.text || d.title, 2000, 200));
+            changed++;
+        }
+        let removed = 0;
+        for (const doc of store.listDocs(x => x.source === source)) {
+            if (!seen.has(doc.id)) { store.removeDoc(doc.id, { save: false }); removed++; }
+        }
+        if (changed || removed) store.scheduleSave();
+        embedSafe();
+        return { changed, removed };
+    }
+
+    // ─── Memorias que guardan agentes o el usuario ───
+    async function saveMemory({ title, content, source = 'agent', agent = '', projectId = '', tags = [], extraMeta = {} }) {
+        if (!content) throw new Error('Falta content');
+        // Mismo título + contenido + proyecto = la misma memoria: reintentar no la duplica.
+        const contentHash = hash(`${title || ''}\n${content}\n${projectId}`);
+        const existing = store.listDocs(d => d.source === 'memory' && d.meta?.contentHash === contentHash)[0];
+        if (existing) return { ...existing, deduplicated: true };
+        const id = `memory:${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+        const doc = store.upsertDoc({ id, source: 'memory', kind: 'memory', title: title || content.slice(0, 80), meta: { origin: source, agent, projectId, tags, namespace: 'memory', date: new Date().toISOString(), contentHash, ...extraMeta } }, chunkText(content));
+        embedSafe(); // ya es buscable por palabras; el vector llega en segundo plano
+        return doc;
+    }
+
+    // ─── Búsqueda ───
+    async function search({ query, topK = 8, source, kind, projectId, namespace } = {}) {
+        let queryVector = null;
+        if (query && embedder.available() && store.stats().embedded && !embedder.pausedUntil?.()) {
+            try { queryVector = await embedder.embedQuery(query); } catch (e) { log.warn('[Knowledge] Búsqueda solo por palabras:', e.message); }
+        }
+        const results = store.search({ query, queryVector, topK, filter: { source, kind, projectId, namespace } });
+        return { mode: queryVector ? 'hybrid' : 'keyword', results };
+    }
+
+    // ─── Vigilancia de la carpeta de descargas ───
+    function scanWatchDir() {
+        const dir = state.config.watchDir;
+        if (!state.config.watchEnabled || !dir || !fs.existsSync(dir)) return [];
+        const imported = [];
+        const monthAgo = Date.now() - 30 * 24 * 3600 * 1000;
+        for (const name of fs.readdirSync(dir)) {
+            if (!/\.zip$/i.test(name)) continue;
+            const full = path.join(dir, name);
+            let st;
+            try { st = fs.statSync(full); } catch { continue; }
+            if (!st.isFile() || st.mtimeMs < monthAgo) continue;
+            const key = `${name}:${st.size}:${Math.round(st.mtimeMs)}`;
+            if (state.watchSeen[key]) continue;
+            state.watchSeen[key] = new Date().toISOString();
+            if (!isChatGptExportZip(full)) continue;
+            try {
+                imported.push(importExport(full, { origin: 'watch', fileName: name }));
+                log.log(`[Knowledge] Exportación de ChatGPT detectada e importada: ${name}`);
+            } catch (e) {
+                log.error(`[Knowledge] No se pudo importar ${name}:`, e.message);
+            }
+        }
+        saveState();
+        return imported;
+    }
+
+    // ─── Consultas para la UI y los agentes ───
+    function status() {
+        const convs = Object.values(state.conversations);
+        const count = pred => convs.filter(pred).length;
+        const bySource = {};
+        for (const c of convs) bySource[c.origin || 'legacy'] = (bySource[c.origin || 'legacy'] || 0) + 1;
+        const latestConversationAt = convs.map(c => c.updateTime).filter(Boolean).sort().at(-1) || null;
+        return {
+            chatgpt: {
+                total: convs.length,
+                bySource, latestConversationAt,
+                lagMs: latestConversationAt ? Math.max(0, Date.now() - Date.parse(latestConversationAt)) : null,
+                stages: { captured: count(c => c.status !== 'excluded'), summarized: count(c => !!c.digest), indexed: count(c => !!store.getDoc(`chatgpt:${c.id}`) || !!store.getDoc(`chatgpt:${c.id}:digest`)), failed: count(c => c.status === 'error' || (c.status === 'indexed_raw' && !!c.digestError)) },
+                done: count(c => c.status === 'done'),
+                pending: count(c => c.status === 'pending' || c.status === 'processing'),
+                indexedRaw: count(c => c.status === 'indexed_raw'),
+                digestFailed: count(c => c.status === 'indexed_raw' && c.digestError),
+                errors: count(c => c.status === 'error'),
+                excluded: count(c => c.status === 'excluded'),
+                byRelevance: { alta: count(c => c.digest?.relevance === 'alta'), media: count(c => c.digest?.relevance === 'media'), baja: count(c => c.digest?.relevance === 'baja') },
+                lastImport: state.imports[0] || null,
+                extension: state.extensionSync
+                    ? { ...state.extensionSync, stale: Date.now() - new Date(state.extensionSync.at).getTime() > 6 * 3600 * 1000 }
+                    : null,
+                imports: state.imports.slice(0, 5),
+            },
+            projects: Object.values(state.projects).length,
+            profileUpdatedAt: state.profile?.updatedAt || null,
+            worker: { ...worker },
+            store: store.stats(),
+            ai: { llm: llmOk(), embeddings: embedder.available(), embedModel: embedder.model, embeddingsPausedUntil: embedder.pausedUntil?.() || null },
+            config: state.config,
+        };
+    }
+
+    function listConversations({ q = '', projectKey, relevance, status: st, limit = 50, offset = 0 } = {}) {
+        const fq = fold(q);
+        let rows = Object.values(state.conversations).filter(c => c.status !== 'excluded' || st === 'excluded');
+        if (fq) rows = rows.filter(c => fold(`${c.title} ${c.digest?.summary || ''} ${c.digest?.project || ''} ${(c.digest?.tags || []).join(' ')}`).includes(fq));
+        if (projectKey) rows = rows.filter(c => (c.projectKeys || [c.projectKey]).includes(projectKey));
+        if (relevance) rows = rows.filter(c => c.digest?.relevance === relevance);
+        if (st) rows = rows.filter(c => c.status === st);
+        rows.sort((a, b) => String(b.updateTime).localeCompare(String(a.updateTime)));
+        return {
+            total: rows.length,
+            items: rows.slice(offset, offset + limit).map(c => ({
+                id: c.id, title: c.title, updateTime: c.updateTime, createTime: c.createTime, messageCount: c.messageCount, origin: c.origin || 'legacy', accountId: c.accountId || null, workspaceId: c.workspaceId || null, revision: c.revision || null,
+                status: c.status, error: c.error, projectKey: c.projectKey, chatgptProjectId: c.chatgptProjectId,
+                project: c.digest?.project || '', projectId: c.digest?.projectId || '', relevance: c.digest?.relevance || '',
+                type: c.digest?.type || '', summary: c.digest?.summary || '', tags: c.digest?.tags || [],
+            })),
+        };
+    }
+
+    function getConversation(id) {
+        const meta = state.conversations[id];
+        if (!meta) return null;
+        let messages = [];
+        try { messages = loadRaw(id).messages; } catch { /* importada pero el archivo crudo se borró */ }
+        return { ...meta, messages };
+    }
+
+    /** Saca una conversación del RAG y evita que se vuelva a importar. */
+    function excludeConversation(id) {
+        const meta = state.conversations[id];
+        if (!meta) return false;
+        store.removeDoc(`chatgpt:${id}`);
+        store.removeDoc(`chatgpt:${id}:digest`);
+        try { fs.unlinkSync(rawPath(id)); } catch { /* ya no estaba */ }
+        for (const key of meta.projectKeys || [meta.projectKey]) if (key) state.staleProjects[key] = true;
+        state.conversations[id] = { id, title: meta.title, updateTime: meta.updateTime, status: 'excluded', projectKey: null };
+        flush();
+        return true;
+    }
+
+    function retryErrors() {
+        for (const c of Object.values(state.conversations)) {
+            if (c.status === 'error' || c.status === 'indexed_raw') { c.status = 'pending'; c.error = ''; c.digestAttempts = 0; c.nextRetryAt = null; }
+        }
+        saveState();
+        runWorker();
+    }
+
+    function reprocessConversation(id) {
+        const c = state.conversations[id];
+        if (!c || c.status === 'excluded' || !fs.existsSync(rawPath(id))) return false;
+        c.status = 'pending'; c.error = ''; c.digestAttempts = 0; c.nextRetryAt = null; c.triage = null;
+        saveState(); runWorker();
+        return true;
+    }
+
+    function purgeConversation(id) {
+        const c = state.conversations[id];
+        if (!c) return false;
+        for (const key of c.projectKeys || [c.projectKey]) if (key) state.staleProjects[key] = true;
+        store.removeDoc(`chatgpt:${id}`); store.removeDoc(`chatgpt:${id}:digest`);
+        fs.rmSync(rawPath(id), { force: true });
+        for (const file of fs.readdirSync(originalDir)) if (file.startsWith(`${id}-`)) fs.rmSync(path.join(originalDir, file), { force: true });
+        delete state.conversations[id];
+        flush(); runWorker();
+        return true;
+    }
+
+    function listRecentConversationUpdates({ from, to, limit = 40 } = {}) {
+        return Object.values(state.conversations)
+            .filter(c => c.status !== 'excluded' && (!from || c.updateTime >= from) && (!to || c.updateTime <= `${to}T23:59:59.999Z`))
+            .sort((a, b) => String(b.updateTime).localeCompare(String(a.updateTime)))
+            .slice(0, Math.min(200, limit))
+            .map(c => ({ id: c.id, originalId: c.originalId || c.id, title: c.title, date: c.updateTime, capturedAt: c.capturedAt || null, origin: c.origin || 'legacy', accountId: c.accountId || null, workspaceId: c.workspaceId || null, revision: c.revision || null, status: c.status, summary: c.digest?.summary || null, projects: c.digest?.projects || [] }));
+    }
+
+    function setConfig(patch) {
+        if (typeof patch.watchEnabled === 'boolean') state.config.watchEnabled = patch.watchEnabled;
+        if (typeof patch.watchDir === 'string') state.config.watchDir = patch.watchDir.replace(/^~(?=\/|$)/, os.homedir());
+        flush();
+        return state.config;
+    }
+
+    return {
+        store,
+        /** Espera a que terminen los vectores pendientes (útil en pruebas y scripts). */
+        waitForEmbeddings: () => embedSafe(),
+        importExport, importConversations, indexPendingTranscripts, syncState, ingestFromExtension, reportExtensionRun, runWorker, syncDashboard, indexSource, saveMemory, search, scanWatchDir, embedMissing,
+        refreshProjectMemory, refreshProfile,
+        status, listConversations, listRecentConversationUpdates, getConversation, excludeConversation, purgeConversation, reprocessConversation, retryErrors, setConfig,
+        pause() { worker.paused = true; },
+        resume() { worker.paused = false; worker.blockedReason = ''; runWorker(); },
+        /** Reintento periódico: respeta una pausa manual, pero vuelve a probar tras un bloqueo por cuota. */
+        tick() { if (!worker.paused) { worker.blockedReason = ''; runWorker(); } },
+        projects: () => Object.values(state.projects).sort((a, b) => String(b.lastDate).localeCompare(String(a.lastDate))),
+        profile: () => state.profile,
+        flush,
+    };
+}

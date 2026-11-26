@@ -14,11 +14,69 @@ export const CAMPAIGN_TONES = [
 
 export const AUDIENCE_TAGS = [
     { id: 'all', label: 'Todos los Contactos' },
+    { id: '🌸 Modelo / Chicas VIP', label: '🌸 Modelos / Chicas VIP' },
     { id: 'VIP', label: '👑 Clientes VIP' },
     { id: 'Promotor', label: '⚡ Promotores & RRPP' },
     { id: 'Invitado', label: '🎟️ Invitados / Listas' },
     { id: 'Proveedor', label: '💼 Proveedores / DJs' },
     { id: 'Staff', label: '🛡️ Staff & Operativa' }
+];
+
+export const DIFFUSION_CHANNELS = [
+    {
+        id: 'whatsapp_direct',
+        name: 'WhatsApp 1 a 1 (VIP & Listas)',
+        short: 'WhatsApp 1:1',
+        icon: '💬',
+        badgeColor: '#25D366',
+        category: 'whatsapp',
+        desc: 'Mensajes personalizados uno a uno a contactos con variables ({{nombre}}, etc.).'
+    },
+    {
+        id: 'whatsapp_group',
+        name: 'WhatsApp Comunidades & Grupos',
+        short: 'Grupos WA',
+        icon: '👥',
+        badgeColor: '#128C7E',
+        category: 'whatsapp',
+        desc: 'Difusión grupal y comunicados a comunidades y grupos de fiesta/asistentes.'
+    },
+    {
+        id: 'ig_broadcast',
+        name: 'Canales de Difusión Instagram',
+        short: 'Canal IG',
+        icon: '📢',
+        badgeColor: '#E1306C',
+        category: 'instagram',
+        desc: 'Anuncios, carteleras y encuestas para los Canales de Difusión (Broadcast Channels) de Instagram.'
+    },
+    {
+        id: 'ig_dm',
+        name: 'Instagram Direct (DMs & Promotores)',
+        short: 'IG DMs',
+        icon: '📸',
+        badgeColor: '#C13584',
+        category: 'instagram',
+        desc: 'Mensajes directos individuales en Instagram para creadores, modelos y asistentes.'
+    },
+    {
+        id: 'tiktok_dm',
+        name: 'TikTok Mensajes & Outreach',
+        short: 'TikTok DMs',
+        icon: '🎵',
+        badgeColor: '#00f2fe',
+        category: 'tiktok',
+        desc: 'Mensajes directos y prospección en TikTok para asistentes de eventos y creadores de contenido.'
+    },
+    {
+        id: 'automation_webhook',
+        name: 'Automatizaciones & API Webhook',
+        short: 'Auto / Make / Zapier',
+        icon: '⚡',
+        badgeColor: '#8b5cf6',
+        category: 'automation',
+        desc: 'Cargas JSON listas para pipelines automatizados (Make, Zapier, Bots, n8n).'
+    }
 ];
 
 class WhatsAppAgentService {
@@ -166,18 +224,134 @@ class WhatsAppAgentService {
     }
 
     /**
+     * Limpia y normaliza números de teléfono. Si es un número local de Panamá (8 dígitos),
+     * antepone automáticamente el código internacional de país 507.
+     */
+    static formatCleanPhone(phone = '') {
+        if (!phone) return '';
+        let cleaned = String(phone).replace(/[^0-9]/g, '');
+        if (cleaned.startsWith('00')) {
+            cleaned = cleaned.substring(2);
+        }
+        // Si tiene 8 dígitos (formato estándar de celular o fijo en Panamá), anteponer 507
+        if (cleaned.length === 8) {
+            cleaned = `507${cleaned}`;
+        } else if (cleaned.length === 7) {
+            cleaned = `507${cleaned}`;
+        }
+        return cleaned;
+    }
+
+    /**
      * Construye un enlace directo a WhatsApp Web / App
      * @param {string} phone - Teléfono con o sin código de país
      * @param {string} text - Texto del mensaje
      * @returns {string} - URL lista para window.open
      */
     static buildWhatsAppLink(phone = '', text = '') {
-        const cleanPhone = (phone || '').replace(/[^0-9]/g, '');
+        const cleanPhone = this.formatCleanPhone(phone);
         const encoded = encodeURIComponent(text || '');
         if (cleanPhone) {
             return `https://wa.me/${cleanPhone}?text=${encoded}`;
         }
         return `https://wa.me/?text=${encoded}`;
+    }
+
+    /**
+     * Construye un enlace a Mensajes Directos de Instagram (DMs)
+     * @param {string} username - Nombre de usuario de IG (con o sin @)
+     * @returns {string} - URL lista para window.open
+     */
+    static buildInstagramDmLink(username = '') {
+        const clean = (username || '').replace(/[@\s]/g, '').trim();
+        if (clean) {
+            return `https://ig.me/m/${clean}`;
+        }
+        return `https://instagram.com/direct/inbox/`;
+    }
+
+    /**
+     * Construye un enlace al Canal de Difusión de Instagram
+     * @param {string} channelUrlOrId - URL de invitación del canal de IG
+     * @returns {string}
+     */
+    static buildInstagramBroadcastLink(channelUrlOrId = '') {
+        if (channelUrlOrId && channelUrlOrId.startsWith('http')) {
+            return channelUrlOrId;
+        }
+        return `https://instagram.com/direct/inbox/`;
+    }
+
+    /**
+     * Construye un enlace a Mensajes Directos o Perfil de TikTok
+     * @param {string} username - Usuario de TikTok (con o sin @)
+     * @returns {string}
+     */
+    static buildTikTokDmLink(username = '') {
+        const clean = (username || '').replace(/[@\s]/g, '').trim();
+        if (clean) {
+            return `https://www.tiktok.com/@${clean}`;
+        }
+        return `https://www.tiktok.com/messages`;
+    }
+
+    /**
+     * Adapta el copy automáticamente según el canal de destino
+     * @param {string} text - Texto base
+     * @param {string} channelId - 'whatsapp_direct' | 'whatsapp_group' | 'ig_broadcast' | 'ig_dm' | 'tiktok_dm' | 'automation_webhook'
+     * @returns {string}
+     */
+    static adaptCopyForChannel(text = '', channelId = 'whatsapp_direct') {
+        if (!text) return '';
+        let adapted = text;
+
+        if (channelId === 'ig_dm') {
+            // Instagram DM: Quitar asteriscos de markdown bold (IG no formatea *negrita* y se ve sucio)
+            adapted = adapted.replace(/\*([^*]+)\*/g, '$1');
+            adapted = adapted.replace(/_([^_]+)_/g, '$1');
+        } else if (channelId === 'tiktok_dm') {
+            // TikTok DM: Más conciso, quitar markdown y añadir CTA dinámico
+            adapted = adapted.replace(/\*([^*]+)\*/g, '$1');
+            adapted = adapted.replace(/_([^_]+)_/g, '$1');
+            if (!adapted.toLowerCase().includes('tiktok') && !adapted.toLowerCase().includes('dm')) {
+                adapted += `\n\n⚡ Escríbeme por aquí para tu lista o acceso.`;
+            }
+        } else if (channelId === 'ig_broadcast') {
+            // Canal de Difusión de Instagram: Encabezado claro y llamada a reacciones
+            if (!adapted.includes('📣 CANAL DE DIFUSIÓN')) {
+                adapted = `📣 *COMUNICADO OFICIAL | CANAL DE DIFUSIÓN* 📣\n\n${adapted}\n\n🔥 _¡Reacciona a este mensaje si vas a estar presente!_`;
+            }
+        } else if (channelId === 'automation_webhook') {
+            // Webhook: Formato estructurado JSON
+            return JSON.stringify({
+                message: text,
+                cleanText: text.replace(/\*/g, ''),
+                channel: channelId,
+                timestamp: new Date().toISOString()
+            }, null, 2);
+        }
+
+        return adapted;
+    }
+
+    /**
+     * Compila la cartelera completa de toda la semana en un solo post estructurado para WhatsApp / Canales
+     */
+    static buildFullWeekMarkdown(campaign, channelId = 'whatsapp_direct') {
+        if (!campaign || !Array.isArray(campaign.weeklySchedule) || campaign.weeklySchedule.length === 0) {
+            return '';
+        }
+        const range = campaign.startDate && campaign.endDate ? ` (${campaign.startDate} al ${campaign.endDate})` : '';
+        const header = channelId === 'ig_broadcast'
+            ? `📣 *CARTELERA OFICIAL DE LA SEMANA | CANAL VIP* 📣${range}\n\nAquí tienes la agenda completa de experiencias y fiestas:\n`
+            : `🔥 *CARTELERA OFICIAL DE LA SEMANA | ARRIVE VIP* 🔥${range}\n\nAquí tienes la agenda completa de experiencias, fiestas y reservas exclusivas:\n`;
+
+        const days = campaign.weeklySchedule.map(s => {
+            const dayCopy = this.adaptCopyForChannel(s.whatsappCopy, channelId);
+            return `────────────────────\n📍 *${(s.day || '').toUpperCase()}* ${s.date ? `_(${s.date})_` : ''}\n✨ *${s.title}*\n\n${dayCopy}`;
+        }).join('\n\n');
+        const footer = `\n────────────────────\n📲 *RESERVAS & MESAS VIP:*\nEscríbenos directamente por aquí para listas, cenas o botellas con atención prioritaria. 🥂⚡`;
+        return `${header}\n${days}\n${footer}`;
     }
 
     /**
@@ -190,6 +364,7 @@ class WhatsAppAgentService {
         msg = msg.replace(/\{\{nombre_completo\}\}/gi, contact.name || 'Cliente VIP');
         msg = msg.replace(/\{\{telefono\}\}/gi, contact.phone || '');
         msg = msg.replace(/\{\{instagram\}\}/gi, contact.instagram || '');
+        msg = msg.replace(/\{\{tiktok\}\}/gi, contact.tiktok || contact.instagram || '');
         return msg;
     }
     /**

@@ -7,7 +7,7 @@ import { taskStats } from '../../lib/status';
 const TABS = [
     { to: '/', label: 'Inicio', icon: Home, end: true },
     { to: '/eventos', label: 'Eventos', icon: CalendarCheck },
-    { to: '/workspace', label: 'Tareas', icon: ListChecks, badge: 'pending' },
+    { to: '/semana', label: 'Mi semana', icon: ListChecks, badge: 'pending' },
     { to: '/calendar', label: 'Calendario', icon: CalendarDays },
 ];
 

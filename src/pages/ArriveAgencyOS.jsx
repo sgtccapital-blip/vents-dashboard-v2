@@ -5,11 +5,12 @@ import {
     CheckSquare, GlassWater, ExternalLink, Calendar,
     Share2, Plus, Check, Clock, Phone, Send,
     Instagram, ArrowRight, Layers, ShieldCheck, MapPin,
-    Building2, Award, Zap
+    Building2, Award, Zap, Monitor
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import ArriveTasksBox from '../components/ArriveTasksBox';
 import ArriveClientManager from '../components/ArriveClientManager';
+import ArriveTeamOffice from '../components/ArriveTeamOffice';
 import '../components/ArriveAgency.css';
 
 export default function ArriveAgencyOS() {
@@ -251,6 +252,12 @@ export default function ArriveAgencyOS() {
             {/* Segmented Navigation Tab Bar */}
             <div className="arrive-tab-nav">
                 <button 
+                    className={`arrive-tab-btn ${currentTab === 'office' ? 'active' : ''}`}
+                    onClick={() => handleTabChange('office')}
+                >
+                    <Monitor size={14} /> 🏢 Oficina & Equipo
+                </button>
+                <button 
                     className={`arrive-tab-btn ${currentTab === 'clients' ? 'active' : ''}`}
                     onClick={() => handleTabChange('clients')}
                 >
@@ -287,6 +294,13 @@ export default function ArriveAgencyOS() {
                     <CheckSquare size={14} /> Tareas de la Agencia
                 </button>
             </div>
+
+            {/* ═══════════════════════════════════════════════════════════════════
+               TAB CONTENT: OFICINA & EQUIPO (WORKSTATIONS & TEAM)
+               ═══════════════════════════════════════════════════════════════════ */}
+            {currentTab === 'office' && (
+                <ArriveTeamOffice />
+            )}
 
             {/* ═══════════════════════════════════════════════════════════════════
                TAB CONTENT: CLIENTES & PROYECTOS 360° (MARCA, REDES, RAG, ETC.)

@@ -1,0 +1,46 @@
+{
+  "observed": "Fotos y reels de talento en venues y activaciones (retratos en terrazas y bares, eventos de marca como autos) y reels de 'noche de chicas' con frase en serif amarilla ('Así se vive una noche de chicas en Furia'). Mezcla de foto editorial y video de evento.",
+  "mix": [
+    { "type": "Reels de eventos y activaciones", "pct": 40, "kind": "organic" },
+    { "type": "BTS de content days", "pct": 15, "kind": "organic" },
+    { "type": "Fotos de talento (editorial)", "pct": 20, "kind": "graphic" },
+    { "type": "Casos y casting", "pct": 10, "kind": "graphic" },
+    { "type": "Stories: casting, repost, eventos", "pct": 15, "kind": "stories" }
+  ],
+  "video": {
+    "lengths": "Eventos 12–20 s · BTS 20–40 s · casos para marcas 30–45 s",
+    "hook": "Primer frame: el talento mirando a cámara o entrando al venue, con la frase en serif ya en pantalla.",
+    "structure": [
+      { "t": "0–2 s", "label": "Entrada", "desc": "Talento + frase en serif" },
+      { "t": "2–10 s", "label": "Experiencia", "desc": "Planos de 1–2 s: mesa, brindis, detalles" },
+      { "t": "10–15 s", "label": "Resultado", "desc": "Local lleno o marca en uso" },
+      { "t": "Final", "label": "Firma", "desc": "Logo ARRIVE pequeño + @talento" }
+    ],
+    "camera": "Estabilizado, a la altura de los ojos, con aire alrededor del talento. Slow motion 60 fps en momentos clave (pelo, brindis, caminata).",
+    "grade": "Cálido y limpio: pieles cuidadas, negros profundos, contraste medio. Nada de filtros de color fuertes.",
+    "transitions": "Cortes limpios al ritmo; match cuts de movimiento (giro, caminata) entre locaciones.",
+    "overlay": { "style": "Frase corta en Cormorant Garamond itálica, champagne o blanco, centrada en el tercio superior; segunda línea en Montserrat mayúsculas pequeña.", "kicker": "ARRIVE PRESENTS", "text": "Así se vive una noche de chicas", "sub": "EN FURIA · PANAMÁ" },
+    "subtitles": { "style": "En BTS y entrevistas: subtítulo por frase en Montserrat 600, blanco con sombra suave, abajo-centro. Palabra clave en champagne.", "sample": "así preparamos a nuestro talento para cada marca", "highlight": "talento" },
+    "cover": { "style": "Retrato del talento con mucho aire + nombre en Cormorant itálica. Portadas cálidas que alternan con piezas tipográficas negras.", "title": "Valeria R." },
+    "endcard": { "style": "Último segundo: fundido a marfil con el logo ARRIVE y el @ del talento.", "cta": "Booking por DM" },
+    "music": "Afro house, R&B y pop en tendencia; audio trending cuando aplique."
+  },
+  "organic": {
+    "principles": ["Cuidar la luz antes que la cantidad de tomas", "Siempre con autorización del talento y de la marca", "Mostrar resultados para la marca, no solo fiesta", "Etiquetar al talento, el venue y la marca"],
+    "shots": ["Entrada del talento", "Retrato a cámara (3 s)", "Brindis en mesa", "Detalle de producto de la marca", "Caminata en slow motion", "Equipo trabajando (BTS)", "Local lleno", "Selfie espejo del talento"]
+  },
+  "stories": {
+    "principles": ["Fondo marfil o negro, un solo acento champagne", "Casting abierto con link", "Repost del talento con marco editorial"],
+    "announce": "NOW CASTING · OCTUBRE",
+    "poll": { "q": "¿Qué marca quieres ver con ARRIVE?", "a": ["Moda", "Gastronomía"] },
+    "countdown": "CASTING CIERRA EN",
+    "link": "APLICAR AL CASTING"
+  },
+  "weekly": [
+    { "day": "Lun", "piece": "Reel recap de activación" },
+    { "day": "Mar", "piece": "Foto de talento (comp card)" },
+    { "day": "Jue", "piece": "BTS content day" },
+    { "day": "Vie", "piece": "Reel noche de chicas" },
+    { "day": "Dom", "piece": "Caso de marca (carrusel)" }
+  ]
+}

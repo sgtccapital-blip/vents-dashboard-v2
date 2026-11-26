@@ -1,0 +1,52 @@
+/* HANG OUT — tokens de marca. Generado por scripts/build-brands.mjs desde brands/hangout/brand.json. No editar a mano. */
+@import url('https://fonts.googleapis.com/css2?family=Rubik:wght@700;800;900&family=DM+Serif+Display:wght@400&family=DM+Sans:wght@400;500;700&display=swap');
+
+:root {
+  /* Paleta */
+  --brand-black: #000000; /* Black · Primario */
+  --brand-banana: #F2C94C; /* Banana Neon · Primario */
+  --brand-white: #FFFFFF; /* White · Primario */
+  --brand-peel: #FFF4D6; /* Peel Cream · Secundario */
+  --brand-charcoal: #2B2B2B; /* Charcoal · Neutro */
+  --brand-pink: #FF4FA3; /* Flash Pink · Acento */
+
+  /* Roles */
+  --brand-bg: #000000;
+  --brand-surface: #2B2B2B;
+  --brand-fg: #FFFFFF;
+  --brand-muted: #BDBDBD;
+  --brand-accent: #F2C94C;
+  --brand-on-accent: #0A0A0A;
+  --brand-line: #3A3A3A;
+
+  /* Tipografía */
+  --font-display: 'Rubik', sans-serif;
+  --font-secondary: 'DM Serif Display', serif;
+  --font-body: 'DM Sans', sans-serif;
+  --tracking-display: 0;
+  --tracking-secondary: 0;
+  --tracking-body: 0;
+  --stretch-display: 100%;
+  --text-display-xl: 6rem;
+  --text-display-l: 4rem;
+  --text-h1: 3rem;
+  --text-h2: 2rem;
+  --text-h3: 1.5rem;
+  --text-body-l: 1.125rem;
+  --text-body: 1rem;
+  --text-label: 0.75rem;
+
+  /* Forma y movimiento */
+  --radius: 16px;
+  --space-1: 0.5rem;
+  --space-2: 1rem;
+  --space-3: 1.5rem;
+  --space-4: 2rem;
+  --space-6: 3rem;
+  --space-8: 4rem;
+  --space-12: 6rem;
+  --space-16: 8rem;
+  --ease: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --gradient-neon-glow: radial-gradient(circle, rgba(242,201,76,0.45) 0%, transparent 60%);
+  --mood: radial-gradient(circle at 30% 22%, #F2C94C 0%, #8A5A1F 22%, #2A1708 52%, #000000 85%);
+}

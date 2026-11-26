@@ -1,0 +1,411 @@
+{
+  "slug": "udp",
+  "accountId": "social-udp-pa",
+  "handler": "@UDP.PA",
+  "driveAliases": [
+    "casco peatonal",
+    "urban development project",
+    "urban development"
+  ],
+  "ig": {
+    "bio": [
+      "Urban Development Project 🎭",
+      "Gestión integral de eventos y ciudad 🌇",
+      "Producción | Logística | Suministros",
+      "📍 Panamá"
+    ],
+    "highlights": [
+      "Casco Peatonal",
+      "Servicios",
+      "Proyectos",
+      "Aliados"
+    ],
+    "followers": "203"
+  },
+  "name": "UDP",
+  "descriptor": "Urban Development Project · PTY",
+  "tagline": "Organizamos hoy, transformamos ciudad.",
+  "essence": "Construimos experiencias urbanas: la ciudad como escenario.",
+  "positioning": "Unidad integral que planifica, produce y opera eventos y actividades urbanas en Panamá — producción, logística y suministros desde un solo punto. Proyecto insignia: Casco Peatonal.",
+  "personality": [
+    "Institucional",
+    "Visionaria",
+    "Resolutiva",
+    "Cívica",
+    "Confiable"
+  ],
+  "values": [
+    "Un solo equipo, un solo sistema",
+    "Ciudad para la gente",
+    "Cumplimiento",
+    "Cultura y patrimonio"
+  ],
+  "layout": "institutional",
+  "logo": {
+    "wordmark": [
+      "UDP"
+    ],
+    "descriptorLine": "URBAN DEVELOPMENT PROJECT · PTY",
+    "symbol": "UDP en sans geométrica negra muy pesada con la barra 'URBAN DEVELOPMENT / PROJECT | PTY' + bandera de Panamá. El wordmark solo funciona como avatar.",
+    "construction": "UDP en Poppins Black gigante. Debajo dos barras negras del mismo ancho: \"URBAN DEVELOPMENT\" (URBAN en bold, DEVELOPMENT en light) y \"PROJECT | PTY\" + bandera de Panamá. Versión completa en círculo con la fila de servicios y \"Organizamos hoy, transformamos ciudad.\"",
+    "clearspace": "Altura de la barra inferior alrededor.",
+    "minSize": "UDP solo 32 px · lockup completo 140 px.",
+    "versions": [
+      "Negro sobre blanco (principal)",
+      "Blanco sobre negro",
+      "UDP gigante en Concrete como marca de agua",
+      "Sub-marca Casco Peatonal (ver notas)"
+    ],
+    "misuse": [
+      "No usar colores de nightlife",
+      "No quitar la bandera del lockup completo",
+      "No poner el logo sobre fotos sin caja o degradado",
+      "No usar el dorado como fondo grande"
+    ]
+  },
+  "colors": [
+    {
+      "token": "ink",
+      "name": "Ink",
+      "hex": "#0A0A0A",
+      "role": "Primario",
+      "usage": "Logo, titulares, etiquetas."
+    },
+    {
+      "token": "white",
+      "name": "White",
+      "hex": "#FFFFFF",
+      "role": "Primario",
+      "usage": "Fondo principal."
+    },
+    {
+      "token": "ochre",
+      "name": "Ochre Gold",
+      "hex": "#C89B3C",
+      "role": "Acento",
+      "usage": "Palabras clave ('CAMBIANDO.'), líneas, iconos activos."
+    },
+    {
+      "token": "concrete",
+      "name": "Concrete",
+      "hex": "#EDEDED",
+      "role": "Secundario",
+      "usage": "UDP gigante de fondo, secciones alternas."
+    },
+    {
+      "token": "graphite",
+      "name": "Graphite",
+      "hex": "#4A4A4A",
+      "role": "Neutro",
+      "usage": "Texto secundario."
+    },
+    {
+      "token": "canal",
+      "name": "Canal Blue",
+      "hex": "#005293",
+      "role": "Acento",
+      "usage": "Solo bandera y señalética cívica."
+    },
+    {
+      "token": "flag-red",
+      "name": "Flag Red",
+      "hex": "#D21034",
+      "role": "Acento",
+      "usage": "Solo bandera."
+    }
+  ],
+  "theme": {
+    "bg": "white",
+    "surface": "concrete",
+    "fg": "ink",
+    "muted": "graphite",
+    "accent": "ochre",
+    "line": "#DADADA"
+  },
+  "typography": {
+    "display": {
+      "family": "Poppins",
+      "weights": [
+        700,
+        800,
+        900
+      ],
+      "case": "uppercase",
+      "tracking": "-0.01em",
+      "usage": "Titulares, claims, UDP."
+    },
+    "secondary": {
+      "family": "Poppins",
+      "weights": [
+        500,
+        600
+      ],
+      "case": "uppercase",
+      "tracking": "0.3em",
+      "usage": "Etiquetas, categorías ('ARTE · CULTURA · CIUDAD')."
+    },
+    "body": {
+      "family": "Inter",
+      "weights": [
+        400,
+        500,
+        600
+      ],
+      "case": "none",
+      "tracking": "0",
+      "usage": "Texto web, propuestas, captions."
+    }
+  },
+  "ui": {
+    "radius": "4px",
+    "buttonStyle": "Rectangular Ink con texto blanco Poppins 600 mayúsculas tracking 0.2em; secundario contorno Ink. Hover: Ochre.",
+    "grid": "12 columnas, 1200 px, grilla visible con divisores verticales.",
+    "spacingBase": 8,
+    "shadow": "Sin sombras; bloques planos y divisores."
+  },
+  "imagery": {
+    "photography": "Ciudad de Panamá: skyline, Casco Antiguo, calles peatonales, montajes, gente disfrutando el espacio público. Arquitectura y patrimonio.",
+    "treatment": "Desaturado o B/N con toque cálido; atardeceres dorados para piezas emocionales.",
+    "avoid": "Fotos de fiesta nocturna, stock genérico, filtros saturados."
+  },
+  "graphicElements": [
+    "UDP gigante en Concrete detrás del contenido",
+    "Etiqueta negra con texto blanco ('TODO RESUELTO.')",
+    "Iconos de línea en fila con divisores verticales",
+    "Línea Ochre corta bajo titulares",
+    "Bandera de Panamá pequeña"
+  ],
+  "iconography": "Línea 1.5 px, geométricos, cuadrados. Lucide.",
+  "motion": {
+    "principles": [
+      "Ordenado y preciso",
+      "Textos que entran por bloques",
+      "Timelapses de montaje"
+    ],
+    "easing": "cubic-bezier(0.4, 0, 0.2, 1)",
+    "durations": "250 ms UI · 500 ms bloques",
+    "signature": "La palabra clave se tiñe de Ochre de izquierda a derecha."
+  },
+  "social": {
+    "grid": "Carruseles institucionales blancos alternando con fotos de ciudad B/N. Casco Peatonal con su sub-identidad colorida dentro del marco UDP.",
+    "templates": [
+      {
+        "name": "Claim",
+        "format": "4:5",
+        "spec": "Foto de ciudad oscura, titular Poppins 900 blanco con palabra clave Ochre, categorías abajo."
+      },
+      {
+        "name": "Servicios",
+        "format": "Carrusel 4:5",
+        "spec": "Blanco, '¿QUÉ HACEMOS EN UDP?', grid de iconos con etiquetas, UDP gigante Concrete de fondo."
+      },
+      {
+        "name": "Agenda Casco Peatonal",
+        "format": "4:5",
+        "spec": "Fecha y horario grandes, actividades con iconos, logo UDP al pie."
+      },
+      {
+        "name": "Montaje",
+        "format": "Reel 9:16",
+        "spec": "Timelapse de calle vacía a evento lleno con texto en bloques."
+      }
+    ]
+  },
+  "web": {
+    "concept": "Web corporativa B2G/B2B: servicios, proyectos, Casco Peatonal y contacto para alianzas.",
+    "sitemap": [
+      "Inicio",
+      "Qué hacemos (servicios)",
+      "Proyectos",
+      "Casco Peatonal (agenda)",
+      "Aliados",
+      "Nosotros",
+      "Contacto / Alianzas"
+    ],
+    "hero": "Foto de skyline B/N, 'LA CIUDAD ESTÁ CAMBIANDO.' con 'CAMBIANDO.' en Ochre, y CTA 'Trabajemos juntos'.",
+    "sections": [
+      "Servicios en grid de iconos",
+      "Proyectos con cifras",
+      "Agenda Casco Peatonal",
+      "Aliados (logos)",
+      "Formulario de alianzas"
+    ],
+    "features": [
+      "Agenda de actividades",
+      "Portafolio de proyectos",
+      "Formulario de propuestas"
+    ]
+  },
+  "voice": {
+    "tone": "Institucional, claro y visionario. Frases contundentes y cortas.",
+    "headlines": [
+      "La ciudad está cambiando.",
+      "No organizamos eventos… construimos experiencias urbanas.",
+      "Un solo equipo. Un solo sistema.",
+      "El Casco cambia. Y tú lo vas a vivir."
+    ],
+    "use": [
+      "ciudad",
+      "experiencia urbana",
+      "gestión integral",
+      "patrimonio",
+      "alianza"
+    ],
+    "avoid": [
+      "fiesta",
+      "rumba",
+      "VIP",
+      "jerga de nightlife"
+    ]
+  },
+  "dos": [
+    "Claims de marca",
+    "UDP gigante de fondo",
+    "Ochre solo en la palabra clave",
+    "Logo y bandera en cada pieza"
+  ],
+  "donts": [
+    "Colores de nightlife",
+    "Textos largos sin jerarquía",
+    "Stock genérico",
+    "Más de un acento por pieza"
+  ],
+  "sample": {
+    "kicker": "ARTE · CULTURA · CIUDAD",
+    "headline": "LA CIUDAD ESTÁ CAMBIANDO.",
+    "sub": "Gestión integral de eventos y ciudad",
+    "cta": "Trabajemos juntos",
+    "meta": "UDP · PANAMÁ"
+  },
+  "mood": "radial-gradient(ellipse at 50% 110%, rgba(200,155,60,.45) 0%, transparent 55%), linear-gradient(180deg, #3C3C3C 0%, #161616 55%, #0A0A0A 100%)",
+  "content": {
+    "observed": "Carruseles institucionales en blanco y negro con acento dorado ('¿Qué hacemos en UDP?', 'La ciudad está cambiando', '¿Qué es UDP?') y la agenda del Casco Peatonal con una sub-identidad más colorida. Todavía no publica video.",
+    "mix": [
+      {
+        "type": "Reels de montaje y operación",
+        "pct": 30,
+        "kind": "organic"
+      },
+      {
+        "type": "Reels del Casco Peatonal (gente y cultura)",
+        "pct": 25,
+        "kind": "organic"
+      },
+      {
+        "type": "Carruseles institucionales",
+        "pct": 25,
+        "kind": "graphic"
+      },
+      {
+        "type": "Stories: agenda, encuestas",
+        "pct": 20,
+        "kind": "stories"
+      }
+    ],
+    "video": {
+      "lengths": "Timelapse de montaje 10–20 s · Casco Peatonal 15–30 s · institucional 30–45 s",
+      "hook": "Antes y después en el primer segundo: calle vacía → evento lleno, con el claim en Poppins.",
+      "structure": [
+        {
+          "t": "0–2 s",
+          "label": "Antes",
+          "desc": "Calle vacía + claim"
+        },
+        {
+          "t": "2–10 s",
+          "label": "Operación",
+          "desc": "Timelapse de montaje y logística"
+        },
+        {
+          "t": "10–18 s",
+          "label": "Después",
+          "desc": "Gente disfrutando el espacio"
+        },
+        {
+          "t": "Final",
+          "label": "Firma",
+          "desc": "Lockup UDP + 'Organizamos hoy, transformamos ciudad.'"
+        }
+      ],
+      "camera": "Trípode y timelapse para montajes; gimbal a la altura de la gente en el Casco; drone para escala de ciudad.",
+      "grade": "Desaturado con calidez dorada; atardeceres dorados para piezas emocionales.",
+      "transitions": "Cortes ordenados, textos que entran por bloques, barrido ocre sobre la palabra clave.",
+      "overlay": {
+        "style": "Poppins Black mayúsculas blanco, alineado a la izquierda, palabra clave en ocre; etiqueta negra con texto blanco para el dato.",
+        "kicker": "ARTE · CULTURA · CIUDAD",
+        "text": "LA CIUDAD ESTÁ CAMBIANDO.",
+        "sub": "CASCO PEATONAL · DOMINGO 8AM–6PM"
+      },
+      "subtitles": {
+        "style": "Inter 600 blanco sobre caja negra, por frase; nombres de lugares en ocre.",
+        "sample": "cerramos la calle para que la gente la viva",
+        "highlight": "gente"
+      },
+      "cover": {
+        "style": "Foto de ciudad desaturada con claim en Poppins Black y la palabra clave en ocre; logo UDP arriba-izquierda.",
+        "title": "ASÍ SE MONTA EL CASCO"
+      },
+      "endcard": {
+        "style": "Fondo blanco con UDP gigante en Concrete detrás, lockup completo y 'Proyectos & alianzas por DM'.",
+        "cta": "Trabajemos juntos"
+      },
+      "music": "Instrumental moderno y cinematográfico; música local en piezas del Casco."
+    },
+    "organic": {
+      "principles": [
+        "Mostrar el trabajo detrás: montaje, logística, equipo",
+        "La ciudad y la gente como protagonistas",
+        "Nada de estética de nightlife",
+        "Datos concretos (personas, horas, metros)"
+      ],
+      "shots": [
+        "Timelapse de montaje",
+        "Equipo con chaleco UDP",
+        "Calle peatonal llena",
+        "Detalle de patrimonio",
+        "Familias y artistas callejeros",
+        "Drone del Casco",
+        "Atardecer en la ciudad"
+      ]
+    },
+    "stories": {
+      "principles": [
+        "Fondo blanco o foto desaturada",
+        "Agenda del fin de semana como sticker",
+        "Encuestas sobre la ciudad"
+      ],
+      "announce": "DOMINGO 31 · CASCO PEATONAL",
+      "poll": {
+        "q": "¿Qué quieres en el Casco Peatonal?",
+        "a": [
+          "Más música",
+          "Más comida"
+        ]
+      },
+      "countdown": "CASCO PEATONAL EN",
+      "link": "VER AGENDA"
+    },
+    "weekly": [
+      {
+        "day": "Lun",
+        "piece": "Recap del domingo (reel)"
+      },
+      {
+        "day": "Mié",
+        "piece": "Carrusel institucional"
+      },
+      {
+        "day": "Jue",
+        "piece": "Agenda del fin de semana"
+      },
+      {
+        "day": "Sáb",
+        "piece": "Timelapse de montaje"
+      },
+      {
+        "day": "Dom",
+        "piece": "Stories en vivo del Casco"
+      }
+    ]
+  }
+}

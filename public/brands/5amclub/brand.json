@@ -1,0 +1,431 @@
+{
+  "slug": "5amclub",
+  "accountId": "social-5amclub-new",
+  "handler": "@__5amclub",
+  "driveAliases": [
+    "5am",
+    "5 am club",
+    "5amclub"
+  ],
+  "ig": {
+    "bio": [
+      "5am Club",
+      "Finances & more 🏦",
+      "📍 Panama",
+      "5amclubagency.com"
+    ],
+    "highlights": [
+      "Mercados",
+      "Cripto",
+      "Macro",
+      "Agencia"
+    ],
+    "followers": "3.8K"
+  },
+  "name": "5AM CLUB",
+  "descriptor": "Finances & Markets",
+  "tagline": "Before the market opens.",
+  "essence": "Lo que pasa en los mercados, explicado antes de que empiece tu día.",
+  "positioning": "Medio financiero en español para LATAM con la urgencia de un noticiero de mercados y la claridad de un buen profesor. Conecta con 5amclubagency.com.",
+  "personality": [
+    "Urgente",
+    "Clara",
+    "Confiable",
+    "Disciplinada",
+    "Global"
+  ],
+  "values": [
+    "Dato con fuente",
+    "Explicar sin humo",
+    "Disciplina (levantarse a las 5am)",
+    "Independencia: no vendemos señales"
+  ],
+  "layout": "news",
+  "logo": {
+    "wordmark": [
+      "5AM CLUB"
+    ],
+    "descriptorLine": "FINANCES & MARKETS",
+    "symbol": "Globo terráqueo de malla en violeta dentro de una corona de 16 cruces blancas (símbolo actual). Mercados globales + la hora en que empieza el día.",
+    "construction": "Símbolo arriba; debajo \"5AM CLUB ©\" en Krona One (sans ancha y pesada), blanco. El ancho del wordmark ≈ ancho de la corona. Versión horizontal: símbolo a la izquierda.",
+    "clearspace": "Altura de una estrella alrededor del lockup ×2.",
+    "minSize": "Símbolo 28 px · lockup 96 px.",
+    "versions": [
+      "Blanco sobre Black (principal)",
+      "Black sobre blanco",
+      "Símbolo solo en violeta (sello de esquina)",
+      "Horizontal para lower-thirds"
+    ],
+    "misuse": [
+      "No usar el verde o rojo de mercado en el logo",
+      "No girar el globo",
+      "No poner el logo sobre gráficos con mucho ruido sin caja",
+      "No quitar el ©"
+    ]
+  },
+  "colors": [
+    {
+      "token": "black",
+      "name": "Terminal Black",
+      "hex": "#0A0A0A",
+      "role": "Primario",
+      "usage": "Fondo de noticias, pantallas, cajas de titular."
+    },
+    {
+      "token": "white",
+      "name": "White",
+      "hex": "#FFFFFF",
+      "role": "Primario",
+      "usage": "Titulares y texto."
+    },
+    {
+      "token": "violet",
+      "name": "Globe Violet",
+      "hex": "#6F52FF",
+      "role": "Acento de marca",
+      "usage": "Color del globo del logo: palabra clave del titular, sello, CTA, enlaces. No es señal de mercado."
+    },
+    {
+      "token": "navy",
+      "name": "Wire Navy",
+      "hex": "#0B3D91",
+      "role": "Secundario",
+      "usage": "Lower-thirds, banners institucionales, portadas macro."
+    },
+    {
+      "token": "bull",
+      "name": "Bull Green",
+      "hex": "#00C853",
+      "role": "Señal",
+      "usage": "Solo subidas (+%)."
+    },
+    {
+      "token": "bear",
+      "name": "Bear Red",
+      "hex": "#E53935",
+      "role": "Señal",
+      "usage": "Solo bajadas (−%) y alertas."
+    },
+    {
+      "token": "slate",
+      "name": "Slate",
+      "hex": "#1C2230",
+      "role": "Neutro",
+      "usage": "Superficies y tarjetas en web."
+    }
+  ],
+  "theme": {
+    "bg": "black",
+    "surface": "slate",
+    "fg": "white",
+    "muted": "#9AA3B2",
+    "accent": "violet",
+    "line": "#2A3142"
+  },
+  "typography": {
+    "display": {
+      "family": "Anton",
+      "weights": [
+        400
+      ],
+      "case": "uppercase",
+      "tracking": "0.01em",
+      "usage": "Titulares breaking news, cifras gigantes."
+    },
+    "logo": {
+      "family": "Krona One",
+      "weights": [
+        400
+      ],
+      "case": "uppercase",
+      "tracking": "0.02em",
+      "usage": "Solo wordmark 5AM CLUB y sellos."
+    },
+    "secondary": {
+      "family": "Inter",
+      "weights": [
+        600,
+        800
+      ],
+      "case": "uppercase",
+      "tracking": "0.08em",
+      "usage": "Kickers ('BREAKING', 'MACRO'), lower-thirds, etiquetas."
+    },
+    "body": {
+      "family": "Inter",
+      "weights": [
+        400,
+        500,
+        600
+      ],
+      "case": "none",
+      "tracking": "0",
+      "usage": "Explicaciones, artículos web, captions."
+    },
+    "mono": {
+      "family": "Roboto Mono",
+      "weights": [
+        400,
+        500,
+        700
+      ],
+      "case": "uppercase",
+      "tracking": "0",
+      "usage": "Tickers, precios, porcentajes, fechas y horas."
+    }
+  },
+  "ui": {
+    "radius": "4px",
+    "buttonStyle": "Sólido violeta con texto blanco Inter 800 mayúsculas; secundario borde blanco. Etiquetas de % en píldoras verde/rojo.",
+    "grid": "12 columnas, 1200 px, densidad de periódico digital.",
+    "spacingBase": 4,
+    "shadow": "Sutil: 0 2px 8px rgba(0,0,0,0.4) en tarjetas."
+  },
+  "imagery": {
+    "photography": "Wall Street, pantallas de trading, gráficos de velas, bancos centrales, commodities (oro, petróleo). Escenas, no personas inventadas.",
+    "treatment": "Alto contraste, fondos oscuros, verde/rojo saturados solo en gráficos. Imágenes IA permitidas para escenas y conceptos; nunca rostros reales fabricados.",
+    "avoid": "Lujo de influencer (autos, fajos de billetes), memes sin dato, fotos falsas de figuras reales."
+  },
+  "graphicElements": [
+    "Ticker inferior en mono que corre",
+    "Caja de titular negra con palabra clave en violeta",
+    "Píldoras +2.4% / −1.8% en verde/rojo",
+    "Lower-third azul estilo TV",
+    "Sello del símbolo en esquina superior"
+  ],
+  "iconography": "Iconos sólidos simples (flechas, alertas, globo, banco). Phosphor Bold.",
+  "motion": {
+    "principles": [
+      "Golpe inicial de 'BREAKING'",
+      "Números que cuentan hasta la cifra",
+      "Ticker continuo"
+    ],
+    "easing": "cubic-bezier(0.2, 0.8, 0.2, 1)",
+    "durations": "150 ms UI · 400 ms entradas de titular",
+    "signature": "El globo violeta gira un cuarto de vuelta y las cruces de la corona aparecen una a una, como un reloj marcando las 5."
+  },
+  "social": {
+    "grid": "Alternar breaking (negro + violeta) con explicador (navy). Cada post lleva fecha visible.",
+    "templates": [
+      {
+        "name": "Breaking",
+        "format": "4:5 · 1080×1350",
+        "spec": "Imagen de escena arriba, caja negra abajo con kicker BREAKING en Bear Red, titular Anton 96 px con palabra clave en violeta, cifra en mono y fecha."
+      },
+      {
+        "name": "Explicador",
+        "format": "Carrusel 4:5",
+        "spec": "Portada titular; slides: qué pasó / por qué importa / qué vigilar / fuente."
+      },
+      {
+        "name": "Portada macro",
+        "format": "4:5",
+        "spec": "Estilo periódico: cabecera 'ECONOMÍA GLOBAL', titular serif-free Anton, columna de análisis."
+      },
+      {
+        "name": "Market open",
+        "format": "Story 9:16",
+        "spec": "Cada mañana: 5 tickers con píldoras verde/rojo, hora en mono, sello 5AM."
+      }
+    ]
+  },
+  "web": {
+    "concept": "Medio digital financiero + agencia: noticias, explicadores, newsletter de las 5am y servicios en 5amclubagency.com.",
+    "sitemap": [
+      "Inicio (último minuto)",
+      "Mercados",
+      "Macro",
+      "Cripto",
+      "Explicadores",
+      "Newsletter 5AM",
+      "Agencia / Servicios",
+      "Sobre nosotros",
+      "Contacto"
+    ],
+    "hero": "Ticker en vivo arriba, titular principal en Anton con imagen, y suscripción 'Recíbelo a las 5am' en violeta.",
+    "sections": [
+      "Breaking en grid",
+      "Explicadores destacados",
+      "Calendario económico de la semana",
+      "Newsletter",
+      "Disclaimer financiero visible"
+    ],
+    "features": [
+      "Ticker de mercados",
+      "Newsletter diaria",
+      "Calendario económico",
+      "Aviso legal: no es asesoría financiera"
+    ]
+  },
+  "voice": {
+    "tone": "Urgente y claro. Primero el dato, luego la explicación simple. Sin promesas de ganancias.",
+    "headlines": [
+      "MERCADOS EN ALERTA",
+      "S&P 500: HISTÓRICO 7,000 PUNTOS",
+      "¿Corrección o mercado bajista?",
+      "Qué significa la Fed para tu dinero"
+    ],
+    "use": [
+      "dato",
+      "fuente",
+      "qué vigilar",
+      "contexto",
+      "riesgo"
+    ],
+    "avoid": [
+      "hazte rico",
+      "señal segura",
+      "compra ya",
+      "garantizado"
+    ]
+  },
+  "dos": [
+    "Fecha y fuente en cada pieza",
+    "Verde = sube, rojo = baja, siempre",
+    "Violeta (color del globo) como color de marca",
+    "Disclaimer en explicadores"
+  ],
+  "donts": [
+    "Recomendaciones personalizadas",
+    "Rostros reales generados con IA",
+    "Titular sin cifra",
+    "Usar verde/rojo como decoración"
+  ],
+  "sample": {
+    "kicker": "BREAKING",
+    "headline": "MERCADOS EN ALERTA",
+    "sub": "S&P 500 −2.75% · Oro +5%",
+    "cta": "Leer explicador",
+    "meta": "LUN 05.10.2026 · 05:00 EST"
+  },
+  "mood": "linear-gradient(170deg, #2A1F6B 0%, #0A0A0A 55%, #1A0A1A 100%)",
+  "content": {
+    "observed": "Posts de noticias de mercado con imágenes de alto impacto (gráficos de velas, Wall Street, oro, bancos centrales), titulares tipo breaking news ('MERCADOS EN ALERTA', 'S&P 500: HISTORIC 7000 POINTS'), banners de TV con lower-third y portadas estilo periódico. Hoy es más gráfico que video.",
+    "mix": [
+      {
+        "type": "Reels explicadores a cámara / voz en off",
+        "pct": 35,
+        "kind": "organic"
+      },
+      {
+        "type": "Breaking news (post gráfico)",
+        "pct": 30,
+        "kind": "graphic"
+      },
+      {
+        "type": "Carruseles explicadores",
+        "pct": 15,
+        "kind": "graphic"
+      },
+      {
+        "type": "Stories: market open diario",
+        "pct": 20,
+        "kind": "stories"
+      }
+    ],
+    "video": {
+      "lengths": "Breaking 15–25 s · explicadores 35–60 s",
+      "hook": "Titular con la cifra en el primer frame ('ORO +5%') y voz que arranca en el dato, sin saludo.",
+      "structure": [
+        {
+          "t": "0–2 s",
+          "label": "Titular",
+          "desc": "Cifra + flecha verde/roja"
+        },
+        {
+          "t": "2–15 s",
+          "label": "Qué pasó",
+          "desc": "Gráfico, b-roll, voz clara"
+        },
+        {
+          "t": "15–35 s",
+          "label": "Por qué importa",
+          "desc": "Impacto en tu dinero"
+        },
+        {
+          "t": "Final",
+          "label": "Qué vigilar",
+          "desc": "Próximo dato + sello 5AM"
+        }
+      ],
+      "camera": "Presentador a cámara en plano medio con fondo oscuro, o voz en off sobre b-roll de gráficos y escenas de mercado.",
+      "grade": "Alto contraste, fondos oscuros; verde y rojo saturados solo en gráficos; violeta de marca en titulares.",
+      "transitions": "Cortes rápidos con whoosh; números que cuentan hasta la cifra; zoom al dato clave.",
+      "overlay": {
+        "style": "Caja negra con titular en Anton mayúsculas, palabra clave en violeta; píldora 'BREAKING' roja; ticker en Roboto Mono abajo.",
+        "kicker": "BREAKING",
+        "text": "ORO +5%",
+        "sub": "MÁXIMO HISTÓRICO · $4,900/OZ"
+      },
+      "subtitles": {
+        "style": "Subtítulo por frase en Inter 700, blanco sobre caja negra, abajo; cifras y tickers en violeta.",
+        "sample": "la Fed mantiene las tasas y el oro se dispara",
+        "highlight": "oro"
+      },
+      "cover": {
+        "style": "Portada tipo noticiero: titular Anton con cifra grande, flecha y fecha visible. Siempre legible a tamaño de grilla.",
+        "title": "¿CORRECCIÓN O BAJISTA?"
+      },
+      "endcard": {
+        "style": "Banda violeta con el globo 5AM, '@__5amclub' y el aviso 'No es asesoría financiera'.",
+        "cta": "Síguenos para el market open"
+      },
+      "music": "Bed tenso de noticiero, beats corporativos minimalistas; SFX de alerta y ticker."
+    },
+    "organic": {
+      "principles": [
+        "El dato primero, la opinión después",
+        "Fuente y fecha en pantalla en cada pieza",
+        "Escenas IA solo para conceptos: nunca rostros reales fabricados",
+        "Disclaimer financiero en explicadores"
+      ],
+      "shots": [
+        "Presentador a cámara",
+        "Pantalla con gráfico",
+        "Manos en teclado/trading",
+        "B-roll de ciudad financiera",
+        "Primer plano de la cifra",
+        "Titular de prensa en pantalla"
+      ]
+    },
+    "stories": {
+      "principles": [
+        "Market open cada mañana a las 5–7 am",
+        "Píldoras verde/rojo para tickers",
+        "Encuesta diaria compra/vende"
+      ],
+      "announce": "MARKET OPEN · LUN 05.10",
+      "poll": {
+        "q": "Con la Fed así, ¿qué haces?",
+        "a": [
+          "Compro 📈",
+          "Espero 📉"
+        ]
+      },
+      "countdown": "DATO DE EMPLEO EN",
+      "link": "LEER EXPLICADOR"
+    },
+    "weekly": [
+      {
+        "day": "Lun–Vie",
+        "piece": "Story market open (5 tickers)"
+      },
+      {
+        "day": "Lun",
+        "piece": "Reel: qué vigilar esta semana"
+      },
+      {
+        "day": "Mié",
+        "piece": "Breaking del día (post)"
+      },
+      {
+        "day": "Jue",
+        "piece": "Carrusel explicador"
+      },
+      {
+        "day": "Vie",
+        "piece": "Reel resumen de la semana"
+      }
+    ]
+  }
+}

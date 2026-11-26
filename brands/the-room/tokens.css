@@ -1,0 +1,53 @@
+/* THE ROOM — tokens de marca. Generado por scripts/build-brands.mjs desde brands/the-room/brand.json. No editar a mano. */
+@import url('https://fonts.googleapis.com/css2?family=Bodoni+Moda:wght@400;500;700&family=Josefin+Sans:wght@300;400;600&display=swap');
+
+:root {
+  /* Paleta */
+  --brand-noir: #0B0505; /* Noir · Primario */
+  --brand-bordeaux: #7A0E0E; /* Bordeaux · Primario */
+  --brand-ember: #C1121F; /* Ember Red · Acento */
+  --brand-cream: #E8DCCB; /* Cream · Primario */
+  --brand-rose: #B76E6E; /* Rosé Marble · Secundario */
+  --brand-gold: #B08D57; /* Antique Gold · Acento */
+
+  /* Roles */
+  --brand-bg: #0B0505;
+  --brand-surface: #1C0A0A;
+  --brand-fg: #E8DCCB;
+  --brand-muted: #B76E6E;
+  --brand-accent: #C1121F;
+  --brand-on-accent: #FFFFFF;
+  --brand-line: #3A1414;
+
+  /* Tipografía */
+  --font-display: 'Bodoni Moda', serif;
+  --font-secondary: 'Josefin Sans', sans-serif;
+  --font-body: 'Josefin Sans', sans-serif;
+  --tracking-display: 0.04em;
+  --tracking-secondary: 0.32em;
+  --tracking-body: 0.02em;
+  --stretch-display: 100%;
+  --text-display-xl: 6rem;
+  --text-display-l: 4rem;
+  --text-h1: 3rem;
+  --text-h2: 2rem;
+  --text-h3: 1.5rem;
+  --text-body-l: 1.125rem;
+  --text-body: 1rem;
+  --text-label: 0.75rem;
+
+  /* Forma y movimiento */
+  --radius: 0px;
+  --space-1: 0.5rem;
+  --space-2: 1rem;
+  --space-3: 1.5rem;
+  --space-4: 2rem;
+  --space-6: 3rem;
+  --space-8: 4rem;
+  --space-12: 6rem;
+  --space-16: 8rem;
+  --ease: cubic-bezier(0.65, 0, 0.35, 1);
+  --gradient-velvet: radial-gradient(ellipse at 50% 35%, #7A0E0E 0%, #3A0707 45%, #0B0505 80%);
+  --gradient-ember-flare: linear-gradient(90deg, transparent 0%, #C1121F 50%, transparent 100%);
+  --mood: radial-gradient(ellipse at 50% 35%, #7A0E0E 0%, #3A0707 45%, #0B0505 80%);
+}

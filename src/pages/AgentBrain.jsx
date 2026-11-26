@@ -1,24 +1,30 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import OpenClawBrainService, { OPENCLAW_MODES, SLASH_COMMANDS } from '../services/OpenClawBrainService';
 import RagIndexer from '../services/RagIndexer';
 import { useAutopilotEngine } from '../hooks/useAutopilotEngine';
 import ReactMarkdown from 'react-markdown';
+import ChatGptKnowledge from '../components/knowledge/ChatGptKnowledge';
+import AgentHubPanel from '../components/knowledge/AgentHubPanel';
+import LibraryPanel from '../components/knowledge/LibraryPanel';
+import ReferencesPanel from '../components/studio/ReferencesPanel';
 import {
     Bot, Send, Sparkles, Database, UploadCloud, FolderSync,
     BrainCircuit, CheckCircle2, AlertCircle, RefreshCw, Zap,
     Play, Square, Activity, Terminal, Trash2, ArrowRight, Settings, X,
     Copy, Check, Layers, ExternalLink, Globe, Cpu, Code, Radio, ShieldCheck,
     FileText, CheckSquare, Search, Eye, Download, BookOpen, Sliders, ChevronRight,
-    SlidersHorizontal, Compass, PieChart, Wrench, Shield, FileCheck
+    SlidersHorizontal, Compass, PieChart, Wrench, Shield, FileCheck, Link2
 } from 'lucide-react';
 
 export default function AgentBrain() {
     const appContext = useApp();
+    const navigate = useNavigate();
     const { refreshData, activityFeed, addActivity, openclawLogs, triggerOpenClawAction, projects, events, tasks, notes } = appContext;
 
     // --- Active Tab State ---
-    const [activeTab, setActiveTab] = useState('chat'); // 'chat' | 'rag_inspector' | 'topology' | 'skills_market' | 'openclaw_bridge'
+    const [activeTab, setActiveTab] = useState('chat'); // 'chat' | 'chatgpt_memory' | 'agent_hub' | 'rag_inspector' | 'topology' | 'skills_market' | 'openclaw_bridge'
 
     // --- Mode State ---
     const [selectedMode, setSelectedMode] = useState('ejecutivo');
@@ -31,9 +37,8 @@ export default function AgentBrain() {
     const [testConnectionResult, setTestConnectionResult] = useState(null);
 
     // --- Chat State ---
-    const [messages, setMessages] = useState([
-        { id: '1', role: 'bot', text: '⚡ **OpenClaw Agent activo**. Soy el orquestador autónomo maestro y cerebro central de tu Command Center. Tengo acceso en tiempo real a tus proyectos, eventos, tareas y base RAG.\n\nEscribe cualquier instrucción o usa comandos rápidos como `/proyecto`, `/evento`, `/tarea` o `/rag`.' }
-    ]);
+    // Memoria compartida del agente unificado (la misma que usan el Copilot y Jarvis)
+    const { openclawMessages: messages = [], setOpenclawMessages: setMessages, clearOpenclawChat } = appContext;
     const [input, setInput] = useState('');
     const [isThinking, setIsThinking] = useState(false);
     const [thinkingStep, setThinkingStep] = useState(null); // 'rag' | 'tool' | 'sync' | null
@@ -199,11 +204,18 @@ export default function AgentBrain() {
 
         // Check for local slash commands
         if (userText === '/limpiar') {
-            setMessages([{ id: Date.now().toString(), role: 'bot', text: '⚡ Conversación reiniciada. ¿Qué deseas coordinar?' }]);
+            clearOpenclawChat();
             return;
         }
 
-        setMessages(prev => [...prev, { id: Date.now().toString(), role: 'user', text: userText }]);
+        if (userText === '/jarvis' || userText === '/jarvis hub') {
+            navigate('/jarvis');
+            return;
+        }
+
+        const userMsg = { id: Date.now().toString(), role: 'user', agent: 'console', text: userText };
+        const history = [...messages, userMsg];
+        setMessages(history);
         setIsThinking(true);
 
         // Step-by-step thinking simulation for visual feedback
@@ -215,7 +227,16 @@ export default function AgentBrain() {
                 addTask: appContext.addTask,
                 addEvent: appContext.addEvent,
                 addProject: appContext.addProject,
-                addActivity: appContext.addActivity
+                addActivity: appContext.addActivity,
+                onControlMusic: (data) => {
+                    if (addActivity) addActivity(`🎵 Jarvis ajustó audio a preset: ${data?.preset || 'deep_focus'}`, '#38bdf8');
+                },
+                onOrderFood: (data) => {
+                    if (addActivity) addActivity(`🍔 Jarvis coordinó pedido en: ${data?.restaurant || 'Restaurante'}`, '#f59e0b');
+                },
+                onExecuteSkill: (data) => {
+                    if (addActivity) addActivity(`⚡ Jarvis ejecutó habilidad: ${data?.name || 'Macro'}`, '#06b6d4');
+                }
             };
 
             // Build active skills text from presets
@@ -223,7 +244,7 @@ export default function AgentBrain() {
             const fullSkills = `${agentSkills}\n\n[HABILIDADES ACTIVAS EN MERCADO]:\n${activePresetPrompts}`;
 
             const result = await OpenClawBrainService.sendCommand(
-                userText, messages, systemRole, fullSkills, namespace, selectedMode, contextCallbacks
+                userText, history, systemRole, fullSkills, namespace, selectedMode, contextCallbacks
             );
             
             setThinkingStep('sync');
@@ -235,6 +256,9 @@ export default function AgentBrain() {
                     if (t.name === 'create_event') return `> 🎉 **Evento Agendado**: \`${t.args?.name}\` (${t.args?.date})`;
                     if (t.name === 'add_task') return `> 📋 **Tarea Añadida**: \`${t.args?.text}\``;
                     if (t.name === 'add_milestone') return `> 🗺️ **Hito Registrado**: \`${t.args?.title}\``;
+                    if (t.name === 'control_music') return `> 🎵 **Audio Jarvis**: Preset \`${t.args?.preset || 'deep_focus'}\` (${t.args?.action === 'pause' ? 'Pausado' : 'Reproduciendo'})`;
+                    if (t.name === 'order_food') return `> 🍔 **Jarvis Concierge**: Pedido armado en \`${t.args?.restaurant || 'Restaurante'}\``;
+                    if (t.name === 'execute_jarvis_skill') return `> ⚡ **Jarvis Macro**: Habilidad ejecutada con éxito`;
                     return `> ⚡ **Acción Ejecutada**: \`${t.name}\``;
                 }).join('\n');
             }
@@ -242,6 +266,7 @@ export default function AgentBrain() {
             setMessages(prev => [...prev, {
                 id: (Date.now() + 1).toString(),
                 role: 'bot',
+                agent: 'console',
                 text: (result.reply || 'Acción procesada por OpenClaw Super Agent.') + executedFeedback
             }]);
 
@@ -252,6 +277,7 @@ export default function AgentBrain() {
             setMessages(prev => [...prev, {
                 id: (Date.now() + 1).toString(),
                 role: 'bot',
+                agent: 'console',
                 text: `⚠️ **OpenClaw Super Agent Status**: ${err.message}`
             }]);
         } finally {
@@ -431,7 +457,7 @@ export default function AgentBrain() {
                 <div>
                     <h1 style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <BrainCircuit size={26} style={{ color: 'var(--accent-primary)' }} />
-                        Consola OpenClaw IA & Cerebro RAG
+                        Consola Agent & RAG
                     </h1>
                     <p style={{ color: 'var(--text-secondary)', fontSize: '13.5px', marginTop: '4px' }}>
                         Orquestación central gobernada por <strong>OpenClaw Agent</strong> con base de conocimientos RAG unificada.
@@ -635,6 +661,60 @@ export default function AgentBrain() {
                     <Search size={16} /> Inspector & Playground RAG
                 </button>
                 <button
+                    onClick={() => setActiveTab('chatgpt_memory')}
+                    style={{
+                        padding: '8px 16px',
+                        borderRadius: '8px',
+                        background: activeTab === 'chatgpt_memory' ? '#10b981' : 'rgba(16, 185, 129, 0.12)',
+                        border: 'none',
+                        color: 'white',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        whiteSpace: 'nowrap'
+                    }}
+                >
+                    <BookOpen size={16} /> Memoria ChatGPT
+                </button>
+                <button
+                    onClick={() => setActiveTab('agent_hub')}
+                    style={{
+                        padding: '8px 16px',
+                        borderRadius: '8px',
+                        background: activeTab === 'agent_hub' ? '#0ea5e9' : 'rgba(56, 189, 248, 0.12)',
+                        border: 'none',
+                        color: 'white',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        whiteSpace: 'nowrap'
+                    }}
+                >
+                    <Globe size={16} /> Agentes conectados
+                </button>
+                <button
+                    onClick={() => setActiveTab('references')}
+                    style={{
+                        padding: '8px 16px',
+                        borderRadius: '8px',
+                        background: activeTab === 'references' ? '#a855f7' : 'rgba(168, 85, 247, 0.12)',
+                        border: 'none',
+                        color: 'white',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        whiteSpace: 'nowrap'
+                    }}
+                >
+                    <Link2 size={16} /> Referencias
+                </button>
+                <button
                     onClick={() => setActiveTab('topology')}
                     style={{
                         padding: '8px 16px',
@@ -688,6 +768,25 @@ export default function AgentBrain() {
                 >
                     <Radio size={16} /> Puente & Auditoría
                 </button>
+                <button
+                    onClick={() => navigate('/jarvis')}
+                    title="Jarvis tiene su propia página en el menú; comparte memoria con esta consola"
+                    style={{
+                        padding: '8px 16px',
+                        borderRadius: '8px',
+                        background: 'rgba(56, 189, 248, 0.14)',
+                        border: '1px solid rgba(56, 189, 248, 0.45)',
+                        color: '#38bdf8',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        whiteSpace: 'nowrap'
+                    }}
+                >
+                    <Sparkles size={16} /> Jarvis ↗
+                </button>
             </div>
 
             {/* Main Content Area */}
@@ -738,7 +837,7 @@ export default function AgentBrain() {
                                 <button className="btn btn-ghost" onClick={handleExportChat} style={{ fontSize: '12px', padding: '6px 10px' }} title="Descargar transcripción Markdown">
                                     <Download size={14} style={{ marginRight: '4px' }} /> Exportar
                                 </button>
-                                <button className="btn btn-ghost" onClick={() => setMessages([{ id: Date.now().toString(), role: 'bot', text: '⚡ Conversación reiniciada. ¿Qué deseas coordinar?' }])} style={{ fontSize: '12px', padding: '6px 10px', color: 'var(--accent-red)' }} title="Limpiar chat">
+                                <button className="btn btn-ghost" onClick={clearOpenclawChat} style={{ fontSize: '12px', padding: '6px 10px', color: 'var(--accent-red)' }} title="Limpiar chat">
                                     <Trash2 size={14} style={{ marginRight: '4px' }} /> Limpiar
                                 </button>
                             </div>
@@ -764,7 +863,9 @@ export default function AgentBrain() {
                                 {messages.map(msg => (
                                     <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start', gap: '6px' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--text-secondary)' }}>
-                                            {msg.role === 'user' ? 'OPERADOR' : '🤖 OPENCLAW AGENT'}
+                                            {msg.role === 'user'
+                                                ? `OPERADOR${msg.agent === 'jarvis' ? ' · vía Jarvis' : msg.agent === 'copilot' || !msg.agent ? ' · vía Copilot' : ''}`
+                                                : msg.agent === 'jarvis' ? '🎙️ JARVIS' : msg.agent === 'console' ? '🤖 OPENCLAW AGENT' : '🤖 ARRIVE COPILOT'}
                                         </div>
                                         <div style={{
                                             maxWidth: '78%',
@@ -772,11 +873,11 @@ export default function AgentBrain() {
                                             borderRadius: '12px',
                                             background: msg.role === 'user' ? 'linear-gradient(135deg, var(--accent-primary), var(--accent-purple))' : 'rgba(255,255,255,0.04)',
                                             color: 'white',
-                                            border: msg.role === 'bot' ? '1px solid var(--border-subtle)' : 'none',
+                                            border: msg.role !== 'user' ? '1px solid var(--border-subtle)' : 'none',
                                             fontSize: '14.5px',
                                             lineHeight: '1.6'
                                         }}>
-                                            {msg.role === 'bot' ? (
+                                            {msg.role !== 'user' ? (
                                                 <div style={{ background: 'transparent' }}>
                                                     <ReactMarkdown>{msg.text}</ReactMarkdown>
                                                 </div>
@@ -894,6 +995,19 @@ export default function AgentBrain() {
                 {/* ═════════════════════════════════════════════════════════════════ */}
                 {/* 2. RAG INSPECTOR & PLAYGROUND TAB                               */}
                 {/* ═════════════════════════════════════════════════════════════════ */}
+                {activeTab === 'chatgpt_memory' && <ChatGptKnowledge />}
+
+                {activeTab === 'agent_hub' && <AgentHubPanel />}
+
+                {activeTab === 'references' && (
+                    <div>
+                        <p style={{ margin: '0 0 12px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                            La misma biblioteca de Redes Sociales → Referencias. Cada video analizado entra al RAG y los agentes lo encuentran con search_knowledge.
+                        </p>
+                        <ReferencesPanel accounts={appContext.socialMedia || []} />
+                    </div>
+                )}
+
                 {activeTab === 'rag_inspector' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                         
@@ -1318,7 +1432,10 @@ export default function AgentBrain() {
                 {/* ═════════════════════════════════════════════════════════════════ */}
                 {activeTab === 'skills_market' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                        
+
+                        {/* Biblioteca de repos de GitHub y sus skills */}
+                        <LibraryPanel />
+
                         {/* Skills Catalog */}
                         <div className="card" style={{ padding: '24px' }}>
                             <div style={{ marginBottom: '20px' }}>
@@ -1535,6 +1652,7 @@ export default function AgentBrain() {
 
                     </div>
                 )}
+
 
             </div>
 

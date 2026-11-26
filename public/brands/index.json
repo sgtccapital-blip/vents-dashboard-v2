@@ -1,0 +1,56 @@
+[
+  {
+    "slug": "5amclub",
+    "name": "5AM CLUB",
+    "accountId": "social-5amclub-new",
+    "handler": "@__5amclub"
+  },
+  {
+    "slug": "arrive",
+    "name": "ARRIVE",
+    "accountId": "social-arrive-models",
+    "handler": "@Arrive.models"
+  },
+  {
+    "slug": "dinner-club",
+    "name": "DINNER CLUB",
+    "accountId": "social-dinnerclub-pa",
+    "handler": "@dinnerclub_pa"
+  },
+  {
+    "slug": "elemento",
+    "name": "ELEMENTO",
+    "accountId": "social-elemento-techno",
+    "handler": "@Elemento.techno"
+  },
+  {
+    "slug": "hangout",
+    "name": "HANG OUT",
+    "accountId": "social-hangout-panama",
+    "handler": "@hangout.panama"
+  },
+  {
+    "slug": "ignite",
+    "name": "IGNITE CLUB",
+    "accountId": "social-igniteclub",
+    "handler": "@theigniteclubb"
+  },
+  {
+    "slug": "the-room",
+    "name": "THE ROOM",
+    "accountId": "social-theroom-social",
+    "handler": "@theroom.social"
+  },
+  {
+    "slug": "udp",
+    "name": "UDP",
+    "accountId": "social-udp-pa",
+    "handler": "@UDP.PA"
+  },
+  {
+    "slug": "urban-nights",
+    "name": "URBAN NIGHTS",
+    "accountId": "social-urbannights-pa",
+    "handler": "@Urbannights.pa"
+  }
+]
