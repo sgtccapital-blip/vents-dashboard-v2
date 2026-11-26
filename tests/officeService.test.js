@@ -179,3 +179,171 @@ test('modelRunner: catálogo de OpenRouter, búsqueda por nombre y validación',
     assert.equal(list.models.find(m => m.id === 'openrouter/x/sin-cache').label, 'x/sin-cache');
     assert.equal(estimateCost('openrouter/anthropic/claude-sonnet-5', 1e6, 1e6), 18);
 });
+
+test('modelRunner: si el proveedor principal falla, responde el respaldo de otro proveedor', async () => {
+    const { runModel } = await import('../src/services/office/modelRunner.js');
+    const saved = { g: process.env.GEMINI_API_KEY, o: process.env.OPENROUTER_API_KEY };
+    process.env.GEMINI_API_KEY = 'test';
+    process.env.OPENROUTER_API_KEY = 'test';
+    try {
+        const calls = [];
+        const runners = {
+            google: async m => { calls.push(m); throw new Error('API key not valid'); },
+            openrouter: async m => { calls.push(m); return { text: 'hecho', tokensIn: 10, tokensOut: 5, costFromProvider: 0.0001 }; },
+        };
+        const out = await runModel({ model: 'gemini-3.8-flash', prompt: 'hola', retryDelays: [], runners, fallbacks: ['openrouter/deepseek/deepseek-v4.1-flash'] });
+        assert.equal(out.model, 'openrouter/deepseek/deepseek-v4.1-flash');
+        assert.equal(out.provider, 'openrouter');
+        assert.equal(out.fallbackFrom, 'gemini-3.8-flash');
+        assert.equal(out.failures[0].model, 'gemini-3.8-flash');
+        assert.equal(out.costUSD, 0.0001);
+        assert.equal(calls[0], 'gemini-3.8-flash', 'error no pasajero: no reintenta el mismo modelo');
+
+        // Proveedor principal sin llave: va directo al respaldo.
+        delete process.env.GEMINI_API_KEY;
+        const out2 = await runModel({ model: 'gemini-3.8-flash', prompt: 'hola', retryDelays: [], runners, fallbacks: ['openrouter/x/y'] });
+        assert.equal(out2.model, 'openrouter/x/y');
+
+        // Un modelo colgado no bloquea: pasa al respaldo cuando vence el tiempo.
+        process.env.GEMINI_API_KEY = 'test';
+        const hang = { google: () => new Promise(() => {}), openrouter: runners.openrouter };
+        const out3 = await runModel({ model: 'gemini-3.8-flash', prompt: 'hola', retryDelays: [0], runners: hang, fallbacks: ['openrouter/x/y'], timeoutMs: 30 });
+        assert.equal(out3.model, 'openrouter/x/y');
+        assert.match(out3.failures[0].error, /no respondió/);
+        delete process.env.GEMINI_API_KEY;
+
+        // Todos fallan: el error resume cada intento.
+        runners.openrouter = async () => { throw new Error('sin saldo'); };
+        await assert.rejects(runModel({ model: 'gemini-3.8-flash', prompt: 'hola', retryDelays: [], runners, fallbacks: ['openrouter/x/y'] }), /openrouter\/x\/y: sin saldo/);
+        // Sin respaldo y sin llave: el error de siempre.
+        await assert.rejects(runModel({ model: 'gemini-3.8-flash', prompt: 'hola', retryDelays: [], runners }), /no está configurado/);
+    } finally {
+        process.env.GEMINI_API_KEY = saved.g ?? '';
+        if (saved.o === undefined) delete process.env.OPENROUTER_API_KEY; else process.env.OPENROUTER_API_KEY = saved.o;
+    }
+});
+
+test('router: BART elige con IA, valida la respuesta y cae a palabras clave si falla', async () => {
+    const { routeMission, keywordRoute, parseRouterReply } = await import('../src/services/office/router.js');
+    const agents = [
+        { id: 'agent-bart', name: 'BART (COO)', role: 'COO', kind: 'internal' },
+        { id: 'agent-echo', name: 'Echo (Social)', role: 'Social media', kind: 'internal' },
+        { id: 'agent-pulse', name: 'Pulse', role: 'WhatsApp', kind: 'internal' },
+    ];
+    const accounts = [{ id: 'ignite', name: 'IGNITE CLUB', handler: '@theigniteclubb' }];
+
+    assert.equal(keywordRoute('Haz un reel', agents).agentId, 'agent-echo');
+    assert.equal(keywordRoute('Algo raro', agents).agentId, 'agent-bart');
+
+    const parsed = parseRouterReply('Claro: {"agentId":"agent-echo","confidence":1.4,"reason":"Es contenido","alternatives":[{"agentId":"agent-pulse","reason":"difusión"},{"agentId":"nadie"}],"account":"ignite"}', agents, accounts);
+    assert.equal(parsed.confidence, 1);
+    assert.equal(parsed.alternatives.length, 1);
+    assert.equal(parsed.account, 'ignite');
+    assert.throws(() => parseRouterReply('{"agentId":"agent-x"}', agents), /no existe/);
+
+    const saved = process.env.GEMINI_API_KEY;
+    process.env.GEMINI_API_KEY = 'test';
+    try {
+        let prompt = '';
+        const ok = await routeMission({
+            mission: 'Mensaje para invitar a la fiesta de Ignite', agents, accounts, load: { 'agent-echo': 3 },
+            runModel: async opts => { prompt = opts.prompt; return { text: '{"agentId":"agent-pulse","confidence":0.8,"reason":"Es una invitación por WhatsApp","alternatives":[],"account":"ignite"}', model: opts.model }; },
+        });
+        assert.equal(ok.by, 'ai');
+        assert.equal(ok.agentId, 'agent-pulse');
+        assert.equal(ok.account, 'ignite');
+        assert.match(prompt, /tareas abiertas: 3/);
+        assert.match(prompt, /@theigniteclubb/);
+
+        const bad = await routeMission({ mission: 'Haz un reel', agents, runModel: async () => ({ text: 'no sé' }) });
+        assert.equal(bad.by, 'keywords');
+        assert.equal(bad.agentId, 'agent-echo');
+        assert.match(bad.fallbackReason, /JSON/);
+
+        const slow = await routeMission({ mission: 'Haz un reel', agents, timeoutMs: 20, runModel: () => new Promise(() => {}) });
+        assert.equal(slow.by, 'keywords');
+        assert.match(slow.fallbackReason, /tardó/);
+    } finally {
+        process.env.GEMINI_API_KEY = saved ?? '';
+    }
+});
+
+test('brandContext: detecta la cuenta de la tarea y carga su ADN y línea de marca', async () => {
+    const { createBrandContext } = await import('../src/services/office/brandContext.js');
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'brand-'));
+    const brands = path.join(tmp, 'brands');
+    const dna = path.join(tmp, 'content-dna');
+    fs.mkdirSync(path.join(brands, 'ignite'), { recursive: true });
+    fs.mkdirSync(path.join(brands, 'elemento'), { recursive: true });
+    fs.writeFileSync(path.join(brands, 'ignite', 'brand.json'), JSON.stringify({ slug: 'ignite', name: 'IGNITE CLUB', handler: '@theigniteclubb', driveAliases: ['ignite'] }));
+    fs.writeFileSync(path.join(brands, 'ignite', 'BRAND.md'), '# IGNITE — Línea gráfica\nRojo #E3262B');
+    fs.writeFileSync(path.join(brands, 'elemento', 'brand.json'), JSON.stringify({ slug: 'elemento', name: 'ELEMENTO', handler: '@Elemento.techno', driveAliases: ['elemento'] }));
+    fs.mkdirSync(path.join(dna, 'theigniteclubb'), { recursive: true });
+    fs.writeFileSync(path.join(dna, 'theigniteclubb', 'DNA.md'), '# ADN — @theigniteclubb\nTono: eléctrico');
+    fs.mkdirSync(path.join(dna, 'music-pty'), { recursive: true });
+    fs.writeFileSync(path.join(dna, 'music-pty', 'DNA.md'), '# ADN de contenido — @Music.pty\n\n> Instagram · Booking');
+
+    const bc = createBrandContext({ brandsDir: brands, contentDnaDir: dna });
+    assert.equal(bc.detect('3 hooks para el reel de Ignite del sábado')?.id, 'ignite');
+    assert.equal(bc.detect('Post para @theigniteclubb')?.id, 'ignite');
+    assert.equal(bc.detect('Revisa cada elemento del montaje'), null, 'palabra común en minúscula no es la marca');
+    assert.equal(bc.detect('Flyer de Elemento para el viernes')?.id, 'elemento');
+    assert.equal(bc.detect('booking para music pty')?.id, 'music-pty');
+    assert.equal(bc.detect('Contrato con el proveedor de barra'), null);
+
+    const loaded = bc.load('ignite');
+    assert.deepEqual(loaded.files.map(f => f.name), ['DNA.md', 'BRAND.md']);
+    assert.match(loaded.files[0].text, /eléctrico/);
+    assert.equal(bc.load('no-existe'), null);
+});
+
+test('officeService: las revisiones con comentario quedan como lecciones y el agente las recibe con su contexto', async () => {
+    process.env.GEMINI_API_KEY = 'test';
+    let db = {
+        agents: [{ id: 'agent-echo', name: 'Echo (Social)', model: 'gemini-3.8-flash', status: 'available', fallbackModels: [] }],
+        agentTasks: [{ id: 't1', task: 'Hooks para reel', assignedAgentId: 'agent-echo', assignedAgent: 'Echo (Social)', assignedKind: 'internal', status: 'queued', account: { id: 'ignite', name: 'IGNITE CLUB' } }],
+        activityFeed: [],
+    };
+    const calls = [];
+    const office = createOfficeService({
+        readDB: () => structuredClone(db),
+        writeDB: d => { db = structuredClone(d); },
+        getAgents: d => d.agents,
+        buildPrompt: async opts => { calls.push(opts); return { prompt: `PROMPT ${opts.task}`, context: { knowledge: [{ title: 'Doc', relevance: 100 }], lessons: opts.lessons } }; },
+        runModel: async ({ model }) => ({ text: 'Hook A', tokensIn: 1, tokensOut: 1, provider: 'google', model, ms: 5 }),
+    });
+    office.startInternalRun('t1');
+    await until(() => db.agentTasks[0].status === 'review');
+    assert.equal(calls[0].accountId, 'ignite');
+    assert.deepEqual(calls[0].lessons, []);
+    assert.equal(db.agentTasks[0].runs[0].context.knowledge[0].title, 'Doc');
+
+    office.review('t1', { decision: 'changes', notes: 'Menos emojis, más directo' });
+    await until(() => db.agentTasks[0].runs.length === 2 && db.agentTasks[0].status === 'review');
+    assert.equal(calls[1].lessons.length, 1);
+    assert.equal(calls[1].lessons[0].notes, 'Menos emojis, más directo');
+    assert.equal(calls[1].lessons[0].kind, 'changes');
+
+    office.review('t1', { decision: 'approve', notes: 'Así me gusta' });
+    const lessons = office.listLessons('agent-echo');
+    assert.deepEqual(lessons.map(l => l.kind), ['approve', 'changes']);
+    office.removeLesson(lessons[1].id);
+    assert.equal(office.listLessons('agent-echo').length, 1);
+    assert.throws(() => office.removeLesson('nada'), /no encontrada/);
+    // Aprobar sin comentario no crea lección.
+    assert.equal((db.agentLessons || []).length, 1);
+});
+
+test('modelRunner: si responde un modelo hermano del mismo proveedor, queda marcado como respaldo', async () => {
+    const { runModel } = await import('../src/services/office/modelRunner.js');
+    const saved = process.env.GEMINI_API_KEY;
+    process.env.GEMINI_API_KEY = 'test';
+    try {
+        const runners = { google: async m => { if (m === 'gemini-3.8-flash') throw Object.assign(new Error('503 UNAVAILABLE'), { status: 503 }); return { text: 'ok', tokensIn: 1, tokensOut: 1 }; } };
+        const out = await runModel({ model: 'gemini-3.8-flash', prompt: 'hola', retryDelays: [], runners });
+        assert.equal(out.model, 'gemini-3.5-flash');
+        assert.equal(out.fallbackFrom, 'gemini-3.8-flash');
+    } finally {
+        process.env.GEMINI_API_KEY = saved ?? '';
+    }
+});

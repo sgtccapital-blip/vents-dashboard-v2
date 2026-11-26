@@ -36,6 +36,8 @@ import { createArtifactStore, MAX_FILE_BYTES as OFFICE_MAX_FILE_BYTES } from './
 import { runModel, listModels, defaultModel, RETIRED_MODELS, openRouterCatalog, searchModels, isKnownModel, providerEnabled } from './src/services/office/modelRunner.js';
 import { generateStructured, availableProviders } from './src/services/contentStudio/llm.js';
 import { loadBrands } from './scripts/build-brands.mjs';
+import { createBrandContext } from './src/services/office/brandContext.js';
+import { routeMission } from './src/services/office/router.js';
 
 dotenv.config();
 
@@ -958,7 +960,7 @@ const office = createOfficeService({
     broadcast: (type, payload) => broadcastOfficeEvent(type, payload),
     getHub: () => agentHub,
     getAgents: db => getOfficeAgents(db),
-    buildPrompt: async opts => (await buildAgentPrompt(opts)).prompt,
+    buildPrompt: opts => buildAgentPrompt(opts),
     // Archivos de cada tarea (entregables, adjuntos, imágenes) junto a db.json, fuera de git.
     artifacts: createArtifactStore({ dir: process.env.OFFICE_FILES_DIR || path.join(path.dirname(DB_PATH), 'office-files') }),
     // Entregable aprobado → memoria del RAG, para que los demás agentes (internos y por MCP) lo encuentren.
@@ -3900,13 +3902,19 @@ const COMPANY_NAMESPACES = {
     'metro-supply': 'metro',
 };
 
-async function buildAgentPrompt({ agentName, task, description, companyId, companyName, previousResult }) {
+// Línea de marca de cada cuenta (DNA.md + BRAND.md) para los agentes de la oficina.
+const brandContext = createBrandContext({ brandsDir: path.join(__dirname, 'brands'), contentDnaDir: CONTENT_DNA_PATH });
+
+const promptClip = (s, n) => String(s || '').replace(/\s+/g, ' ').trim().slice(0, n);
+
+async function buildAgentPrompt({ agentName, task, description, companyId, companyName, previousResult, accountId, lessons = [] }) {
     const namespace = COMPANY_NAMESPACES[companyId] || 'default';
     let sopContent = 'Eres un asistente AI operativo del Command Center OS.';
     const safeAgentName = String(agentName).split(' ')[0];
+    let sopFile = null;
     try {
         const files = fs.readdirSync(AGENTS_WORKSPACE_PATH);
-        const sopFile = files.find(f => f.toLowerCase().includes(safeAgentName.toLowerCase()));
+        sopFile = files.find(f => f.toLowerCase().includes(safeAgentName.toLowerCase())) || null;
         if (sopFile) sopContent = fs.readFileSync(path.join(AGENTS_WORKSPACE_PATH, sopFile), 'utf-8');
     } catch { /* sin carpeta de SOPs */ }
 
@@ -3927,11 +3935,30 @@ async function buildAgentPrompt({ agentName, task, description, companyId, compa
 
     // Memoria nueva: historial de ChatGPT, decisiones guardadas, referencias y entregables aprobados de otros agentes.
     let knowledgeContext = '';
+    let knowledgeUsed = [];
+    let searchMode = null;
     try {
-        const { results } = await knowledge.search({ query: `${task}\n${description || ''}`.slice(0, 1000), topK: 6 });
+        const { results, mode } = await knowledge.search({ query: `${task}\n${description || ''}`.slice(0, 1000), topK: 6 });
+        searchMode = mode;
         knowledgeContext = (results || []).map(r => `- [${r.doc?.title || r.docId}] ${String(r.text || r.snippet || '').slice(0, 900)}`).join('\n');
         if (results?.length) ragSources = [ragSources, ...results.map(r => r.doc?.title).filter(Boolean)].filter(Boolean).join(', ');
+        const top = results?.[0]?.score || 1;
+        knowledgeUsed = (results || []).map(r => ({
+            docId: r.docId, title: r.doc?.title || r.docId, source: r.doc?.source || '', kind: r.doc?.kind || '',
+            relevance: Math.round((r.score / top) * 100), similarity: r.similarity == null ? null : Number(r.similarity.toFixed(3)),
+            snippet: promptClip(r.snippet || r.text, 280),
+        }));
     } catch (e) { console.warn('[Agent prompt] Knowledge:', e.message); }
+
+    // Línea de marca de la cuenta de la que trata la tarea.
+    const account = accountId ? brandContext.load(accountId) : null;
+    const brandSection = account?.files?.length
+        ? account.files.map(f => `### ${f.label} (${f.name})\n${f.text}`).join('\n\n')
+        : '';
+
+    const lessonsSection = lessons.length
+        ? lessons.map(l => `- ${l.kind === 'approve' ? 'Bien hecho' : l.kind === 'reject' ? 'Descartado' : 'Corrección'} en «${promptClip(l.task, 70)}»: ${promptClip(l.notes, 300)}`).join('\n')
+        : '';
 
     const prompt = `INSTRUCCIONES DEL SISTEMA (SOP DEL AGENTE):
 ${sopContent}
@@ -3947,7 +3974,13 @@ ${ecosystemContext || 'N/A'}
 
 MEMORIA DEL CEO Y TRABAJO PREVIO DE OTROS AGENTES (RAG):
 ${knowledgeContext || 'Sin coincidencias.'}
-
+${brandSection ? `
+LÍNEA DE MARCA DE ${account.name} (${account.handler}) — obligatoria para todo lo que entregues de esta cuenta:
+${brandSection}
+` : ''}${lessonsSection ? `
+LECCIONES DE TUS REVISIONES ANTERIORES CON EL CEO (aplícalas siempre):
+${lessonsSection}
+` : ''}
 TAREA A EJECUTAR:
 ${task}
 
@@ -3959,7 +3992,18 @@ Eres ${agentName}. Ejecuta la tarea con precisión, usando todo el contexto disp
 Tu respuesta debe ser el RESULTADO FINAL de la tarea — no digas que "la harás", HAZLA.
 Si es un manual, escríbelo. Si es un análisis, analiza. Si es una estrategia, desarróllala.
 Sé claro, completo y usa markdown para formatear.`;
-    return { prompt, namespace, ragSources, memoryContext };
+    const context = {
+        builtAt: new Date().toISOString(),
+        sop: sopFile,
+        namespace,
+        companyRag: ragSources && memoryContext && !memoryContext.startsWith('Sin contexto') ? promptClip(memoryContext, 400) : null,
+        searchMode,
+        knowledge: knowledgeUsed,
+        account: account ? { id: account.id, name: account.name, handler: account.handler, files: account.files.map(f => ({ name: f.name, label: f.label, chars: f.chars })) } : null,
+        lessons: lessons.map(l => ({ id: l.id, kind: l.kind, notes: promptClip(l.notes, 200), task: promptClip(l.task, 80) })),
+        promptChars: prompt.length,
+    };
+    return { prompt, namespace, ragSources, memoryContext, context };
 }
 
 app.post('/api/orch/execute-task', async (req, res) => {
@@ -4274,7 +4318,7 @@ app.get('/api/office/state', (req, res) => {
             approvals,
             activityFeed: (db.activityFeed || []).slice(0, 30),
             documents: (db.documents || []).slice(0, 50),
-            models: listModels([...agents.map(a => a.model), ...activeTasks.map(t => t.model), ...closedTasks.map(t => t.model)]),
+            models: listModels([...agents.flatMap(a => [a.model, ...(a.fallbackModels || [])]), ...activeTasks.map(t => t.model), ...closedTasks.flatMap(t => [t.model, ...(t.runs || []).map(r => r.model)])]),
             metrics,
             stats: {
                 totalAgents: agents.length,
@@ -4316,42 +4360,34 @@ app.post('/api/office/dispatch', async (req, res) => {
         let actionType = 'native_orch';
 
         const everyone = office.allAgents(db);
+        let routing = null;
         if (targetAgent) {
             const found = everyone.find(a => a.id === targetAgent) || everyone.find(a => a.name.toLowerCase().includes(String(targetAgent).toLowerCase()));
             if (found) {
                 assignedAgentName = found.name;
                 assignedAgentId = found.id;
-            }
-        } else {
-            // Intelligent Triaging via BART COO logic
-            const mLower = mission.toLowerCase();
-            if (mLower.includes('redes') || mLower.includes('social') || mLower.includes('reels') || mLower.includes('tiktok') || mLower.includes('guion') || mLower.includes('copy')) {
-                assignedAgentName = 'Echo (Social)';
-                assignedAgentId = 'agent-echo';
-            } else if (mLower.includes('campaña') || mLower.includes('lanzamiento') || mLower.includes('ads') || mLower.includes('marketing') || mLower.includes('growth')) {
-                assignedAgentName = 'Nexus (Marketing)';
-                assignedAgentId = 'agent-nexus';
-            } else if (mLower.includes('venue') || mLower.includes('logistica') || mLower.includes('operacion') || mLower.includes('suministro') || mLower.includes('dj') || mLower.includes('barra')) {
-                assignedAgentName = 'Atlas (Logistics)';
-                assignedAgentId = 'agent-atlas';
-            } else if (mLower.includes('venta') || mLower.includes('mesa vip') || mLower.includes('crm') || mLower.includes('cliente') || mLower.includes('lead') || mLower.includes('sponsor')) {
-                assignedAgentName = 'CloserOps (Sales)';
-                assignedAgentId = 'agent-closerops';
-            } else if (mLower.includes('cotiz') || mLower.includes('costo') || mLower.includes('proveedor') || mLower.includes('compras')) {
-                assignedAgentName = 'Scout (Sourcing)';
-                assignedAgentId = 'agent-scout';
-            } else if (mLower.includes('licitaci') || mLower.includes('pliego') || mLower.includes('analisis de mercado') || mLower.includes('competidor')) {
-                assignedAgentName = 'Sentinel (Analyst)';
-                assignedAgentId = 'agent-sentinel';
-            } else if (mLower.includes('whatsapp') || mLower.includes('comunidad') || mLower.includes('broadcast') || mLower.includes('difusion') || mLower.includes('invitaci')) {
-                assignedAgentName = 'Pulse (Community)';
-                assignedAgentId = 'agent-pulse';
-            } else if (mLower.includes('codigo') || mLower.includes('ui') || mLower.includes('frontend') || mLower.includes('componente') || mLower.includes('react') || mLower.includes('bug')) {
-                assignedAgentName = 'Antigravity (Engineer)';
-                assignedAgentId = 'agent-antigravity';
-                actionType = 'antigravity_inbox';
+                routing = { by: 'ceo', agentId: found.id, reason: 'Asignada directamente por el CEO', confidence: 1 };
             }
         }
+        if (!routing) {
+            // BART decide con IA (modelo barato) leyendo la misión y los roles; si no puede, por palabras clave.
+            const load = {};
+            for (const t of db.agentTasks) if (['queued', 'in_progress', 'review', 'waiting_approval'].includes(normalizeOfficeStatus(t.status))) load[t.assignedAgentId] = (load[t.assignedAgentId] || 0) + 1;
+            routing = await routeMission({
+                mission, description: req.body.description || '',
+                agents: everyone, accounts: brandContext.summary(), load, runModel,
+            });
+            const chosen = everyone.find(a => a.id === routing.agentId) || everyone.find(a => a.id === 'agent-bart');
+            if (chosen) {
+                assignedAgentName = chosen.name;
+                assignedAgentId = chosen.id;
+            }
+        }
+        if (assignedAgentId === 'agent-antigravity') actionType = 'antigravity_inbox';
+        // Cuenta de la que trata la misión (para darle al agente su línea de marca).
+        const accountMatch = (routing.account && brandContext.byId(routing.account)) || brandContext.detect(`${mission}\n${req.body.description || ''}`);
+        const account = accountMatch ? { id: accountMatch.id, name: accountMatch.name, handler: accountMatch.handler, by: routing.account ? 'bart' : 'texto' } : null;
+        routing = { ...routing, alternatives: (routing.alternatives || []).map(a => ({ ...a, agentName: everyone.find(x => x.id === a.agentId)?.name || a.agentId })), at: new Date().toISOString() };
 
         // 2. Priority Scoring
         const roi = parseFloat(req.body.roi) || (priority === 'critical' ? 9 : priority === 'high' ? 7.5 : 5);
@@ -4395,8 +4431,14 @@ app.post('/api/office/dispatch', async (req, res) => {
             actionType,
             assignedKind,
             model: assignedKind === 'internal' ? (req.body.model || assignedObj?.model || defaultModel()) : null,
+            routing,
+            account,
             runs: [],
-            history: [{ at: new Date().toISOString(), text: `Creada por el CEO y asignada a ${assignedAgentName}` }],
+            history: [
+                { at: new Date().toISOString(), text: `Creada por el CEO y asignada a ${assignedAgentName}` },
+                ...(routing.by !== 'ceo' ? [{ at: new Date().toISOString(), text: routing.by === 'ai' ? `🧭 BART eligió a ${assignedAgentName} (${Math.round(routing.confidence * 100)}% seguro): ${routing.reason}` : `🧭 Asignada por palabras clave: ${routing.reason}${routing.fallbackReason ? ` (la IA no respondió: ${routing.fallbackReason})` : ''}` }] : []),
+                ...(account ? [{ at: new Date().toISOString(), text: `🎨 Cuenta detectada: ${account.name} — el agente recibe su ADN y línea de marca` }] : []),
+            ],
             progress: 0,
             currentStep: status === 'waiting_approval'
                 ? 'Esperando confirmación del CEO en Gobernanza'
@@ -4447,7 +4489,9 @@ app.post('/api/office/dispatch', async (req, res) => {
         db.activityFeed.unshift({
             id: `act-${Date.now()}`,
             agent: 'BART (COO)',
-            text: `🎯 BART delegó a ${assignedAgentName} [Score ${priorityScore} | Lvl ${autonomyLevel}]: "${mission.substring(0, 60)}"`,
+            text: routing.by === 'ai'
+                ? `🎯 BART delegó a ${assignedAgentName}: "${mission.substring(0, 60)}" — ${routing.reason.substring(0, 90)}`
+                : `🎯 BART delegó a ${assignedAgentName} [Score ${priorityScore} | Lvl ${autonomyLevel}]: "${mission.substring(0, 60)}"`,
             color: status === 'waiting_approval' ? '#eab308' : '#3b82f6',
             timestamp: new Date().toISOString()
         });
@@ -4466,6 +4510,7 @@ app.post('/api/office/dispatch', async (req, res) => {
             success: true,
             task: { ...newTask, status },
             assignedAgent: assignedAgentName,
+            routing,
             priorityScore,
             autonomyLevel,
             status
@@ -5155,17 +5200,35 @@ app.post('/api/office/task/:id/handoff', (req, res) => {
     } catch (e) { res.status(e.status || 500).json({ error: e.message }); }
 });
 
+// Lecciones que el CEO deja al revisar: el agente las recibe en cada tarea nueva.
+app.get('/api/office/agent/:id/lessons', officeRoute(req => ({ lessons: office.listLessons(req.params.id) })));
+app.delete('/api/office/lessons/:id', officeRoute(req => office.removeLesson(req.params.id)));
+
+// Cuentas y marcas que BART reconoce en las misiones.
+app.get('/api/office/accounts', (req, res) => res.json({ accounts: brandContext.summary() }));
+
 // Modelo de un agente interno (cada agente puede usar un proveedor distinto según su uso).
 app.post('/api/office/agent/:id/config', async (req, res) => {
     try {
-        const { model } = req.body || {};
+        const { model, fallbackModels } = req.body || {};
         if (model && !(await isKnownModel(model))) return res.status(400).json({ error: `Modelo desconocido: ${model}` });
+        let fallbacks;
+        if (fallbackModels !== undefined) {
+            if (fallbackModels !== null && !Array.isArray(fallbackModels)) return res.status(400).json({ error: 'fallbackModels debe ser una lista' });
+            fallbacks = fallbackModels === null ? null : [...new Set(fallbackModels.filter(Boolean))].slice(0, 3);
+            for (const m of fallbacks || []) {
+                if (!(await isKnownModel(m))) return res.status(400).json({ error: `Modelo de respaldo desconocido: ${m}` });
+            }
+        }
         const db = readDB();
         const agent = getOfficeAgents(db).find(a => a.id === req.params.id);
         if (!agent) return res.status(404).json({ error: 'Agente interno no encontrado' });
         if (model) agent.model = model;
+        // null = volver a la cadena por defecto; [] = sin respaldo.
+        if (fallbacks === null) delete agent.fallbackModels;
+        else if (fallbacks) agent.fallbackModels = fallbacks.filter(m => m !== agent.model);
         writeDB(db);
-        broadcastOfficeEvent('agent_config_changed', { agentId: agent.id, model: agent.model });
+        broadcastOfficeEvent('agent_config_changed', { agentId: agent.id, model: agent.model, fallbackModels: agent.fallbackModels });
         res.json({ success: true, agent });
     } catch (err) {
         res.status(500).json({ error: err.message });

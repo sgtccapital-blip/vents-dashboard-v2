@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { playOfficeClick, playOfficeTyping, playOfficeSuccess } from '../../lib/officeAudio';
 import ModelPicker from './ModelPicker';
+import AgentLessons from './AgentLessons';
 import './AiOffice.css';
 
 export default function AgentDeskModal({
@@ -34,6 +35,8 @@ export default function AgentDeskModal({
     const [isThinking, setIsThinking] = useState(false);
     const [autonomyLevel, setAutonomyLevel] = useState(agent.autonomyLevel || 2);
     const [selectedModel, setSelectedModel] = useState(agent?.model || models?.defaultModel || '');
+    const [fallbackCustom, setFallbackCustom] = useState(Array.isArray(agent?.fallbackModels));
+    const [fallbacks, setFallbacks] = useState(Array.isArray(agent?.fallbackModels) ? agent.fallbackModels : (models?.defaultFallbacks || []));
     const [saveError, setSaveError] = useState('');
     const [saveSuccess, setSaveSuccess] = useState(false);
 
@@ -129,7 +132,12 @@ export default function AgentDeskModal({
     const handleSaveSettings = async () => {
         setSaveError('');
         try {
-            if (onSaveConfig && selectedModel !== agent.model) await onSaveConfig(agent.id, { model: selectedModel });
+            const config = {};
+            if (selectedModel !== agent.model) config.model = selectedModel;
+            const savedFallbacks = Array.isArray(agent.fallbackModels) ? agent.fallbackModels : null;
+            const nextFallbacks = fallbackCustom ? fallbacks.filter(Boolean) : null;
+            if (JSON.stringify(savedFallbacks) !== JSON.stringify(nextFallbacks)) config.fallbackModels = nextFallbacks;
+            if (onSaveConfig && Object.keys(config).length) await onSaveConfig(agent.id, config);
             if (onUpdateStatus) onUpdateStatus(agent.id, { autonomyLevel });
             setSaveSuccess(true);
             setTimeout(() => setSaveSuccess(false), 2000);
@@ -139,6 +147,9 @@ export default function AgentDeskModal({
     };
     const chosenProviderId = models?.models?.find(m => m.id === selectedModel)?.provider || (String(selectedModel).startsWith('openrouter/') ? 'openrouter' : null);
     const chosenProvider = models?.providers?.find(p => p.id === chosenProviderId);
+    const providerOfId = id => models?.models?.find(m => m.id === id)?.provider || (String(id).startsWith('openrouter/') ? 'openrouter' : null);
+    const activeFallbacks = fallbackCustom ? fallbacks : (models?.defaultFallbacks || []);
+    const hasUsableFallback = activeFallbacks.some(id => id !== selectedModel && models?.providers?.find(p => p.id === providerOfId(id))?.enabled);
 
     const tabs = [
         { id: 'overview', label: 'Overview', icon: Sparkles },
@@ -694,11 +705,12 @@ export default function AgentDeskModal({
                     {activeTab === 'memory' && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                             <div style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '14px', padding: '16px' }}>
-                                <h4 style={{ fontSize: '12px', fontWeight: '700', color: '#ffffff', margin: '0 0 6px 0' }}>Memoria Semántica & Contexto</h4>
+                                <h4 style={{ fontSize: '12px', fontWeight: '700', color: '#ffffff', margin: '0 0 6px 0' }}>Qué recibe en cada tarea</h4>
                                 <p style={{ fontSize: '12px', color: '#cbd5e1', lineHeight: 1.5, margin: 0 }}>
-                                    Este agente consulta el RAG embebido y los documentos de <code>BrainVault/OPERATIONS/</code> y <code>BrainVault/ARSENAL/</code>.
+                                    Busca en la memoria (historial de ChatGPT, decisiones, referencias y entregables aprobados de otros agentes). Si la tarea trata de una cuenta, recibe su ADN y su línea de marca. Además recibe las lecciones de abajo. En cada tarea, la sección «Contexto que usó» muestra exactamente qué recibió.
                                 </p>
                             </div>
+                            <AgentLessons agentId={agent.id} onOpenTask={onOpenTask} />
                         </div>
                     )}
 
@@ -756,11 +768,40 @@ export default function AgentDeskModal({
                                 </label>
                                 <ModelPicker models={models} value={selectedModel} onChange={setSelectedModel} currentId={agent.model} />
                                 {chosenProvider && !chosenProvider.enabled && (
-                                    <div className="occ-notice" style={{ marginTop: '8px' }}>{chosenProvider.label} no tiene llave en .env ({chosenProvider.env}): las tareas de {agent.name} quedarán en cola hasta que la agregues.</div>
+                                    <div className="occ-notice" style={{ marginTop: '8px' }}>
+                                        {chosenProvider.label} no tiene llave en .env ({chosenProvider.env}): {hasUsableFallback
+                                            ? `las tareas de ${agent.name} correrán con su modelo de respaldo hasta que la agregues.`
+                                            : `las tareas de ${agent.name} quedarán en cola hasta que la agregues.`}
+                                    </div>
                                 )}
                                 <p style={{ fontSize: '11.5px', color: '#64748b', margin: '8px 0 0' }}>
                                     Las tareas que le asignes y el chat de su cabina corren con este modelo.
                                 </p>
+                            </div>
+
+                            <div className="fb-box">
+                                <div className="fb-head">
+                                    <label>Modelos de respaldo</label>
+                                    <span>Si el principal falla o se satura, la tarea pasa al siguiente, en orden.</span>
+                                </div>
+                                <div className="fb-mode">
+                                    <button type="button" className={!fallbackCustom ? 'on' : ''} onClick={() => setFallbackCustom(false)}>Cadena por defecto</button>
+                                    <button type="button" className={fallbackCustom ? 'on' : ''} onClick={() => { if (!fallbackCustom) setFallbacks(models?.defaultFallbacks || []); setFallbackCustom(true); }}>Personalizada</button>
+                                </div>
+                                {activeFallbacks.length === 0 && <p className="fb-empty">Sin respaldo: si el modelo principal falla, la tarea queda como fallida.</p>}
+                                {activeFallbacks.map((id, i) => (
+                                    <div key={`${i}-${id}`} className="fb-row">
+                                        <span className="fb-n">{i + 1}</span>
+                                        {fallbackCustom
+                                            ? <ModelPicker models={models} value={id} onChange={v => setFallbacks(list => list.map((x, j) => (j === i ? v : x)))} />
+                                            : <ModelPicker models={models} value={id} onChange={v => { setFallbacks((models?.defaultFallbacks || []).map((x, j) => (j === i ? v : x))); setFallbackCustom(true); }} />}
+                                        {!models?.providers?.find(p => p.id === providerOfId(id))?.enabled && <span className="fb-off" title="Este proveedor no tiene llave en .env: se salta">sin llave</span>}
+                                        {fallbackCustom && <button type="button" className="fb-x" title="Quitar" onClick={() => setFallbacks(list => list.filter((_, j) => j !== i))}><X size={13} /></button>}
+                                    </div>
+                                ))}
+                                {fallbackCustom && fallbacks.length < 3 && (
+                                    <button type="button" className="fb-add" onClick={() => setFallbacks(list => [...list, models?.defaultFallbacks?.find(m => !list.includes(m)) || models?.defaultModel || ''])}>+ Agregar respaldo</button>
+                                )}
                             </div>
 
                             <div>

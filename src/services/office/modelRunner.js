@@ -18,7 +18,7 @@ export const modelCatalog = () => [
     { id: 'claude-sonnet-5-5', provider: 'anthropic', label: 'Claude Sonnet 5.5', use: 'Equilibrio calidad/velocidad para trabajo diario', price: [2.00, 10.00] },
     { id: 'claude-haiku-5-5', provider: 'anthropic', label: 'Claude Haiku 5.5', use: 'Volumen alto y respuestas cortas', price: [0.10, 0.50] },
     ...envList('OPENAI_MODELS', 'gpt-5,gpt-5-mini').map(id => ({ id, provider: 'openai', label: id, use: 'Modelos de OpenAI', price: null })),
-    ...envList('OPENROUTER_MODELS', 'deepseek/deepseek-v4-flash').map(id => ({ id: `openrouter/${id}`, provider: 'openrouter', label: id, use: 'Destacado en OpenRouter', price: null })),
+    ...envList('OPENROUTER_MODELS', 'deepseek/deepseek-v4.1-flash').map(id => ({ id: `openrouter/${id}`, provider: 'openrouter', label: id, use: 'Destacado en OpenRouter', price: null })),
 ];
 
 export const PROVIDERS = {
@@ -52,12 +52,14 @@ export function providerEnabled(provider) {
 
 /** inUse: modelos ya asignados (agentes, tareas) que se agregan aunque no estén en el catálogo fijo, para tener su nombre. */
 export function listModels(inUse = []) {
-    const catalog = modelCatalog();
+    // Los destacados de OpenRouter toman nombre y precio de su catálogo cuando ya está en memoria.
+    const catalog = modelCatalog().map(m => (m.provider === 'openrouter' && cachedOpenRouterModel(m.id) ? { ...cachedOpenRouterModel(m.id), use: m.use } : m));
     const extra = [...new Set(inUse)]
         .filter(id => typeof id === 'string' && id.startsWith('openrouter/') && !catalog.some(m => m.id === id))
         .map(id => cachedOpenRouterModel(id) || { id, provider: 'openrouter', label: id.replace(/^openrouter\//, ''), use: 'OpenRouter', price: null });
     return {
         defaultModel: defaultModel(),
+        defaultFallbacks: defaultFallbacks(),
         providers: Object.entries(PROVIDERS).map(([id, p]) => ({ id, ...p, enabled: providerEnabled(id) })),
         models: [...catalog, ...extra].map(m => ({ ...m, enabled: providerEnabled(m.provider) })),
     };
@@ -215,9 +217,6 @@ const runOpenRouter = (model, prompt, maxTokens, attachments) => chatCompletions
 
 const RUNNERS = { google: runGoogle, anthropic: runAnthropic, openai: runOpenAI, openrouter: runOpenRouter };
 
-/**
- * @returns {Promise<{ text, tokensIn, tokensOut, costUSD, provider, model, ms }>}
- */
 // Respaldo dentro del mismo proveedor cuando el modelo está saturado.
 // (No usar alias tipo "-latest": suelen apuntar al mismo modelo saturado.)
 const SAME_PROVIDER_FALLBACK = { google: ['gemini-3.5-flash', 'gemini-3.5-flash-lite'], anthropic: ['claude-sonnet-5-5'] };
@@ -242,37 +241,90 @@ function isTransient(err) {
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-/**
- * Corre el prompt con reintentos ante errores pasajeros (saturación, cuota por minuto, red)
- * y, si el modelo sigue caído, con un modelo hermano del mismo proveedor.
- * @returns {Promise<{ text, tokensIn, tokensOut, costUSD, provider, model, ms, attempts }>}
- */
-export async function runModel({ model: requested, prompt, maxTokens = 8192, retryDelays = RETRY_DELAYS_MS, attachments = [] }) {
-    const model = resolveModel(requested);
-    if (typeof prompt !== 'string' || !prompt.trim()) throw new Error('Prompt vacío');
+// Tiempo máximo por intento: un modelo colgado no debe dejar la tarea "en curso" para siempre.
+const attemptTimeoutMs = () => Number(process.env.OFFICE_MODEL_TIMEOUT_MS) || 150000;
+
+function withTimeout(promise, ms, model) {
+    let timer;
+    const timeout = new Promise((_, reject) => {
+        timer = setTimeout(() => reject(Object.assign(new Error(`${model} no respondió en ${Math.round(ms / 1000)} s`), { code: 'model_timeout' })), ms);
+    });
+    return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
+/** Un modelo con reintentos ante errores pasajeros y, si se pide, sus hermanos del mismo proveedor. */
+async function runOnProvider(model, { prompt, maxTokens, retryDelays, attachments, siblings, runners, timeoutMs = attemptTimeoutMs() }) {
     const provider = providerOf(model);
-    if (!providerEnabled(provider)) {
-        throw Object.assign(new Error(`${PROVIDERS[provider]?.label || provider} no está configurado: falta ${PROVIDERS[provider]?.env} en .env`), { code: 'provider_disabled' });
-    }
-    const fallbacks = (SAME_PROVIDER_FALLBACK[provider] || []).filter(m => m !== model);
-    const plan = [...[0, ...retryDelays].map(wait => ({ model, wait })), ...fallbacks.map(m => ({ model: m, wait: 0 }))];
-    const started = Date.now();
+    const others = siblings ? (SAME_PROVIDER_FALLBACK[provider] || []).filter(m => m !== model) : [];
+    const plan = [...[0, ...retryDelays].map(wait => ({ model, wait })), ...others.map(m => ({ model: m, wait: 0 }))];
     let lastErr;
+    const timedOut = new Set();
     for (let i = 0; i < plan.length; i++) {
         const step = plan[i];
+        if (timedOut.has(step.model)) continue; // no se reintenta un modelo que ya se colgó
         if (step.wait) await sleep(step.wait);
         try {
-            const out = await RUNNERS[provider](step.model, prompt, maxTokens, attachments);
-            if (!out.text.trim()) throw new Error(`${step.model} no devolvió contenido`);
+            const out = await withTimeout(runners[provider](step.model, prompt, maxTokens, attachments), timeoutMs, step.model);
+            if (!String(out.text || '').trim()) throw new Error(`${step.model} no devolvió contenido`);
             const { costFromProvider, ...rest } = out;
             return {
-                ...rest, provider, model: step.model, attempts: i + 1, ms: Date.now() - started,
+                ...rest, provider, model: step.model, attempts: i + 1,
                 costUSD: typeof costFromProvider === 'number' ? costFromProvider : estimateCost(step.model, out.tokensIn, out.tokensOut),
             };
         } catch (err) {
             lastErr = err;
+            if (err.code === 'model_timeout') { timedOut.add(step.model); continue; }
             if (!isTransient(err)) break;
         }
     }
-    throw new Error(cleanError(lastErr));
+    throw Object.assign(new Error(cleanError(lastErr)), { attempts: plan.length });
+}
+
+/** Cadena de respaldo por defecto cuando el agente no tiene una propia ("none" la desactiva). */
+export function defaultFallbacks() {
+    const raw = process.env.OFFICE_FALLBACK_MODELS || 'gemini-3.5-flash-lite,openrouter/deepseek/deepseek-v4.1-flash,gemma-4-31b-it';
+    return raw.trim().toLowerCase() === 'none' ? [] : envList('OFFICE_FALLBACK_MODELS', raw);
+}
+
+/**
+ * Corre el prompt con reintentos ante errores pasajeros (saturación, cuota por minuto, red),
+ * luego con un modelo hermano del mismo proveedor y, si el proveedor sigue fallando o no tiene
+ * llave, con los modelos de respaldo (otros proveedores) en orden.
+ * @returns {Promise<{ text, tokensIn, tokensOut, costUSD, provider, model, ms, attempts, fallbackFrom?, failures? }>}
+ */
+export async function runModel({ model: requested, prompt, maxTokens = 8192, retryDelays = RETRY_DELAYS_MS, attachments = [], fallbacks = [], runners = RUNNERS, timeoutMs }) {
+    const model = resolveModel(requested);
+    if (typeof prompt !== 'string' || !prompt.trim()) throw new Error('Prompt vacío');
+    const provider = providerOf(model);
+    const chain = [...new Set((fallbacks || []).map(resolveModel))].filter(m => m !== model && providerEnabled(providerOf(m)));
+    if (!providerEnabled(provider) && !chain.length) {
+        throw Object.assign(new Error(`${PROVIDERS[provider]?.label || provider} no está configurado: falta ${PROVIDERS[provider]?.env} en .env`), { code: 'provider_disabled' });
+    }
+    const started = Date.now();
+    const failures = [];
+    let attempts = 0;
+    const opts = { prompt, maxTokens, attachments, runners, ...(timeoutMs ? { timeoutMs } : {}) };
+    if (providerEnabled(provider)) {
+        try {
+            const out = await runOnProvider(model, { ...opts, retryDelays, siblings: true });
+            // Si respondió un modelo hermano (mismo proveedor), también es un respaldo.
+            return { ...out, ms: Date.now() - started, ...(out.model !== model ? { fallbackFrom: model } : {}) };
+        } catch (err) {
+            attempts += err.attempts || 1;
+            failures.push({ model, error: err.message });
+            if (!chain.length) throw new Error(err.message);
+        }
+    } else {
+        failures.push({ model, error: `${PROVIDERS[provider]?.label || provider} no está configurado (falta ${PROVIDERS[provider]?.env})` });
+    }
+    for (const fb of chain) {
+        try {
+            const out = await runOnProvider(fb, { ...opts, retryDelays: retryDelays.slice(0, 1), siblings: false });
+            return { ...out, attempts: attempts + out.attempts, ms: Date.now() - started, fallbackFrom: model, failures };
+        } catch (err) {
+            attempts += err.attempts || 1;
+            failures.push({ model: fb, error: err.message });
+        }
+    }
+    throw Object.assign(new Error(failures.map(f => `${f.model}: ${f.error}`).join(' · ')), { failures });
 }

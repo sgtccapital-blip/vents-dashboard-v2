@@ -56,6 +56,8 @@ before(async () => {
             GEMINI_API_KEY: '',
             CHATGPT_EXPORT_DIR: path.join(tmp, 'downloads'),
             KNOWLEDGE_EMBEDDER: 'none',
+            OPENROUTER_API_KEY: '', ANTHROPIC_API_KEY: '', OPENAI_API_KEY: '',
+            OFFICE_FALLBACK_MODELS: 'none', OFFICE_ROUTER: 'keywords',
         },
         stdio: 'ignore'
     });

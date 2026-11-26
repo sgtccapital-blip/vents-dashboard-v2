@@ -1,7 +1,7 @@
 // Cola de trabajo de AI Office HQ: tareas para agentes internos (corren con el modelo
 // que tengan configurado) y para agentes externos conectados por MCP (las toman, reportan
 // avance y entregan resultado). Todo resultado pasa por revisión del CEO antes de cerrarse.
-import { runModel as defaultRunModel, providerEnabled, providerOf, PROVIDERS, resolveModel } from './modelRunner.js';
+import { runModel as defaultRunModel, providerEnabled, providerOf, PROVIDERS, resolveModel, defaultFallbacks } from './modelRunner.js';
 import { extractFileBlocks, FILE_BLOCK_INSTRUCTIONS, isTextMime } from './artifacts.js';
 
 export const ONLINE_MS = 10 * 60 * 1000;
@@ -113,7 +113,7 @@ export function createOfficeService({ readDB, writeDB, broadcast = () => {}, get
             }
             parts.push(`${label}\n(${f.mime}, ${Math.round(f.size / 1024)} KB — no se puede leer como texto)`);
         }
-        return { text: `ARCHIVOS DE LA TAREA (úsalos como insumo):\n\n${parts.join('\n\n')}`, media };
+        return { text: `ARCHIVOS DE LA TAREA (úsalos como insumo):\n\n${parts.join('\n\n')}`, media, names: list.map(f => f.name) };
     }
 
     function releaseAgent(db, agentId, taskId) {
@@ -228,6 +228,41 @@ export function createOfficeService({ readDB, writeDB, broadcast = () => {}, get
         };
     }
 
+    // ─── Lecciones: lo que el CEO pide al revisar, para que el agente no repita el error ───
+    const MAX_LESSONS_PER_AGENT = 40;
+    const PROMPT_LESSONS = 8;
+
+    function addLesson(db, { agentId, kind, notes, task }) {
+        if (!agentId || !String(notes || '').trim()) return null;
+        db.agentLessons = db.agentLessons || [];
+        const lesson = { id: `lesson-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, agentId, kind, notes: clip(notes, 600), taskId: task.id, task: clip(task.task, 140), at: nowIso() };
+        db.agentLessons.unshift(lesson);
+        const mine = db.agentLessons.filter(l => l.agentId === agentId);
+        if (mine.length > MAX_LESSONS_PER_AGENT) {
+            const drop = new Set(mine.slice(MAX_LESSONS_PER_AGENT).map(l => l.id));
+            db.agentLessons = db.agentLessons.filter(l => !drop.has(l.id));
+        }
+        return lesson;
+    }
+
+    const lessonsFor = (db, agentId, n = PROMPT_LESSONS) => (db.agentLessons || []).filter(l => l.agentId === agentId).slice(0, n);
+
+    function listLessons(agentId) {
+        return lessonsFor(readDB(), agentId, MAX_LESSONS_PER_AGENT);
+    }
+
+    function removeLesson(lessonId) {
+        const db = readDB();
+        const before = (db.agentLessons || []).length;
+        db.agentLessons = (db.agentLessons || []).filter(l => l.id !== lessonId);
+        if (db.agentLessons.length === before) throw Object.assign(new Error('Lección no encontrada'), { status: 404 });
+        writeDB(db);
+        return { removed: lessonId };
+    }
+
+    // Modelos de respaldo del agente (otros proveedores). Si nunca se configuró, la cadena por defecto.
+    const fallbacksFor = agent => (Array.isArray(agent?.fallbackModels) ? agent.fallbackModels : defaultFallbacks()).map(resolveModel);
+
     // ─── Ejecución de agentes internos ───
     /** Arranca la tarea con el modelo del agente. Devuelve enseguida; el resultado llega por SSE. */
     function startInternalRun(taskId) {
@@ -239,7 +274,9 @@ export function createOfficeService({ readDB, writeDB, broadcast = () => {}, get
 
         const model = resolveModel(task.model || agent.model);
         const provider = providerOf(model);
-        if (!providerEnabled(provider)) {
+        const fallbacks = fallbacksFor(agent).filter(m => m !== model);
+        const usableFallback = fallbacks.find(m => providerEnabled(providerOf(m)));
+        if (!providerEnabled(provider) && !usableFallback) {
             task.status = 'queued';
             task.model = model;
             task.currentStep = `En cola: ${PROVIDERS[provider]?.label || provider} no está configurado (falta ${PROVIDERS[provider]?.env} en .env). Cambia el modelo del agente o agrega la llave.`;
@@ -256,7 +293,9 @@ export function createOfficeService({ readDB, writeDB, broadcast = () => {}, get
         task.progress = 15;
         task.startedAt = nowIso();
         task.error = null;
-        task.currentStep = `${agent.name} trabajando con ${model}`;
+        task.currentStep = providerEnabled(provider)
+            ? `${agent.name} trabajando con ${model}`
+            : `${agent.name} trabajando con ${usableFallback} (respaldo: ${PROVIDERS[provider]?.label || provider} no tiene llave)`;
         history(task, task.currentStep);
         agent.status = 'executing';
         agent.activeTaskId = taskId;
@@ -267,21 +306,28 @@ export function createOfficeService({ readDB, writeDB, broadcast = () => {}, get
 
         (async () => {
             let outcome;
+            let context = null;
             const runStarted = Date.now();
             try {
-                const base = await buildPrompt({
+                const built = await buildPrompt({
+                    agentId: agent.id,
                     agentName: agent.name,
+                    accountId: task.account?.id || null,
+                    lessons: lessonsFor(readDB(), agent.id),
                     task: task.task,
                     description: [task.description, ...(task.feedback || []).map(f => `Corrección pedida por el CEO: ${f.notes}`)].filter(Boolean).join('\n\n'),
                     companyId: task.companyId,
                     companyName: task.companyName,
                     previousResult: (task.feedback || []).length ? task.result : null,
                 });
+                const base = typeof built === 'string' ? built : built.prompt;
+                context = typeof built === 'string' ? null : built.context || null;
                 const inputs = filesForPrompt(task, provider);
+                if (context && inputs.names?.length) context.files = inputs.names;
                 const prompt = [base, inputs.text, FILE_BLOCK_INSTRUCTIONS].filter(Boolean).join('\n\n');
-                outcome = { ok: true, ...(await runModel({ model, prompt, attachments: inputs.media })) };
+                outcome = { ok: true, ...(await runModel({ model, prompt, attachments: inputs.media, fallbacks })) };
             } catch (err) {
-                outcome = { ok: false, error: err.message, model, provider, ms: Date.now() - runStarted };
+                outcome = { ok: false, error: err.message, model, provider, ms: Date.now() - runStarted, failures: err.failures };
             }
 
             if (running.get(taskId) !== token) return; // cancelada por kill switch o reasignación
@@ -293,7 +339,13 @@ export function createOfficeService({ readDB, writeDB, broadcast = () => {}, get
                 at: nowIso(), agentId: agent.id, model: outcome.model, provider: outcome.provider, ok: outcome.ok,
                 tokensIn: outcome.tokensIn || 0, tokensOut: outcome.tokensOut || 0, costUSD: outcome.costUSD ?? null, ms: outcome.ms || 0,
                 ...(outcome.ok ? {} : { error: clip(outcome.error, 400) }),
+                ...(outcome.fallbackFrom ? { fallbackFrom: outcome.fallbackFrom } : {}),
+                ...(context ? { context } : {}),
+                ...(outcome.failures?.length ? { failures: outcome.failures.map(f => ({ model: f.model, error: clip(f.error, 200) })) } : {}),
             }];
+            if (outcome.ok && outcome.fallbackFrom) {
+                history(t, `↪️ ${outcome.fallbackFrom} no respondió (${clip(outcome.failures?.[0]?.error, 90)}); entregó el respaldo ${outcome.model}`);
+            }
             if (outcome.ok) {
                 const { text, files } = extractFileBlocks(outcome.text);
                 t.status = 'review';
@@ -327,6 +379,10 @@ export function createOfficeService({ readDB, writeDB, broadcast = () => {}, get
         const task = findTask(db, taskId);
         if (!['approve', 'changes', 'reject'].includes(decision)) throw Object.assign(new Error("decision debe ser 'approve', 'changes' o 'reject'"), { status: 400 });
         const who = task.assignedAgent || 'Agente';
+        if (notes.trim()) {
+            const lesson = addLesson(db, { agentId: task.assignedAgentId, kind: decision, notes, task });
+            if (lesson) history(task, `📝 Lección guardada para ${who}: «${clip(notes, 80)}»`);
+        }
         if (decision === 'approve') {
             task.status = 'done';
             task.progress = 100;
@@ -462,6 +518,7 @@ export function createOfficeService({ readDB, writeDB, broadcast = () => {}, get
             parentTaskId: parent.id,
             companyId: parent.companyId || '',
             companyName: parent.companyName || '',
+            ...(parent.account ? { account: parent.account } : {}),
             artifacts: files.map(f => ({ ...f, inheritedFrom: f.inheritedFrom || parent.id })),
             runs: [],
             history: [{ at: now, text: `Creada por ${by} como seguimiento de "${clip(parent.task, 60)}"${files.length ? ` con ${files.length} archivo(s)` : ''}` }],
@@ -503,7 +560,12 @@ export function createOfficeService({ readDB, writeDB, broadcast = () => {}, get
     function taskForAgent(ctx, taskId) {
         const task = findTask(readDB(), taskId);
         if (!canSee(task, ctx)) throw Object.assign(new Error(`Esta tarea está asignada a ${task.assignedAgent}, no a ti`), { status: 403 });
-        return { ...viewForAgent(task), result: task.result || undefined, history: (task.history || []).slice(-10) };
+        const db = readDB();
+        return {
+            ...viewForAgent(task), result: task.result || undefined, history: (task.history || []).slice(-10),
+            ...(task.account ? { account: task.account } : {}),
+            lessons: lessonsFor(db, task.assignedAgentId).map(l => ({ kind: l.kind, notes: l.notes, task: l.task })),
+        };
     }
 
     function readFileAsAgent(ctx, taskId, fileId) {
@@ -610,5 +672,6 @@ export function createOfficeService({ readDB, writeDB, broadcast = () => {}, get
         tasksForAgent, claim, reportProgress, submitResult, isRunning: id => running.has(id),
         attachFiles, getFile, removeFile, createFollowUp,
         taskForAgent, readFileAsAgent, attachAsAgent, handoffAsAgent,
+        listLessons, removeLesson,
     };
 }

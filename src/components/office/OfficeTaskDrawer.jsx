@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import { X, Check, PencilLine, Trash2, Play, RotateCcw, ArrowRightLeft, Copy, Brain, CornerDownRight } from 'lucide-react';
 import { TASK_STATUS, statusMeta, modelLabel, fmtUSD, fmtTokens, fmtMs, postJson } from './officeUi';
 import OfficeTaskFiles from './OfficeTaskFiles';
+import OfficeTaskContext from './OfficeTaskContext';
 
 const fmtTime = iso => (iso ? new Date(iso).toLocaleString('es', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '');
 
@@ -54,6 +55,7 @@ export default function OfficeTaskDrawer({ taskId, agents = [], models, onClose,
                             <span className="occ-chip">{task.assignedAgent || 'Sin asignar'}</span>
                             {task.model && <span className="occ-chip">{modelLabel(models, task.model)}</span>}
                             {task.companyName && <span className="occ-chip">{task.companyName}</span>}
+                            {task.account && <span className="occ-chip" style={{ color: '#f0abfc' }} title="El agente recibe el ADN y la línea de marca de esta cuenta">🎨 {task.account.name}</span>}
                             {(task.knowledgeDocIds || []).length > 0 && (
                                 <span className="occ-chip" style={{ color: '#6ee7b7' }} title="El entregable aprobado quedó en la memoria: otros agentes lo encuentran al buscar">
                                     <Brain size={10} /> En la memoria
@@ -121,6 +123,8 @@ export default function OfficeTaskDrawer({ taskId, agents = [], models, onClose,
                         </div>
                     )}
 
+                    <OfficeTaskContext task={task} models={models} />
+
                     {runs.length > 0 && (
                         <div>
                             <div className="occ-label">Corridas ({runs.length}) · {fmtUSD(totalCost)}</div>
@@ -130,7 +134,10 @@ export default function OfficeTaskDrawer({ taskId, agents = [], models, onClose,
                                     {runs.slice().reverse().map((r, i) => (
                                         <tr key={i}>
                                             <td>{fmtTime(r.at)}</td>
-                                            <td>{modelLabel(models, r.model)}</td>
+                                            <td title={(r.failures || []).map(f => `${f.model}: ${f.error}`).join('\n') || undefined}>
+                                                {modelLabel(models, r.model)}
+                                                {r.fallbackFrom && <div style={{ fontSize: '10.5px', color: '#f5b638' }}>↪ respaldo de {modelLabel(models, r.fallbackFrom)}</div>}
+                                            </td>
                                             <td>{fmtTokens((r.tokensIn || 0) + (r.tokensOut || 0))}</td>
                                             <td>{r.provider === 'externo' ? '—' : fmtUSD(r.costUSD)}</td>
                                             <td>{fmtMs(r.ms)}</td>
