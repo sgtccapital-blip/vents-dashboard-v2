@@ -69,7 +69,7 @@ Embeddings: frenados a los límites del plan gratis (`KNOWLEDGE_EMBED_RPM`, `KNO
 Cualquier agente compatible con MCP (Claude Code, Claude Desktop, Cursor, OpenClaw, Hermes, ChatGPT…) se conecta a `http://<host>:8090/mcp` (Streamable HTTP, sin sesión). Código: `src/services/agentHub/`.
 
 - **Llaves por agente:** se crean en Agent & RAG → Agentes conectados. Cada una tiene permiso *lee y escribe* o *solo lectura*, se puede revocar y solo se muestra al crearla (se guarda su hash en `agents-hub/`, fuera de git).
-- **Cómo mandar la llave:** cabecera `Authorization: Bearer cc_…` o dentro de la URL (`/mcp/cc_…`) para clientes que no permiten cabeceras. El `API_TOKEN` de administración también sirve (agente `admin`, o el nombre en la cabecera `X-Agent-Name`).
+- **Cómo mandar la llave a agentes locales:** cabecera `Authorization: Bearer cc_…`. ChatGPT usa OAuth 2.1 con PKCE y refresh token; no necesita una llave en la URL. El `API_TOKEN` de administración sigue disponible para scripts internos.
 - **Registro:** cada llamada queda en `agents-hub/activity.jsonl` y se ve en la pantalla. Lo que escriben los agentes también aparece en el feed de actividad del Home.
 
 Herramientas:
@@ -82,6 +82,9 @@ Herramientas:
 | `list_tasks` / `list_events` | lectura | Tareas filtradas y agenda (incluye fechas de eventos recurrentes) |
 | `get_chatgpt_conversation` | lectura | Resumen y mensajes de una conversación importada |
 | `create_task` / `update_task` | escritura | Pendientes en el dashboard (quedan firmados con el nombre del agente) |
+| `preview_conversation_capture` / `apply_conversation_capture` / `get_capture_receipt` | lectura / escritura / lectura | Captura idempotente de un lote y comprobante por operación |
+| `upsert_project` / `upsert_project_brief` / `upsert_dashboard_task` | escritura | Proyectos, briefs versionados y tareas sin duplicados |
+| `upsert_calendar_event` / `attach_project_document` / `read_project_document` | escritura / escritura / lectura | Eventos con America/Panama y archivos reales con SHA-256 |
 | `save_memory` | escritura | Decisiones y datos que deben ver todos los agentes |
 | `add_reference` / `get_reference` | escritura / lectura | Guardar links en la biblioteca de referencias y leer su playbook |
 | `log_activity` | escritura | Qué hizo el agente, en el feed del Home |
@@ -99,4 +102,4 @@ sh scripts/tailscale.sh funnel --bg --set-path /mcp http://127.0.0.1:8090/mcp
 
 Luego `PUBLIC_URL=https://arrive-command-center.<tu-tailnet>.ts.net` en `.env` y reiniciar el servicio (`launchctl kickstart -k gui/$(id -u)/com.arrive.command-center`). Logs del servicio: `~/Library/Logs/arrive-command-center/server.log`. Para quitarlo todo: `sh scripts/command-center-service.sh uninstall`.
 
-En ChatGPT (Modo desarrollador → crear conector) la URL es `https://…ts.net/mcp/<llave>` con autenticación **Ninguna**. La guía paso a paso y las instrucciones personalizadas sugeridas están en Agent & RAG → Agentes conectados.
+En ChatGPT web, registrar **ARRIVE Dashboard** desde Plugins → + → Add custom MCP server con la URL `https://arrive-command-center.tail30aa5a.ts.net/mcp` y autenticación OAuth. La guía exacta está en `docs/ARRIVE_CHATGPT_CONNECTOR.md`. No incluir una llave en la URL ni seleccionar autenticación “Ninguna”.

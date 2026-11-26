@@ -3,6 +3,7 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import { redactDeep } from './redact.js';
 
 const sha = s => crypto.createHash('sha256').update(String(s)).digest('hex');
 const MAX_ACTIVITY = 1000;
@@ -77,8 +78,9 @@ export function createHubStore(dir) {
             return publicRecord(t);
         },
 
+        /** Auditoría: actor, proyecto, operación, resultado y duración. Se redacta antes de escribir. */
         logActivity(entry) {
-            const row = { at: new Date().toISOString(), ...entry };
+            const row = redactDeep({ at: new Date().toISOString(), ...entry });
             activity.push(row);
             if (activity.length > MAX_ACTIVITY) activity = activity.slice(-MAX_ACTIVITY);
             const t = entry.tokenId && tokens.find(x => x.id === entry.tokenId);
@@ -87,8 +89,8 @@ export function createHubStore(dir) {
             return row;
         },
 
-        activity({ limit = 100, agent } = {}) {
-            const rows = agent ? activity.filter(a => a.agent === agent) : activity;
+        activity({ limit = 100, agent, failedOnly = false, principal, tool } = {}) {
+            const rows = activity.filter(a => (!agent || a.agent === agent) && (!failedOnly || a.ok === false) && (!principal || a.principal === principal || a.tokenId === principal) && (!tool || a.tool === tool));
             return rows.slice(-limit).reverse();
         },
 

@@ -174,7 +174,7 @@ export class KnowledgeStore {
             if (!doc) continue;
             if (sources && !sources.includes(doc.source)) continue;
             if (kinds && !kinds.includes(doc.kind)) continue;
-            if (filter.projectId && doc.meta?.projectId !== filter.projectId) continue;
+            if (filter.projectId && doc.meta?.projectId !== filter.projectId && !doc.meta?.projectIds?.includes(filter.projectId)) continue;
             if (filter.namespace && filter.namespace !== 'default' && (doc.meta?.namespace || doc.source) !== filter.namespace) continue;
             candidates.push(i);
         }

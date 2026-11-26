@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Plug, KeyRound, Copy, Check, Trash2, Activity, AlertCircle, CheckCircle2, ChevronDown, ChevronRight, RefreshCw } from 'lucide-react';
 
 import { setupSnippets } from './agentHubSnippets';
+import AgentOpsPanel from './AgentOpsPanel';
 
 const API = '/api/agent-hub';
 const getJson = async (url, opts) => {
@@ -30,11 +31,7 @@ export function CopyBlock({ label, text }) {
     );
 }
 
-export const CHATGPT_INSTRUCTIONS = `Tengo conectado "ARRIVE Command Center" (MCP), el centro de todos mis proyectos.
-- Cuando hablemos de un proyecto, evento o negocio mío, usa primero get_context y search_knowledge para revisar lo que ya decidimos antes de proponer algo.
-- Cuando cerremos una decisión, definamos un dato clave (precio, fecha, proveedor, stack) o aprendamos algo importante, guárdalo con save_memory, autoexplicativo y con su proyecto.
-- Cuando salga un pendiente concreto, créalo con create_task.
-- Al terminar un trabajo largo, resúmelo en una frase con log_activity.`;
+export const CHATGPT_INSTRUCTIONS = `Tengo conectado ARRIVE Dashboard por MCP. Cuando pida guardar lo tratado en este chat, consulta primero los registros existentes, prepara un lote con solo el contexto y archivos accesibles aquí, y usa preview_conversation_capture antes de apply_conversation_capture. Conserva los avances existentes y no inventes fechas, responsables ni estados. Devuélveme el comprobante con IDs, enlaces y errores. No supongas acceso automático a otros chats.`;
 
 export default function AgentHubPanel() {
     const [info, setInfo] = useState(null);
@@ -84,7 +81,7 @@ export default function AgentHubPanel() {
     const agents = [...new Set(tokens.map(t => t.agent))];
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', minWidth: 0 }}>
             <div className="card" style={{ padding: '24px', background: 'linear-gradient(135deg, rgba(56,189,248,0.08), rgba(124,92,252,0.05))' }}>
                 <h3 style={{ margin: 0, fontSize: '18px', display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <Plug size={20} style={{ color: '#38bdf8' }} /> Agentes conectados (MCP)
@@ -123,15 +120,14 @@ export default function AgentHubPanel() {
                 <div style={{ ...card, background: 'linear-gradient(135deg, rgba(16,185,129,0.07), rgba(255,255,255,0.02))' }}>
                     <h4 style={{ margin: '0 0 8px', fontSize: '15px' }}>Conectar ChatGPT</h4>
                     <ol style={{ margin: 0, paddingLeft: '18px', fontSize: '13px', lineHeight: 1.75, color: 'var(--text-secondary)' }}>
-                        <li>Abajo, crea una llave llamada <b>ChatGPT</b> y copia su <b>URL del conector</b>.</li>
-                        <li>En ChatGPT: Configuración → Aplicaciones y conectores → Configuración avanzada → activa el <b>Modo desarrollador</b>.</li>
-                        <li>Crea un conector: nombre <b>ARRIVE Command Center</b>, pega la URL y elige autenticación <b>Ninguna</b> (la llave ya va en la URL).</li>
-                        <li>En cualquier chat: botón <b>+</b> → Modo desarrollador → activa ARRIVE Command Center.</li>
-                        <li>Pega estas instrucciones en Configuración → Personalización → Instrucciones personalizadas, para que ChatGPT guarde solo lo importante:</li>
+                        <li>En ChatGPT web abre <b>Plugins → + → Add custom MCP server</b>.</li>
+                        <li>Nombre: <b>ARRIVE Dashboard</b>. URL: <b>{info.publicUrl}</b>. Configura <b>OAuth</b>, autoriza con la contraseña del dashboard y revisa las herramientas.</li>
+                        <li>Instala el plugin y selecciónalo con <b>@ARRIVE Dashboard</b> en cada chat donde quieras usarlo.</li>
+                        <li>Instrucción opcional para pedir capturas explícitas:</li>
                     </ol>
                     <CopyBlock text={CHATGPT_INSTRUCTIONS} />
                     <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '10px 0 0' }}>
-                        Los nombres de los menús de ChatGPT pueden cambiar un poco. Antes de escribir algo, ChatGPT te pide confirmación.
+                        La disponibilidad depende del plan y de los permisos del workspace. Los datos de otros chats solo llegan si los envías en la conversación activa.
                     </p>
                 </div>
             )}
@@ -153,7 +149,7 @@ export default function AgentHubPanel() {
                             <CheckCircle2 size={16} style={{ color: '#10b981' }} /> Llave de {created.record.name}: cópiala ahora, no se vuelve a mostrar
                         </div>
                         <CopyBlock text={created.token} />
-                        {setupSnippets(info?.localUrl || url, created.token, info?.publicUrl).map(([label, text]) => <CopyBlock key={label} label={label} text={text} />)}
+                        {setupSnippets(info?.localUrl || url, created.token).map(([label, text]) => <CopyBlock key={label} label={label} text={text} />)}
                         <button className="btn btn-ghost" onClick={() => setCreated(null)} style={{ marginTop: '10px' }}>Listo, ya la copié</button>
                     </div>
                 )}
@@ -182,6 +178,8 @@ export default function AgentHubPanel() {
                     </table>
                 </div>
             </div>
+
+            <AgentOpsPanel />
 
             <div style={card}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>

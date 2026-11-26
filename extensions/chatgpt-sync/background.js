@@ -23,13 +23,15 @@ async function dashboard(path, init = {}) {
 
 async function chatgptTab({ open = false } = {}) {
     const tabs = await chrome.tabs.query({ url: 'https://chatgpt.com/*' });
-    const ready = tabs.find(t => t.status === 'complete') || tabs[0];
-    if (ready || !open) return ready || null;
+    // Una pestaña existente puede conservar un content script de una versión anterior.
+    // Cada ciclo usa una pestaña temporal con el código actual y la misma sesión web.
+    if (!tabs.length && !open) return null;
     const tab = await chrome.tabs.create({ url: 'https://chatgpt.com/', active: false });
-    await new Promise(resolve => {
-        const listener = (id, info) => { if (id === tab.id && info.status === 'complete') { chrome.tabs.onUpdated.removeListener(listener); resolve(); } };
-        chrome.tabs.onUpdated.addListener(listener);
-    });
+    // El evento onUpdated puede ocurrir antes de registrar un listener en una carga rápida.
+    for (let i = 0; i < 60; i++) {
+        if ((await chrome.tabs.get(tab.id)).status === 'complete') break;
+        await new Promise(r => setTimeout(r, 500));
+    }
     await new Promise(r => setTimeout(r, 2500)); // deja cargar el content script
     return tab;
 }
@@ -37,14 +39,10 @@ async function chatgptTab({ open = false } = {}) {
 // Las pestañas de ChatGPT abiertas antes de instalar o actualizar la extensión no tienen el
 // content script: si no responde, se inyecta y se reintenta.
 async function sendSync(tabId, full) {
-    try {
-        return await chrome.tabs.sendMessage(tabId, { type: 'sync', full });
-    } catch (e) {
-        if (!/Receiving end does not exist|Could not establish connection/i.test(e.message)) throw e;
-        await chrome.scripting.executeScript({ target: { tabId }, files: ['sync-core.js', 'content.js'] });
-        await new Promise(r => setTimeout(r, 500));
-        return chrome.tabs.sendMessage(tabId, { type: 'sync', full });
-    }
+    // Inyección explícita y mensaje versionado: un content script anterior puede seguir
+    // vivo en una pestaña incluso después de recargar la extensión.
+    await chrome.scripting.executeScript({ target: { tabId }, files: ['sync-core.js', 'content.js'] });
+    return chrome.tabs.sendMessage(tabId, { type: 'sync-v2', full });
 }
 
 async function startSync({ open = false, force = false } = {}) {
@@ -66,6 +64,8 @@ async function startSync({ open = false, force = false } = {}) {
         const err = { at: new Date().toISOString(), error: `No se pudo hablar con la pestaña de ChatGPT: ${e.message}` };
         await setCfg({ lastRun: err });
         return err;
+    } finally {
+        chrome.tabs.remove(tab.id).catch(() => {});
     }
 }
 
@@ -74,13 +74,13 @@ chrome.alarms.onAlarm.addListener(a => { if (a.name === 'sync') startSync(); });
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     const reply = p => { p.then(sendResponse, e => sendResponse({ error: e.message })); return true; };
     switch (msg?.type) {
-        case 'dashboard:state': return reply(dashboard('/ingest/chatgpt/state'));
-        case 'dashboard:push': return reply(dashboard('/ingest/chatgpt/conversations', { method: 'POST', body: JSON.stringify({ conversations: msg.conversations }) }));
+        case 'dashboard:state': return reply(dashboard(`/ingest/chatgpt/state?accountId=${encodeURIComponent(msg.identity?.accountId || '')}&workspaceId=${encodeURIComponent(msg.identity?.workspaceId || '')}`));
+        case 'dashboard:push': return reply(dashboard('/ingest/chatgpt/conversations', { method: 'POST', body: JSON.stringify({ conversations: msg.conversations, identity: msg.identity }) }));
         case 'dashboard:report': return reply((async () => {
             // Se guarda aquí también: una sincronización larga puede sobrevivir al service worker que la lanzó.
             const r = msg.report || {};
             await setCfg({ lastRun: { at: new Date().toISOString(), ...r }, ...(r.error ? {} : { backfillComplete: !!r.complete }) });
-            return dashboard('/ingest/chatgpt/report', { method: 'POST', body: JSON.stringify(r) });
+            return dashboard('/ingest/chatgpt/report', { method: 'POST', body: JSON.stringify({ ...r, identity: msg.identity }) });
         })());
         case 'maybe-sync':
             // Se lanza después de responder: el content script no espera a que termine.

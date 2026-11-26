@@ -109,7 +109,7 @@ test('importación: resume, indexa, arma memoria de proyecto y no reprocesa lo q
         if (prompt.startsWith('Proyectos:')) {
             return { data: schema.parse({ whoIs: 'Productor de eventos', workStyle: [], decisionCriteria: [], preferences: [], activeFronts: [], instructionsForAgents: [] }), model: 'fake' };
         }
-        return { data: schema.parse({ summary: 'Se definió el precio', project: 'Hang Out', projectId: 'p-hang', type: 'proyecto', relevance: 'alta', decisions: ['15 preventa, 20 puerta'], ideas: [], pending: ['revisar ventas semana 1'], reasoning: ['valida con datos de venta'], facts: [], tags: ['precios'] }), model: 'fake' };
+        return { data: schema.parse({ summary: 'Se definió el precio', project: 'Hang Out', projectId: 'p-hang', type: 'proyecto', relevance: 'alta', decisions: ['15 preventa, 20 puerta'], ideas: [], pending: ['revisar ventas semana 1'], reasoning: ['valida con datos de venta'], facts: [], tags: ['precios'], evidence: [{ category: 'decisions', text: '15 preventa, 20 puerta', messageIds: ['u2'] }, { category: 'pending', text: 'revisar ventas semana 1', messageIds: ['u2'] }, { category: 'reasoning', text: 'valida con datos de venta', messageIds: ['u2'] }] }), model: 'fake' };
     };
     const embedder = {
         model: 'fake', dims: 2, available: () => true,
@@ -193,7 +193,7 @@ test('sin cuota de IA las conversaciones quedan buscables igual y se resumen des
     assert.equal((await engine.search({ query: 'precio preventa hang out' })).results[0].docId, 'chatgpt:c1');
 
     quota = false;
-    engine.tick();
+    engine.retryErrors();
     for (let i = 0; i < 100 && engine.status().chatgpt.done < 2; i++) await new Promise(r => setTimeout(r, 10));
     assert.equal(engine.status().chatgpt.done, 2);
     engine.flush();

@@ -4,11 +4,36 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import vm from 'node:vm';
 import { createRequire } from 'node:module';
 import { createKnowledgeEngine } from '../src/services/knowledge/engine.js';
 
 const require = createRequire(import.meta.url);
 const { runChatGPTSync } = require('../extensions/chatgpt-sync/sync-core.js');
+
+test('el content script entrega cuenta y workspace activos en cada mensaje al dashboard', async () => {
+    const calls = [];
+    let listener;
+    const context = {
+        chrome: { runtime: {
+            onMessage: { addListener(fn) { listener = fn; } },
+            sendMessage(msg, cb) { calls.push(msg); cb(msg.type === 'dashboard:state' ? { known: {} } : { ok: true }); },
+        } },
+        document: { cookie: '', addEventListener() {} },
+        fetch: async () => ({ ok: true, json: async () => ({ accessToken: 'test', user: { id: 'user-1' }, account: { id: 'workspace-2' } }) }),
+        console: { debug() {} },
+    };
+    context.globalThis = context;
+    context.runChatGPTSync = async ({ bridge }) => {
+        await bridge.state();
+        await bridge.push([{ id: 'conversation-3' }]);
+        await bridge.report({ scanned: 1, sent: 1 });
+        return { complete: true };
+    };
+    vm.runInNewContext(fs.readFileSync(new URL('../extensions/chatgpt-sync/content.js', import.meta.url), 'utf8'), context);
+    await new Promise(resolve => listener({ type: 'sync-v2', full: false }, null, resolve));
+    for (const msg of calls.filter(x => x.type.startsWith('dashboard:'))) assert.deepEqual(JSON.parse(JSON.stringify(msg.identity)), { accountId: 'user-1', workspaceId: 'workspace-2' });
+});
 
 function fakeChatGPT(count, { skewSeconds = 0 } = {}) {
     const base = Date.parse('2026-11-01T00:00:00Z');
@@ -101,6 +126,24 @@ test('un error de ChatGPT se reporta sin romper', async () => {
     });
     assert.equal(r.error, 'ChatGPT 403');
     assert.equal(reports[0].error, 'ChatGPT 403');
+});
+
+test('un 429 conserva el conteo de conversaciones que faltan', async () => {
+    const { chatgpt } = fakeChatGPT(2);
+    const get = chatgpt.get;
+    let details = 0;
+    chatgpt.get = async path => {
+        if (path.startsWith('/backend-api/conversation/') && ++details > 1) throw new Error('ChatGPT 429');
+        return get(path);
+    };
+    const reports = [];
+    const sent = [];
+    const report = await runChatGPTSync({ chatgpt, bridge: { state: async () => ({ known: {} }), push: async batch => sent.push(...batch), report: async value => reports.push(value) }, batch: 1, sleep: async () => {} });
+    assert.equal(report.sent, 1);
+    assert.equal(report.changed, 4);
+    assert.equal(report.remaining, 3);
+    assert.equal(report.complete, false);
+    assert.equal(reports[0].remaining, 3);
 });
 
 test('si la lista y el detalle de ChatGPT traen fechas distintas, no se vuelve a pedir lo ya importado', async () => {

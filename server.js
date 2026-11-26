@@ -527,6 +527,37 @@ function updateEntity(entityName, id, data) {
     return list[idx];
 }
 
+// Archivado reversible para agentes MCP: el registro sale de su colección (las pantallas no cambian)
+// y queda en `archivedRecords` con quién y cuándo; restaurarlo lo devuelve tal cual, sin pisar un id ocupado.
+function archiveEntity(entityName, id, meta = {}) {
+    const db = readDB();
+    const list = getCollection(db, entityName);
+    const idx = list.findIndex(i => i.id === id);
+    if (idx === -1) return null;
+    const [record] = list.splice(idx, 1);
+    if (!Array.isArray(db.archivedRecords)) db.archivedRecords = [];
+    db.archivedRecords.push({ collection: entityName, record, archivedAt: new Date().toISOString(), archivedBy: meta.archivedBy || 'admin', reason: meta.reason || '', operationId: meta.operationId || null });
+    writeDB(db);
+    const RAGEngine = app.get('ragEngine');
+    if (RAGEngine) RAGEngine.deleteEntity(id).catch(e => console.error('[RAG] Delete API error', e.message));
+    return record;
+}
+
+function restoreEntity(entityName, id) {
+    const db = readDB();
+    const list = getCollection(db, entityName);
+    if (list.some(i => i.id === id)) throw new ValidationError(`Ya existe ${entityName}/${id}; no se restaura encima.`, 409);
+    const idx = (db.archivedRecords || []).findIndex(a => a.collection === entityName && a.record?.id === id);
+    if (idx === -1) return null;
+    const [entry] = db.archivedRecords.splice(idx, 1);
+    const record = validateEntity(entityName, { ...entry.record }, entry.record);
+    list.push(record);
+    writeDB(db);
+    const RAGEngine = app.get('ragEngine');
+    if (RAGEngine) RAGEngine.upsertEntity(entityName, record).catch(e => console.error('[RAG] Upsert API error', e.message));
+    return record;
+}
+
 function createCRUDRoutes(entityName) {
     const router = express.Router();
 
@@ -992,11 +1023,18 @@ const office = createOfficeService({
     },
 });
 
+const AGENT_HUB_DIR = process.env.AGENT_HUB_DIR || path.join(path.dirname(DB_PATH), 'agents-hub');
 agentHub = registerAgentHub(app, {
-    dataDir: process.env.AGENT_HUB_DIR || path.join(path.dirname(DB_PATH), 'agents-hub'),
-    readDB, knowledge, studio, library, createEntity, updateEntity, addActivityFeed, office,
+    dataDir: AGENT_HUB_DIR,
+    readDB, knowledge, studio, library, createEntity, updateEntity, archiveEntity, restoreEntity, addActivityFeed, office,
     isAdminRequest: isAuthenticated,
+    rootDir: __dirname,
+    // Nada de esto se expone por las herramientas de código: se consulta por las herramientas de datos.
+    protectedPaths: [DB_PATH, `${DB_PATH}.bak`, BACKUP_DIR, path.join(path.dirname(DB_PATH), 'knowledge'), path.join(path.dirname(DB_PATH), 'office-files'), path.join(path.dirname(DB_PATH), 'library'), VAULT_PATH, path.join(__dirname, '_uploads_tmp')],
+    version: (() => { try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8')).version; } catch { return '0.0.0'; } })(),
 });
+// Ejecutor de trabajos (pruebas, build, despliegues) en un proceso aparte que sobrevive a reinicios del servidor.
+if (process.env.RUNNER_AUTOSTART !== '0' && process.env.NODE_ENV !== 'test') agentHub.ensureRunner();
 
 // ─── Activity Feed (append-only) ──────────────────────────────
 

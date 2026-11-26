@@ -5,12 +5,13 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import crypto from 'crypto';
 import { KnowledgeStore } from './store.js';
 import { QuotaError } from './embeddings.js';
 import { chunkText, hash, fold } from './text.js';
 import { jevAvailable, triageConversation } from './jev.js';
 import { playbookMarkdown, REFERENCE_TYPES } from '../contentStudio/referenceEngine.js';
-import { readExportFile, normalizeConversation, transcriptText, digestInput, isChatGptExportZip } from './chatgptExport.js';
+import { readExportFile, normalizeConversation, transcriptText, digestInput, digestSegments, revisionOf, isChatGptExportZip } from './chatgptExport.js';
 import {
     DigestSchema, DIGEST_SYSTEM, digestPrompt, digestToText,
     SynthesisSchema, SYNTHESIS_SYSTEM, synthesisPrompt, synthesisToText,
@@ -19,7 +20,8 @@ import {
 
 const CONCURRENCY = 3;
 const PROFILE_EVERY = 25; // rehacer el perfil cada N conversaciones nuevas resumidas
-const MAX_DIGEST_ATTEMPTS = 3;
+const MAX_DIGEST_ATTEMPTS = 8;
+const retryDelay = attempts => Math.min(6 * 3600_000, 60_000 * 2 ** Math.min(attempts, 8));
 
 const isQuotaError = err => err instanceof QuotaError || /\b429\b|quota|RESOURCE_EXHAUSTED/i.test(err.message);
 
@@ -35,6 +37,8 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
     fs.mkdirSync(dataDir, { recursive: true });
     const rawDir = path.join(dataDir, 'raw', 'chatgpt');
     fs.mkdirSync(rawDir, { recursive: true });
+    const originalDir = path.join(rawDir, 'original');
+    fs.mkdirSync(originalDir, { recursive: true });
     const stateFile = path.join(dataDir, 'state.json');
     const store = new KnowledgeStore(path.join(dataDir, 'index'), { dims: embedder.dims, model: embedder.model });
 
@@ -66,6 +70,8 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
 
     const rawPath = id => path.join(rawDir, `${id.replace(/[^a-zA-Z0-9_-]/g, '_')}.json`);
     const loadRaw = id => JSON.parse(fs.readFileSync(rawPath(id), 'utf8'));
+    const identityKey = identity => identity?.accountId ? `${identity.accountId}\u0000${identity.workspaceId || 'personal'}` : '';
+    const scopedId = (id, identity) => identityKey(identity) ? crypto.createHash('sha256').update(`${identityKey(identity)}\u0000${id}`).digest('hex') : id;
 
     // ─── Embeddings ───
     // Por tandas de 50, guardando cada una: si la cuota se corta a mitad, lo avanzado no se pierde.
@@ -93,47 +99,73 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
     /** Indexa el texto completo de una conversación; si no cambió desde la última vez, solo actualiza sus metadatos. */
     function indexTranscript(conv, docMeta) {
         const id = `chatgpt:${conv.id}`;
-        const h = hash(`${conv.updateTime}|${conv.messages.length}|${conv.title}`);
+        const h = revisionOf(conv);
         if (store.getDoc(id)?.hash === h) { store.updateDocMeta(id, docMeta); return false; }
         store.upsertDoc({ id, source: 'chatgpt', kind: 'transcript', title: conv.title, hash: h, meta: docMeta }, chunkText(transcriptText(conv.messages)));
         return true;
     }
 
     // ─── Importación ───
-    function importExport(filePath, { origin = 'upload', fileName = path.basename(filePath) } = {}) {
-        return importConversations(readExportFile(filePath), { origin, fileName });
+    function importExport(filePath, { origin = 'upload', fileName = path.basename(filePath), identity = null } = {}) {
+        return importConversations(readExportFile(filePath), { origin, fileName, identity });
     }
 
     /** Importa conversaciones en formato de ChatGPT (exportación o API web). Solo procesa lo nuevo o cambiado. */
-    function importConversations(rawConvs, { origin = 'upload', fileName = '', record = true } = {}) {
-        const summary = { at: new Date().toISOString(), origin, file: fileName, total: 0, added: 0, updated: 0, unchanged: 0, empty: 0 };
+    function importConversations(rawConvs, { origin = 'upload', fileName = '', record = true, identity = null } = {}) {
+        const summary = { at: new Date().toISOString(), origin, file: fileName, accountId: identity?.accountId || null, workspaceId: identity?.workspaceId || null, total: 0, added: 0, updated: 0, unchanged: 0, empty: 0 };
         for (const rc of rawConvs) {
             const conv = normalizeConversation(rc);
             if (!conv) continue;
             summary.total++;
             if (!conv.messages.length) { summary.empty++; continue; }
+            const originalId = conv.id;
+            conv.id = scopedId(originalId, identity);
+            const revision = revisionOf(conv);
+            // Reclama registros históricos sin cuenta o con workspace provisional solo con coincidencia exacta.
+            if (conv.id !== originalId && !state.conversations[conv.id]) {
+                const oldId = state.conversations[originalId] && !state.conversations[originalId].accountId
+                    ? originalId
+                    : Object.values(state.conversations).find(c => c.originalId === originalId && c.accountId === identity?.accountId && c.workspaceId === 'personal' && c.origin === 'extension' && c.id !== conv.id && c.revision === revision)?.id;
+                const legacy = oldId && state.conversations[oldId];
+                if (legacy && legacy.status !== 'excluded') {
+                    try {
+                        if (revisionOf(loadRaw(oldId)) === revision) {
+                            state.conversations[conv.id] = { ...legacy, id: conv.id, needsReindex: true };
+                            delete state.conversations[oldId];
+                            fs.renameSync(rawPath(oldId), rawPath(conv.id));
+                            for (const file of fs.readdirSync(originalDir)) if (file.startsWith(`${oldId}-`)) fs.renameSync(path.join(originalDir, file), path.join(originalDir, `${conv.id}-${file.slice(oldId.length + 1)}`));
+                            store.removeDoc(`chatgpt:${oldId}`);
+                            store.removeDoc(`chatgpt:${oldId}:digest`);
+                        }
+                    } catch { /* el registro histórico no tiene transcripción disponible */ }
+                }
+            }
             const prev = state.conversations[conv.id];
             if (prev?.status === 'excluded') { summary.unchanged++; continue; }
-            const sameTime = prev && Math.abs(new Date(prev.updateTime) - new Date(conv.updateTime)) < 1500;
-            if (prev && sameTime && prev.messageCount === conv.messages.length) {
+            let priorRevision = prev?.revision;
+            if (prev && !priorRevision) { try { priorRevision = revisionOf(loadRaw(conv.id)); } catch { /* se recupera del nuevo contenido */ } }
+            if (prev && !prev.needsReindex && priorRevision === revision) {
                 if (conv.listUpdateTime && prev.listUpdateTime !== conv.listUpdateTime) { prev.listUpdateTime = conv.listUpdateTime; saveState(); }
                 summary.unchanged++;
                 continue;
             }
             fs.writeFileSync(rawPath(conv.id), JSON.stringify(conv));
+            fs.writeFileSync(path.join(originalDir, `${conv.id}-${revision}.json`), JSON.stringify(rc));
+            store.removeDoc(`chatgpt:${conv.id}:digest`, { save: false });
             // Buscable de inmediato: el resumen de la IA llega después y no hace falta esperarlo.
             indexTranscript(conv, {
-                conversationId: conv.id, date: conv.updateTime, namespace: 'chatgpt', chatgptProjectId: conv.chatgptProjectId,
+                conversationId: conv.id, originalId, accountId: identity?.accountId || null, workspaceId: identity?.workspaceId || null, origin, revision, date: conv.updateTime, namespace: 'chatgpt', chatgptProjectId: conv.chatgptProjectId,
                 projectId: prev?.digest?.projectId || '', project: prev?.digest?.project || '', relevance: '', type: '', tags: [],
             });
             state.conversations[conv.id] = {
                 ...(prev || {}),
-                id: conv.id, title: conv.title, createTime: conv.createTime, updateTime: conv.updateTime,
+                id: conv.id, originalId, accountId: identity?.accountId || null, workspaceId: identity?.workspaceId || null, origin, revision, capturedAt: summary.at, needsReindex: false,
+                title: conv.title, createTime: conv.createTime, updateTime: conv.updateTime,
                 chatgptProjectId: conv.chatgptProjectId, archived: conv.archived,
                 messageCount: conv.messages.length,
                 listUpdateTime: conv.listUpdateTime || prev?.listUpdateTime || null,
                 chars: conv.messages.reduce((n, m) => n + m.text.length, 0),
-                status: 'pending', error: '', triage: null, // cambió: Jev la vuelve a evaluar
+                status: 'pending', error: '', triage: null, digestAttempts: 0, nextRetryAt: null,
             };
             prev ? summary.updated++ : summary.added++;
         }
@@ -145,18 +177,22 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
 
     // ─── Sincronización desde la extensión de Chrome ───
     /** Lo que ya tiene el dashboard: { id: updateTime } para que la extensión pida solo lo cambiado. */
-    function syncState() {
+    function syncState(identity = null) {
         const known = {};
         // Se responde con la fecha de la lista de ChatGPT (la que compara la extensión) cuando la tenemos.
-        for (const c of Object.values(state.conversations)) known[c.id] = c.status === 'excluded' ? 'excluded' : (c.listUpdateTime || c.updateTime);
+        for (const c of Object.values(state.conversations)) {
+            if (identityKey(identity) && (c.accountId !== identity.accountId || (c.workspaceId || 'personal') !== (identity.workspaceId || 'personal'))) continue;
+            if (!identityKey(identity) && c.accountId) continue;
+            known[c.originalId || c.id] = c.status === 'excluded' ? 'excluded' : (c.listUpdateTime || c.updateTime);
+        }
         return { known, lastSync: state.extensionSync || null };
     }
 
-    function ingestFromExtension(rawConvs, { client = 'extension', version = '' } = {}) {
-        const summary = importConversations(rawConvs, { origin: 'extension', fileName: client, record: false });
+    function ingestFromExtension(rawConvs, { client = 'extension', version = '', identity = null } = {}) {
+        const summary = importConversations(rawConvs, { origin: 'extension', fileName: client, record: false, identity });
         const prev = state.extensionSync || { totals: { added: 0, updated: 0 } };
         state.extensionSync = {
-            at: summary.at, client, version: version || prev.version || '',
+            at: summary.at, client, version: version || prev.version || '', accountId: identity?.accountId || null, workspaceId: identity?.workspaceId || null,
             last: summary,
             totals: { added: prev.totals.added + summary.added, updated: prev.totals.updated + summary.updated },
         };
@@ -169,6 +205,8 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
             ...(state.extensionSync || { totals: { added: 0, updated: 0 } }),
             ...(report.version ? { version: report.version } : {}),
             at: new Date().toISOString(), run: { ...report, at: new Date().toISOString() },
+            accountId: report.identity?.accountId || state.extensionSync?.accountId || null,
+            workspaceId: report.identity?.workspaceId || state.extensionSync?.workspaceId || null,
         };
         saveState();
         return state.extensionSync;
@@ -186,11 +224,12 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
         const conv = loadRaw(id);
         const db = readDB();
         const projects = (db.projects || []).map(p => ({ id: p.id, name: p.name, description: p.description }));
+        const segments = digestSegments(conv.messages);
 
         let digest = null;
         let quotaHit = null;
         // Filtro con Jev (centavos por millón de tokens): las consultas sueltas no gastan una llamada al LLM.
-        if (llmOk() && !skipLLM && jevAvailable() && !meta.triage) {
+        if (segments.length === 1 && llmOk() && !skipLLM && jevAvailable() && !meta.triage) {
             try {
                 meta.triage = await triageConversation({ title: conv.title, transcript: digestInput(conv.messages) });
             } catch (err) {
@@ -198,7 +237,7 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
             }
         }
         const skipThreshold = Number(process.env.JEV_SKIP_THRESHOLD) || 0.15;
-        if (meta.triage && meta.triage.worth < skipThreshold && meta.triage.confidence >= 0.5) {
+        if (segments.length === 1 && meta.triage && meta.triage.worth < skipThreshold && meta.triage.confidence >= 0.5) {
             digest = {
                 summary: `Consulta suelta: ${conv.title}`, project: '', projectId: '', type: 'trivial', relevance: 'baja',
                 decisions: [], ideas: [], pending: [], reasoning: [], facts: [], tags: [],
@@ -207,28 +246,49 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
             meta.digestError = '';
         } else if (llmOk() && !skipLLM) {
             try {
-                const { data, model } = await llm({
-                    system: DIGEST_SYSTEM,
-                    prompt: digestPrompt({ conv, transcript: digestInput(conv.messages), projects, siblingTitles: siblingTitles(conv) }),
-                    schema: DigestSchema,
-                });
-                digest = data;
+                const results = [];
+                for (const [segmentIndex, transcript] of segments.entries()) {
+                    const { data, model } = await llm({
+                        system: DIGEST_SYSTEM,
+                        prompt: `${digestPrompt({ conv, transcript, projects, siblingTitles: siblingTitles(conv) })}\nSegmento ${segmentIndex + 1} de ${segments.length}. Extrae solo este segmento.`,
+                        schema: DigestSchema,
+                    });
+                    results.push(data);
+                    meta.digestModel = model;
+                }
+                const fields = ['decisions', 'ideas', 'pending', 'reasoning', 'facts', 'tags', 'topics', 'corrections', 'openQuestions', 'evidence'];
+                digest = { ...results.at(-1), summary: results.map(r => r.summary).join(' '), projects: results.flatMap(r => r.projects || []) };
+                for (const field of fields) digest[field] = results.flatMap(r => r[field] || []);
+                digest.projects = [...new Map(digest.projects.map(p => [`${p.projectId}:${p.project}`, p])).values()];
                 if (digest.projectId && !projects.some(p => p.id === digest.projectId)) digest.projectId = '';
-                meta.digestModel = model;
+                digest.projects = digest.projects.map(p => ({ ...p, projectId: projects.some(x => x.id === p.projectId) ? p.projectId : '' }));
+                if (!digest.projects.length && (digest.projectId || digest.project)) digest.projects = [{ projectId: digest.projectId || '', project: digest.project || '' }];
+                const validIds = new Set(conv.messages.map((m, i) => m.id || `m${i + 1}`));
+                digest.evidence = digest.evidence.filter(e => e.messageIds.some(ref => validIds.has(ref.split(':')[0])));
+                const userIds = new Set(conv.messages.map((m, i) => m.role === 'user' ? (m.id || `m${i + 1}`) : null).filter(Boolean));
+                for (const field of ['topics', 'facts', 'ideas', 'decisions', 'corrections', 'openQuestions', 'pending', 'reasoning']) {
+                    for (const value of digest[field] || []) {
+                        const supporting = digest.evidence.find(e => e.category === field && e.text.trim() === value.trim());
+                        if (!supporting) throw new Error(`Falta referencia de mensaje para ${field}: ${value.slice(0, 80)}`);
+                        if (field === 'decisions' && !supporting.messageIds.some(ref => userIds.has(ref.split(':')[0]))) throw new Error(`La decisión no está respaldada por el usuario: ${value.slice(0, 80)}`);
+                    }
+                }
                 meta.digestError = '';
             } catch (err) {
+                digest = null;
                 // Si la IA falla, la conversación igual queda buscable en crudo; se reintenta el resumen más tarde.
                 // Una cuota agotada no cuenta como intento fallido.
                 if (isQuotaError(err)) quotaHit = err;
                 else meta.digestAttempts = (meta.digestAttempts || 0) + 1;
+                meta.nextRetryAt = new Date(Date.now() + retryDelay(meta.digestAttempts || 1)).toISOString();
                 meta.digestError = err.message.slice(0, 300);
                 worker.lastError = `${conv.title}: ${meta.digestError}`;
             }
         }
 
         const docMeta = {
-            conversationId: id, date: conv.updateTime, namespace: 'chatgpt',
-            projectId: digest?.projectId || '', project: digest?.project || '',
+            conversationId: id, originalId: meta.originalId || id, accountId: meta.accountId || null, workspaceId: meta.workspaceId || null, origin: meta.origin || 'legacy', revision: meta.revision || null, date: conv.updateTime, namespace: 'chatgpt',
+            projectId: digest?.projectId || '', projectIds: (digest?.projects || []).map(p => p.projectId).filter(Boolean), project: digest?.project || '',
             relevance: digest?.relevance || '', type: digest?.type || '', tags: digest?.tags || [],
             chatgptProjectId: conv.chatgptProjectId,
         };
@@ -244,8 +304,9 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
 
         Object.assign(meta, {
             status: digest ? 'done' : 'indexed_raw',
-            digest, processedAt: new Date().toISOString(), error: '',
+            digest, processedAt: new Date().toISOString(), error: '', nextRetryAt: digest ? null : meta.nextRetryAt,
             projectKey: digest ? projectKeyOf(digest) : null,
+            projectKeys: digest ? (digest.projects || []).map(projectKeyOf).filter(Boolean) : [],
             transcriptIndexed: keepTranscript,
         });
         if (digest) state.digestsSinceProfile++;
@@ -271,7 +332,7 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
     // ─── Memoria por proyecto y perfil ───
     async function refreshProjectMemory(key) {
         const convs = Object.values(state.conversations)
-            .filter(c => c.digest && c.projectKey === key && c.digest.relevance !== 'baja')
+            .filter(c => c.digest && (c.projectKeys || [c.projectKey]).includes(key) && c.digest.relevance !== 'baja')
             .sort((a, b) => String(a.updateTime).localeCompare(String(b.updateTime)));
         if (!convs.length) {
             // Ya no quedan conversaciones relevantes de ese proyecto: se borra su memoria.
@@ -281,13 +342,15 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
             return null;
         }
         const db = readDB();
-        const projectId = convs.find(c => c.digest.projectId)?.digest.projectId || '';
-        const name = (projectId && (db.projects || []).find(p => p.id === projectId)?.name) || convs[convs.length - 1].digest.project;
+        const projectId = convs.flatMap(c => c.digest.projects || [c.digest]).find(p => projectKeyOf(p) === key)?.projectId || '';
+        const name = (projectId && (db.projects || []).find(p => p.id === projectId)?.name) || convs[convs.length - 1].digest.projects?.find(p => projectKeyOf(p) === key)?.project || convs[convs.length - 1].digest.project;
         const recent = convs.slice(-60).map(c => ({ ...c.digest, title: c.title, date: String(c.updateTime).slice(0, 7) }));
-        const { data } = await llm({ system: SYNTHESIS_SYSTEM, prompt: synthesisPrompt(name, recent), schema: SynthesisSchema });
-        const text = synthesisToText(name, data);
+        const previous = state.projects[key]?.synthesis;
+        const { data } = await llm({ system: SYNTHESIS_SYSTEM, prompt: `${previous ? `Memoria anterior que debes conservar salvo corrección explícita:\n${JSON.stringify(previous)}\n\n` : ''}${synthesisPrompt(name, recent)}`, schema: SynthesisSchema });
+        const decisionHistory = convs.flatMap(c => (c.digest.decisions || []).map(decision => ({ decision, date: c.updateTime, conversationId: c.id, evidence: (c.digest.evidence || []).filter(e => e.category === 'decisions' && e.text === decision).flatMap(e => e.messageIds) })));
+        const text = `${synthesisToText(name, data)}\n\nHISTORIAL DE DECISIONES (incluye decisiones anteriores):\n${decisionHistory.map(d => `- ${String(d.date).slice(0, 10)} [${d.conversationId}${d.evidence.length ? `:${d.evidence.join(',')}` : ''}] ${d.decision}`).join('\n')}`;
         state.projects[key] = {
-            key, name, projectId, synthesis: data, text, updatedAt: new Date().toISOString(),
+            key, name, projectId, synthesis: data, decisionHistory, text, updatedAt: new Date().toISOString(),
             conversationIds: convs.map(c => c.id), conversationCount: convs.length,
             firstDate: convs[0].updateTime, lastDate: convs[convs.length - 1].updateTime,
         };
@@ -333,7 +396,7 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
         try {
             // Primero lo más reciente: es lo que más probablemente sigue vivo.
             const queue = Object.values(state.conversations)
-                .filter(c => c.status === 'pending' || (c.status === 'indexed_raw' && llmOk() && (c.digestAttempts || 0) < MAX_DIGEST_ATTEMPTS))
+                .filter(c => (c.status === 'pending' || c.status === 'error' || (c.status === 'indexed_raw' && llmOk())) && (!c.nextRetryAt || Date.now() >= Date.parse(c.nextRetryAt)) && (c.digestAttempts || 0) < MAX_DIGEST_ATTEMPTS)
                 .sort((a, b) => String(b.updateTime).localeCompare(String(a.updateTime)))
                 .map(c => c.id);
             const next = async () => {
@@ -342,7 +405,7 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
                     const meta = state.conversations[id];
                     // Sin cuota, lo que ya está indexado en crudo espera a la próxima vuelta (no se reindexa).
                     if (worker.blockedReason && meta.status === 'indexed_raw') continue;
-                    const prevKey = meta.projectKey;
+                    const prevKeys = meta.projectKeys || [meta.projectKey];
                     meta.status = 'processing';
                     worker.current.push(meta.title);
                     try {
@@ -352,7 +415,7 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
                             worker.blockedReason = `Cuota de la IA agotada: las conversaciones se indexan sin resumen y se resumen solas más tarde (${done.quotaHit.message.slice(0, 160)})`;
                         }
                         worker.processedThisRun++;
-                        for (const key of [done.projectKey, prevKey]) {
+                        for (const key of [...(done.projectKeys || [done.projectKey]), ...prevKeys]) {
                             if (!key) continue;
                             touched.add(key);
                             state.staleProjects[key] = true;
@@ -360,10 +423,13 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
                     } catch (err) {
                         if (isQuotaError(err)) {
                             meta.status = 'pending';
+                            meta.nextRetryAt = new Date(Date.now() + retryDelay(meta.digestAttempts || 1)).toISOString();
                             worker.blockedReason = `Cuota de la IA agotada, se reintenta solo en 10 minutos (${err.message.slice(0, 160)})`;
                         } else {
                             meta.status = 'error';
                             meta.error = err.message.slice(0, 300);
+                            meta.digestAttempts = (meta.digestAttempts || 0) + 1;
+                            meta.nextRetryAt = new Date(Date.now() + retryDelay(meta.digestAttempts)).toISOString();
                             worker.lastError = `${meta.title}: ${meta.error}`;
                         }
                         saveState();
@@ -466,10 +532,14 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
     }
 
     // ─── Memorias que guardan agentes o el usuario ───
-    async function saveMemory({ title, content, source = 'agent', agent = '', projectId = '', tags = [] }) {
+    async function saveMemory({ title, content, source = 'agent', agent = '', projectId = '', tags = [], extraMeta = {} }) {
         if (!content) throw new Error('Falta content');
+        // Mismo título + contenido + proyecto = la misma memoria: reintentar no la duplica.
+        const contentHash = hash(`${title || ''}\n${content}\n${projectId}`);
+        const existing = store.listDocs(d => d.source === 'memory' && d.meta?.contentHash === contentHash)[0];
+        if (existing) return { ...existing, deduplicated: true };
         const id = `memory:${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
-        const doc = store.upsertDoc({ id, source: 'memory', kind: 'memory', title: title || content.slice(0, 80), meta: { origin: source, agent, projectId, tags, namespace: 'memory', date: new Date().toISOString() } }, chunkText(content));
+        const doc = store.upsertDoc({ id, source: 'memory', kind: 'memory', title: title || content.slice(0, 80), meta: { origin: source, agent, projectId, tags, namespace: 'memory', date: new Date().toISOString(), contentHash, ...extraMeta } }, chunkText(content));
         embedSafe(); // ya es buscable por palabras; el vector llega en segundo plano
         return doc;
     }
@@ -515,9 +585,15 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
     function status() {
         const convs = Object.values(state.conversations);
         const count = pred => convs.filter(pred).length;
+        const bySource = {};
+        for (const c of convs) bySource[c.origin || 'legacy'] = (bySource[c.origin || 'legacy'] || 0) + 1;
+        const latestConversationAt = convs.map(c => c.updateTime).filter(Boolean).sort().at(-1) || null;
         return {
             chatgpt: {
                 total: convs.length,
+                bySource, latestConversationAt,
+                lagMs: latestConversationAt ? Math.max(0, Date.now() - Date.parse(latestConversationAt)) : null,
+                stages: { captured: count(c => c.status !== 'excluded'), summarized: count(c => !!c.digest), indexed: count(c => !!store.getDoc(`chatgpt:${c.id}`) || !!store.getDoc(`chatgpt:${c.id}:digest`)), failed: count(c => c.status === 'error' || (c.status === 'indexed_raw' && !!c.digestError)) },
                 done: count(c => c.status === 'done'),
                 pending: count(c => c.status === 'pending' || c.status === 'processing'),
                 indexedRaw: count(c => c.status === 'indexed_raw'),
@@ -544,14 +620,14 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
         const fq = fold(q);
         let rows = Object.values(state.conversations).filter(c => c.status !== 'excluded' || st === 'excluded');
         if (fq) rows = rows.filter(c => fold(`${c.title} ${c.digest?.summary || ''} ${c.digest?.project || ''} ${(c.digest?.tags || []).join(' ')}`).includes(fq));
-        if (projectKey) rows = rows.filter(c => c.projectKey === projectKey);
+        if (projectKey) rows = rows.filter(c => (c.projectKeys || [c.projectKey]).includes(projectKey));
         if (relevance) rows = rows.filter(c => c.digest?.relevance === relevance);
         if (st) rows = rows.filter(c => c.status === st);
         rows.sort((a, b) => String(b.updateTime).localeCompare(String(a.updateTime)));
         return {
             total: rows.length,
             items: rows.slice(offset, offset + limit).map(c => ({
-                id: c.id, title: c.title, updateTime: c.updateTime, createTime: c.createTime, messageCount: c.messageCount,
+                id: c.id, title: c.title, updateTime: c.updateTime, createTime: c.createTime, messageCount: c.messageCount, origin: c.origin || 'legacy', accountId: c.accountId || null, workspaceId: c.workspaceId || null, revision: c.revision || null,
                 status: c.status, error: c.error, projectKey: c.projectKey, chatgptProjectId: c.chatgptProjectId,
                 project: c.digest?.project || '', projectId: c.digest?.projectId || '', relevance: c.digest?.relevance || '',
                 type: c.digest?.type || '', summary: c.digest?.summary || '', tags: c.digest?.tags || [],
@@ -574,7 +650,7 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
         store.removeDoc(`chatgpt:${id}`);
         store.removeDoc(`chatgpt:${id}:digest`);
         try { fs.unlinkSync(rawPath(id)); } catch { /* ya no estaba */ }
-        if (meta.projectKey) state.staleProjects[meta.projectKey] = true;
+        for (const key of meta.projectKeys || [meta.projectKey]) if (key) state.staleProjects[key] = true;
         state.conversations[id] = { id, title: meta.title, updateTime: meta.updateTime, status: 'excluded', projectKey: null };
         flush();
         return true;
@@ -582,11 +658,38 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
 
     function retryErrors() {
         for (const c of Object.values(state.conversations)) {
-            if (c.status === 'error') { c.status = 'pending'; c.error = ''; }
-            if (c.status === 'indexed_raw') c.digestAttempts = 0;
+            if (c.status === 'error' || c.status === 'indexed_raw') { c.status = 'pending'; c.error = ''; c.digestAttempts = 0; c.nextRetryAt = null; }
         }
         saveState();
         runWorker();
+    }
+
+    function reprocessConversation(id) {
+        const c = state.conversations[id];
+        if (!c || c.status === 'excluded' || !fs.existsSync(rawPath(id))) return false;
+        c.status = 'pending'; c.error = ''; c.digestAttempts = 0; c.nextRetryAt = null; c.triage = null;
+        saveState(); runWorker();
+        return true;
+    }
+
+    function purgeConversation(id) {
+        const c = state.conversations[id];
+        if (!c) return false;
+        for (const key of c.projectKeys || [c.projectKey]) if (key) state.staleProjects[key] = true;
+        store.removeDoc(`chatgpt:${id}`); store.removeDoc(`chatgpt:${id}:digest`);
+        fs.rmSync(rawPath(id), { force: true });
+        for (const file of fs.readdirSync(originalDir)) if (file.startsWith(`${id}-`)) fs.rmSync(path.join(originalDir, file), { force: true });
+        delete state.conversations[id];
+        flush(); runWorker();
+        return true;
+    }
+
+    function listRecentConversationUpdates({ from, to, limit = 40 } = {}) {
+        return Object.values(state.conversations)
+            .filter(c => c.status !== 'excluded' && (!from || c.updateTime >= from) && (!to || c.updateTime <= `${to}T23:59:59.999Z`))
+            .sort((a, b) => String(b.updateTime).localeCompare(String(a.updateTime)))
+            .slice(0, Math.min(200, limit))
+            .map(c => ({ id: c.id, originalId: c.originalId || c.id, title: c.title, date: c.updateTime, capturedAt: c.capturedAt || null, origin: c.origin || 'legacy', accountId: c.accountId || null, workspaceId: c.workspaceId || null, revision: c.revision || null, status: c.status, summary: c.digest?.summary || null, projects: c.digest?.projects || [] }));
     }
 
     function setConfig(patch) {
@@ -602,7 +705,7 @@ export function createKnowledgeEngine({ dataDir, readDB, getGeminiKey, generateS
         waitForEmbeddings: () => embedSafe(),
         importExport, importConversations, indexPendingTranscripts, syncState, ingestFromExtension, reportExtensionRun, runWorker, syncDashboard, indexSource, saveMemory, search, scanWatchDir, embedMissing,
         refreshProjectMemory, refreshProfile,
-        status, listConversations, getConversation, excludeConversation, retryErrors, setConfig,
+        status, listConversations, listRecentConversationUpdates, getConversation, excludeConversation, purgeConversation, reprocessConversation, retryErrors, setConfig,
         pause() { worker.paused = true; },
         resume() { worker.paused = false; worker.blockedReason = ''; runWorker(); },
         /** Reintento periódico: respeta una pausa manual, pero vuelve a probar tras un bloqueo por cuota. */

@@ -97,6 +97,8 @@
             report.complete = report.remaining === 0;
         } catch (err) {
             report.error = err.message || String(err);
+            report.remaining = Math.max(0, report.changed - report.sent);
+            report.complete = false;
         }
         try { await bridge.report(report); } catch { /* el reporte es informativo */ }
         return report;

@@ -36,7 +36,8 @@ export function registerKnowledge(app, { readDB, getGeminiKey, generateStructure
         const filePath = `${req.file.path}${path.extname(req.file.originalname).toLowerCase()}`;
         fs.renameSync(req.file.path, filePath);
         try {
-            res.json(engine.importExport(filePath, { origin: 'upload', fileName: req.file.originalname }));
+            const identity = req.body?.accountId ? { accountId: String(req.body.accountId), workspaceId: String(req.body.workspaceId || 'personal') } : null;
+            res.json(engine.importExport(filePath, { origin: 'upload', fileName: req.file.originalname, identity }));
         } finally {
             fs.rmSync(filePath, { force: true });
         }
@@ -46,6 +47,9 @@ export function registerKnowledge(app, { readDB, getGeminiKey, generateStructure
     app.post('/api/knowledge/chatgpt/pause', (req, res) => { engine.pause(); res.json(engine.status().worker); });
     app.post('/api/knowledge/chatgpt/resume', (req, res) => { engine.resume(); res.json(engine.status().worker); });
     app.post('/api/knowledge/chatgpt/retry-errors', (req, res) => { engine.retryErrors(); res.json({ ok: true }); });
+    app.get('/api/knowledge/chatgpt/updates', (req, res) => res.json(engine.listRecentConversationUpdates(req.query)));
+    app.post('/api/knowledge/chatgpt/conversations/:id/reprocess', (req, res) => res.json({ ok: engine.reprocessConversation(req.params.id) }));
+    app.delete('/api/knowledge/chatgpt/conversations/:id/purge', (req, res) => res.json({ ok: engine.purgeConversation(req.params.id) }));
 
     app.get('/api/knowledge/chatgpt/conversations', (req, res) => {
         const { q, projectKey, relevance, status, limit, offset } = req.query;

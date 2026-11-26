@@ -60,6 +60,15 @@ function ConversationDetail({ id, onClose, onRemoved }) {
         await fetch(`${API}/chatgpt/conversations/${encodeURIComponent(id)}`, { method: 'DELETE' });
         onRemoved();
     };
+    const reprocess = async () => {
+        await postJson(`${API}/chatgpt/conversations/${encodeURIComponent(id)}/reprocess`);
+        setConv(await getJson(`${API}/chatgpt/conversations/${encodeURIComponent(id)}`));
+    };
+    const purge = async () => {
+        if (!window.confirm('¿Purgar el resumen, índice y contenido original de esta conversación? Podrá capturarse de nuevo en otra sincronización.')) return;
+        await getJson(`${API}/chatgpt/conversations/${encodeURIComponent(id)}/purge`, { method: 'DELETE' });
+        onRemoved();
+    };
     const d = conv?.digest;
     return (
         <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', justifyContent: 'flex-end' }}>
@@ -106,6 +115,8 @@ function ConversationDetail({ id, onClose, onRemoved }) {
                                 ))}
                             </div>
                         )}
+                        <button className="btn btn-ghost" onClick={reprocess} style={{ marginTop: '20px' }}><RefreshCw size={15} /> Reprocesar</button>
+                        <button className="btn btn-ghost" onClick={purge} style={{ marginTop: '20px', color: '#f87171' }}><Trash2 size={15} /> Purgar conocimiento</button>
                         <button className="btn btn-ghost" onClick={remove} style={{ marginTop: '24px', color: '#f87171', display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <Trash2 size={15} /> Quitar del RAG
                         </button>
@@ -139,16 +150,22 @@ function ExtensionCard({ status, onChange }) {
                 <div style={{ fontSize: '13px', marginBottom: '12px', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
                     {run?.error || stale ? <AlertCircle size={15} style={{ color: '#f59e0b', flexShrink: 0, marginTop: 2 }} /> : <CheckCircle2 size={15} style={{ color: '#10b981', flexShrink: 0, marginTop: 2 }} />}
                     <div>
-                        Última sincronización: <b>{new Date(ext.at).toLocaleString('es')}</b>{ext.version ? ` · extensión ${ext.version}` : ''}
+                        Última señal recibida: <b>{new Date(ext.at).toLocaleString('es')}</b>{ext.version ? ` · extensión ${ext.version}` : ''}
                         {run && !run.error && <> · revisadas {run.scanned}, cambiadas {run.changed}, enviadas {run.sent}{run.remaining ? `, faltan ${run.remaining} (siguen en el próximo ciclo)` : ''}</>}
                         {' '}· en total {ext.totals.added} nuevas y {ext.totals.updated} actualizadas
                         {run?.error && <div style={{ color: '#f59e0b' }}>{run.error}</div>}
+                        <div>Cuenta: {ext.accountId || 'histórica sin identificar'} · Workspace: {ext.workspaceId || 'no informado'} · Estado actual de Chrome: no verificable desde el servidor.</div>
                         {stale && !run?.error && <div style={{ color: '#f59e0b' }}>Hace más de 6 horas que no sincroniza: abre Chrome (la extensión trabaja solo mientras Chrome está abierto).</div>}
                     </div>
                 </div>
             ) : (
                 <div style={{ fontSize: '13px', marginBottom: '12px', color: '#f59e0b' }}>La extensión todavía no se ha conectado.</div>
             )}
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '10px' }}>
+                Cobertura registrada: {Object.entries(status?.chatgpt?.bySource || {}).map(([source, count]) => `${source} ${count}`).join(' · ') || 'sin capturas'} ·
+                cola {status?.chatgpt?.pending ?? 0} · errores {status?.chatgpt?.stages?.failed ?? 0} · exclusiones {status?.chatgpt?.excluded ?? 0} ·
+                retraso desde la conversación más reciente {status?.chatgpt?.lagMs != null ? `${Math.round(status.chatgpt.lagMs / 3600000)} h` : 'desconocido'}.
+            </div>
             <ol style={{ margin: 0, paddingLeft: '18px', fontSize: '13px', lineHeight: 1.8, color: 'var(--text-secondary)' }}>
                 <li>En Chrome abre <b>chrome://extensions</b> y activa <b>Modo de desarrollador</b> (arriba a la derecha).</li>
                 <li>
@@ -186,6 +203,8 @@ export default function ChatGptKnowledge() {
     const [upload, setUpload] = useState(null); // { progress, message, error }
     const [watchDir, setWatchDir] = useState('');
     const [busy, setBusy] = useState('');
+    const [exportAccountId, setExportAccountId] = useState('');
+    const [exportWorkspaceId, setExportWorkspaceId] = useState('personal');
     const fileRef = useRef(null);
 
     const loadStatus = useCallback(async () => {
@@ -223,6 +242,7 @@ export default function ChatGptKnowledge() {
         setUpload({ progress: 0, message: `Subiendo ${file.name}…` });
         const form = new FormData();
         form.append('file', file);
+        if (exportAccountId.trim()) { form.append('accountId', exportAccountId.trim()); form.append('workspaceId', exportWorkspaceId.trim() || 'personal'); }
         const xhr = new XMLHttpRequest();
         xhr.open('POST', `${API}/chatgpt/import`);
         xhr.upload.onprogress = e => e.lengthComputable && setUpload(u => ({ ...u, progress: Math.round((e.loaded / e.total) * 100) }));
@@ -310,6 +330,9 @@ export default function ChatGptKnowledge() {
                 <div style={card}>
                     <h4 style={{ margin: '0 0 8px', fontSize: '15px' }}>Súbela o deja que se detecte sola</h4>
                     <input ref={fileRef} type="file" accept=".zip,.json" style={{ display: 'none' }} onChange={e => doUpload(e.target.files?.[0])} />
+                    <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Para deduplicar con la extensión, indica la misma cuenta y workspace. Si no los conoces, la importación queda separada.</p>
+                    <input aria-label="ID de cuenta ChatGPT de la exportación" placeholder="ID de cuenta ChatGPT" value={exportAccountId} onChange={e => setExportAccountId(e.target.value)} style={{ ...input, width: '100%', marginBottom: 6 }} />
+                    <input aria-label="ID de workspace ChatGPT de la exportación" placeholder="Workspace (personal)" value={exportWorkspaceId} onChange={e => setExportWorkspaceId(e.target.value)} style={{ ...input, width: '100%', marginBottom: 8 }} />
                     <button className="btn btn-primary" onClick={() => fileRef.current?.click()} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <UploadCloud size={16} /> Subir exportación (.zip)
                     </button>

@@ -2,6 +2,7 @@
 // El ZIP trae conversations.json (o conversations-000.json, -001…): cada conversación es un árbol de
 // mensajes (`mapping`) porque al editar o regenerar se crean ramas; nos quedamos con la rama visible.
 import fs from 'fs';
+import crypto from 'crypto';
 import { listZip, readZipEntry } from './zip.js';
 
 const CONVERSATION_FILE = /(^|\/)conversations(-\d+)?\.json$/i;
@@ -70,10 +71,8 @@ export function linearize(conv) {
         if (m.recipient && m.recipient !== 'all') continue; // llamadas internas a herramientas
         const text = messageText(m);
         if (!text) continue;
-        const last = messages[messages.length - 1];
-        // ChatGPT a veces parte una respuesta en varios mensajes seguidos del mismo rol.
-        if (last && last.role === role) last.text += `\n\n${text}`;
-        else messages.push({ role, text, time: m.create_time ? new Date(m.create_time * 1000).toISOString() : null });
+        // Cada nodo conserva su identificador para citar la evidencia con precisión.
+        messages.push({ id: m.id || node.id, role, text, time: m.create_time ? new Date(m.create_time * 1000).toISOString() : null });
     }
     return messages;
 }
@@ -104,14 +103,46 @@ export function normalizeConversation(conv) {
     };
 }
 
+// Una revisión cambia también si se edita un mensaje sin variar la fecha o la cantidad.
+export const revisionOf = conv => {
+    const messages = [];
+    for (const m of conv.messages) {
+        const last = messages.at(-1);
+        if (last?.[0] === m.role) last[1] += `\n\n${m.text}`;
+        else messages.push([m.role, m.text]);
+    }
+    return crypto.createHash('sha256').update(JSON.stringify({ title: conv.title, messages })).digest('hex');
+};
+
+// Segmentos por límites de mensaje; un mensaje enorme se divide sin perder su parte central.
+export function digestSegments(messages, budget = 16000) {
+    const parts = [];
+    for (const [i, m] of messages.entries()) {
+        const id = m.id || `m${i + 1}`;
+        const text = String(m.text || '');
+        for (let offset = 0; offset < text.length || offset === 0; offset += budget - 160) {
+            parts.push(`[${id}${text.length > budget - 160 ? `:${Math.floor(offset / (budget - 160)) + 1}` : ''}] ${m.role === 'user' ? 'Usuario' : 'Asistente'}: ${text.slice(offset, offset + budget - 160)}`);
+            if (!text.length) break;
+        }
+    }
+    const segments = [];
+    let current = '';
+    for (const part of parts) {
+        if (current && current.length + part.length + 2 > budget) { segments.push(current); current = ''; }
+        current += `${current ? '\n\n' : ''}${part}`;
+    }
+    if (current) segments.push(current);
+    return segments;
+}
+
 const LABEL = { user: 'Yo', assistant: 'ChatGPT' };
 
 /** Transcripción completa para indexar (recorta respuestas larguísimas de código o tablas). */
-export function transcriptText(messages, { userMax = 6000, assistantMax = 3000 } = {}) {
-    return messages.map(m => {
+export function transcriptText(messages, { userMax = Infinity, assistantMax = Infinity } = {}) {
+    return messages.map((m, i) => {
         const max = m.role === 'user' ? userMax : assistantMax;
         const t = m.text.length > max ? `${m.text.slice(0, max)} […]` : m.text;
-        return `${LABEL[m.role]}: ${t}`;
+        return `[${m.id || `m${i + 1}`}] ${LABEL[m.role]}: ${t}`;
     }).join('\n\n');
 }
 

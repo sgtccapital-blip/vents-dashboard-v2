@@ -363,10 +363,13 @@ test('hub de agentes: MCP con tokens por agente, permisos y registro de activida
 
     const client = await connect(`${ROOT_URL}/mcp`, { Authorization: `Bearer ${writer.token}` });
     const names = (await client.listTools()).tools.map(t => t.name);
-    for (const n of ['get_context', 'search_knowledge', 'get_project', 'list_tasks', 'create_task', 'update_task', 'save_memory', 'log_activity']) assert.ok(names.includes(n), n);
+    for (const n of ['get_context', 'search_knowledge', 'get_project', 'list_tasks', 'create_task', 'update_task', 'save_memory', 'log_activity', 'get_sync_status', 'list_recent_conversation_updates', 'get_conversation_summary', 'reprocess_conversation', 'capture_conversation_knowledge']) assert.ok(names.includes(n), n);
 
     const ctx = JSON.parse((await client.callTool({ name: 'get_context', arguments: {} })).content[0].text);
     assert.equal(typeof ctx.tasks.pending, 'number');
+    const sync = JSON.parse((await client.callTool({ name: 'get_sync_status', arguments: {} })).content[0].text);
+    assert.equal(typeof sync.total, 'number');
+    assert.ok(Array.isArray(ctx.recentConversationUpdates));
 
     const created = JSON.parse((await client.callTool({ name: 'create_task', arguments: { text: 'Tarea creada por MCP', priority: 'high' } })).content[0].text);
     assert.equal(created.status, 'pending');
@@ -388,7 +391,7 @@ test('hub de agentes: MCP con tokens por agente, permisos y registro de activida
     // Token de solo lectura: no ve herramientas de escritura. El token también funciona en la URL.
     const ro = await connect(`${ROOT_URL}/mcp/${reader.token}`);
     const roNames = (await ro.listTools()).tools.map(t => t.name);
-    assert.ok(roNames.includes('search_knowledge') && !roNames.includes('create_task'));
+    assert.ok(roNames.includes('search_knowledge') && roNames.includes('get_sync_status') && !roNames.includes('create_task') && !roNames.includes('reprocess_conversation'));
     await ro.close();
 
     const activity = await (await api('/agent-hub/activity?agent=Claude%20Code')).json();
@@ -405,12 +408,16 @@ test('hub de agentes: MCP con tokens por agente, permisos y registro de activida
 
 test('ingesta de la extensión: requiere llave con escritura y suma conversaciones al RAG', async () => {
     const ROOT_URL = BASE.replace(/\/api$/, '');
+    const tasksBefore = (await (await api('/tasks')).json()).length;
+    const eventsBefore = (await (await api('/events')).json()).length;
     assert.equal((await fetch(`${ROOT_URL}/ingest/chatgpt/state`)).status, 401);
     const ro = await (await api('/agent-hub/tokens', { method: 'POST', body: json({ name: 'RO', scope: 'read' }) })).json();
     assert.equal((await fetch(`${ROOT_URL}/ingest/chatgpt/state`, { headers: { Authorization: `Bearer ${ro.token}` } })).status, 403);
 
     const ext = await (await api('/agent-hub/tokens', { method: 'POST', body: json({ name: 'ChatGPT Sync', scope: 'write' }) })).json();
     const h = { Authorization: `Bearer ${ext.token}`, 'Content-Type': 'application/json' };
+    const v2 = { ...h, 'X-Extension-Version': '1.1.3' };
+    assert.equal((await fetch(`${ROOT_URL}/ingest/chatgpt/state`, { headers: v2 })).status, 400);
     const conv = {
         id: 'ext-1', title: 'Idea de merch Hang Out', update_time: 1764000000, create_time: 1763990000, current_node: 'b',
         mapping: {
@@ -433,4 +440,9 @@ test('ingesta de la extensión: requiere llave con escritura y suma conversacion
     assert.equal(found.results[0].docId, 'chatgpt:ext-1');
     const st = await (await api('/knowledge/status')).json();
     assert.equal(st.chatgpt.extension.run.scanned, 10);
+    assert.equal((await fetch(`${ROOT_URL}/ingest/chatgpt/conversations`, { method: 'POST', headers: v2, body: json({ conversations: [conv] }) })).status, 400);
+    const identified = await (await fetch(`${ROOT_URL}/ingest/chatgpt/conversations`, { method: 'POST', headers: v2, body: json({ conversations: [conv], identity: { accountId: 'a', workspaceId: 'personal' } }) })).json();
+    assert.equal(identified.added + identified.updated, 1);
+    assert.equal((await (await api('/tasks')).json()).length, tasksBefore);
+    assert.equal((await (await api('/events')).json()).length, eventsBefore);
 });

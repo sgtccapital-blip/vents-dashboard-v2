@@ -2,9 +2,12 @@
 // y se las pasa al service worker, que las manda al dashboard.
 (() => {
     // Evita registrarse dos veces si la extensión se inyecta en una pestaña que ya la tenía.
-    if (globalThis.__arriveChatgptSync) return;
+    if (globalThis.__arriveChatgptSyncVersion === '1.1.5') return;
     globalThis.__arriveChatgptSync = true;
+    globalThis.__arriveChatgptSyncVersion = '1.1.5';
     let accessToken = null;
+    let identity = null;
+    let cycleIdentity = null;
     let running = false;
 
     async function getToken(force = false) {
@@ -13,6 +16,9 @@
         if (!r.ok) throw new Error(`Sesión de ChatGPT no disponible (${r.status})`);
         const j = await r.json();
         if (!j.accessToken) throw new Error('No hay sesión iniciada en ChatGPT');
+        const accountId = j.user?.id || j.account?.id;
+        if (!accountId) throw new Error('ChatGPT no informó la identidad de la cuenta; se detuvo para evitar mezclar conversaciones');
+        identity = { accountId: String(accountId), workspaceId: String(j.account?.id || j.workspace_id || 'personal') };
         accessToken = j.accessToken;
         return accessToken;
     }
@@ -39,9 +45,12 @@
     });
 
     const bridge = {
-        state: () => send({ type: 'dashboard:state' }),
-        push: conversations => send({ type: 'dashboard:push', conversations }),
-        report: report => send({ type: 'dashboard:report', report }),
+        state: async () => { await getToken(true); cycleIdentity = { ...identity }; return send({ type: 'dashboard:state', identity: cycleIdentity }); },
+        push: conversations => {
+            if (!cycleIdentity || identity.accountId !== cycleIdentity.accountId || identity.workspaceId !== cycleIdentity.workspaceId) throw new Error('Cambió la cuenta de ChatGPT durante la sincronización');
+            return send({ type: 'dashboard:push', conversations, identity: cycleIdentity });
+        },
+        report: report => send({ type: 'dashboard:report', report, identity: cycleIdentity }),
     };
 
     async function run(full) {
@@ -55,7 +64,7 @@
     }
 
     chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-        if (msg?.type === 'sync') {
+        if (msg?.type === 'sync-v2') {
             run(!!msg.full).then(sendResponse);
             return true;
         }
