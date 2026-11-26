@@ -342,7 +342,7 @@ test('modelRunner: si responde un modelo hermano del mismo proveedor, queda marc
     try {
         const runners = { google: async m => { if (m === 'gemini-3.8-flash') throw Object.assign(new Error('503 UNAVAILABLE'), { status: 503 }); return { text: 'ok', tokensIn: 1, tokensOut: 1 }; } };
         const out = await runModel({ model: 'gemini-3.8-flash', prompt: 'hola', retryDelays: [], runners });
-        assert.equal(out.model, 'gemini-3.5-flash');
+        assert.equal(out.model, 'gemini-3.6-flash');
         assert.equal(out.fallbackFrom, 'gemini-3.8-flash');
     } finally {
         process.env.GEMINI_API_KEY = saved ?? '';
@@ -742,4 +742,81 @@ test('hub MCP: el agente interno ve solo las herramientas permitidas, las usa y 
 test('hub MCP: sin hub, el agente no ve las herramientas del hub', () => {
     const txt = toolInstructions({ agents: [] });
     assert.doesNotMatch(txt, /usar_hub|ver_herramienta_hub/);
+});
+
+test('officeService: tras un reinicio, las tareas cortadas vuelven a empezar y a la 3.ª fallan', async () => {
+    let calls = 0;
+    // Estado que deja un reinicio a mitad de corrida: tarea en curso y el agente «trabajando».
+    let state = {
+        agents: [{ id: 'agent-echo', name: 'Echo (Social)', model: 'gemini-3.8-flash', status: 'executing', activeTaskId: 't1' }],
+        agentTasks: [
+            { id: 't1', task: 'Hooks para reel', assignedAgentId: 'agent-echo', assignedAgent: 'Echo (Social)', assignedKind: 'internal', status: 'in_progress' },
+            { id: 'm1', kind: 'mission', task: 'Misión', assignedAgentId: 'agent-echo', status: 'in_progress' },
+        ],
+        activityFeed: [],
+    };
+    const office = createOfficeService({
+        readDB: () => structuredClone(state), writeDB: d => { state = structuredClone(d); }, broadcast: () => {},
+        getAgents: d => d.agents, buildPrompt: async o => o.task,
+        runModel: async ({ model }) => { calls++; return { text: 'listo', tokensIn: 1, tokensOut: 1, provider: 'google', model, ms: 1 }; },
+    });
+    const t1 = () => state.agentTasks.find(t => t.id === 't1');
+
+    assert.deepEqual(office.recoverInterrupted({ restart: true }), [{ id: 't1', status: 'queued' }], 'la misión (padre) no se toca');
+    await until(() => t1().status === 'review');
+    assert.equal(t1().status, 'review', 'volvió a correr y entregó');
+    assert.equal(t1().interruptions, 1);
+    assert.equal(calls, 1);
+    assert.match(JSON.stringify(state.activityFeed), /reinicio/);
+    assert.equal(state.agents[0].status, 'available');
+
+    // Sin reanudar (OFFICE_RESUME_ON_BOOT=0): queda en cola y no corre.
+    t1().status = 'in_progress';
+    assert.deepEqual(office.recoverInterrupted({ restart: false }), [{ id: 't1', status: 'queued' }]);
+    assert.equal(calls, 1);
+
+    // A la tercera interrupción se da por fallida en vez de entrar en un bucle.
+    t1().status = 'in_progress';
+    assert.deepEqual(office.recoverInterrupted({ restart: true }), [{ id: 't1', status: 'failed' }]);
+    assert.match(t1().error, /3 veces/);
+    assert.equal(calls, 1);
+});
+
+test('modelRunner: precios por fecha y por el modelo que respondió de verdad', async () => {
+    const { priceOf, estimateCost } = await import('../src/services/office/modelRunner.js');
+    assert.deepEqual(priceOf('gemini-3.6-flash', '2026-12-31T12:00:00Z'), [0.75, 3.75]);
+    assert.deepEqual(priceOf('gemini-3.6-flash', '2027-01-01T12:00:00Z'), [1.5, 7.5], 'aplica la subida anunciada');
+    assert.equal(priceOf('gemini-3.5-flash'), null, 'sin precio publicado no se inventa');
+    assert.equal(estimateCost('gemini-3.5-flash', 1e6, 1e6, { servedBy: 'gemini-3.6-flash', at: '2026-11-26' }), 4.5, 'se cobra como el modelo que respondió');
+    assert.equal(estimateCost('gemini-3.5-flash', 1e6, 1e6), null);
+});
+
+test('modelRunner: un modelo saturado queda en pausa y las siguientes llamadas van directo al respaldo', async () => {
+    const { runModel, isSaturated, resetSaturation } = await import('../src/services/office/modelRunner.js');
+    const saved = process.env.GEMINI_API_KEY;
+    process.env.GEMINI_API_KEY = 'test';
+    resetSaturation();
+    try {
+        const calls = [];
+        const runners = {
+            google: async m => {
+                calls.push(m);
+                if (m === 'gemini-3.8-flash') { const e = new Error('This model is currently experiencing high demand'); e.status = 503; throw e; }
+                return { text: 'hecho', tokensIn: 10, tokensOut: 5, servedBy: m };
+            },
+        };
+        const out = await runModel({ model: 'gemini-3.8-flash', prompt: 'hola', retryDelays: [0], runners });
+        assert.equal(out.model, 'gemini-3.6-flash');
+        assert.deepEqual(calls, ['gemini-3.8-flash', 'gemini-3.8-flash', 'gemini-3.6-flash'], 'agota sus reintentos la primera vez');
+        assert.ok(isSaturated('gemini-3.8-flash'));
+        assert.ok(out.costUSD > 0, 'el costo ya no sale en 0');
+
+        calls.length = 0;
+        const again = await runModel({ model: 'gemini-3.8-flash', prompt: 'hola', retryDelays: [0], runners });
+        assert.deepEqual(calls, ['gemini-3.6-flash'], 'en pausa: no se pierde tiempo en reintentos');
+        assert.equal(again.skippedSaturated, 'gemini-3.8-flash');
+    } finally {
+        resetSaturation();
+        if (saved === undefined) delete process.env.GEMINI_API_KEY; else process.env.GEMINI_API_KEY = saved;
+    }
 });

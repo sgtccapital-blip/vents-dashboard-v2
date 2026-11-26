@@ -182,6 +182,9 @@ export class KnowledgeStore {
 
         // BM25 sobre los candidatos
         const kw = new Map();
+        // coverage: qué parte de la consulta (pesada por rareza de cada palabra) aparece en el trozo.
+        // A diferencia de BM25 no crece con el largo de la consulta, así que sirve como umbral fijo.
+        const coverage = new Map();
         if (qTerms.length) {
             const k1 = 1.2, b = 0.75;
             let totalLen = 0;
@@ -197,16 +200,18 @@ export class KnowledgeStore {
             });
             const avg = totalLen / candidates.length || 1;
             const df = qTerms.map((_, j) => tf.filter(row => row[j] > 0).length);
+            const idf = df.map(d => Math.log(1 + (candidates.length - d + 0.5) / (d + 0.5)));
+            const idfTotal = idf.reduce((a, x) => a + x, 0) || 1;
             candidates.forEach((i, r) => {
                 const len = this.chunks[i].folded.length;
-                let s = 0;
+                let s = 0, covered = 0;
                 qTerms.forEach((_, j) => {
                     const f = tf[r][j];
                     if (!f) return;
-                    const idf = Math.log(1 + (candidates.length - df[j] + 0.5) / (df[j] + 0.5));
-                    s += idf * (f * (k1 + 1)) / (f + k1 * (1 - b + b * len / avg));
+                    covered += idf[j];
+                    s += idf[j] * (f * (k1 + 1)) / (f + k1 * (1 - b + b * len / avg));
                 });
-                if (s > 0) kw.set(i, s);
+                if (s > 0) { kw.set(i, s); coverage.set(i, covered / idfTotal); }
             });
         }
 
@@ -244,6 +249,7 @@ export class KnowledgeStore {
                 score,
                 similarity: sim.has(i) ? Math.max(0, sim.get(i)) : null,
                 keywordScore: kw.get(i) || 0,
+                coverage: coverage.get(i) || 0,
             });
             if (out.length >= topK) break;
         }

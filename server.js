@@ -29,6 +29,7 @@ import { normalizeTaskStatus, normalizeEventStatus, TASK_STATUSES, EVENT_STATUSE
 import { dnaToMarkdown, dnaCompleteness, accountSlug } from './src/lib/accountDna.js';
 import { registerContentStudio } from './src/services/contentStudio/routes.js';
 import { registerKnowledge } from './src/services/knowledge/routes.js';
+import { agentKnowledgeQuery, pickAgentKnowledge } from './src/services/knowledge/agentContext.js';
 import { registerAgentHub } from './src/services/agentHub/routes.js';
 import { registerLibrary } from './src/services/library/routes.js';
 import { createOfficeService, normalizeStatus as normalizeOfficeStatus, fileView as officeFileView } from './src/services/office/officeService.js';
@@ -3993,15 +3994,19 @@ async function buildAgentPrompt({ agentName, task, description, companyId, compa
     let knowledgeContext = '';
     let knowledgeUsed = [];
     let searchMode = null;
+    let knowledgeDropped = 0;
     try {
-        const { results, mode } = await knowledge.search({ query: `${task}\n${description || ''}`.slice(0, 1000), topK: 6 });
+        // Se piden más candidatos de los que entran: los poco relacionados se descartan (ver agentContext.js).
+        const { results: found, mode } = await knowledge.search({ query: agentKnowledgeQuery(task, description), topK: 16 });
         searchMode = mode;
-        knowledgeContext = (results || []).map(r => `- [${r.doc?.title || r.docId}] ${String(r.text || r.snippet || '').slice(0, 900)}`).join('\n');
-        if (results?.length) ragSources = [ragSources, ...results.map(r => r.doc?.title).filter(Boolean)].filter(Boolean).join(', ');
-        const top = results?.[0]?.score || 1;
-        knowledgeUsed = (results || []).map(r => ({
+        const results = pickAgentKnowledge(found || [], { limit: 6 });
+        knowledgeDropped = Math.max(0, Math.min(6, (found || []).length) - results.length);
+        knowledgeContext = results.map(r => `- [${r.doc?.title || r.docId}] ${String(r.text || r.snippet || '').slice(0, 900)}`).join('\n');
+        if (results.length) ragSources = [ragSources, ...results.map(r => r.doc?.title).filter(Boolean)].filter(Boolean).join(', ');
+        knowledgeUsed = results.map(r => ({
             docId: r.docId, title: r.doc?.title || r.docId, source: r.doc?.source || '', kind: r.doc?.kind || '',
-            relevance: Math.round((r.score / top) * 100), similarity: r.similarity == null ? null : Number(r.similarity.toFixed(3)),
+            // Absoluta: qué parte de la tarea aparece en el documento (antes era relativa al primero).
+            relevance: Math.round(Math.min(1, r.coverage || 0) * 100), similarity: r.similarity == null ? null : Number(r.similarity.toFixed(3)),
             snippet: promptClip(r.snippet || r.text, 280),
         }));
     } catch (e) { console.warn('[Agent prompt] Knowledge:', e.message); }
@@ -4055,6 +4060,7 @@ Sé claro, completo y usa markdown para formatear.`;
         companyRag: ragSources && memoryContext && !memoryContext.startsWith('Sin contexto') ? promptClip(memoryContext, 400) : null,
         searchMode,
         knowledge: knowledgeUsed,
+        knowledgeDropped,
         account: account ? { id: account.id, name: account.name, handler: account.handler, files: account.files.map(f => ({ name: f.name, label: f.label, chars: f.chars })) } : null,
         lessons: lessons.map(l => ({ id: l.id, kind: l.kind, notes: promptClip(l.notes, 200), task: promptClip(l.task, 80) })),
         promptChars: prompt.length,
@@ -4686,7 +4692,8 @@ app.post('/api/office/kill-switch', (req, res) => {
         // Pause active tasks (y descarta lo que esté corriendo en los modelos)
         office.haltAll();
         (db.agentTasks || []).forEach(t => {
-            if (t.status === 'in_progress') {
+            // La misión padre no corre: la detienen sus pasos (que sí vuelven a la cola).
+            if (t.status === 'in_progress' && t.kind !== 'mission') {
                 t.status = 'queued';
                 t.currentStep = 'Pausado por Kill Switch del CEO';
             }
@@ -5282,6 +5289,13 @@ app.post('/api/office/schedules', officeRoute(req => ({ schedule: office.saveSch
 app.put('/api/office/schedules/:id', officeRoute(req => ({ schedule: office.saveSchedule(req.body || {}, req.params.id) })));
 app.delete('/api/office/schedules/:id', officeRoute(req => office.removeSchedule(req.params.id)));
 app.post('/api/office/schedules/:id/run', officeRoute(req => office.runSchedule(req.params.id, { manual: true })));
+// Corridas internas que el último reinicio dejó colgadas: vuelven a la cola y arrancan de nuevo.
+setTimeout(() => {
+    try {
+        const r = office.recoverInterrupted({ restart: process.env.OFFICE_RESUME_ON_BOOT !== '0' });
+        if (r.length) console.log(`[office] ${r.length} tarea(s) recuperadas tras el reinicio`);
+    } catch (e) { console.warn('[office] recuperación tras reinicio:', e.message); }
+}, 3000).unref();
 // Reloj de las recurrentes: revisa cada minuto (hora de Panamá).
 setInterval(() => {
     try { office.tickSchedules(); } catch (e) { console.warn('[office] recurrentes:', e.message); }

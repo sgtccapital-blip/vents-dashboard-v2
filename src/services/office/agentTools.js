@@ -220,7 +220,7 @@ export function createAgentTools({ searchKnowledge, brandContext, readDB, readTa
                 const res = await hub.call(tool.name, args);
                 const sc = res?.structuredContent;
                 if (res?.isError) {
-                    const e = sc?.error || {};
+                    const e = res._meta?.['arrive/error'] || sc?.error || {};
                     return { output: `Error del hub (${e.code || 'ERROR'}): ${e.message || res.content?.[0]?.text || 'sin detalle'}${e.hint ? `\nQué hacer: ${e.hint}` : ''}` };
                 }
                 return { output: clip(sc ? JSON.stringify(sc) : (res?.content || []).map(c => c.text || '').join('\n'), TOOL_OUTPUT_CHARS) };

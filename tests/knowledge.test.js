@@ -283,3 +283,29 @@ test('embeddings locales: ordenan bien búsquedas en español', { skip: !fs.exis
     assert.equal(await top('¿a cuánto quedó la entrada?'), 'd0');
     assert.equal(await top('cuánto cobra Waller a los venues'), 'd2');
 });
+
+test('memoria del agente: cobertura absoluta, descarta ruido y no repite el mismo documento', async () => {
+    const { agentKnowledgeQuery, pickAgentKnowledge } = await import('../src/services/knowledge/agentContext.js');
+    const store = new KnowledgeStore(tmpDir(), { dims: 2, model: 'fake' });
+    store.upsertDoc({ id: 'ig', source: 'dashboard', kind: 'socialMedia', title: 'Ignite Club', meta: {} }, ['Hooks del reel de aniversario de Ignite: noches llenas']);
+    store.upsertDoc({ id: 'gen', source: 'chatgpt', kind: 'transcript', title: 'Brandbook', meta: {} }, ['Guía general de marca y tipografías para reel']);
+    // «reel» es común en la memoria (como en la real); su rareza pesa poco.
+    for (const n of [1, 2, 3, 4]) store.upsertDoc({ id: `r${n}`, source: 'chatgpt', kind: 'transcript', title: `Reel ${n}`, meta: {} }, [`Edición del reel número ${n}`]);
+    store.upsertDoc({ id: 'tk1', source: 'dashboard', kind: 'task', title: 'Aniversario Ignite', meta: {} }, ['Preparar hooks del aniversario de Ignite']);
+    store.upsertDoc({ id: 'tk2', source: 'dashboard', kind: 'tasks', title: 'Aniversario Ignite', meta: {} }, ['Preparar hooks del aniversario de Ignite']);
+    const found = store.search({ query: 'Hooks para reel del aniversario de Ignite', topK: 10 });
+    const ig = found.find(r => r.docId === 'ig');
+    assert.ok(ig.coverage > 0.9, 'el documento con todas las palabras cubre la consulta');
+    assert.ok(found.find(r => r.docId === 'gen').coverage < 0.34, 'una palabra común no alcanza');
+
+    const kept = pickAgentKnowledge(found);
+    assert.ok(kept.some(r => r.docId === 'ig'));
+    assert.ok(!kept.some(r => r.docId === 'gen'), 'el genérico se descarta');
+    assert.equal(kept.filter(r => r.doc.title === 'Aniversario Ignite').length, 1, 'task y tasks del mismo item cuentan una vez');
+    // Un tema que no está en la memoria no trae nada.
+    assert.equal(pickAgentKnowledge(store.search({ query: 'Receta de lasaña sin gluten', queryVector: [1, 0] })).length, 0);
+
+    // La consulta es el título; la descripción solo si el título dice poco, y sin entregas de pasos anteriores.
+    assert.equal(agentKnowledgeQuery('Hooks para reel del aniversario de Ignite', 'mucho detalle'), 'Hooks para reel del aniversario de Ignite');
+    assert.equal(agentKnowledgeQuery('Pauta Meta', 'Fiesta de fin de año\n\nENTREGA DEL PASO 1 (Atlas):\nlogística'), 'Pauta Meta\nFiesta de fin de año');
+});

@@ -6,13 +6,19 @@ function envList(name, fallback) {
     return String(process.env[name] || fallback).split(',').map(x => x.trim()).filter(Boolean);
 }
 
-// Precios en USD por millón de tokens (entrada / salida). Estimados: revisa la página
-// de precios de cada proveedor si necesitas cifras exactas.
+// Precios en USD por millón de tokens (entrada / salida), tarifa estándar de pago.
+// Gemini: aistudio.google.com/docs/pricing (consultado el 26-nov-2026; la salida incluye los tokens
+// de razonamiento). `priceFrom` = cambios de precio ya anunciados, por fecha de inicio.
+// Si tu llave está en el nivel gratuito, el costo real es 0: esto es lo que costaría en el de pago.
+// null = sin precio publicado (no se inventa).
+const GEMINI_FLASH = { price: [0.75, 3.75], priceFrom: { '2027-01-01': [1.50, 7.50] } };
 export const modelCatalog = () => [
-    { id: 'gemini-3.8-flash', provider: 'google', label: 'Gemini 3.8 Flash', use: 'Rápido: tareas operativas, copys, resúmenes', price: null },
-    { id: 'gemini-3.5-flash', provider: 'google', label: 'Gemini 3.5 Flash', use: 'Rápido y estable; respaldo cuando 3.8 está saturado', price: null },
-    { id: 'gemini-3.5-flash-lite', provider: 'google', label: 'Gemini 3.5 Flash Lite', use: 'Lo más barato de Gemini para volumen', price: null },
-    { id: 'gemini-pro-latest', provider: 'google', label: 'Gemini Pro (última)', use: 'Análisis largos, estrategia, documentos complejos', price: null },
+    { id: 'gemini-3.8-flash', provider: 'google', label: 'Gemini 3.8 Flash', use: 'El más nuevo; a menudo saturado (respaldo automático a 3.6)', ...GEMINI_FLASH },
+    { id: 'gemini-3.6-flash', provider: 'google', label: 'Gemini 3.6 Flash', use: 'Rápido y estable: tareas operativas, copys, resúmenes', ...GEMINI_FLASH },
+    { id: 'gemini-3.5-flash', provider: 'google', label: 'Gemini 3.5 Flash', use: 'Google lo sirve hoy con 3.6 Flash (se cobra como 3.6)', price: null },
+    { id: 'gemini-3.5-flash-lite', provider: 'google', label: 'Gemini 3.5 Flash Lite', use: 'Lo más barato de Gemini para volumen', price: [0.30, 2.50] },
+    { id: 'gemini-3.1-pro-preview', provider: 'google', label: 'Gemini 3.1 Pro', use: 'Análisis largos, estrategia, documentos complejos (sin nivel gratuito)', price: [2.00, 12.00] },
+    { id: 'gemini-pro-latest', provider: 'google', label: 'Gemini Pro (última)', use: 'Alias de Google; sin precio publicado', price: null },
     { id: 'gemma-4-31b-it', provider: 'google', label: 'Gemma 4 31B', use: 'Gratis en la API de Google (cuota diaria)', price: [0, 0] },
     { id: 'claude-opus-5-5', provider: 'anthropic', label: 'Claude Opus 5.5', use: 'Máxima calidad: estrategia, redacción, código', price: [4.00, 20.00] },
     { id: 'claude-sonnet-5-5', provider: 'anthropic', label: 'Claude Sonnet 5.5', use: 'Equilibrio calidad/velocidad para trabajo diario', price: [2.00, 10.00] },
@@ -145,8 +151,18 @@ export async function isKnownModel(model) {
     }
 }
 
-export function estimateCost(model, tokensIn = 0, tokensOut = 0) {
-    const price = (modelCatalog().find(m => m.id === model) || cachedOpenRouterModel(model))?.price;
+/** Precio vigente en una fecha (los anuncios de cambio de precio se aplican desde su día). */
+export function priceOf(model, at = new Date()) {
+    const entry = modelCatalog().find(m => m.id === model) || cachedOpenRouterModel(model);
+    if (!entry?.price) return null;
+    const day = new Date(at).toISOString().slice(0, 10);
+    const changes = Object.entries(entry.priceFrom || {}).filter(([from]) => from <= day).sort(([a], [b]) => a.localeCompare(b));
+    return changes.length ? changes.at(-1)[1] : entry.price;
+}
+
+/** `servedBy`: el modelo que el proveedor dice que respondió (un alias puede servir otro modelo). */
+export function estimateCost(model, tokensIn = 0, tokensOut = 0, { servedBy = null, at = new Date() } = {}) {
+    const price = (servedBy && priceOf(servedBy, at)) || priceOf(model, at);
     if (!price) return null;
     return Number(((tokensIn * price[0] + tokensOut * price[1]) / 1e6).toFixed(6));
 }
@@ -160,7 +176,7 @@ async function runGoogle(model, prompt, maxTokens, attachments = []) {
         : prompt;
     const response = await genai.models.generateContent({ model, contents, config: { maxOutputTokens: maxTokens } });
     const u = response.usageMetadata || {};
-    return { text: response.text || '', tokensIn: u.promptTokenCount || 0, tokensOut: (u.candidatesTokenCount || 0) + (u.thoughtsTokenCount || 0) };
+    return { text: response.text || '', tokensIn: u.promptTokenCount || 0, tokensOut: (u.candidatesTokenCount || 0) + (u.thoughtsTokenCount || 0), servedBy: response.modelVersion || null };
 }
 
 async function runAnthropic(model, prompt, maxTokens, attachments = []) {
@@ -219,8 +235,17 @@ const RUNNERS = { google: runGoogle, anthropic: runAnthropic, openai: runOpenAI,
 
 // Respaldo dentro del mismo proveedor cuando el modelo está saturado.
 // (No usar alias tipo "-latest": suelen apuntar al mismo modelo saturado.)
-const SAME_PROVIDER_FALLBACK = { google: ['gemini-3.5-flash', 'gemini-3.5-flash-lite'], anthropic: ['claude-sonnet-5-5'] };
+// gemini-3.5-flash no: Google lo sirve con 3.6 y tarda mucho más que pedir 3.6 directo.
+const SAME_PROVIDER_FALLBACK = { google: ['gemini-3.6-flash', 'gemini-3.5-flash-lite'], anthropic: ['claude-sonnet-5-5'] };
 const RETRY_DELAYS_MS = [2000, 6000];
+
+// Modelos saturados: después de agotar sus reintentos quedan en pausa unos minutos y las
+// siguientes llamadas van directo al respaldo (sin pagar otra vez ~15 s de reintentos).
+const saturatedUntil = new Map();
+const cooldownMs = () => Number(process.env.OFFICE_SATURATION_COOLDOWN_MS ?? 3 * 60 * 1000);
+const isSaturation = err => [503, 529].includes(Number(err?.status || err?.code)) || /\b(503|529)\b|UNAVAILABLE|overloaded|high demand/i.test(err?.message || '');
+export const isSaturated = model => (saturatedUntil.get(model) || 0) > Date.now();
+export const resetSaturation = () => saturatedUntil.clear();
 
 /** Mensaje legible: los SDK a veces devuelven el JSON crudo del proveedor. */
 export function cleanError(err) {
@@ -256,8 +281,15 @@ function withTimeout(promise, ms, model) {
 async function runOnProvider(model, { prompt, maxTokens, retryDelays, attachments, siblings, runners, timeoutMs = attemptTimeoutMs() }) {
     const provider = providerOf(model);
     const others = siblings ? (SAME_PROVIDER_FALLBACK[provider] || []).filter(m => m !== model) : [];
-    const plan = [...[0, ...retryDelays].map(wait => ({ model, wait })), ...others.map(m => ({ model: m, wait: 0 }))];
-    let lastErr;
+    // Un modelo en pausa por saturación no se intenta (si hay a quién pasarle la llamada).
+    const resting = isSaturated(model) && others.some(m => !isSaturated(m));
+    const plan = [
+        ...(resting ? [] : [0, ...retryDelays].map(wait => ({ model, wait }))),
+        ...others.filter(m => !isSaturated(m)).map(m => ({ model: m, wait: 0 })),
+    ];
+    if (!plan.length) plan.push({ model, wait: 0 });
+    let lastErr = resting ? new Error(`${model} está saturado (en pausa)`) : null;
+    let saturationErrors = 0;
     const timedOut = new Set();
     for (let i = 0; i < plan.length; i++) {
         const step = plan[i];
@@ -269,10 +301,16 @@ async function runOnProvider(model, { prompt, maxTokens, retryDelays, attachment
             const { costFromProvider, ...rest } = out;
             return {
                 ...rest, provider, model: step.model, attempts: i + 1,
-                costUSD: typeof costFromProvider === 'number' ? costFromProvider : estimateCost(step.model, out.tokensIn, out.tokensOut),
+                ...(resting ? { skippedSaturated: model } : {}),
+                costUSD: typeof costFromProvider === 'number' ? costFromProvider : estimateCost(step.model, out.tokensIn, out.tokensOut, { servedBy: out.servedBy }),
             };
         } catch (err) {
             lastErr = err;
+            if (isSaturation(err) && step.model === model && ++saturationErrors > retryDelays.length) {
+                saturatedUntil.set(model, Date.now() + cooldownMs()); // agotó sus reintentos: en pausa
+            } else if (isSaturation(err) && step.model !== model) {
+                saturatedUntil.set(step.model, Date.now() + cooldownMs());
+            }
             if (err.code === 'model_timeout') { timedOut.add(step.model); continue; }
             if (!isTransient(err)) break;
         }
@@ -317,7 +355,9 @@ export async function runModel({ model: requested, prompt, maxTokens = 8192, ret
     } else {
         failures.push({ model, error: `${PROVIDERS[provider]?.label || provider} no está configurado (falta ${PROVIDERS[provider]?.env})` });
     }
-    for (const fb of chain) {
+    for (const [i, fb] of chain.entries()) {
+        // Respaldo en pausa por saturación: se salta, salvo que sea la última opción.
+        if (isSaturated(fb) && i < chain.length - 1) { failures.push({ model: fb, error: 'saturado (en pausa)' }); continue; }
         try {
             const out = await runOnProvider(fb, { ...opts, retryDelays: retryDelays.slice(0, 1), siblings: false });
             return { ...out, attempts: attempts + out.attempts, ms: Date.now() - started, fallbackFrom: model, failures };

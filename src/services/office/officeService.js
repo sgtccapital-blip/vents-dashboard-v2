@@ -896,6 +896,48 @@ export function createOfficeService({ readDB, writeDB, broadcast = () => {}, get
         running.clear();
     }
 
+    /**
+     * Al arrancar el servidor: una corrida interna que figura «en curso» se cortó con el reinicio
+     * (el modelo respondía a un proceso que ya no existe). Vuelve a la cola y arranca de nuevo;
+     * a la tercera interrupción se marca como fallida para no entrar en un ciclo.
+     */
+    function recoverInterrupted({ restart = true } = {}) {
+        const db = readDB();
+        const internal = new Set((db.agents || []).map(a => a.id));
+        const stuck = (db.agentTasks || []).filter(t => normalizeStatus(t.status) === 'in_progress' && t.kind !== 'mission' && internal.has(t.assignedAgentId) && !running.has(t.id));
+        const toRun = [];
+        for (const t of stuck) {
+            t.interruptions = (t.interruptions || 0) + 1;
+            releaseAgent(db, t.assignedAgentId, t.id);
+            if (t.interruptions >= 3) {
+                t.status = 'failed';
+                t.error = 'Se interrumpió 3 veces por reinicios del servidor';
+                t.currentStep = `Falló: ${t.error}. Reinténtala cuando el servidor esté estable.`;
+            } else {
+                t.status = 'queued';
+                t.progress = 0;
+                t.currentStep = restart ? 'Se cortó por un reinicio del servidor: vuelve a empezar' : 'Se cortó por un reinicio del servidor: en cola';
+                toRun.push(t.id);
+            }
+            history(t, t.currentStep);
+            if (t.missionId) noteMissionStep(db, t);
+        }
+        // Agentes que quedaron «trabajando» en algo que ya no corre.
+        for (const a of db.agents || []) {
+            if (a.status !== 'executing') continue;
+            const t = (db.agentTasks || []).find(x => x.id === a.activeTaskId);
+            if (!t || normalizeStatus(t.status) !== 'in_progress' || stuck.includes(t)) releaseAgent(db, a.id, a.activeTaskId);
+        }
+        if (stuck.length) feed(db, `♻️ ${stuck.length} tarea(s) se cortaron por un reinicio del servidor${toRun.length ? ' y vuelven a empezar' : ''}`, '#f59e0b', 'AI Office');
+        writeDB(db);
+        if (restart) {
+            for (const id of toRun) {
+                try { startInternalRun(id); } catch (e) { progress(id, `No arrancó tras el reinicio: ${e.message}`); }
+            }
+        }
+        return stuck.map(t => ({ id: t.id, status: t.status }));
+    }
+
     // ─── Lado del agente externo (MCP) ───
     const isMine = (task, ctx) => task.assignedAgentId === `ext-${ctx.tokenId}` || (task.assignedKind === 'external' && task.assignedAgent === ctx.agent);
     const isOpen = task => !task.assignedAgentId || task.assignedAgentId === 'open';
@@ -1152,7 +1194,7 @@ export function createOfficeService({ readDB, writeDB, broadcast = () => {}, get
     }
 
     return {
-        externalAgents, allAgents, computeStats, startInternalRun, review, reassign, haltAll,
+        externalAgents, allAgents, computeStats, startInternalRun, review, reassign, haltAll, recoverInterrupted,
         tasksForAgent, claim, reportProgress, submitResult, isRunning: id => running.has(id),
         attachFiles, getFile, removeFile, createFollowUp,
         taskForAgent, readFileAsAgent, attachAsAgent, handoffAsAgent,

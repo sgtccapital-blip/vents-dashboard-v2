@@ -108,7 +108,7 @@ export default function OfficeTaskContext({ task, models }) {
                         {ctx.searchMode && <span className="tc-chip" title="hybrid = significado + palabras; keyword = solo palabras">Búsqueda: {ctx.searchMode === 'hybrid' ? 'por significado' : 'por palabras'}</span>}
                     </div>
 
-                    <div className="tc-sub">Memoria (RAG) · {(ctx.knowledge || []).length} documento(s)</div>
+                    <div className="tc-sub">Memoria (RAG) · {(ctx.knowledge || []).length} documento(s){ctx.knowledgeDropped > 0 && <span className="tc-dim"> · descartó {ctx.knowledgeDropped} poco relacionado(s)</span>}</div>
                     {(ctx.knowledge || []).length === 0 && <p className="tc-dim">No encontró nada relacionado en la memoria.</p>}
                     {(ctx.knowledge || []).map((k, i) => (
                         <button key={`${k.docId}-${i}`} type="button" className={`tc-doc ${open === i ? 'open' : ''}`} onClick={() => setOpen(open === i ? null : i)}>
@@ -116,7 +116,7 @@ export default function OfficeTaskContext({ task, models }) {
                                 <span className="tc-doc-title">{k.title}</span>
                                 {k.source && <span className="tc-dim">{SOURCE[k.source] || k.source}</span>}
                                 <Bar value={k.relevance} color="#60a5fa" />
-                                <span className="tc-num">{k.relevance}%</span>
+                                <span className="tc-num" title="Qué parte de la tarea aparece en este documento">{k.relevance}%</span>
                                 <ChevronDown size={12} className="tc-chev" />
                             </span>
                             {open === i && <span className="tc-snippet">{k.snippet}</span>}
