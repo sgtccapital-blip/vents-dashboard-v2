@@ -8,6 +8,7 @@ export const TASK_STATUS = {
     done: { label: 'Hecha', color: '#10b981' },
     failed: { label: 'Falló', color: '#ef4444' },
     cancelled: { label: 'Descartada', color: '#64748b' },
+    blocked: { label: 'Espera paso anterior', color: '#818cf8' },
 };
 
 export const AGENT_STATUS = {

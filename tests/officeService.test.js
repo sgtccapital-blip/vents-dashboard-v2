@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { createOfficeService } from '../src/services/office/officeService.js';
 import { createArtifactStore, extractFileBlocks } from '../src/services/office/artifacts.js';
+import { createAgentTools, parseToolCalls } from '../src/services/office/agentTools.js';
 
 function setup({ run, artifacts = null, onApproved = null }) {
     let db = {
@@ -346,4 +347,238 @@ test('modelRunner: si responde un modelo hermano del mismo proveedor, queda marc
     } finally {
         process.env.GEMINI_API_KEY = saved ?? '';
     }
+});
+
+// ─── Fase 2: herramientas, preguntas, traspasos, misiones, presupuesto y calidad por modelo ───
+function setup2({ replies, agents, tasks, extra = {} }) {
+    let db = {
+        agents: agents || [
+            { id: 'agent-echo', name: 'Echo (Social)', role: 'Social', model: 'gemini-3.8-flash', status: 'available', fallbackModels: [] },
+            { id: 'agent-pulse', name: 'Pulse', role: 'WhatsApp', model: 'gemini-3.8-flash', status: 'available', fallbackModels: [] },
+            { id: 'agent-bart', name: 'BART (COO)', role: 'COO', model: 'gemini-3.8-flash', status: 'available', fallbackModels: [] },
+        ],
+        agentTasks: tasks || [{ id: 't1', task: 'Hooks para reel', assignedAgentId: 'agent-echo', assignedAgent: 'Echo (Social)', assignedKind: 'internal', status: 'queued' }],
+        activityFeed: [],
+        ...extra,
+    };
+    const prompts = [];
+    const searches = [];
+    const queue = [...replies];
+    const office = createOfficeService({
+        readDB: () => structuredClone(db),
+        writeDB: d => { db = structuredClone(d); },
+        getAgents: d => d.agents,
+        buildPrompt: async opts => ({ prompt: `PROMPT ${opts.task}\n${opts.description || ''}`, context: { knowledge: [], lessons: opts.lessons } }),
+        runModel: async ({ model, prompt }) => {
+            prompts.push(prompt);
+            const next = queue.length ? queue.shift() : 'Entrega final';
+            return { text: typeof next === 'function' ? next(prompt) : next, tokensIn: 10, tokensOut: 5, costUSD: 0.01, provider: 'google', model, ms: 5 };
+        },
+        tools: createAgentTools({
+            searchKnowledge: async q => { searches.push(q.query); return { results: [{ docId: 'd1', doc: { title: 'Precios 2026' }, text: 'Mesa VIP: $300' }] }; },
+            readDB: () => structuredClone(db),
+            agentsFor: () => db.agents,
+        }),
+    });
+    return { office, prompts, searches, db: () => db };
+}
+
+test('herramientas: el agente busca en la memoria, recibe el resultado y luego entrega', async () => {
+    process.env.GEMINI_API_KEY = 'test';
+    const { office, prompts, searches, db } = setup2({ replies: [
+        'Voy a buscar.\n<<<HERRAMIENTA buscar_memoria>>>\n{"consulta": "precio mesa VIP"}\n<<<FIN HERRAMIENTA>>>',
+        'La mesa VIP cuesta $300.',
+    ] });
+    office.startInternalRun('t1');
+    await until(() => db().agentTasks[0].status === 'review');
+    const t = db().agentTasks[0];
+    assert.equal(t.result, 'La mesa VIP cuesta $300.');
+    assert.deepEqual(searches, ['precio mesa VIP']);
+    assert.equal(prompts.length, 2);
+    assert.match(prompts[0], /HERRAMIENTAS \(opcionales\)/);
+    assert.match(prompts[1], /Mesa VIP: \$300/);
+    const run = t.runs[0];
+    assert.equal(run.steps.length, 1);
+    assert.equal(run.steps[0].tool, 'buscar_memoria');
+    assert.equal(run.tokensIn, 20, 'suma los tokens de todos los turnos');
+    assert.equal(run.costUSD, 0.02);
+});
+
+test('herramientas: sin herramientas activadas el agente entrega en un solo turno; el último turno no acepta herramientas', async () => {
+    process.env.GEMINI_API_KEY = 'test';
+    const off = setup2({ replies: ['Directo'] , agents: [{ id: 'agent-echo', name: 'Echo', model: 'gemini-3.8-flash', toolsEnabled: false, fallbackModels: [] }] });
+    off.office.startInternalRun('t1');
+    await until(() => off.db().agentTasks[0].status === 'review');
+    assert.doesNotMatch(off.prompts[0], /HERRAMIENTAS/);
+
+    const loop = '<<<HERRAMIENTA buscar_memoria>>>\n{"consulta": "x"}\n<<<FIN HERRAMIENTA>>>';
+    const busy = setup2({ replies: Array(10).fill(loop) });
+    busy.office.startInternalRun('t1');
+    await until(() => busy.db().agentTasks[0].status !== 'in_progress' && busy.db().agentTasks[0].status !== 'queued');
+    assert.equal(busy.prompts.length, 6, 'máximo 6 turnos');
+    assert.match(busy.prompts[5], /YA NO PUEDES USAR HERRAMIENTAS/);
+});
+
+test('preguntar_al_ceo: la tarea se pausa con la pregunta y tu respuesta no se guarda como lección', async () => {
+    process.env.GEMINI_API_KEY = 'test';
+    const { office, prompts, db } = setup2({ replies: [
+        '<<<HERRAMIENTA preguntar_al_ceo>>>\n{"pregunta": "¿Para qué fecha es?"}\n<<<FIN HERRAMIENTA>>>',
+        'Listo para el sábado 30.',
+    ] });
+    office.startInternalRun('t1');
+    await until(() => db().agentTasks[0].status === 'review');
+    assert.equal(db().agentTasks[0].question.text, '¿Para qué fecha es?');
+    assert.match(db().agentTasks[0].currentStep, /pregunta/);
+
+    office.review('t1', { decision: 'changes', notes: 'Sábado 30' });
+    await until(() => db().agentTasks[0].status === 'review' && !db().agentTasks[0].question);
+    assert.equal(db().agentTasks[0].result, 'Listo para el sábado 30.');
+    assert.match(prompts[1], /Respuesta del CEO a tu pregunta «¿Para qué fecha es\?»: Sábado 30/);
+    assert.equal((db().agentLessons || []).length, 0);
+    assert.equal(db().agentTasks[0].feedback[0].answer, true);
+});
+
+test('pasar_tarea: el traspaso propuesto se crea al aprobar, con los archivos de la entrega', async () => {
+    process.env.GEMINI_API_KEY = 'test';
+    const { office, db } = setup2({ replies: [
+        '<<<HERRAMIENTA pasar_tarea>>>\n{"agente": "agent-pulse", "tarea": "Mandar el copy por WhatsApp"}\n<<<FIN HERRAMIENTA>>>',
+        'Copy listo: Hola VIP',
+    ] });
+    office.startInternalRun('t1');
+    await until(() => db().agentTasks.find(t => t.id === 't1').status === 'review');
+    const t1 = db().agentTasks.find(t => t.id === 't1');
+    assert.equal(t1.proposedHandoffs.length, 1);
+    assert.equal(t1.proposedHandoffs[0].agentId, 'agent-pulse');
+
+    office.review('t1', { decision: 'approve' });
+    const child = db().agentTasks.find(t => t.parentTaskId === 't1');
+    assert.ok(child, 'se creó la tarea para Pulse');
+    assert.equal(child.assignedAgentId, 'agent-pulse');
+    assert.equal(db().agentTasks.find(t => t.id === 't1').proposedHandoffs[0].createdTaskId, child.id);
+});
+
+test('misiones: cada paso arranca al aprobar el anterior, recibe su entrega y la misión se cierra al final', async () => {
+    process.env.GEMINI_API_KEY = 'test';
+    const { office, prompts, db } = setup2({ tasks: [], replies: ['Cotización: $500', 'Propuesta final con $500'] });
+    const { mission, steps } = office.createMission({
+        mission: 'Propuesta para Hotel Central', steps: [
+            { agentId: 'agent-pulse', task: 'Cotizar', why: 'conoce precios' },
+            { agentId: 'agent-echo', task: 'Redactar la propuesta' },
+        ],
+    });
+    assert.equal(steps[1].status, 'blocked');
+    assert.throws(() => office.startInternalRun(steps[1].id), /espera que termine el anterior/);
+    assert.throws(() => office.startInternalRun(mission.id), /avanza sola/);
+    await until(() => db().agentTasks.find(t => t.id === steps[0].id).status === 'review');
+    assert.match(db().agentTasks.find(t => t.id === mission.id).currentStep, /Paso 1 de 2: Pulse — entregó/);
+    assert.equal(db().agentTasks.find(t => t.id === steps[1].id).status, 'blocked', 'sin autoAdvance espera tu aprobación');
+
+    office.review(steps[0].id, { decision: 'approve' });
+    await until(() => db().agentTasks.find(t => t.id === steps[1].id).status === 'review');
+    assert.match(prompts[1], /ENTREGA DEL PASO 1 \(Pulse\):\nCotización: \$500/);
+
+    office.review(steps[1].id, { decision: 'approve' });
+    const parent = db().agentTasks.find(t => t.id === mission.id);
+    assert.equal(parent.status, 'done');
+    assert.match(parent.result, /Paso 2: Redactar la propuesta/);
+});
+
+test('misiones: descartar un paso detiene la misión; con autoAdvance el siguiente arranca al entregar', async () => {
+    process.env.GEMINI_API_KEY = 'test';
+    const a = setup2({ tasks: [], replies: ['uno', 'dos', 'tres'] });
+    const m = a.office.createMission({ mission: 'M', steps: [{ agentId: 'agent-pulse', task: 'A' }, { agentId: 'agent-echo', task: 'B' }, { agentId: 'agent-pulse', task: 'C' }] });
+    await until(() => a.db().agentTasks.find(t => t.id === m.steps[0].id).status === 'review');
+    a.office.review(m.steps[0].id, { decision: 'reject', notes: 'No va' });
+    assert.equal(a.db().agentTasks.find(t => t.id === m.mission.id).status, 'failed');
+    assert.equal(a.db().agentTasks.find(t => t.id === m.steps[2].id).status, 'cancelled');
+
+    const b = setup2({ tasks: [], replies: ['uno', 'dos'] });
+    const m2 = b.office.createMission({ mission: 'M', autoAdvance: true, steps: [{ agentId: 'agent-pulse', task: 'A' }, { agentId: 'agent-echo', task: 'B' }] });
+    await until(() => b.db().agentTasks.find(t => t.id === m2.steps[1].id).status === 'review');
+    assert.equal(b.db().agentTasks.find(t => t.id === m2.steps[0].id).status, 'review', 'el paso 1 sigue esperando tu revisión');
+});
+
+test('presupuesto: al llegar al tope la tarea pide aprobación; aprobada, corre', async () => {
+    process.env.GEMINI_API_KEY = 'test';
+    const month = new Date().toISOString().slice(0, 7);
+    const { office, db } = setup2({
+        replies: ['ok'],
+        agents: [{ id: 'agent-echo', name: 'Echo', model: 'gemini-3.8-flash', monthlyBudgetUSD: 1, fallbackModels: [] }],
+        tasks: [
+            { id: 'old', task: 'vieja', assignedAgentId: 'agent-echo', status: 'done', runs: [{ at: `${month}-01T10:00:00Z`, agentId: 'agent-echo', model: 'gemini-3.8-flash', ok: true, costUSD: 1.2 }] },
+            { id: 't1', task: 'nueva', assignedAgentId: 'agent-echo', assignedAgent: 'Echo', assignedKind: 'internal', status: 'queued' },
+        ],
+    });
+    assert.deepEqual(office.budgetStatus('agent-echo'), { month, spent: 1.2, limit: 1, pct: 120 });
+    const r = office.startInternalRun('t1');
+    assert.equal(r.started, false);
+    const t = db().agentTasks.find(x => x.id === 't1');
+    assert.equal(t.status, 'waiting_approval');
+    assert.equal(db().approvalRequests[0].kind, 'budget');
+    office.startInternalRun('t1');
+    assert.equal(db().approvalRequests.length, 1, 'no duplica la solicitud');
+
+    const d = db();
+    d.agentTasks.find(x => x.id === 't1').budgetOverride = true;
+    d.agentTasks.find(x => x.id === 't1').status = 'queued';
+    assert.equal(office.startInternalRun('t1').started, true);
+});
+
+test('calidad por modelo: aprobadas, a la primera, cambios, fallos y costo por aprobada', () => {
+    const { office } = setup2({ replies: [] });
+    const run = (model, extra = {}) => ({ at: '2026-11-01T00:00:00Z', agentId: 'agent-echo', model, provider: 'google', ok: true, costUSD: 0.1, ms: 1000, ...extra });
+    const db = {
+        agents: [{ id: 'agent-echo', name: 'Echo', model: 'm1' }],
+        agentTasks: [
+            { id: 'a', assignedAgentId: 'agent-echo', status: 'done', runs: [run('m1')] },
+            { id: 'b', assignedAgentId: 'agent-echo', status: 'done', feedback: [{ notes: 'cambia' }], runs: [run('m1'), run('m1')] },
+            { id: 'c', assignedAgentId: 'agent-echo', status: 'cancelled', runs: [run('m1')] },
+            { id: 'd', assignedAgentId: 'agent-echo', status: 'failed', runs: [run('m2', { ok: false, costUSD: null })] },
+            { id: 'e', assignedAgentId: 'agent-echo', status: 'done', feedback: [{ notes: 'x', answer: true }], runs: [run('m2', { steps: [{ tool: 'buscar_memoria' }] })] },
+        ],
+    };
+    const by = Object.fromEntries(office.computeStats(db, office.allAgents(db)).byModel.map(m => [m.model, m]));
+    assert.equal(by.m1.delivered, 3);
+    assert.equal(by.m1.approved, 2);
+    assert.equal(by.m1.approvalRate, 67);
+    assert.equal(by.m1.firstTryRate, 50);
+    assert.equal(by.m1.changes, 1);
+    assert.equal(by.m1.costPerApproved, 0.2);
+    assert.equal(by.m2.failRate, 50);
+    assert.equal(by.m2.firstTryRate, 100, 'responder una pregunta no cuenta como cambio');
+    assert.equal(by.m2.toolRuns, 1);
+});
+
+test('parseToolCalls: lee varios bloques y marca el JSON roto', () => {
+    const calls = parseToolCalls('a\n<<<HERRAMIENTA leer_marca>>>\n{"cuenta":"Ignite"}\n<<<FIN HERRAMIENTA>>>\n<<<HERRAMIENTA buscar_memoria>>>\n{roto\n<<<FIN HERRAMIENTA>>>');
+    assert.equal(calls.length, 2);
+    assert.deepEqual(calls[0], { name: 'leer_marca', input: { cuenta: 'Ignite' } });
+    assert.match(calls[1].input._error, /No es JSON/);
+});
+
+test('router: propone pasos solo si son 2 o más agentes distintos', async () => {
+    const { parseRouterReply } = await import('../src/services/office/router.js');
+    const agents = [{ id: 'a' }, { id: 'b' }];
+    const ok = parseRouterReply('{"agentId":"a","confidence":0.7,"reason":"r","steps":[{"agentId":"a","task":"uno"},{"agentId":"b","task":"dos","why":"w"}]}', agents);
+    assert.deepEqual(ok.steps.map(s => s.agentId), ['a', 'b']);
+    assert.equal(parseRouterReply('{"agentId":"a","steps":[{"agentId":"a","task":"uno"},{"agentId":"a","task":"dos"}]}', agents).steps.length, 0);
+    assert.equal(parseRouterReply('{"agentId":"a","steps":[{"agentId":"zz","task":"uno"},{"agentId":"b","task":"dos"}]}', agents).steps.length, 0);
+    assert.equal(parseRouterReply('{"agentId":"a"}', agents).steps.length, 0);
+});
+
+test('misiones: un traspaso al agente del paso siguiente no se duplica', async () => {
+    process.env.GEMINI_API_KEY = 'test';
+    const { office, prompts, db } = setup2({ tasks: [], replies: [
+        '<<<HERRAMIENTA pasar_tarea>>>\n{"agente": "agent-echo", "tarea": "Redactar"}\n<<<FIN HERRAMIENTA>>>',
+        'Costos listos',
+        'Propuesta',
+    ] });
+    const { steps } = office.createMission({ mission: 'M', steps: [{ agentId: 'agent-pulse', task: 'Cotizar' }, { agentId: 'agent-echo', task: 'Redactar' }] });
+    await until(() => db().agentTasks.find(t => t.id === steps[0].id).status === 'review');
+    assert.match(prompts[0], /eres el paso 1 de 2/);
+    assert.doesNotMatch(prompts[0].split('AGENTES A LOS QUE PUEDES PASAR TRABAJO')[1] || '', /agent-echo/);
+    office.review(steps[0].id, { decision: 'approve' });
+    const echoTasks = db().agentTasks.filter(t => t.assignedAgentId === 'agent-echo');
+    assert.equal(echoTasks.length, 1, 'solo el paso 2 de la misión');
+    assert.match(db().agentTasks.find(t => t.id === steps[0].id).proposedHandoffs[0].skipped, /paso 2/);
 });

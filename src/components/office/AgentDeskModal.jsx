@@ -9,6 +9,18 @@ import ModelPicker from './ModelPicker';
 import AgentLessons from './AgentLessons';
 import './AiOffice.css';
 
+function BudgetMeter({ spent, budget }) {
+    const limit = Number(budget) > 0 ? Number(budget) : null;
+    const pct = limit ? Math.min(100, Math.round((spent / limit) * 100)) : null;
+    const color = pct >= 100 ? '#ef4444' : pct >= 80 ? '#f5b638' : '#10b981';
+    return (
+        <div className="bg-meter">
+            <div className="bg-track"><div style={{ width: `${pct ?? 0}%`, background: color }} /></div>
+            <span>Este mes: ${spent.toFixed(spent < 1 ? 4 : 2)}{limit ? ` de $${limit.toFixed(2)} (${pct}%)` : ' · sin tope'}</span>
+        </div>
+    );
+}
+
 export default function AgentDeskModal({
     agent,
     onClose,
@@ -34,6 +46,8 @@ export default function AgentDeskModal({
     ]);
     const [isThinking, setIsThinking] = useState(false);
     const [autonomyLevel, setAutonomyLevel] = useState(agent.autonomyLevel || 2);
+    const [budget, setBudget] = useState(agent.monthlyBudgetUSD ? String(agent.monthlyBudgetUSD) : '');
+    const [toolsOn, setToolsOn] = useState(agent.toolsEnabled !== false);
     const [selectedModel, setSelectedModel] = useState(agent?.model || models?.defaultModel || '');
     const [fallbackCustom, setFallbackCustom] = useState(Array.isArray(agent?.fallbackModels));
     const [fallbacks, setFallbacks] = useState(Array.isArray(agent?.fallbackModels) ? agent.fallbackModels : (models?.defaultFallbacks || []));
@@ -137,6 +151,10 @@ export default function AgentDeskModal({
             const savedFallbacks = Array.isArray(agent.fallbackModels) ? agent.fallbackModels : null;
             const nextFallbacks = fallbackCustom ? fallbacks.filter(Boolean) : null;
             if (JSON.stringify(savedFallbacks) !== JSON.stringify(nextFallbacks)) config.fallbackModels = nextFallbacks;
+            const nextBudget = budget.trim() === '' ? null : Number(budget);
+            if (nextBudget !== null && !(nextBudget >= 0)) throw new Error('El presupuesto debe ser un número en USD');
+            if ((nextBudget || null) !== (agent.monthlyBudgetUSD || null)) config.monthlyBudgetUSD = nextBudget;
+            if (toolsOn !== (agent.toolsEnabled !== false)) config.toolsEnabled = toolsOn;
             if (onSaveConfig && Object.keys(config).length) await onSaveConfig(agent.id, config);
             if (onUpdateStatus) onUpdateStatus(agent.id, { autonomyLevel });
             setSaveSuccess(true);
@@ -803,6 +821,27 @@ export default function AgentDeskModal({
                                     <button type="button" className="fb-add" onClick={() => setFallbacks(list => [...list, models?.defaultFallbacks?.find(m => !list.includes(m)) || models?.defaultModel || ''])}>+ Agregar respaldo</button>
                                 )}
                             </div>
+
+                            <div className="bg-box">
+                                <div className="fb-head">
+                                    <label>Presupuesto mensual</label>
+                                    <span>Al 80% te avisa; al llegar al tope, sus tareas piden tu aprobación en Gobernanza antes de correr.</span>
+                                </div>
+                                <div className="bg-row">
+                                    <span className="bg-cur">$</span>
+                                    <input className="occ-input" type="number" min="0" step="1" placeholder="Sin tope" value={budget} onChange={e => setBudget(e.target.value)} />
+                                    <span className="bg-of">USD al mes</span>
+                                </div>
+                                <BudgetMeter spent={stats?.monthCostUSD ?? 0} budget={budget} />
+                            </div>
+
+                            <label className="tl-row">
+                                <input type="checkbox" checked={toolsOn} onChange={e => setToolsOn(e.target.checked)} />
+                                <span>
+                                    <b>Puede usar herramientas</b>
+                                    <small>Buscar en la memoria, leer archivos y líneas de marca, consultar eventos y proyectos, proponer traspasos y preguntarte. Trabaja en varios pasos (hasta 6).</small>
+                                </span>
+                            </label>
 
                             <div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>

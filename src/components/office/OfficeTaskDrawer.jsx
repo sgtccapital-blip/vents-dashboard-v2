@@ -4,6 +4,7 @@ import { X, Check, PencilLine, Trash2, Play, RotateCcw, ArrowRightLeft, Copy, Br
 import { TASK_STATUS, statusMeta, modelLabel, fmtUSD, fmtTokens, fmtMs, postJson } from './officeUi';
 import OfficeTaskFiles from './OfficeTaskFiles';
 import OfficeTaskContext from './OfficeTaskContext';
+import OfficeMission from './OfficeMission';
 
 const fmtTime = iso => (iso ? new Date(iso).toLocaleString('es', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '');
 
@@ -55,6 +56,8 @@ export default function OfficeTaskDrawer({ taskId, agents = [], models, onClose,
                             <span className="occ-chip">{task.assignedAgent || 'Sin asignar'}</span>
                             {task.model && <span className="occ-chip">{modelLabel(models, task.model)}</span>}
                             {task.companyName && <span className="occ-chip">{task.companyName}</span>}
+                            {task.missionStep && <span className="occ-chip" style={{ color: '#a5b4fc' }}>Paso {task.missionStep} de {task.missionTotal}</span>}
+                            {task.kind === 'mission' && <span className="occ-chip" style={{ color: '#a5b4fc' }}>Misión en pasos</span>}
                             {task.account && <span className="occ-chip" style={{ color: '#f0abfc' }} title="El agente recibe el ADN y la línea de marca de esta cuenta">🎨 {task.account.name}</span>}
                             {(task.knowledgeDocIds || []).length > 0 && (
                                 <span className="occ-chip" style={{ color: '#6ee7b7' }} title="El entregable aprobado quedó en la memoria: otros agentes lo encuentran al buscar">
@@ -80,6 +83,16 @@ export default function OfficeTaskDrawer({ taskId, agents = [], models, onClose,
                         </div>
                     )}
 
+                    {task.kind === 'mission' && <OfficeMission task={task} onOpenTask={onOpenTask} />}
+
+                    {task.question && task.status === 'review' && (
+                        <div className="tq">
+                            <div className="tq-head">❓ {task.assignedAgent} te pregunta</div>
+                            <p>{task.question.text}</p>
+                            <span>Responde abajo con «Responder»: el agente sigue con tu respuesta.</span>
+                        </div>
+                    )}
+
                     {task.result ? (
                         <div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -94,9 +107,23 @@ export default function OfficeTaskDrawer({ taskId, agents = [], models, onClose,
                         <div className="occ-notice" style={{ color: '#fca5a5', borderColor: 'rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)' }}>{task.error}</div>
                     ) : null}
 
-                    <OfficeTaskFiles key={task.id} task={task} agents={agents} models={models} onChanged={refresh} onOpenTask={onOpenTask} />
+                    {task.kind !== 'mission' && <OfficeTaskFiles key={task.id} task={task} agents={agents} models={models} onChanged={refresh} onOpenTask={onOpenTask} />}
 
-                    {(task.children || []).length > 0 && (
+                    {(task.proposedHandoffs || []).length > 0 && (
+                        <div>
+                            <div className="occ-label">{task.status === 'done' ? 'Pasó el trabajo a' : 'Al aprobar, pasa el trabajo a'}</div>
+                            {task.proposedHandoffs.map((h, i) => (
+                                <div key={i} className="th">
+                                    <b>{h.agentName}</b>: {h.task}
+                                    {h.createdTaskId && <button className="occ-link" onClick={() => onOpenTask?.(h.createdTaskId)}>abrir tarea</button>}
+                                    {h.error && <span style={{ color: '#fca5a5' }}> · {h.error}</span>}
+                                    {h.skipped && <span className="occ-muted"> · no se creó: {h.skipped.toLowerCase()}</span>}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {task.kind !== 'mission' && (task.children || []).length > 0 && (
                         <div>
                             <div className="occ-label">Tareas de seguimiento</div>
                             {task.children.map(c => (
@@ -164,13 +191,13 @@ export default function OfficeTaskDrawer({ taskId, agents = [], models, onClose,
 
                     {task.status === 'review' && (
                         <>
-                            <textarea className="occ-textarea" placeholder="Si algo no está bien, escribe qué cambiar y el agente lo rehace…" value={notes} onChange={e => setNotes(e.target.value)} />
+                            <textarea className="occ-textarea" placeholder={task.question ? 'Tu respuesta a la pregunta del agente…' : 'Si algo no está bien, escribe qué cambiar y el agente lo rehace…'} value={notes} onChange={e => setNotes(e.target.value)} />
                             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                                 <button className="occ-btn success" disabled={!!busy} onClick={() => act('approve', `/api/office/task/${task.id}/review`, { decision: 'approve', notes })}>
                                     <Check size={13} /> Aprobar y cerrar
                                 </button>
                                 <button className="occ-btn warn" disabled={!!busy || !notes.trim()} onClick={() => act('changes', `/api/office/task/${task.id}/review`, { decision: 'changes', notes })}>
-                                    <PencilLine size={13} /> Pedir cambios
+                                    <PencilLine size={13} /> {task.question ? 'Responder' : 'Pedir cambios'}
                                 </button>
                                 <button className="occ-btn danger" disabled={!!busy} onClick={() => act('reject', `/api/office/task/${task.id}/review`, { decision: 'reject', notes })}>
                                     <Trash2 size={13} /> Descartar
@@ -179,7 +206,7 @@ export default function OfficeTaskDrawer({ taskId, agents = [], models, onClose,
                         </>
                     )}
 
-                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                    {task.kind !== 'mission' && <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
                         {internal && ['queued', 'failed'].includes(task.status) && !task.running && (
                             <button className="occ-btn primary" disabled={!!busy} onClick={() => act('run', `/api/office/task/${task.id}/run`)}>
                                 {task.status === 'failed' ? <RotateCcw size={13} /> : <Play size={13} />} {task.status === 'failed' ? 'Reintentar' : 'Ejecutar ahora'}
@@ -206,7 +233,7 @@ export default function OfficeTaskDrawer({ taskId, agents = [], models, onClose,
                                 <Trash2 size={13} />
                             </button>
                         )}
-                    </div>
+                    </div>}
                 </div>
             </aside>
         </div>

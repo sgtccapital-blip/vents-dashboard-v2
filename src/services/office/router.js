@@ -62,9 +62,23 @@ REGLAS:
 - Si dos agentes encajan igual, prefiere el que tenga menos tareas abiertas.
 - "account" es el id de la cuenta o marca de la que trata la misión, o null si no trata de ninguna en particular.
 - "confidence" va de 0 a 1: qué tan claro es que ese agente es el correcto.
+- "steps": SOLO si la misión necesita que 2 a 5 agentes DISTINTOS trabajen en secuencia, donde cada uno usa lo que entregó el anterior (ej.: cotizar → analizar → redactar la propuesta). Cada paso dice qué entrega ese agente. Si un solo agente puede hacerla, deja "steps" vacío. No dividas por dividir.
 
 Responde SOLO con JSON válido, sin texto adicional:
-{"agentId": "...", "confidence": 0.0, "reason": "una frase corta en español", "alternatives": [{"agentId": "...", "reason": "..."}], "account": null}`;
+{"agentId": "...", "confidence": 0.0, "reason": "una frase corta en español", "alternatives": [{"agentId": "...", "reason": "..."}], "account": null, "steps": [{"agentId": "...", "task": "qué entrega este paso", "why": "por qué este agente"}]}`;
+}
+
+// Los modelos baratos a veces dejan comas finales, comentarios o comillas tipográficas en el JSON.
+function looseJson(text) {
+    try {
+        return JSON.parse(text);
+    } catch (err) {
+        const fixed = text
+            .replace(/[“”]/g, '"')
+            .replace(/^\s*\/\/.*$/gm, '')
+            .replace(/,\s*([}\]])/g, '$1');
+        try { return JSON.parse(fixed); } catch { throw err; }
+    }
 }
 
 export function parseRouterReply(text, agents, accounts = []) {
@@ -72,7 +86,7 @@ export function parseRouterReply(text, agents, accounts = []) {
     const start = raw.indexOf('{');
     const end = raw.lastIndexOf('}');
     if (start < 0 || end <= start) throw new Error('El router no devolvió JSON');
-    const data = JSON.parse(raw.slice(start, end + 1));
+    const data = looseJson(raw.slice(start, end + 1));
     const ids = new Set(agents.map(a => a.id));
     if (!ids.has(data.agentId)) throw new Error(`El router eligió un agente que no existe: ${data.agentId}`);
     const confidence = Math.max(0, Math.min(1, Number(data.confidence) || 0));
@@ -86,7 +100,17 @@ export function parseRouterReply(text, agents, accounts = []) {
             .slice(0, 2)
             .map(x => ({ agentId: x.agentId, reason: clip(x.reason, 160) })),
         account: accountIds.has(data.account) ? data.account : null,
+        steps: parseSteps(data.steps, ids),
     };
+}
+
+/** Pasos válidos: 2 a 5, agentes que existen, al menos 2 agentes distintos. Si no, ninguno. */
+function parseSteps(raw, ids) {
+    const steps = (Array.isArray(raw) ? raw : [])
+        .filter(x => ids.has(x?.agentId) && String(x?.task || '').trim())
+        .slice(0, 5)
+        .map(x => ({ agentId: x.agentId, task: clip(x.task, 400), why: clip(x.why, 200) }));
+    return steps.length >= 2 && new Set(steps.map(x => x.agentId)).size >= 2 ? steps : [];
 }
 
 /**

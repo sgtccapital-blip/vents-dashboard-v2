@@ -2,6 +2,13 @@ import React from 'react';
 import { BarChart2, Cpu } from 'lucide-react';
 import { PROVIDER_COLOR, AGENT_STATUS, statusMeta, modelLabel, fmtUSD, fmtTokens, fmtMs } from './officeUi';
 
+// Porcentaje con color: verde ≥ 80, ámbar ≥ 50, rojo debajo.
+function Rate({ value }) {
+    if (value == null) return <span className="occ-muted">—</span>;
+    const color = value >= 80 ? '#6ee7b7' : value >= 50 ? '#fcd34d' : '#fca5a5';
+    return <b style={{ color, fontWeight: 600 }}>{value}%</b>;
+}
+
 // Métricas calculadas desde las corridas reales de cada tarea (nada inventado).
 export default function OfficeMetricsView({ agents = [], metrics, models, onOpenAgent }) {
     const totals = metrics?.totals || {};
@@ -65,7 +72,7 @@ export default function OfficeMetricsView({ agents = [], metrics, models, onOpen
 
             <section className="occ-section">
                 <div className="occ-section-head">
-                    <h2 className="occ-section-title"><Cpu size={16} /> Por modelo</h2>
+                    <h2 className="occ-section-title"><Cpu size={16} /> Rendimiento por modelo</h2>
                     {disabled.length > 0 && (
                         <span className="occ-muted">Sin llave: {disabled.map(p => `${p.label} (${p.env})`).join(', ')}</span>
                     )}
@@ -73,21 +80,37 @@ export default function OfficeMetricsView({ agents = [], metrics, models, onOpen
                 {(metrics?.byModel || []).length === 0 ? (
                     <div className="occ-muted">Todavía no hay corridas. Asigna una tarea a un agente para empezar a medir.</div>
                 ) : (
-                    <table className="occ-table">
-                        <thead><tr><th>Modelo</th><th>Proveedor</th><th>Corridas</th><th>Tokens entrada</th><th>Tokens salida</th><th>Costo</th></tr></thead>
-                        <tbody>
-                            {metrics.byModel.map(m => (
-                                <tr key={m.model}>
-                                    <td>{modelLabel(models, m.model)}</td>
-                                    <td style={{ color: PROVIDER_COLOR[m.provider] }}>{m.provider}</td>
-                                    <td>{m.runs}</td>
-                                    <td>{fmtTokens(m.tokensIn)}</td>
-                                    <td>{fmtTokens(m.tokensOut)}</td>
-                                    <td>{m.provider === 'externo' ? '—' : fmtUSD(m.costUSD)}</td>
+                    <>
+                        <p className="occ-muted" style={{ margin: '0 0 10px' }}>
+                            Cada tarea cuenta para el modelo que hizo su última entrega. «A la primera» = aprobadas sin pedir cambios. El costo por aprobada incluye las corridas de cambios.
+                        </p>
+                        <table className="occ-table mq-table">
+                            <thead>
+                                <tr>
+                                    <th>Modelo</th><th>Entregas</th><th>Aprobadas</th><th>A la primera</th><th>Cambios pedidos</th>
+                                    <th>Fallos</th><th>Tiempo medio</th><th>Costo</th><th>Costo por aprobada</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {metrics.byModel.map(m => (
+                                    <tr key={m.model}>
+                                        <td>
+                                            <span style={{ color: PROVIDER_COLOR[m.provider] }}>●</span> {modelLabel(models, m.model)}
+                                            {m.toolRuns > 0 && <span className="mq-tag" title="Corridas en las que usó herramientas">🔧 {m.toolRuns}</span>}
+                                        </td>
+                                        <td>{m.delivered ?? '—'}</td>
+                                        <td><Rate value={m.approvalRate} /> <span className="occ-muted">{m.approved}/{(m.approved || 0) + (m.rejected || 0)}</span></td>
+                                        <td><Rate value={m.firstTryRate} /></td>
+                                        <td>{m.changes ?? 0}</td>
+                                        <td style={{ color: m.failRate > 20 ? '#fca5a5' : undefined }}>{m.failRate == null ? '—' : `${m.failRate}%`}</td>
+                                        <td>{fmtMs(m.avgMs)}</td>
+                                        <td>{m.provider === 'externo' ? '—' : fmtUSD(m.costUSD)}</td>
+                                        <td>{m.provider === 'externo' ? '—' : fmtUSD(m.costPerApproved)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </>
                 )}
             </section>
         </div>

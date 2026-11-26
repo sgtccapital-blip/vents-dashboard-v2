@@ -4,7 +4,7 @@ import { TASK_STATUS, AGENT_STATUS, PROVIDER_COLOR, statusMeta, modelLabel, time
 
 const COLUMNS = [
     { id: 'waiting_approval', hint: 'Necesitan tu OK antes de arrancar' },
-    { id: 'queued', hint: 'Esperando a que un agente las tome' },
+    { id: 'queued', hint: 'Esperando a que un agente las tome (o a que termine el paso anterior de su misión)' },
     { id: 'in_progress', hint: 'Un agente está trabajando' },
     { id: 'review', hint: 'Entregadas: apruébalas o pide cambios' },
     { id: 'closed', label: 'Cerradas', color: '#10b981', hint: 'Hechas, fallidas o descartadas' },
@@ -65,7 +65,7 @@ function AgentCard({ agent, stats, models, onOpen }) {
 function TaskCard({ task, agent, models, onOpen, onRun }) {
     const st = statusMeta(TASK_STATUS, task.status);
     const internal = task.assignedKind !== 'external';
-    const canRun = internal && (task.status === 'queued' || task.status === 'failed') && !task.running;
+    const canRun = internal && task.kind !== 'mission' && (task.status === 'queued' || task.status === 'failed') && !task.running;
     return (
         <div role="button" tabIndex={0} className="occ-task" onClick={() => onOpen(task)} onKeyDown={e => e.key === 'Enter' && onOpen(task)}>
             <div className="occ-task-title">{task.task || task.title}</div>
@@ -111,7 +111,7 @@ export default function OfficeControlCenter({ agents = [], activeTasks = [], com
     const columns = COLUMNS.map(c => ({
         ...c,
         ...(c.id === 'closed' ? {} : statusMeta(TASK_STATUS, c.id)),
-        tasks: c.id === 'closed' ? completedTasks.slice(0, 15) : activeTasks.filter(t => t.status === c.id),
+        tasks: c.id === 'closed' ? completedTasks.slice(0, 15) : activeTasks.filter(t => t.status === c.id || (c.id === 'queued' && t.status === 'blocked')),
     }));
 
     return (

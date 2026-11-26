@@ -1,7 +1,7 @@
 // Panel de una tarea: por qué BART eligió a ese agente y qué contexto recibió el agente
 // (memoria RAG, línea de marca, lecciones, SOP, archivos). Sirve para entender un buen o mal resultado.
 import React, { useState } from 'react';
-import { Compass, Brain, Palette, GraduationCap, FileText, Paperclip, ChevronDown } from 'lucide-react';
+import { Compass, Brain, Palette, GraduationCap, FileText, Paperclip, ChevronDown, Wrench } from 'lucide-react';
 import { modelLabel } from './officeUi';
 
 const BY = {
@@ -47,12 +47,37 @@ function Routing({ routing, models }) {
     );
 }
 
+const TOOL_LABEL = {
+    buscar_memoria: 'Buscó en la memoria', leer_archivo: 'Leyó un archivo', leer_marca: 'Leyó la línea de marca',
+    consultar_dashboard: 'Consultó el dashboard', pasar_tarea: 'Propuso un traspaso', preguntar_al_ceo: 'Te preguntó',
+};
+
+function Steps({ steps }) {
+    const [open, setOpen] = useState(null);
+    return (
+        <>
+            <div className="tc-sub"><Wrench size={10} /> Pasos del agente · {steps.length} herramienta(s)</div>
+            {steps.map((st, i) => (
+                <button key={i} type="button" className={`tc-doc ${open === i ? 'open' : ''}`} onClick={() => setOpen(open === i ? null : i)}>
+                    <span className="tc-doc-row">
+                        <span className="tc-turn">{st.turn}</span>
+                        <span className="tc-doc-title"><b>{TOOL_LABEL[st.tool] || st.tool}</b> <span className="tc-dim">{st.input}</span></span>
+                        <span className="tc-num">{st.ms < 1000 ? `${st.ms} ms` : `${(st.ms / 1000).toFixed(1)} s`}</span>
+                        <ChevronDown size={12} className="tc-chev" />
+                    </span>
+                    {open === i && <span className="tc-snippet">{st.output}</span>}
+                </button>
+            ))}
+        </>
+    );
+}
+
 export default function OfficeTaskContext({ task, models }) {
-    const withContext = (task.runs || []).map((r, i) => ({ ...r, i })).filter(r => r.context);
+    const withContext = (task.runs || []).map((r, i) => ({ ...r, i })).filter(r => r.context || r.steps?.length);
     const [pick, setPick] = useState(null);
     const [open, setOpen] = useState(null);
     const run = withContext.find(r => r.i === pick) || withContext[withContext.length - 1];
-    const ctx = run?.context;
+    const ctx = run?.context || (run ? { knowledge: [], lessons: [] } : null);
     if (!task.routing && !ctx && !task.account) return null;
 
     return (
@@ -96,6 +121,8 @@ export default function OfficeTaskContext({ task, models }) {
                             {open === i && <span className="tc-snippet">{k.snippet}</span>}
                         </button>
                     ))}
+
+                    {(run?.steps || []).length > 0 && <Steps key={run.i} steps={run.steps} />}
 
                     {(ctx.lessons || []).length > 0 && (
                         <>

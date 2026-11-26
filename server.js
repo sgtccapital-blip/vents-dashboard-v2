@@ -38,6 +38,7 @@ import { generateStructured, availableProviders } from './src/services/contentSt
 import { loadBrands } from './scripts/build-brands.mjs';
 import { createBrandContext } from './src/services/office/brandContext.js';
 import { routeMission } from './src/services/office/router.js';
+import { createAgentTools } from './src/services/office/agentTools.js';
 
 dotenv.config();
 
@@ -955,14 +956,26 @@ function addActivityFeed(text, color = '#10b981') {
 // Claude, ChatGPT, OpenClaw, Hermes y cualquier cliente MCP leen el contexto y escriben aquí.
 // AI Office HQ: cola de tareas para agentes internos (multi-modelo) y externos (MCP).
 let agentHub = null;
+// Línea de marca de cada cuenta (DNA.md + BRAND.md) para los agentes de la oficina.
+const brandContext = createBrandContext({ brandsDir: path.join(__dirname, 'brands'), contentDnaDir: CONTENT_DNA_PATH });
+// Archivos de cada tarea (entregables, adjuntos, imágenes) junto a db.json, fuera de git.
+const officeArtifacts = createArtifactStore({ dir: process.env.OFFICE_FILES_DIR || path.join(path.dirname(DB_PATH), 'office-files') });
+
 const office = createOfficeService({
     readDB, writeDB,
     broadcast: (type, payload) => broadcastOfficeEvent(type, payload),
     getHub: () => agentHub,
     getAgents: db => getOfficeAgents(db),
     buildPrompt: opts => buildAgentPrompt(opts),
-    // Archivos de cada tarea (entregables, adjuntos, imágenes) junto a db.json, fuera de git.
-    artifacts: createArtifactStore({ dir: process.env.OFFICE_FILES_DIR || path.join(path.dirname(DB_PATH), 'office-files') }),
+    artifacts: officeArtifacts,
+    // Herramientas de los agentes internos: memoria, archivos, marca, dashboard, traspasos y preguntas al CEO.
+    tools: createAgentTools({
+        searchKnowledge: q => knowledge.search(q),
+        brandContext,
+        readDB,
+        readTaskFile: f => officeArtifacts.readText(f),
+        agentsFor: () => office.allAgents().filter(a => a.kind === 'internal'),
+    }),
     // Entregable aprobado → memoria del RAG, para que los demás agentes (internos y por MCP) lo encuentren.
     onApproved: async (task, files) => {
         const content = [
@@ -3902,8 +3915,6 @@ const COMPANY_NAMESPACES = {
     'metro-supply': 'metro',
 };
 
-// Línea de marca de cada cuenta (DNA.md + BRAND.md) para los agentes de la oficina.
-const brandContext = createBrandContext({ brandsDir: path.join(__dirname, 'brands'), contentDnaDir: CONTENT_DNA_PATH });
 
 const promptClip = (s, n) => String(s || '').replace(/\s+/g, ' ').trim().slice(0, n);
 
@@ -4299,7 +4310,7 @@ app.get('/api/office/state', (req, res) => {
         getOfficeAgents(db);
         const agents = office.allAgents(db);
         const tasks = (db.agentTasks || []).map(t => ({ ...t, status: normalizeOfficeStatus(t.status), running: office.isRunning(t.id) }));
-        const open = ['queued', 'in_progress', 'waiting_approval', 'review'];
+        const open = ['queued', 'in_progress', 'waiting_approval', 'review', 'blocked'];
         const activeTasks = tasks.filter(t => open.includes(t.status));
         const closedTasks = tasks.filter(t => !open.includes(t.status))
             .sort((a, b) => String(b.completedAt || b.updatedAt || b.createdAt).localeCompare(String(a.completedAt || a.updatedAt || a.createdAt)))
@@ -4411,6 +4422,17 @@ app.post('/api/office/dispatch', async (req, res) => {
             status = 'waiting_approval';
         } else if (impact > 100) {
             autonomyLevel = 2;
+        }
+
+        // Misión en pasos: BART propuso una cadena de agentes. Cada paso arranca con lo que entregó el anterior.
+        if (routing.steps?.length >= 2 && status === 'queued' && req.body.split !== false) {
+            const { mission: parent, steps } = office.createMission({
+                mission, description: req.body.description || '', steps: routing.steps, routing, account,
+                companyId: companyId || '', companyName: companyName || 'ARRIVE Ecosystem', priorityScore,
+                autoAdvance: Boolean(req.body.autoAdvance), autoRun: req.body.autoRun !== false,
+            });
+            const first = office.isRunning(steps[0].id) ? { ...steps[0], status: 'in_progress' } : steps[0];
+            return res.status(201).json({ success: true, task: first, mission: parent, steps, assignedAgent: parent.assignedAgent, routing, priorityScore, autonomyLevel, status: first.status });
         }
 
         const taskId = `atask-${Date.now()}`;
@@ -4569,6 +4591,8 @@ app.post('/api/office/approval/:id/decision', (req, res) => {
         // Update corresponding task
         const task = (db.agentTasks || []).find(t => t.id === appr.taskId);
         if (task) {
+            // Aprobar un tope de presupuesto deja correr esta tarea aunque el agente ya lo haya pasado.
+            if (appr.kind === 'budget' && decision === 'approved') task.budgetOverride = true;
             task.status = decision === 'approved' ? 'queued' : 'cancelled';
             task.currentStep = decision === 'approved'
                 ? (task.assignedKind === 'external' ? `Aprobado. Esperando que ${task.assignedAgent} la tome por MCP` : 'Aprobado por el CEO. En cola.')
@@ -5210,7 +5234,8 @@ app.get('/api/office/accounts', (req, res) => res.json({ accounts: brandContext.
 // Modelo de un agente interno (cada agente puede usar un proveedor distinto según su uso).
 app.post('/api/office/agent/:id/config', async (req, res) => {
     try {
-        const { model, fallbackModels } = req.body || {};
+        const { model, fallbackModels, monthlyBudgetUSD, toolsEnabled } = req.body || {};
+        if (monthlyBudgetUSD !== undefined && monthlyBudgetUSD !== null && !(Number(monthlyBudgetUSD) >= 0)) return res.status(400).json({ error: 'El presupuesto debe ser un número en USD (0 o vacío = sin tope)' });
         if (model && !(await isKnownModel(model))) return res.status(400).json({ error: `Modelo desconocido: ${model}` });
         let fallbacks;
         if (fallbackModels !== undefined) {
@@ -5224,6 +5249,12 @@ app.post('/api/office/agent/:id/config', async (req, res) => {
         const agent = getOfficeAgents(db).find(a => a.id === req.params.id);
         if (!agent) return res.status(404).json({ error: 'Agente interno no encontrado' });
         if (model) agent.model = model;
+        if (monthlyBudgetUSD !== undefined) {
+            if (monthlyBudgetUSD === null || Number(monthlyBudgetUSD) === 0) delete agent.monthlyBudgetUSD;
+            else agent.monthlyBudgetUSD = Number(Number(monthlyBudgetUSD).toFixed(2));
+            delete agent.budgetWarned;
+        }
+        if (typeof toolsEnabled === 'boolean') agent.toolsEnabled = toolsEnabled;
         // null = volver a la cadena por defecto; [] = sin respaldo.
         if (fallbacks === null) delete agent.fallbackModels;
         else if (fallbacks) agent.fallbackModels = fallbacks.filter(m => m !== agent.model);
